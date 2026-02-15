@@ -1,0 +1,120 @@
+// code/playground/01_deploy_did_complete.js
+// Deploy DID Document for Hydropower Plant on Hedera HCS
+
+const {
+  Client,
+  TopicCreateTransaction,
+  TopicMessageSubmitTransaction,
+  PrivateKey,
+  AccountId,
+  Hbar
+} = require('@hashgraph/sdk');
+require('dotenv').config();
+
+const OPERATOR_ID = process.env.HEDERA_OPERATOR_ID;
+const OPERATOR_KEY_STR = process.env.HEDERA_OPERATOR_KEY;
+
+if (!OPERATOR_ID || !OPERATOR_KEY_STR) {
+  throw new Error("Missing HEDERA_OPERATOR_ID or HEDERA_OPERATOR_KEY in .env");
+}
+
+const operatorKey = PrivateKey.fromString(OPERATOR_KEY_STR);
+const client = Client.forTestnet();
+client.setOperator(AccountId.fromString(OPERATOR_ID), operatorKey);
+client.setDefaultMaxTransactionFee(new Hbar(2));
+
+async function createDIDTopic() {
+  console.log("\n=== Creating DID Topic ===");
+
+  const topicTx = await new TopicCreateTransaction()
+    .setTopicMemo("Hydropower Plant DID Document")
+    .setAdminKey(operatorKey.publicKey)
+    .setSubmitKey(operatorKey.publicKey)
+    .execute(client);
+
+  const receipt = await topicTx.getReceipt(client);
+  const topicId = receipt.topicId.toString();
+
+  console.log(`✓ DID Topic created: ${topicId}`);
+  return topicId;
+}
+
+async function publishDIDDocument(topicId, plantData) {
+  console.log("\n=== Publishing DID Document ===");
+
+  const didDocument = {
+    "@context": [
+      "https://www.w3.org/ns/did/v1",
+      "https://w3id.org/security/suites/ed25519-2020/v1"
+    ],
+    id: `did:hedera:testnet:${topicId}_0.0.0`,
+    verificationMethod: [{
+      id: `did:hedera:testnet:${topicId}_0.0.0#key-1`,
+      type: "Ed25519VerificationKey2020",
+      controller: `did:hedera:testnet:${topicId}_0.0.0`,
+      publicKeyMultibase: operatorKey.publicKey.toStringDer()
+    }],
+    authentication: [`did:hedera:testnet:${topicId}_0.0.0#key-1`],
+    service: [{
+      id: `did:hedera:testnet:${topicId}_0.0.0#hcs-service`,
+      type: "HederaConsensusService",
+      serviceEndpoint: `https://testnet.mirrornode.hedera.com/api/v1/topics/${topicId}/messages`
+    }],
+    hydropower: {
+      plantName: plantData.name,
+      location: plantData.location,
+      capacity: plantData.capacity,
+      methodology: "ACM0002",
+      registrationDate: new Date().toISOString(),
+      operator: OPERATOR_ID
+    }
+  };
+
+  const message = JSON.stringify(didDocument);
+
+  const submitTx = await new TopicMessageSubmitTransaction()
+    .setTopicId(topicId)
+    .setMessage(message)
+    .execute(client);
+
+  const submitReceipt = await submitTx.getReceipt(client);
+
+  console.log(`✓ DID Document published`);
+  console.log(`  Transaction ID: ${submitTx.transactionId.toString()}`);
+  console.log(`  Status: ${submitReceipt.status.toString()}`);
+  console.log(`  DID: did:hedera:testnet:${topicId}_0.0.0`);
+
+  return didDocument;
+}
+
+async function main() {
+  const plantData = {
+    name: "Himalayan Hydropower Plant #1",
+    location: "Uttarakhand, India",
+    capacity: 1000, // kW
+    turbines: ["TURBINE-1", "TURBINE-2"]
+  };
+
+  try {
+    console.log("\n🌊 HEDERA HYDROPOWER MRV - DID DEPLOYMENT");
+    console.log("==========================================");
+
+    const topicId = await createDIDTopic();
+    const didDoc = await publishDIDDocument(topicId, plantData);
+
+    console.log("\n=== SAVE THESE VALUES ===");
+    console.log(`DID_TOPIC_ID=${topicId}`);
+    console.log(`DID=did:hedera:testnet:${topicId}_0.0.0`);
+    console.log("\nAdd DID_TOPIC_ID to your .env file!");
+
+    console.log("\n✓ DID Deployment Complete!");
+
+  } catch (error) {
+    console.error("\n❌ Error:", error.message);
+    process.exit(1);
+  }
+
+  await client.close();
+}
+
+main();
