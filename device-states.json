@@ -1,0 +1,39 @@
+{
+  "TURBINE-1": {
+    "deviceId": "TURBINE-1",
+    "mode": "evidence-rich",
+    "deploymentDate": "2025-08-16T18:34:21.921Z",
+    "totalReadings": 4,
+    "approvedReadings": 4,
+    "flaggedReadings": 0,
+    "rejectedReadings": 0,
+    "anomalyCount": 0,
+    "lastMaintenanceDate": null,
+    "vvbApprovalReceived": true,
+    "graduationEligible": false,
+    "history": [
+      {
+        "timestamp": "2026-02-15T18:34:20.105Z",
+        "trustScore": 1,
+        "decision": "APPROVED"
+      },
+      {
+        "timestamp": "2026-02-15T18:37:08.504Z",
+        "trustScore": 1,
+        "decision": "APPROVED"
+      },
+      {
+        "timestamp": "2026-02-15T18:42:33.310Z",
+        "trustScore": 1,
+        "decision": "APPROVED"
+      },
+      {
+        "timestamp": "2026-02-15T18:43:22.728Z",
+        "trustScore": 1,
+        "decision": "APPROVED"
+      }
+    ],
+    "vvbApprovalDate": "2026-02-15T18:34:54.053Z",
+    "graduationDate": "2026-02-15T18:36:30.070Z"
+  }
+}

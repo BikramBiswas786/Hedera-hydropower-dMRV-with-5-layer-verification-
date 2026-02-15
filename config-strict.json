@@ -1,0 +1,25 @@
+{
+  "projectId": "HYDRO-001",
+  "verification": {
+    "mode": "strict",
+    "thresholds": {
+      "autoApprove": 0.97,
+      "flag": 0.5,
+      "reject": 0.5
+    },
+    "samplingStrategy": {
+      "stratified": true,
+      "confidenceLevel": 0.95,
+      "highRiskRate": 0.3,
+      "mediumRiskRate": 0.1,
+      "lowRiskRate": 0.03
+    },
+    "graduationCriteria": {
+      "enabled": true,
+      "minOperationalDays": 180,
+      "maxAnomalyRatePercent": 2,
+      "minDataQualityPercent": 95,
+      "vvbApprovalRequired": true
+    }
+  }
+}
