@@ -432,9 +432,9 @@ class EngineV1 {
 
     const tx = await new TopicMessageSubmitTransaction()
       .setTopicId(topicId)
-      .setMessage(message)
+      .setMessage(message).execute(client);
       .freezeWith(client)
-      .freeze();
+      
 
     const resp = await tx.execute(client);
     const receipt = await resp.getReceipt(client);
@@ -548,5 +548,6 @@ async function main() {
 main().catch(console.error);
 
 module.exports = { EngineV1 };
+
 
 
