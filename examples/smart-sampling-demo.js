@@ -1,0 +1,15 @@
+﻿const SmartSampler = require('../src/smart-sampler');
+console.log('\n=== SMART SAMPLING DEMO ===\n');
+const sampler = new SmartSampler();
+const decisions = [];
+for (let i = 0; i < 50; i++) decisions.push({ readingId: R, deviceId: 'TURBINE-1', trustScore: 0.91, decision: 'AUTO_APPROVED', timestamp: new Date().toISOString() });
+for (let i = 50; i < 350; i++) decisions.push({ readingId: R, deviceId: 'TURBINE-1', trustScore: 0.93, decision: 'AUTO_APPROVED', timestamp: new Date().toISOString() });
+for (let i = 350; i < 1000; i++) decisions.push({ readingId: R, deviceId: 'TURBINE-1', trustScore: 0.97, decision: 'AUTO_APPROVED', timestamp: new Date().toISOString() });
+const context = { device: { operationalDays: 250 }, recentAnomalies: 0 };
+const results = sampler.selectSamples(decisions, context);
+console.log(✓ Generated 1000 decisions);
+console.log(✓ Sampled  readings (Effective: %));
+console.log(✓ High-risk: , Medium: , Low: );
+const report = sampler.generateSamplingReport(results, { anomaliesDetected: 1 });
+console.log(✓ 95% CI: [%, %]);
+console.log(✓ Cost: {(results.metadata.sampleSizes.total * 0.50).toFixed(2)} (saves {((1000 - results.metadata.sampleSizes.total) * 0.50).toFixed(2)})\n);
