@@ -1,6 +1,7 @@
 /**
  * Hedera Integration Tests
- * Tests: Topic creation, token operations, message submission
+ * Tests: Topic creation, token operations, message submission 
+
  * Coverage: 92%+
  */
 
