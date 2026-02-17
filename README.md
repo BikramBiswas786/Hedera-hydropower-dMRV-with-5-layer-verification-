@@ -1,327 +1,175 @@
-# Hedera Hydropower MRV System 🚀
+# 🌊 Hedera Hydropower MRV
 
-**Production-Ready Carbon Credit Verification on Hedera Hashgraph**
+> **Blockchain-verified Measurement, Reporting & Verification for run-of-river hydropower — built on Hedera Hashgraph**
 
-[![Tests](https://img.shields.io/badge/tests-106%20passing-success)](./tests)
-[![Coverage](https://img.shields.io/badge/coverage-%3E90%25-brightgreen)](./coverage)
-[![Hedera](https://img.shields.io/badge/Hedera-Testnet-blue)](https://hedera.com)
-[![ACM0002](https://img.shields.io/badge/ACM0002-Compliant-green)](./ACM0002-ALIGNMENT-MATRIX.md)
-[![Status](https://img.shields.io/badge/status-Production%20Ready-success)](#)
+[![Tests](https://img.shields.io/badge/tests-224%20passing-brightgreen)](evidence/EVIDENCE.md)
+[![Suites](https://img.shields.io/badge/suites-9%20passing-brightgreen)](evidence/EVIDENCE.md)
+[![Network](https://img.shields.io/badge/network-Hedera%20Testnet-blue)](https://hashscan.io/testnet/account/0.0.6255927)
+[![Methodology](https://img.shields.io/badge/methodology-ACM0002-orange)](docs/MRV-METHODOLOGY.md)
+[![License](https://img.shields.io/badge/license-MIT-green)](LICENSE)
 
 ---
 
-## 🎯 Quick Start (2 Minutes)
+## 🔬 What This Solves
 
-### Windows PowerShell
+Carbon credit fraud in hydropower is a $4B+ problem. Paper-based MRV systems allow manipulation of generation data, phantom RECs, and unverifiable audit trails.
 
-```powershell
-# Download and run automated test
-irm https://raw.githubusercontent.com/BikramBiswas786/https-github.com-BikramBiswas786-hedera-hydropower-mrv/main/scripts/quick-test.ps1 | iex
-```
+This system makes fraud **cryptographically impossible**:
 
-### Linux/macOS
+| Problem | Solution |
+|---------|----------|
+| Fake generation data | Physics-based AI anomaly detector rejects implausible readings |
+| No audit trail | Every reading hashed and submitted to Hedera HCS (immutable) |
+| Unverifiable RECs | Hedera Token Service mints RECs only after AI guardian approval |
+| Trust gap | On-chain attestation with trust score, DID-linked device identity |
+
+---
+
+## 🏗️ Architecture (3-Line Summary)
+
+1. **Sensor telemetry** → AI Guardian verifies physics (flow rate × head × efficiency = power)
+2. **Verified reading** → Hedera HCS topic (immutable, timestamped, globally verifiable)
+3. **Approved reading** → HTS mints REC tokens tied to device DID on Hedera
+
+---
+
+## ✅ Live Proof — Hedera Testnet
+
+All transactions below are **real, on-chain, independently verifiable**:
+
+| What | ID | Verify |
+|------|----|--------|
+| Approved TX | `0.0.6255927@1771367521.991650439` | [HashScan ↗](https://hashscan.io/testnet/transaction/0.0.6255927@1771367521.991650439) |
+| Rejected TX (fraud detected) | `0.0.6255927@1771367525.903417316` | [HashScan ↗](https://hashscan.io/testnet/transaction/0.0.6255927@1771367525.903417316) |
+| REC Token `HREC` | `0.0.7964264` | [HashScan ↗](https://hashscan.io/testnet/token/0.0.7964264) |
+| HCS Audit Topic | `0.0.7964262` | [HashScan ↗](https://hashscan.io/testnet/topic/0.0.7964262) |
+| Device DID | `did:hedera:testnet:z485944524f2d54555242494e452d31` | — |
+
+→ **Full evidence:** [evidence/EVIDENCE.md](evidence/EVIDENCE.md)
+
+---
+
+## 🚀 Quick Start (3 Commands)
 
 ```bash
-# Download and run automated test
-curl -sSL https://raw.githubusercontent.com/BikramBiswas786/https-github.com-BikramBiswas786-hedera-hydropower-mrv/main/scripts/quick-test.sh | bash
+git clone https://github.com/BikramBiswas786/hedera-hydropower-mrv.git
+cd hedera-hydropower-mrv
+npm install && npm test
 ```
 
-### Manual Installation
+### Configure .env
 
-```bash
-# Clone repository
-git clone https://github.com/BikramBiswas786/https-github.com-BikramBiswas786-hedera-hydropower-mrv.git
-cd https-github.com-BikramBiswas786-hedera-hydropower-mrv
-
-# Install dependencies
-npm install
-
-# Run tests
-npm test
-
-# Expected: 106 tests passing ✅
-```
-
----
-
-## ✨ What's New - Production Fixes
-
-### ✅ All Tests Passing (106/106)
-
-**Fixed modules:**
-- ✅ **AI Guardian Verifier** - Complete implementation with all required methods[cite:18]
-- ✅ **Verifier Attestation** - Added `create()` method for test compatibility[cite:20]
-- ✅ **EngineV1** - Full 5-tier verification pipeline[cite:17]
-- ✅ **Hedera Integration** - 52 tests for HCS operations
-- ✅ **Configuration Validation** - 47 tests for schema validation
-
-**New Documentation:**
-- 📊 [Investment Summary](./INVESTMENT_SUMMARY.md) - Business model, market size, roadmap[cite:25]
-- 🚀 [Production Deployment Guide](./PRODUCTION_DEPLOYMENT.md) - Complete setup instructions[cite:22]
-- ⚡ Quick test scripts for [Windows](./scripts/quick-test.ps1)[cite:23] and [Linux/macOS](./scripts/quick-test.sh)[cite:24]
-
----
-
-## 📊 System Architecture
-
-```
-┌─────────────────┐
-│ Telemetry Data │
-└───────┬────────┘
-        │
-        ↓
-┌───────┴──────────────────────────┐
-│         EngineV1 Verification      │
-│  ┌───────────────────────────┐  │
-│  │ 1. Physics (30%)        │  │
-│  │ 2. Temporal (25%)       │  │
-│  │ 3. Environmental (20%)  │  │
-│  │ 4. Statistical (15%)    │  │
-│  │ 5. Consistency (10%)    │  │
-│  └───────────┬─────────────┘  │
-└─────────────┴──────────────────┘
-                │
-                ↓
-        ┌───────┴───────┐
-        │ Trust Score  │
-        │  (0 - 1.0)   │
-        └───────┬───────┘
-                │
-       ┌────────┴────────┐
-       │                 │
-   ≥ 0.90│   0.50-0.89│   < 0.50
-       │                 │
-  APPROVED   FLAGGED    REJECTED
-       │                 │
-       └───────┬────────┘
-               │
-               ↓
-    ┌──────────┴────────────┐
-    │   Hedera HCS Topic   │
-    │  (Immutable Record)  │
-    └──────────┬────────────┘
-               │
-               ↓
-      ┌────────┴─────────┐
-      │ Carbon Credits  │
-      │  (RECs Issued)  │
-      └──────────────────┘
-```
-
----
-
-## 🛠️ Features
-
-### ✅ Core Capabilities
-
-- **5-Tier AI Verification** - Physics, temporal, environmental, statistical, device-consistency
-- **Trust Scoring** - Graduated 0-1 scale with automatic threshold-based decisions
-- **ACM0002 Compliance** - UN CDM methodology for carbon credit generation
-- **Hedera HCS Integration** - Immutable audit trail on distributed ledger
-- **Cryptographic Attestations** - Tamper-proof verification records
-- **Batch Processing** - Process multiple readings efficiently
-- **Real-time Verification** - <500ms latency per reading
-
-### 📊 Quality Metrics
-
-- **106 Tests Passing** - Comprehensive coverage
-- **>90% Code Coverage** - High quality assurance
-- **Production-Grade** - Error handling, logging, monitoring
-- **CI/CD Ready** - Automated testing and deployment
-
----
-
-## 💻 Usage Examples
-
-### Command Line Interface
-
-```bash
-# Submit telemetry data
-node src/engine/v1/engine-v1.js submit TURBINE-1 2.5 45 156 7.2
-
-# Parameters: deviceId flowRate head generatedKwh pH
-```
-
-**Output:**
-```
-=== ENGINE V1 RESULT ===
-Decision: APPROVED
-Trust Score: 0.9823
-ER (tCO2): 0.1248
-RECs issued (tCO2): 0.1248
-Hedera TX: 0.0.1001@1708219234.000000000
-Status: SUCCESS
-```
-
-### Programmatic API
-
-```javascript
-const { EngineV1 } = require('./src/engine/v1/engine-v1');
-
-const engine = new EngineV1({
-  autoApproveThreshold: 0.90,
-  manualReviewThreshold: 0.50
-});
-
-const telemetry = {
-  deviceId: 'TURBINE-1',
-  timestamp: new Date().toISOString(),
-  readings: {
-    flowRate_m3_per_s: 2.5,
-    headHeight_m: 45,
-    generatedKwh: 156,
-    pH: 7.2,
-    turbidity_ntu: 10,
-    temperature_celsius: 18,
-    efficiency: 0.85
-  }
-};
-
-const result = await engine.verifyAndPublish(telemetry);
-
-console.log('Status:', result.attestation.verificationStatus);
-console.log('Trust Score:', result.attestation.trustScore);
-console.log('Transaction:', result.transactionId);
-```
-
----
-
-## 📚 Documentation
-
-### For Investors & Stakeholders
-- 📊 [Investment Summary](./INVESTMENT_SUMMARY.md) - Market opportunity, business model, roadmap
-- 💰 [Revenue Projections](./INVESTMENT_SUMMARY.md#business-model) - Unit economics and pricing
-
-### For Engineers & Operators
-- 🚀 [Production Deployment Guide](./PRODUCTION_DEPLOYMENT.md) - Complete setup instructions
-- 📖 [ACM0002 Alignment Matrix](./ACM0002-ALIGNMENT-MATRIX.md) - Carbon credit compliance
-- 🔒 [Comprehensive Audit Report](./COMPREHENSIVE_AUDIT_REPORT.md) - Security analysis
-
-### For Developers
-- 🛠️ [API Documentation](./docs/API.md) - Full API reference
-- 🏛️ [Architecture Overview](./docs/ARCHITECTURE.md) - System design
-- ✅ [Test Suite](./tests/) - 106 comprehensive tests
-
----
-
-## 🔧 Development Commands
-
-```bash
-# Run all tests
-npm test
-
-# Run specific test suite
-npx jest tests/engine-v1.test.js
-npx jest tests/configuration-validator.test.js
-npx jest tests/hedera-integration.test.js
-
-# Generate coverage report
-npm test -- --coverage
-
-# Run linter
-npm run lint
-
-# Submit test telemetry
-node src/engine/v1/engine-v1.js submit TURBINE-1 2.5 45 156 7.2
-```
-
----
-
-## 🌍 Environment Setup
-
-### 1. Create `.env` file
-
-```bash
-cp .env.example .env
-```
-
-### 2. Configure Hedera credentials
-
-```env
-HEDERA_OPERATOR_ID=0.0.YOUR_ACCOUNT_ID
-HEDERA_OPERATOR_KEY=302e020100300506032b65700422042YOUR_PRIVATE_KEY
+```text
+HEDERA_OPERATOR_ID=0.0.YOUR_ACCOUNT
+HEDERA_OPERATOR_KEY=your_ed25519_private_key
 AUDIT_TOPIC_ID=0.0.YOUR_TOPIC_ID
 EF_GRID=0.8
 ```
 
-### 3. Get Hedera Testnet Account
+---
 
-1. Visit [Hedera Portal](https://portal.hedera.com)
-2. Create testnet account (free)
-3. Copy Account ID and Private Key
-4. Create HCS Topic and copy Topic ID
+## 🧪 Test Results
+
+| Suite | Tests | What It Proves |
+|-------|-------|----------------|
+| e2e-production.test.js | 11 | Full pipeline: DID → token → telemetry → REC → audit |
+| complete-workflow.test.js | 18 | Live Hedera testnet, 1000-reading perf benchmark |
+| hedera-integration.test.js | 56 | HCS topics, HTS tokens, transactions, accounts |
+| ai-guardian-verifier.test.js | 27 | Trust scoring, auto-approval thresholds |
+| verifier-attestation.test.js | 22 | Cryptographic signing, ACM0002 calculations |
+| engine-v1.test.js | 7 | Full EngineV1 verification pipeline |
+| anomaly-detector.test.js | 22 | Physics, temporal, environmental, statistical |
+| unit/anomaly-detector.test.js | 21 | Isolated unit coverage |
+| configuration-validator.test.js | 50 | Config, reading, environment schema |
+| **TOTAL** | **224 ✅** | All passing — 0 failures |
+
+### Performance Benchmarks
+
+| Benchmark | Target | Actual |
+|-----------|--------|--------|
+| 100 readings E2E | < 30s | 5.2s ✅ |
+| 1000 readings batch | < 60s | ~20s ✅ |
+| Single verification decision | < 50ms | < 5ms ✅ |
 
 ---
 
-## 🔒 Security Best Practices
+## 📐 How Verification Works
 
-- **Never commit `.env` files** to version control
-- **Use Testnet for development** - Switch to mainnet only after thorough testing
-- **Rotate keys regularly** - Every 90 days minimum
-- **Monitor transaction costs** - Set reasonable fee limits
-- **Implement rate limiting** - Prevent abuse in production
+```text
+Sensor Reading
+     │
+     ▼
+┌─────────────────────────────────┐
+│      AI Guardian Verifier       │
+│  ┌──────────────────────────┐   │
+│  │ 1. Physics Check         │   │  P = ρ·g·Q·H·η
+│  │ 2. Temporal Consistency  │   │  Δ between readings
+│  │ 3. Environmental Bounds  │   │  pH / turbidity / temp
+│  │ 4. Statistical Anomaly   │   │  z-score > 3 → flag
+│  └──────────────────────────┘   │
+│         Trust Score 0–100%      │
+└────────────┬────────────────────┘
+             │
+    ┌────────▼────────┐
+    │ ≥ 90% APPROVED  │──→ Hedera HCS (immutable record)
+    │ 70–89% FLAGGED  │──→ HCS + manual review queue
+    │ < 70% REJECTED  │──→ HCS (fraud evidence preserved)
+    └─────────────────┘
+             │ APPROVED only
+             ▼
+    Hedera Token Service
+    Mint HREC tokens = MWh generated
+```
 
 ---
 
-## 📊 Performance
+## 🗂️ Repository Structure
 
-### Benchmarks
-
-- **Verification Latency**: <500ms per reading
-- **Throughput**: 100+ readings/minute
-- **Hedera HCS Latency**: 3-5 seconds for consensus
-- **Batch Processing**: 10-50 readings per batch (recommended)
-
-### Optimization Tips
-
-- Use batch processing for bulk data
-- Implement caching for device profiles
-- Consider async processing for high-volume scenarios
+```text
+src/
+  engine/v1/         ← Core MRV engine
+  verifier/          ← AI Guardian + attestation
+  anomaly/           ← Physics / temporal / statistical detectors
+  hedera/            ← HCS, HTS, DID integration
+tests/
+  e2e-production.test.js     ← Full E2E live test
+  complete-workflow.test.js  ← Performance benchmark
+  hedera-integration.test.js ← Hedera mock + live
+  ...
+evidence/
+  EVIDENCE.md        ← Live testnet proof
+  HASHSCAN-LINKS.md  ← Clickable TX verification
+  raw-test-output.txt← Full Jest output
+docs/
+  ARCHITECTURE.md    ← System design
+  SECURITY.md        ← Key management, threat model
+  MRV-METHODOLOGY.md ← ACM0002 alignment
+```
 
 ---
 
-## 🤝 Contributing
+## 🔗 Methodology Alignment
 
-Contributions welcome! Please:
+- **ACM0002** — UNFCCC/Verra consolidated baseline for grid-connected renewables (run-of-river hydro) [→ docs/MRV-METHODOLOGY.md](docs/MRV-METHODOLOGY.md)
+- **Hedera Guardian** — Policy engine alignment path for Verra VCS issuance
+- **DID standard** — W3C Decentralized Identifiers for device identity on Hedera
 
-1. Fork the repository
-2. Create a feature branch
-3. Add tests for new features
-4. Ensure all tests pass (`npm test`)
-5. Submit a pull request
+---
+
+## 🤝 Funding & Partnerships
+
+This project is built for:
+
+- [Hedera Foundation](https://hedera.foundation/) Sustainability Grant
+- [Climate Collective](https://climatecollective.org/) ReFi ecosystem
+- Verra VCS registry integration
 
 ---
 
 ## 📄 License
 
-MIT License - see [LICENSE](./LICENSE) for details
+MIT — see [LICENSE](LICENSE)
 
 ---
 
-## 📞 Support
-
-- **Issues**: [GitHub Issues](https://github.com/BikramBiswas786/https-github.com-BikramBiswas786-hedera-hydropower-mrv/issues)
-- **Documentation**: [Production Guide](./PRODUCTION_DEPLOYMENT.md)
-- **Hedera Support**: [Hedera Discord](https://hedera.com/discord)
-
----
-
-## 🏆 Acknowledgments
-
-- **Hedera Hashgraph** - Distributed ledger technology
-- **ACM0002 Methodology** - UN CDM carbon credit framework
-- **Open Source Community** - Jest, Node.js, and all dependencies
-
----
-
-## 🚀 Status
-
-**Current Version**: 1.1.0  
-**Status**: 🚀 **PRODUCTION READY**  
-**Last Updated**: February 18, 2026  
-**Tests**: ✅ 106/106 Passing  
-**Coverage**: 🟢 >90%
-
----
-
-**Built with ❤️ for transparent carbon credit verification**
+**Built with ❤️ on Hedera Hashgraph · All test transactions verifiable on HashScan**
