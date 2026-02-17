@@ -22,6 +22,8 @@ class AIGuardianVerifier {
     };
     this.privateKey = crypto.randomBytes(32);
     this.detector = new AnomalyDetector(config.detectorConfig);
+    this.previousReadings = new Map(); // Track previous readings by deviceId
+    this.historicalReadings = new Map(); // Track historical data by deviceId
   }
 
   /**
@@ -199,8 +201,8 @@ class AIGuardianVerifier {
   }
 
   /**
-   * Process batch with ACTUAL validation (not simplified)
-   * ✅ FIXED: Using detector.checkAll() instead of detector.validate()
+   * Process batch with ACTUAL validation using completeValidation
+   * ✅ FIXED: Using detector.completeValidation() with proper context
    */
   processBatch(readings) {
     if (!Array.isArray(readings)) {
@@ -208,8 +210,25 @@ class AIGuardianVerifier {
     }
 
     return readings.map(reading => {
-      // ✅ FIX: Use checkAll() method from AnomalyDetector
-      const validationResults = this.detector.checkAll(reading);
+      const deviceId = reading.deviceId;
+      
+      // Get previous reading and historical data for this device
+      const previousReading = this.previousReadings.get(deviceId);
+      const historicalData = this.historicalReadings.get(deviceId) || [];
+      
+      // ✅ FIX: Use completeValidation() method from AnomalyDetector
+      // Signature: completeValidation(telemetry, previousReading, historicalReadings, siteConfig)
+      const validationResults = this.detector.completeValidation(
+        reading,
+        previousReading,
+        historicalData,
+        this.config.siteConfig || null
+      );
+
+      // Update tracking for next iteration
+      this.previousReadings.set(deviceId, reading);
+      historicalData.push(reading);
+      this.historicalReadings.set(deviceId, historicalData.slice(-100)); // Keep last 100 readings
 
       return this.generateAttestation(reading, validationResults);
     });
