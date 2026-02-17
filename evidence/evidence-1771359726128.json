@@ -1,0 +1,1322 @@
+{
+  "timestamp": "2026-02-17T20:21:13.945Z",
+  "projectId": "HYDRO-PROJECT-001",
+  "deviceId": "TURBINE-ALPHA",
+  "transactions": [
+    {
+      "step": "DID_DEPLOYMENT",
+      "transactionId": "0.0.7962915",
+      "timestamp": "2026-02-17T20:21:16.416Z",
+      "explorerUrl": "https://hashscan.io/testnet/transaction/0.0.7962915",
+      "did": "did:hedera:testnet:z54555242494e452d414c504841",
+      "deviceId": "TURBINE-ALPHA"
+    },
+    {
+      "step": "TOKEN_CREATION",
+      "transactionId": "0.0.7962916",
+      "timestamp": "2026-02-17T20:21:19.444Z",
+      "explorerUrl": "https://hashscan.io/testnet/transaction/0.0.7962916",
+      "name": "Hydropower Renewable Energy Certificate",
+      "symbol": "HREC"
+    },
+    {
+      "step": "VALID_TELEMETRY",
+      "transactionId": "0.0.6255927@1771359674.481198259",
+      "timestamp": "2026-02-17T20:21:23.245Z",
+      "explorerUrl": "https://hashscan.io/testnet/transaction/0.0.6255927@1771359674.481198259",
+      "verificationStatus": "APPROVED",
+      "trustScore": 1,
+      "attestationId": "att-1771359681441-eqd5og0ob"
+    },
+    {
+      "step": "INVALID_TELEMETRY",
+      "transactionId": "0.0.6255927@1771359679.727816466",
+      "timestamp": "2026-02-17T20:21:27.413Z",
+      "explorerUrl": "https://hashscan.io/testnet/transaction/0.0.6255927@1771359679.727816466",
+      "verificationStatus": "REJECTED",
+      "trustScore": 0.37,
+      "attestationId": "att-1771359684844-cj0ic3yqi"
+    },
+    {
+      "step": "BATCH_1",
+      "transactionId": "0.0.6255927@1771359685.551729041",
+      "timestamp": "2026-02-17T20:21:32.410Z",
+      "explorerUrl": "https://hashscan.io/testnet/transaction/0.0.6255927@1771359685.551729041",
+      "verificationStatus": "FLAGGED",
+      "trustScore": 0.8175
+    },
+    {
+      "step": "BATCH_2",
+      "transactionId": "0.0.6255927@1771359687.654144846",
+      "timestamp": "2026-02-17T20:21:37.208Z",
+      "explorerUrl": "https://hashscan.io/testnet/transaction/0.0.6255927@1771359687.654144846",
+      "verificationStatus": "APPROVED",
+      "trustScore": 0.985
+    },
+    {
+      "step": "BATCH_3",
+      "transactionId": "0.0.6255927@1771359693.672748136",
+      "timestamp": "2026-02-17T20:21:40.941Z",
+      "explorerUrl": "https://hashscan.io/testnet/transaction/0.0.6255927@1771359693.672748136",
+      "verificationStatus": "APPROVED",
+      "trustScore": 0.955
+    },
+    {
+      "step": "BATCH_4",
+      "transactionId": "0.0.6255927@1771359695.258862265",
+      "timestamp": "2026-02-17T20:21:45.819Z",
+      "explorerUrl": "https://hashscan.io/testnet/transaction/0.0.6255927@1771359695.258862265",
+      "verificationStatus": "APPROVED",
+      "trustScore": 1
+    },
+    {
+      "step": "BATCH_5",
+      "transactionId": "0.0.6255927@1771359702.003858671",
+      "timestamp": "2026-02-17T20:21:49.292Z",
+      "explorerUrl": "https://hashscan.io/testnet/transaction/0.0.6255927@1771359702.003858671",
+      "verificationStatus": "APPROVED",
+      "trustScore": 0.985
+    },
+    {
+      "step": "BATCH_6",
+      "transactionId": "0.0.6255927@1771359704.065829279",
+      "timestamp": "2026-02-17T20:21:52.587Z",
+      "explorerUrl": "https://hashscan.io/testnet/transaction/0.0.6255927@1771359704.065829279",
+      "verificationStatus": "APPROVED",
+      "trustScore": 0.985
+    },
+    {
+      "step": "BATCH_7",
+      "transactionId": "0.0.6255927@1771359708.664585234",
+      "timestamp": "2026-02-17T20:21:55.863Z",
+      "explorerUrl": "https://hashscan.io/testnet/transaction/0.0.6255927@1771359708.664585234",
+      "verificationStatus": "APPROVED",
+      "trustScore": 1
+    },
+    {
+      "step": "BATCH_8",
+      "transactionId": "0.0.6255927@1771359711.028887571",
+      "timestamp": "2026-02-17T20:21:59.331Z",
+      "explorerUrl": "https://hashscan.io/testnet/transaction/0.0.6255927@1771359711.028887571",
+      "verificationStatus": "APPROVED",
+      "trustScore": 1
+    },
+    {
+      "step": "BATCH_9",
+      "transactionId": "0.0.6255927@1771359714.635302603",
+      "timestamp": "2026-02-17T20:22:02.803Z",
+      "explorerUrl": "https://hashscan.io/testnet/transaction/0.0.6255927@1771359714.635302603",
+      "verificationStatus": "APPROVED",
+      "trustScore": 0.985
+    },
+    {
+      "step": "BATCH_10",
+      "transactionId": "0.0.6255927@1771359719.583964019",
+      "timestamp": "2026-02-17T20:22:06.123Z",
+      "explorerUrl": "https://hashscan.io/testnet/transaction/0.0.6255927@1771359719.583964019",
+      "verificationStatus": "APPROVED",
+      "trustScore": 1
+    }
+  ],
+  "attestations": [
+    {
+      "id": "att-1771359681441-eqd5og0ob",
+      "deviceId": "TURBINE-ALPHA",
+      "period": {
+        "start": "2026-02-17T20:21:19.444Z",
+        "end": "2026-02-17T20:21:19.444Z"
+      },
+      "timestamp": "2026-02-17T20:21:19.444Z",
+      "verificationStatus": "APPROVED",
+      "trustScore": 1,
+      "verifier": "EngineV1",
+      "signature": "6df660ef67a4d805c45f1bb2918fe2e9f585a73a3c733293531b16c1219ada35",
+      "checks": {
+        "physics": {
+          "score": 1,
+          "status": "PERFECT",
+          "deviation": 0,
+          "expectedPowerKw": 938.08,
+          "measuredPowerKw": 938.08,
+          "reason": null
+        },
+        "temporal": {
+          "score": 1,
+          "status": "FIRST_READING",
+          "genChange": 0,
+          "flowChange": 0,
+          "headChange": 0,
+          "reason": null
+        },
+        "environmental": {
+          "score": 1,
+          "status": "PASS",
+          "details": {
+            "pH": {
+              "value": 7.2,
+              "status": "PERFECT",
+              "score": 1
+            },
+            "turbidity": {
+              "value": 10,
+              "status": "PERFECT",
+              "score": 1
+            },
+            "temperature": {
+              "value": 18,
+              "status": "PERFECT",
+              "score": 1
+            }
+          },
+          "reason": null
+        },
+        "statistical": {
+          "score": 1,
+          "status": "NO_HISTORY",
+          "zScore": 0,
+          "mean": 0,
+          "stdDev": 0,
+          "reason": null
+        },
+        "consistency": {
+          "score": 1,
+          "status": "PASS",
+          "details": {
+            "capacity": {
+              "status": "OK",
+              "score": 1
+            },
+            "flow": {
+              "status": "OK",
+              "score": 1
+            },
+            "head": {
+              "status": "OK",
+              "score": 1
+            },
+            "efficiency": {
+              "status": "OK",
+              "score": 1
+            }
+          },
+          "reason": null
+        }
+      },
+      "calculations": {
+        "EG_MWh": 0.93808,
+        "EF_grid_tCO2_per_MWh": 0.8,
+        "BE_tCO2": 0.750464,
+        "PE_tCO2": 0,
+        "LE_tCO2": 0,
+        "ER_tCO2": 0.750464,
+        "RECs_issued": 0.750464
+      },
+      "metadata": {
+        "created": "2026-02-17T20:21:21.441Z",
+        "version": "1.0.0"
+      },
+      "status": "valid"
+    },
+    {
+      "id": "att-1771359684844-cj0ic3yqi",
+      "deviceId": "TURBINE-ALPHA",
+      "period": {
+        "start": "2026-02-17T20:21:23.245Z",
+        "end": "2026-02-17T20:21:23.245Z"
+      },
+      "timestamp": "2026-02-17T20:21:23.245Z",
+      "verificationStatus": "REJECTED",
+      "trustScore": 0.37,
+      "verifier": "EngineV1",
+      "signature": "934aee427afa193c14fc22d4d3f236d1b95b2867e335db8be2aae34cf9474979",
+      "checks": {
+        "physics": {
+          "score": 0,
+          "status": "FAIL",
+          "deviation": 106500.47,
+          "expectedPowerKw": 938.08,
+          "measuredPowerKw": 999999,
+          "reason": "Physics deviation 106500.5% (>30%)"
+        },
+        "temporal": {
+          "score": 0.3,
+          "status": "FAIL",
+          "genChange": 106500.61,
+          "flowChange": 0,
+          "headChange": 0,
+          "reason": "Excessive temporal variation"
+        },
+        "environmental": {
+          "score": 1,
+          "status": "PASS",
+          "details": {
+            "pH": {
+              "value": 7.2,
+              "status": "PERFECT",
+              "score": 1
+            },
+            "turbidity": {
+              "value": 10,
+              "status": "PERFECT",
+              "score": 1
+            },
+            "temperature": {
+              "value": 18,
+              "status": "PERFECT",
+              "score": 1
+            }
+          },
+          "reason": null
+        },
+        "statistical": {
+          "score": 0.3,
+          "status": "OUTLIER",
+          "zScore": 999060920000,
+          "mean": 938.08,
+          "stdDev": 0,
+          "reason": "Statistical outlier: Z-score 999060920000.00 (>3σ)"
+        },
+        "consistency": {
+          "score": 0.5,
+          "status": "WARN",
+          "details": {
+            "capacity": {
+              "status": "EXCEEDS",
+              "score": 0.5
+            },
+            "flow": {
+              "status": "OK",
+              "score": 1
+            },
+            "head": {
+              "status": "OK",
+              "score": 1
+            },
+            "efficiency": {
+              "status": "OK",
+              "score": 1
+            }
+          },
+          "reason": null
+        }
+      },
+      "calculations": {
+        "EG_MWh": 999.999,
+        "EF_grid_tCO2_per_MWh": 0.8,
+        "BE_tCO2": 799.9992,
+        "PE_tCO2": 0,
+        "LE_tCO2": 0,
+        "ER_tCO2": 799.9992,
+        "RECs_issued": 0
+      },
+      "rejectionReasons": [
+        "Trust score below threshold"
+      ],
+      "metadata": {
+        "created": "2026-02-17T20:21:24.844Z",
+        "version": "1.0.0"
+      },
+      "status": "valid"
+    },
+    {
+      "id": "att-1771359689292-ll6jekzr6",
+      "deviceId": "TURBINE-ALPHA",
+      "period": {
+        "start": "2026-02-17T20:21:27.413Z",
+        "end": "2026-02-17T20:21:27.413Z"
+      },
+      "timestamp": "2026-02-17T20:21:27.413Z",
+      "verificationStatus": "FLAGGED",
+      "trustScore": 0.8175,
+      "verifier": "EngineV1",
+      "signature": "2e6e4ceb9b39c5c2668417047e4c968ef30b9a200df484a18f997e540939ff8d",
+      "checks": {
+        "physics": {
+          "score": 1,
+          "status": "PERFECT",
+          "deviation": 4.06,
+          "expectedPowerKw": 938.08,
+          "measuredPowerKw": 900,
+          "reason": null
+        },
+        "temporal": {
+          "score": 0.3,
+          "status": "FAIL",
+          "genChange": 99.91,
+          "flowChange": 0,
+          "headChange": 0,
+          "reason": "Excessive temporal variation"
+        },
+        "environmental": {
+          "score": 1,
+          "status": "PASS",
+          "details": {
+            "pH": {
+              "value": 7.2,
+              "status": "PERFECT",
+              "score": 1
+            },
+            "turbidity": {
+              "value": 10,
+              "status": "PERFECT",
+              "score": 1
+            },
+            "temperature": {
+              "value": 18,
+              "status": "PERFECT",
+              "score": 1
+            }
+          },
+          "reason": null
+        },
+        "statistical": {
+          "score": 0.95,
+          "status": "ACCEPTABLE",
+          "zScore": 1,
+          "mean": 500468.54,
+          "stdDev": 499530.46,
+          "reason": null
+        },
+        "consistency": {
+          "score": 1,
+          "status": "PASS",
+          "details": {
+            "capacity": {
+              "status": "OK",
+              "score": 1
+            },
+            "flow": {
+              "status": "OK",
+              "score": 1
+            },
+            "head": {
+              "status": "OK",
+              "score": 1
+            },
+            "efficiency": {
+              "status": "OK",
+              "score": 1
+            }
+          },
+          "reason": null
+        }
+      },
+      "calculations": {
+        "EG_MWh": 0.9,
+        "EF_grid_tCO2_per_MWh": 0.8,
+        "BE_tCO2": 0.72,
+        "PE_tCO2": 0,
+        "LE_tCO2": 0,
+        "ER_tCO2": 0.72,
+        "RECs_issued": 0
+      },
+      "metadata": {
+        "created": "2026-02-17T20:21:29.292Z",
+        "version": "1.0.0"
+      },
+      "status": "valid"
+    },
+    {
+      "id": "att-1771359694354-u5hrzio56",
+      "deviceId": "TURBINE-ALPHA",
+      "period": {
+        "start": "2026-02-17T20:21:28.413Z",
+        "end": "2026-02-17T20:21:28.413Z"
+      },
+      "timestamp": "2026-02-17T20:21:28.413Z",
+      "verificationStatus": "APPROVED",
+      "trustScore": 0.985,
+      "verifier": "EngineV1",
+      "signature": "f3a7b7174ef2e5f29a58c2307c17b9d7d9eeb3a618e4a7230145101c7594e9d3",
+      "checks": {
+        "physics": {
+          "score": 0.95,
+          "status": "EXCELLENT",
+          "deviation": 7.24,
+          "expectedPowerKw": 975.6,
+          "measuredPowerKw": 905,
+          "reason": null
+        },
+        "temporal": {
+          "score": 1,
+          "status": "PASS",
+          "genChange": 0.56,
+          "flowChange": 4,
+          "headChange": 0,
+          "reason": null
+        },
+        "environmental": {
+          "score": 1,
+          "status": "PASS",
+          "details": {
+            "pH": {
+              "value": 7.2,
+              "status": "PERFECT",
+              "score": 1
+            },
+            "turbidity": {
+              "value": 10,
+              "status": "PERFECT",
+              "score": 1
+            },
+            "temperature": {
+              "value": 18,
+              "status": "PERFECT",
+              "score": 1
+            }
+          },
+          "reason": null
+        },
+        "statistical": {
+          "score": 1,
+          "status": "NORMAL",
+          "zScore": 0.71,
+          "mean": 333945.69,
+          "stdDev": 470970.81,
+          "reason": null
+        },
+        "consistency": {
+          "score": 1,
+          "status": "PASS",
+          "details": {
+            "capacity": {
+              "status": "OK",
+              "score": 1
+            },
+            "flow": {
+              "status": "OK",
+              "score": 1
+            },
+            "head": {
+              "status": "OK",
+              "score": 1
+            },
+            "efficiency": {
+              "status": "OK",
+              "score": 1
+            }
+          },
+          "reason": null
+        }
+      },
+      "calculations": {
+        "EG_MWh": 0.905,
+        "EF_grid_tCO2_per_MWh": 0.8,
+        "BE_tCO2": 0.724,
+        "PE_tCO2": 0,
+        "LE_tCO2": 0,
+        "ER_tCO2": 0.724,
+        "RECs_issued": 0.724
+      },
+      "metadata": {
+        "created": "2026-02-17T20:21:34.354Z",
+        "version": "1.0.0"
+      },
+      "status": "valid"
+    },
+    {
+      "id": "att-1771359699123-1wrl2896o",
+      "deviceId": "TURBINE-ALPHA",
+      "period": {
+        "start": "2026-02-17T20:21:29.413Z",
+        "end": "2026-02-17T20:21:29.413Z"
+      },
+      "timestamp": "2026-02-17T20:21:29.413Z",
+      "verificationStatus": "APPROVED",
+      "trustScore": 0.955,
+      "verifier": "EngineV1",
+      "signature": "bac3da420fc28bbcd4a2e8967f10adc88b74b8ff05b64885892a8efa92c41b34",
+      "checks": {
+        "physics": {
+          "score": 0.85,
+          "status": "GOOD",
+          "deviation": 10.18,
+          "expectedPowerKw": 1013.13,
+          "measuredPowerKw": 910,
+          "reason": null
+        },
+        "temporal": {
+          "score": 1,
+          "status": "PASS",
+          "genChange": 0.55,
+          "flowChange": 3.85,
+          "headChange": 0,
+          "reason": null
+        },
+        "environmental": {
+          "score": 1,
+          "status": "PASS",
+          "details": {
+            "pH": {
+              "value": 7.2,
+              "status": "PERFECT",
+              "score": 1
+            },
+            "turbidity": {
+              "value": 10,
+              "status": "PERFECT",
+              "score": 1
+            },
+            "temperature": {
+              "value": 18,
+              "status": "PERFECT",
+              "score": 1
+            }
+          },
+          "reason": null
+        },
+        "statistical": {
+          "score": 1,
+          "status": "NORMAL",
+          "zScore": 0.58,
+          "mean": 250685.52,
+          "stdDev": 432616.34,
+          "reason": null
+        },
+        "consistency": {
+          "score": 1,
+          "status": "PASS",
+          "details": {
+            "capacity": {
+              "status": "OK",
+              "score": 1
+            },
+            "flow": {
+              "status": "OK",
+              "score": 1
+            },
+            "head": {
+              "status": "OK",
+              "score": 1
+            },
+            "efficiency": {
+              "status": "OK",
+              "score": 1
+            }
+          },
+          "reason": null
+        }
+      },
+      "calculations": {
+        "EG_MWh": 0.91,
+        "EF_grid_tCO2_per_MWh": 0.8,
+        "BE_tCO2": 0.728,
+        "PE_tCO2": 0,
+        "LE_tCO2": 0,
+        "ER_tCO2": 0.728,
+        "RECs_issued": 0.728
+      },
+      "metadata": {
+        "created": "2026-02-17T20:21:39.122Z",
+        "version": "1.0.0"
+      },
+      "status": "valid"
+    },
+    {
+      "id": "att-1771359703222-rcqiwjqyk",
+      "deviceId": "TURBINE-ALPHA",
+      "period": {
+        "start": "2026-02-17T20:21:30.413Z",
+        "end": "2026-02-17T20:21:30.413Z"
+      },
+      "timestamp": "2026-02-17T20:21:30.413Z",
+      "verificationStatus": "APPROVED",
+      "trustScore": 1,
+      "verifier": "EngineV1",
+      "signature": "7e917ffade4918348df5f2d29b1eea3cf47123293c46ef1a0412f14f2908c66f",
+      "checks": {
+        "physics": {
+          "score": 1,
+          "status": "PERFECT",
+          "deviation": 2.46,
+          "expectedPowerKw": 938.08,
+          "measuredPowerKw": 915,
+          "reason": null
+        },
+        "temporal": {
+          "score": 1,
+          "status": "PASS",
+          "genChange": 0.55,
+          "flowChange": 7.41,
+          "headChange": 0,
+          "reason": null
+        },
+        "environmental": {
+          "score": 1,
+          "status": "PASS",
+          "details": {
+            "pH": {
+              "value": 7.2,
+              "status": "PERFECT",
+              "score": 1
+            },
+            "turbidity": {
+              "value": 10,
+              "status": "PERFECT",
+              "score": 1
+            },
+            "temperature": {
+              "value": 18,
+              "status": "PERFECT",
+              "score": 1
+            }
+          },
+          "reason": null
+        },
+        "statistical": {
+          "score": 1,
+          "status": "NORMAL",
+          "zScore": 0.5,
+          "mean": 200730.42,
+          "stdDev": 399634.29,
+          "reason": null
+        },
+        "consistency": {
+          "score": 1,
+          "status": "PASS",
+          "details": {
+            "capacity": {
+              "status": "OK",
+              "score": 1
+            },
+            "flow": {
+              "status": "OK",
+              "score": 1
+            },
+            "head": {
+              "status": "OK",
+              "score": 1
+            },
+            "efficiency": {
+              "status": "OK",
+              "score": 1
+            }
+          },
+          "reason": null
+        }
+      },
+      "calculations": {
+        "EG_MWh": 0.915,
+        "EF_grid_tCO2_per_MWh": 0.8,
+        "BE_tCO2": 0.732,
+        "PE_tCO2": 0,
+        "LE_tCO2": 0,
+        "ER_tCO2": 0.732,
+        "RECs_issued": 0.732
+      },
+      "metadata": {
+        "created": "2026-02-17T20:21:43.222Z",
+        "version": "1.0.0"
+      },
+      "status": "valid"
+    },
+    {
+      "id": "att-1771359707990-4r1rpraux",
+      "deviceId": "TURBINE-ALPHA",
+      "period": {
+        "start": "2026-02-17T20:21:31.413Z",
+        "end": "2026-02-17T20:21:31.413Z"
+      },
+      "timestamp": "2026-02-17T20:21:31.413Z",
+      "verificationStatus": "APPROVED",
+      "trustScore": 0.985,
+      "verifier": "EngineV1",
+      "signature": "8336b953710b4d15ad0278860539824e53a39f6803f5ef2c6a4232948f0a17b2",
+      "checks": {
+        "physics": {
+          "score": 0.95,
+          "status": "EXCELLENT",
+          "deviation": 5.7,
+          "expectedPowerKw": 975.6,
+          "measuredPowerKw": 920,
+          "reason": null
+        },
+        "temporal": {
+          "score": 1,
+          "status": "PASS",
+          "genChange": 0.55,
+          "flowChange": 4,
+          "headChange": 0,
+          "reason": null
+        },
+        "environmental": {
+          "score": 1,
+          "status": "PASS",
+          "details": {
+            "pH": {
+              "value": 7.2,
+              "status": "PERFECT",
+              "score": 1
+            },
+            "turbidity": {
+              "value": 10,
+              "status": "PERFECT",
+              "score": 1
+            },
+            "temperature": {
+              "value": 18,
+              "status": "PERFECT",
+              "score": 1
+            }
+          },
+          "reason": null
+        },
+        "statistical": {
+          "score": 1,
+          "status": "NORMAL",
+          "zScore": 0.45,
+          "mean": 167427.85,
+          "stdDev": 372337.14,
+          "reason": null
+        },
+        "consistency": {
+          "score": 1,
+          "status": "PASS",
+          "details": {
+            "capacity": {
+              "status": "OK",
+              "score": 1
+            },
+            "flow": {
+              "status": "OK",
+              "score": 1
+            },
+            "head": {
+              "status": "OK",
+              "score": 1
+            },
+            "efficiency": {
+              "status": "OK",
+              "score": 1
+            }
+          },
+          "reason": null
+        }
+      },
+      "calculations": {
+        "EG_MWh": 0.92,
+        "EF_grid_tCO2_per_MWh": 0.8,
+        "BE_tCO2": 0.736,
+        "PE_tCO2": 0,
+        "LE_tCO2": 0,
+        "ER_tCO2": 0.736,
+        "RECs_issued": 0.736
+      },
+      "metadata": {
+        "created": "2026-02-17T20:21:47.990Z",
+        "version": "1.0.0"
+      },
+      "status": "valid"
+    },
+    {
+      "id": "att-1771359711181-4g2cxsvz8",
+      "deviceId": "TURBINE-ALPHA",
+      "period": {
+        "start": "2026-02-17T20:21:32.413Z",
+        "end": "2026-02-17T20:21:32.413Z"
+      },
+      "timestamp": "2026-02-17T20:21:32.413Z",
+      "verificationStatus": "APPROVED",
+      "trustScore": 0.985,
+      "verifier": "EngineV1",
+      "signature": "bc6023b186a9bd4f6905367497abaed4d0e3e9e85ad5607b042e38f920d5efac",
+      "checks": {
+        "physics": {
+          "score": 0.95,
+          "status": "EXCELLENT",
+          "deviation": 8.7,
+          "expectedPowerKw": 1013.13,
+          "measuredPowerKw": 925,
+          "reason": null
+        },
+        "temporal": {
+          "score": 1,
+          "status": "PASS",
+          "genChange": 0.54,
+          "flowChange": 3.85,
+          "headChange": 0,
+          "reason": null
+        },
+        "environmental": {
+          "score": 1,
+          "status": "PASS",
+          "details": {
+            "pH": {
+              "value": 7.2,
+              "status": "PERFECT",
+              "score": 1
+            },
+            "turbidity": {
+              "value": 10,
+              "status": "PERFECT",
+              "score": 1
+            },
+            "temperature": {
+              "value": 18,
+              "status": "PERFECT",
+              "score": 1
+            }
+          },
+          "reason": null
+        },
+        "statistical": {
+          "score": 1,
+          "status": "NORMAL",
+          "zScore": 0.41,
+          "mean": 143641.01,
+          "stdDev": 349606.69,
+          "reason": null
+        },
+        "consistency": {
+          "score": 1,
+          "status": "PASS",
+          "details": {
+            "capacity": {
+              "status": "OK",
+              "score": 1
+            },
+            "flow": {
+              "status": "OK",
+              "score": 1
+            },
+            "head": {
+              "status": "OK",
+              "score": 1
+            },
+            "efficiency": {
+              "status": "OK",
+              "score": 1
+            }
+          },
+          "reason": null
+        }
+      },
+      "calculations": {
+        "EG_MWh": 0.925,
+        "EF_grid_tCO2_per_MWh": 0.8,
+        "BE_tCO2": 0.74,
+        "PE_tCO2": 0,
+        "LE_tCO2": 0,
+        "ER_tCO2": 0.74,
+        "RECs_issued": 0.74
+      },
+      "metadata": {
+        "created": "2026-02-17T20:21:51.181Z",
+        "version": "1.0.0"
+      },
+      "status": "valid"
+    },
+    {
+      "id": "att-1771359714264-82gjoqmdm",
+      "deviceId": "TURBINE-ALPHA",
+      "period": {
+        "start": "2026-02-17T20:21:33.413Z",
+        "end": "2026-02-17T20:21:33.413Z"
+      },
+      "timestamp": "2026-02-17T20:21:33.413Z",
+      "verificationStatus": "APPROVED",
+      "trustScore": 1,
+      "verifier": "EngineV1",
+      "signature": "6aa8f6a1493265f86c615ed2376fc8370f9db56bb6e37ed0f481dc2302a1b7fa",
+      "checks": {
+        "physics": {
+          "score": 1,
+          "status": "PERFECT",
+          "deviation": 0.86,
+          "expectedPowerKw": 938.08,
+          "measuredPowerKw": 930,
+          "reason": null
+        },
+        "temporal": {
+          "score": 1,
+          "status": "PASS",
+          "genChange": 0.54,
+          "flowChange": 7.41,
+          "headChange": 0,
+          "reason": null
+        },
+        "environmental": {
+          "score": 1,
+          "status": "PASS",
+          "details": {
+            "pH": {
+              "value": 7.2,
+              "status": "PERFECT",
+              "score": 1
+            },
+            "turbidity": {
+              "value": 10,
+              "status": "PERFECT",
+              "score": 1
+            },
+            "temperature": {
+              "value": 18,
+              "status": "PERFECT",
+              "score": 1
+            }
+          },
+          "reason": null
+        },
+        "statistical": {
+          "score": 1,
+          "status": "NORMAL",
+          "zScore": 0.38,
+          "mean": 125801.51,
+          "stdDev": 330415.59,
+          "reason": null
+        },
+        "consistency": {
+          "score": 1,
+          "status": "PASS",
+          "details": {
+            "capacity": {
+              "status": "OK",
+              "score": 1
+            },
+            "flow": {
+              "status": "OK",
+              "score": 1
+            },
+            "head": {
+              "status": "OK",
+              "score": 1
+            },
+            "efficiency": {
+              "status": "OK",
+              "score": 1
+            }
+          },
+          "reason": null
+        }
+      },
+      "calculations": {
+        "EG_MWh": 0.93,
+        "EF_grid_tCO2_per_MWh": 0.8,
+        "BE_tCO2": 0.744,
+        "PE_tCO2": 0,
+        "LE_tCO2": 0,
+        "ER_tCO2": 0.744,
+        "RECs_issued": 0.744
+      },
+      "metadata": {
+        "created": "2026-02-17T20:21:54.264Z",
+        "version": "1.0.0"
+      },
+      "status": "valid"
+    },
+    {
+      "id": "att-1771359717728-2uvy6cz2n",
+      "deviceId": "TURBINE-ALPHA",
+      "period": {
+        "start": "2026-02-17T20:21:34.413Z",
+        "end": "2026-02-17T20:21:34.413Z"
+      },
+      "timestamp": "2026-02-17T20:21:34.413Z",
+      "verificationStatus": "APPROVED",
+      "trustScore": 1,
+      "verifier": "EngineV1",
+      "signature": "38f54ea75c798817b213ca35f258cc0dee23da453df77ea7257d2ab65d485257",
+      "checks": {
+        "physics": {
+          "score": 1,
+          "status": "PERFECT",
+          "deviation": 4.16,
+          "expectedPowerKw": 975.6,
+          "measuredPowerKw": 935,
+          "reason": null
+        },
+        "temporal": {
+          "score": 1,
+          "status": "PASS",
+          "genChange": 0.54,
+          "flowChange": 4,
+          "headChange": 0,
+          "reason": null
+        },
+        "environmental": {
+          "score": 1,
+          "status": "PASS",
+          "details": {
+            "pH": {
+              "value": 7.2,
+              "status": "PERFECT",
+              "score": 1
+            },
+            "turbidity": {
+              "value": 10,
+              "status": "PERFECT",
+              "score": 1
+            },
+            "temperature": {
+              "value": 18,
+              "status": "PERFECT",
+              "score": 1
+            }
+          },
+          "reason": null
+        },
+        "statistical": {
+          "score": 1,
+          "status": "NORMAL",
+          "zScore": 0.35,
+          "mean": 111926.9,
+          "stdDev": 313980.9,
+          "reason": null
+        },
+        "consistency": {
+          "score": 1,
+          "status": "PASS",
+          "details": {
+            "capacity": {
+              "status": "OK",
+              "score": 1
+            },
+            "flow": {
+              "status": "OK",
+              "score": 1
+            },
+            "head": {
+              "status": "OK",
+              "score": 1
+            },
+            "efficiency": {
+              "status": "OK",
+              "score": 1
+            }
+          },
+          "reason": null
+        }
+      },
+      "calculations": {
+        "EG_MWh": 0.935,
+        "EF_grid_tCO2_per_MWh": 0.8,
+        "BE_tCO2": 0.748,
+        "PE_tCO2": 0,
+        "LE_tCO2": 0,
+        "ER_tCO2": 0.748,
+        "RECs_issued": 0.748
+      },
+      "metadata": {
+        "created": "2026-02-17T20:21:57.728Z",
+        "version": "1.0.0"
+      },
+      "status": "valid"
+    },
+    {
+      "id": "att-1771359720952-ue91vjn15",
+      "deviceId": "TURBINE-ALPHA",
+      "period": {
+        "start": "2026-02-17T20:21:35.413Z",
+        "end": "2026-02-17T20:21:35.413Z"
+      },
+      "timestamp": "2026-02-17T20:21:35.413Z",
+      "verificationStatus": "APPROVED",
+      "trustScore": 0.985,
+      "verifier": "EngineV1",
+      "signature": "a8642a109bd000c169a1073399dd959a5cca8b2f79ae4e03f8e5389e28c19868",
+      "checks": {
+        "physics": {
+          "score": 0.95,
+          "status": "EXCELLENT",
+          "deviation": 7.22,
+          "expectedPowerKw": 1013.13,
+          "measuredPowerKw": 940,
+          "reason": null
+        },
+        "temporal": {
+          "score": 1,
+          "status": "PASS",
+          "genChange": 0.53,
+          "flowChange": 3.85,
+          "headChange": 0,
+          "reason": null
+        },
+        "environmental": {
+          "score": 1,
+          "status": "PASS",
+          "details": {
+            "pH": {
+              "value": 7.2,
+              "status": "PERFECT",
+              "score": 1
+            },
+            "turbidity": {
+              "value": 10,
+              "status": "PERFECT",
+              "score": 1
+            },
+            "temperature": {
+              "value": 18,
+              "status": "PERFECT",
+              "score": 1
+            }
+          },
+          "reason": null
+        },
+        "statistical": {
+          "score": 1,
+          "status": "NORMAL",
+          "zScore": 0.33,
+          "mean": 100827.71,
+          "stdDev": 299723.76,
+          "reason": null
+        },
+        "consistency": {
+          "score": 1,
+          "status": "PASS",
+          "details": {
+            "capacity": {
+              "status": "OK",
+              "score": 1
+            },
+            "flow": {
+              "status": "OK",
+              "score": 1
+            },
+            "head": {
+              "status": "OK",
+              "score": 1
+            },
+            "efficiency": {
+              "status": "OK",
+              "score": 1
+            }
+          },
+          "reason": null
+        }
+      },
+      "calculations": {
+        "EG_MWh": 0.94,
+        "EF_grid_tCO2_per_MWh": 0.8,
+        "BE_tCO2": 0.752,
+        "PE_tCO2": 0,
+        "LE_tCO2": 0,
+        "ER_tCO2": 0.752,
+        "RECs_issued": 0.752
+      },
+      "metadata": {
+        "created": "2026-02-17T20:22:00.952Z",
+        "version": "1.0.0"
+      },
+      "status": "valid"
+    },
+    {
+      "id": "att-1771359724533-nv8dqgd4h",
+      "deviceId": "TURBINE-ALPHA",
+      "period": {
+        "start": "2026-02-17T20:21:36.413Z",
+        "end": "2026-02-17T20:21:36.413Z"
+      },
+      "timestamp": "2026-02-17T20:21:36.413Z",
+      "verificationStatus": "APPROVED",
+      "trustScore": 1,
+      "verifier": "EngineV1",
+      "signature": "bd31cd6904eeb224c4db38d4469ca4c36d334b3abe5f01e8d22e776a0f757346",
+      "checks": {
+        "physics": {
+          "score": 1,
+          "status": "PERFECT",
+          "deviation": 0.74,
+          "expectedPowerKw": 938.08,
+          "measuredPowerKw": 945,
+          "reason": null
+        },
+        "temporal": {
+          "score": 1,
+          "status": "PASS",
+          "genChange": 0.53,
+          "flowChange": 7.41,
+          "headChange": 0,
+          "reason": null
+        },
+        "environmental": {
+          "score": 1,
+          "status": "PASS",
+          "details": {
+            "pH": {
+              "value": 7.2,
+              "status": "PERFECT",
+              "score": 1
+            },
+            "turbidity": {
+              "value": 10,
+              "status": "PERFECT",
+              "score": 1
+            },
+            "temperature": {
+              "value": 18,
+              "status": "PERFECT",
+              "score": 1
+            }
+          },
+          "reason": null
+        },
+        "statistical": {
+          "score": 1,
+          "status": "NORMAL",
+          "zScore": 0.32,
+          "mean": 91747.01,
+          "stdDev": 287214.5,
+          "reason": null
+        },
+        "consistency": {
+          "score": 1,
+          "status": "PASS",
+          "details": {
+            "capacity": {
+              "status": "OK",
+              "score": 1
+            },
+            "flow": {
+              "status": "OK",
+              "score": 1
+            },
+            "head": {
+              "status": "OK",
+              "score": 1
+            },
+            "efficiency": {
+              "status": "OK",
+              "score": 1
+            }
+          },
+          "reason": null
+        }
+      },
+      "calculations": {
+        "EG_MWh": 0.945,
+        "EF_grid_tCO2_per_MWh": 0.8,
+        "BE_tCO2": 0.756,
+        "PE_tCO2": 0,
+        "LE_tCO2": 0,
+        "ER_tCO2": 0.756,
+        "RECs_issued": 0.756
+      },
+      "metadata": {
+        "created": "2026-02-17T20:22:04.533Z",
+        "version": "1.0.0"
+      },
+      "status": "valid"
+    }
+  ],
+  "summary": {
+    "success": true,
+    "projectId": "HYDRO-PROJECT-001",
+    "deviceId": "TURBINE-ALPHA",
+    "period": {
+      "start": "2026-02-16T20:22:06.124Z",
+      "end": "2026-02-17T20:22:06.124Z"
+    },
+    "totalReadings": 12,
+    "approvedReadings": 10,
+    "rejectedReadings": 1,
+    "flaggedReadings": 1,
+    "averageTrustScore": 0.9235416666666666,
+    "totalKwh": 0,
+    "emissionsAvoided": 0,
+    "recsIssued": 0,
+    "hederaConnected": true,
+    "auditTopicId": "0.0.7962898",
+    "generatedAt": "2026-02-17T20:22:06.124Z"
+  }
+}
