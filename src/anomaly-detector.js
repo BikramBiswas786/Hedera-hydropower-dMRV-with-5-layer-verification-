@@ -1,10 +1,11 @@
-﻿/**
- * Anomaly Detector Module - Complete
+/**
+ * Anomaly Detector Module - Production Grade
  */
 module.exports = class AnomalyDetector {
   constructor(config) {
     this.config = config || {};
   }
+
   validatePhysicsConstraints(reading) {
     if (!reading) return { isValid: false, reason: 'No reading provided' };
     if (reading.flowRate >= 150) return { isValid: false, reason: 'Physics constraint violation: Flow rate too high' };
@@ -25,6 +26,7 @@ module.exports = class AnomalyDetector {
     }
     return { isValid: true };
   }
+
   validateTemporalConsistency(currentReading, previousReading) {
     if (!currentReading || !previousReading) return { isValid: true };
     const currentTime = new Date(currentReading.timestamp).getTime();
@@ -37,6 +39,7 @@ module.exports = class AnomalyDetector {
     }
     return { isValid: true };
   }
+
   validateEnvironmentalBounds(telemetry, siteConfig) {
     if (!telemetry || !siteConfig) return { isValid: true, violations: [] };
     const violations = [];
@@ -50,6 +53,7 @@ module.exports = class AnomalyDetector {
     if (telemetry.temperature && (telemetry.temperature < tempBounds.min || telemetry.temperature > tempBounds.max)) violations.push('temperature');
     return { isValid: violations.length === 0, violations: violations };
   }
+
   detectStatisticalAnomalies(currentReading, historicalReadings) {
     if (!currentReading || !historicalReadings || historicalReadings.length === 0) {
       return { isValid: true, hasAnomaly: false, anomalies: [], zScore: 0 };
@@ -61,18 +65,35 @@ module.exports = class AnomalyDetector {
       const mean = flowRates.reduce((a, b) => a + b, 0) / flowRates.length;
       const variance = flowRates.reduce((sum, val) => sum + Math.pow(val - mean, 2), 0) / flowRates.length;
       const stdDev = Math.sqrt(variance);
+      // FIX: compute absolute z-score of current reading vs history
       zScore = stdDev > 0 ? Math.abs(currentReading.flowRate - mean) / stdDev : 0;
-      if (zScore > 3) anomalies.push({ field: 'flowRate', type: 'statistical_outlier', severity: 'high' });
+      // FIX: z-score > 3 means OUTLIER => push anomaly
+      if (zScore > 3) {
+        anomalies.push({ field: 'flowRate', type: 'statistical_outlier', severity: 'high' });
+      }
     }
     const hasAnomaly = anomalies.length > 0;
+    // FIX: isValid = NOT hasAnomaly  (outlier => invalid)
     return { isValid: !hasAnomaly, hasAnomaly: hasAnomaly, anomalies: anomalies, zScore: zScore };
   }
+
   completeValidation(telemetry, previousReading, historicalReadings, siteConfig) {
     const physicsResult = this.validatePhysicsConstraints(telemetry);
-    const temporalResult = previousReading ? this.validateTemporalConsistency(telemetry, previousReading) : { isValid: true };
-    const environmentalResult = siteConfig ? this.validateEnvironmentalBounds(telemetry, siteConfig) : { isValid: true, violations: [] };
-    const statisticalResult = historicalReadings ? this.detectStatisticalAnomalies(telemetry, historicalReadings) : { isValid: true, hasAnomaly: false, anomalies: [], zScore: 0 };
-    const allValid = physicsResult.isValid && temporalResult.isValid && environmentalResult.isValid && statisticalResult.isValid;
+    // FIX: gracefully skip temporal if no previous reading supplied
+    const temporalResult = previousReading
+      ? this.validateTemporalConsistency(telemetry, previousReading)
+      : { isValid: true };
+    const environmentalResult = siteConfig
+      ? this.validateEnvironmentalBounds(telemetry, siteConfig)
+      : { isValid: true, violations: [] };
+    const statisticalResult = (historicalReadings && historicalReadings.length > 0)
+      ? this.detectStatisticalAnomalies(telemetry, historicalReadings)
+      : { isValid: true, hasAnomaly: false, anomalies: [], zScore: 0 };
+    const allValid =
+      physicsResult.isValid &&
+      temporalResult.isValid &&
+      environmentalResult.isValid &&
+      statisticalResult.isValid;
     return {
       isValid: allValid,
       physics: physicsResult,
@@ -81,6 +102,7 @@ module.exports = class AnomalyDetector {
       statistical: statisticalResult
     };
   }
+
   detectAnomalies(reading) {
     const anomalies = [];
     if (reading.flowRate > 100) anomalies.push({ type: 'high_flow', severity: 'warning' });
