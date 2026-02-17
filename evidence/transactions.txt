@@ -1,0 +1,11 @@
+﻿DID: did:hedera:testnet:z485944524f2d54555242494e452d31
+Topic ID: 0.0.7964262
+Token ID: 0.0.7964264
+Status: APPROVED
+Trust Score: 100.0%
+Attestation ID: att-1771367527708-iq9pc9uax
+Transaction ID: 0.0.6255927@1771367521.991650439
+Status: REJECTED
+Trust Score: 37.0%
+Transaction ID: 0.0.6255927@1771367525.903417316
+Avg Trust Score: 68.5%
