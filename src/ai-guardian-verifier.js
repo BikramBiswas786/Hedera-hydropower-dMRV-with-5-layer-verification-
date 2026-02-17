@@ -1,10 +1,10 @@
 /**
- * AI Guardian Verifier Module - Production Grade
- * Calculates trust scores, auto-approval logic, and verification decisions
- * Aligned with EngineV1 architecture
+ * AI Guardian Verifier Module - PRODUCTION GRADE
+ * Trust scoring with actual validation in batch mode
  */
 
 const crypto = require('crypto');
+const AnomalyDetector = require('./anomaly-detector');
 
 class AIGuardianVerifier {
   constructor(config = {}) {
@@ -21,12 +21,11 @@ class AIGuardianVerifier {
       ...config
     };
     this.privateKey = crypto.randomBytes(32);
+    this.detector = new AnomalyDetector(config.detectorConfig);
   }
 
   /**
    * Calculate trust score from validation results
-   * @param {Object} validationResults - Contains physics, temporal, environmental, statistical checks
-   * @returns {number} Trust score between 0 and 1
    */
   calculateTrustScore(validationResults) {
     if (!validationResults) {
@@ -36,22 +35,28 @@ class AIGuardianVerifier {
     const weights = this.config.weights;
     let score = 0;
 
-    // Physics check (most critical)
+    // Physics check
     if (validationResults.physics?.isValid !== false) {
       score += weights.physics * (validationResults.physics?.score ?? 1.0);
+    } else {
+      score += weights.physics * 0; // Explicit fail contributes 0
     }
 
     // Temporal consistency
     if (validationResults.temporal?.isValid !== false) {
       score += weights.temporal * (validationResults.temporal?.score ?? 1.0);
+    } else {
+      score += weights.temporal * 0;
     }
 
     // Environmental bounds
     if (validationResults.environmental?.isValid !== false) {
       score += weights.environmental * (validationResults.environmental?.score ?? 1.0);
+    } else {
+      score += weights.environmental * 0;
     }
 
-    // Statistical anomaly (Z-score based)
+    // Statistical anomaly
     if (validationResults.statistical) {
       const zScore = validationResults.statistical.zScore ?? 1.5;
       let statScore = 1.0;
@@ -70,15 +75,15 @@ class AIGuardianVerifier {
     // Consistency check
     if (validationResults.consistency?.isValid !== false) {
       score += weights.consistency * (validationResults.consistency?.score ?? 1.0);
+    } else {
+      score += weights.consistency * 0;
     }
 
     return Math.max(0, Math.min(1, parseFloat(score.toFixed(4))));
   }
 
   /**
-   * Determine verification status based on trust score
-   * @param {number} trustScore - Trust score between 0 and 1
-   * @returns {Object} Verification decision with status, method, confidence
+   * Determine verification status
    */
   determineVerificationStatus(trustScore) {
     const autoThreshold = this.config.autoApproveThreshold;
@@ -110,8 +115,6 @@ class AIGuardianVerifier {
 
   /**
    * Make complete verification decision
-   * @param {Object} validationResults - Validation results from all checks
-   * @returns {Object} Complete verification decision
    */
   makeVerificationDecision(validationResults) {
     const trustScore = this.calculateTrustScore(validationResults);
@@ -126,10 +129,7 @@ class AIGuardianVerifier {
   }
 
   /**
-   * Generate attestation for telemetry data
-   * @param {Object} telemetry - Telemetry data
-   * @param {Object} validationResults - Validation results
-   * @returns {Object} Attestation with signature
+   * Generate attestation for telemetry
    */
   generateAttestation(telemetry, validationResults) {
     const trustScore = this.calculateTrustScore(validationResults);
@@ -145,7 +145,7 @@ class AIGuardianVerifier {
       readings: telemetry.readings
     };
 
-    // Add rejection reasons if applicable
+    // Add rejection reasons
     if (decision.status === 'REJECTED' || decision.status === 'FLAGGED') {
       attestation.rejectionReasons = [];
       
@@ -167,9 +167,7 @@ class AIGuardianVerifier {
   }
 
   /**
-   * Sign attestation with cryptographic signature
-   * @param {Object} attestation - Attestation to sign
-   * @returns {Object} Signed attestation
+   * Sign attestation
    */
   signAttestation(attestation) {
     const data = JSON.stringify(attestation);
@@ -181,14 +179,12 @@ class AIGuardianVerifier {
     return {
       ...attestation,
       signature,
-      publicKey: this.privateKey.toString('hex').substring(0, 16) // Truncated for demo
+      publicKey: this.privateKey.toString('hex').substring(0, 16)
     };
   }
 
   /**
-   * Verify attestation signature
-   * @param {Object} signedAttestation - Attestation with signature
-   * @returns {boolean} True if signature is valid
+   * Verify signature
    */
   verifySignature(signedAttestation) {
     const { signature, publicKey, ...attestation } = signedAttestation;
@@ -203,9 +199,7 @@ class AIGuardianVerifier {
   }
 
   /**
-   * Process batch of readings
-   * @param {Array} readings - Array of telemetry readings
-   * @returns {Array} Array of verification results
+   * Process batch with ACTUAL validation (not simplified)
    */
   processBatch(readings) {
     if (!Array.isArray(readings)) {
@@ -213,20 +207,15 @@ class AIGuardianVerifier {
     }
 
     return readings.map(reading => {
-      // Simplified validation for batch processing
-      const validationResults = {
-        physics: { isValid: true, score: 1.0 },
-        temporal: { isValid: true, score: 1.0 },
-        environmental: { isValid: true, score: 1.0 },
-        statistical: { isValid: true, score: 1.0, zScore: 1.5 }
-      };
+      // Run actual validation through AnomalyDetector
+      const validationResults = this.detector.validate(reading);
 
       return this.generateAttestation(reading, validationResults);
     });
   }
 
   /**
-   * Legacy verify method for backward compatibility
+   * Legacy verify method
    */
   verify(data) {
     const trustScore = this.calculateTrustScore({
