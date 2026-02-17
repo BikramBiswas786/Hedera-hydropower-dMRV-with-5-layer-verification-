@@ -430,10 +430,10 @@ class EngineV1 {
     const topicId = TopicId.fromString(AUDIT_TOPIC_ID);
     const message = Buffer.from(JSON.stringify(attestation));
 
-    const tx = await new TopicMessageSubmitTransaction()
+    const tx =   new TopicMessageSubmitTransaction()
       .setTopicId(topicId)
-      .setMessage(message).execute(client);
-      .freezeWith(client)
+      .setMessage(message)
+            .freezeWith(client);
       
 
     const resp = await tx.execute(client);
