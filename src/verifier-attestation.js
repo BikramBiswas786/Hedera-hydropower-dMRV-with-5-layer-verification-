@@ -30,18 +30,27 @@ class VerifierAttestation {
       throw new Error('Attestation data is required');
     }
 
+    const now = new Date().toISOString();
+
     const attestation = {
       id: 'att-' + Date.now() + '-' + Math.random().toString(36).substr(2, 9),
       deviceId: data.deviceId,
-      timestamp: data.timestamp || new Date().toISOString(),
+      period: data.period || {
+        start: data.timestamp || now,
+        end: data.timestamp || now
+      },
+      timestamp: data.timestamp || now,
       verificationStatus: data.verificationStatus || 'APPROVED',
       trustScore: data.trustScore ?? 0.95,
       verifier: verifier || 'AI-Guardian-v1',
       signature: this.generateSignature(data),
       checks: data.checks || {},
       calculations: data.calculations || {},
+      rejectionReasons: data.verificationStatus === 'REJECTED'
+        ? (data.rejectionReasons && data.rejectionReasons.length > 0 ? data.rejectionReasons : ['Low trust score'])
+        : undefined,
       metadata: {
-        created: new Date().toISOString(),
+        created: now,
         version: '1.0.0'
       },
       status: 'valid'
@@ -69,21 +78,20 @@ class VerifierAttestation {
    */
   verifyAttestation(attestationId) {
     const attestation = this.attestations.find(a => a.id === attestationId);
-    
+
     if (!attestation) {
-      return { 
-        valid: false, 
-        reason: 'Attestation not found' 
+      return {
+        valid: false,
+        reason: 'Attestation not found'
       };
     }
 
-    // Reconstruct data without signature
     const { signature, ...dataToVerify } = attestation;
     const expectedSig = this.generateSignature(dataToVerify);
     const valid = expectedSig === signature;
 
-    return { 
-      valid, 
+    return {
+      valid,
       attestation,
       reason: valid ? null : 'Signature mismatch'
     };
