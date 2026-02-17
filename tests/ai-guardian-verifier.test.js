@@ -1,4 +1,4 @@
-**
+/**
  * Unit Tests for AI Guardian Verifier Module
  * Tests trust scoring, auto-approval logic, and verification decision making
  * Target Coverage: 95%+
@@ -489,4 +489,3 @@ test('Test Summary', (t) => {
   t.comment('Target Coverage: 95%+');
   t.end();
 });
-
