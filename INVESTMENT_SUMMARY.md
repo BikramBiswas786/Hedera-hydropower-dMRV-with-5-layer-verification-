@@ -1,6 +1,6 @@
 # Investment Summary - Hedera Hydropower MRV
 
-## 🎯 Executive Overview
+##  Executive Overview
 
 A **production-ready**, **ACM0002-compliant** hydropower monitoring, reporting, and verification (MRV) system built on **Hedera Hashgraph** for transparent, auditable carbon credit generation.
 
@@ -14,7 +14,7 @@ A **production-ready**, **ACM0002-compliant** hydropower monitoring, reporting, 
 
 ---
 
-## 📊 Market Opportunity
+##  Market Opportunity
 
 ### Carbon Credit Market Size
 - **Global voluntary carbon market**: $2B (2024) → $50B+ (2030 projected)
@@ -35,7 +35,7 @@ A **production-ready**, **ACM0002-compliant** hydropower monitoring, reporting, 
 
 ---
 
-## 🔑 Technology Stack
+##  Technology Stack
 
 ### Core Components
 
@@ -68,7 +68,7 @@ Telemetry Data → EngineV1 → [5 Validation Checks] → Trust Score → Decisi
 
 ---
 
-## 📈 Business Model
+##  Business Model
 
 ### Revenue Streams
 
@@ -98,7 +98,7 @@ Telemetry Data → EngineV1 → [5 Validation Checks] → Trust Score → Decisi
 
 ---
 
-## ✅ Production Readiness
+##  Production Readiness
 
 ### Test Coverage
 
@@ -126,7 +126,7 @@ Telemetry Data → EngineV1 → [5 Validation Checks] → Trust Score → Decisi
 
 ---
 
-## 🔒 Security & Compliance
+##  Security & Compliance
 
 ### Security Features
 
@@ -144,7 +144,7 @@ Telemetry Data → EngineV1 → [5 Validation Checks] → Trust Score → Decisi
 
 ---
 
-## 📋 Roadmap
+##  Roadmap
 
 ### Phase 1: Testnet Launch (Q1 2026) ✅ COMPLETE
 - [x] EngineV1 verification pipeline
@@ -172,7 +172,7 @@ Telemetry Data → EngineV1 → [5 Validation Checks] → Trust Score → Decisi
 
 ---
 
-## 💰 Funding Requirements
+## Funding Requirements
 
 ### Seed Round ($500k-1M)
 
@@ -200,7 +200,7 @@ Telemetry Data → EngineV1 → [5 Validation Checks] → Trust Score → Decisi
 
 ---
 
-## 🤝 Team Requirements
+##  Team Requirements
 
 ### Core Team (Seed Stage)
 
@@ -235,7 +235,7 @@ Telemetry Data → EngineV1 → [5 Validation Checks] → Trust Score → Decisi
 
 ---
 
-## 🎯 Investment Highlights
+##  Investment Highlights
 
 ### Why Invest Now?
 
@@ -255,7 +255,7 @@ Telemetry Data → EngineV1 → [5 Validation Checks] → Trust Score → Decisi
 
 ---
 
-## 📞 Contact
+##  Contact
 
 **Repository**: [GitHub - Hedera Hydropower MRV](https://github.com/BikramBiswas786/https-github.com-BikramBiswas786-hedera-hydropower-mrv)
 
@@ -265,7 +265,7 @@ Telemetry Data → EngineV1 → [5 Validation Checks] → Trust Score → Decisi
 
 ---
 
-## ✅ Investment-Ready Checklist
+##  Investment-Ready Checklist
 
 - [x] **Working Product** - EngineV1 fully functional
 - [x] **Test Coverage** - 106 tests passing (100%)
@@ -280,6 +280,6 @@ Telemetry Data → EngineV1 → [5 Validation Checks] → Trust Score → Decisi
 
 ---
 
-**Status**: 🚀 **PRODUCTION READY**  
+**Status**:  **PRODUCTION READY**  
 **Last Updated**: February 18, 2026  
 **Version**: 1.1.0
