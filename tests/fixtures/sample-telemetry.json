@@ -1,0 +1,54 @@
+{
+  "valid_reading": {
+    "deviceId": "TURBINE-1",
+    "timestamp": "2026-02-19T00:00:00.000Z",
+    "readings": {
+      "flowRate_m3_per_s": 2.5,
+      "headHeight_m": 45.0,
+      "efficiency": 0.88,
+      "generatedKwh": 965.0,
+      "pH": 7.2,
+      "turbidity_ntu": 12,
+      "temperature_celsius": 18
+    }
+  },
+  "fraud_reading": {
+    "deviceId": "TURBINE-1",
+    "timestamp": "2026-02-19T01:00:00.000Z",
+    "readings": {
+      "flowRate_m3_per_s": 2.5,
+      "headHeight_m": 45.0,
+      "efficiency": 0.88,
+      "generatedKwh": 9999.0,
+      "pH": 7.2,
+      "turbidity_ntu": 12,
+      "temperature_celsius": 18
+    }
+  },
+  "borderline_reading": {
+    "deviceId": "TURBINE-2",
+    "timestamp": "2026-02-19T02:00:00.000Z",
+    "readings": {
+      "flowRate_m3_per_s": 2.5,
+      "headHeight_m": 45.0,
+      "efficiency": 0.88,
+      "generatedKwh": 1050.0,
+      "pH": 8.8,
+      "turbidity_ntu": 75,
+      "temperature_celsius": 32
+    }
+  },
+  "environmental_fail": {
+    "deviceId": "TURBINE-3",
+    "timestamp": "2026-02-19T03:00:00.000Z",
+    "readings": {
+      "flowRate_m3_per_s": 2.5,
+      "headHeight_m": 45.0,
+      "efficiency": 0.88,
+      "generatedKwh": 965.0,
+      "pH": 4.0,
+      "turbidity_ntu": 500,
+      "temperature_celsius": 55
+    }
+  }
+}
