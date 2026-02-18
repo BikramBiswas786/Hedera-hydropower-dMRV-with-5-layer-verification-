@@ -1,4 +1,4 @@
-# 🚀 Hedera Production Setup Guide
+# Hedera Production Setup Guide
 
 ## Quick Start (3 minutes)
 
@@ -19,10 +19,10 @@ node scripts/setup-hedera-testnet.js
 ```
 
 **This will:**
-- ✅ Connect to Hedera testnet
-- ✅ Create HCS audit topic
-- ✅ Generate `.env` file
-- ✅ Display topic URL on HashScan explorer
+- Connect to Hedera testnet
+- Create HCS audit topic
+- Generate `.env` file
+- Display topic URL on HashScan explorer
 
 ### 3. Run E2E Test with Evidence
 
@@ -31,10 +31,10 @@ node scripts/run-with-evidence.js
 ```
 
 **This will:**
-- ✅ Submit real transactions to Hedera blockchain
-- ✅ Save all transaction receipts to `evidence/` folder
-- ✅ Generate audit trail with HashScan URLs
-- ✅ Prove APPROVED/REJECTED verification works
+- Submit real transactions to Hedera blockchain
+- Save all transaction receipts to `evidence/` folder
+- Generate audit trail with HashScan URLs
+- Prove APPROVED/REJECTED verification works
 
 ---
 
@@ -143,9 +143,9 @@ npm test
 
 ### Security
 
-- ⚠️ **NEVER commit `.env` to Git**
-- ✅ Use environment variables in production
-- ✅ Store private keys in AWS Secrets Manager / HashiCorp Vault
+-  **NEVER commit `.env` to Git**
+-  Use environment variables in production
+- Store private keys in AWS Secrets Manager / HashiCorp Vault
 
 ---
 
