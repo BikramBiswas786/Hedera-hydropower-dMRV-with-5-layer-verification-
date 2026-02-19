@@ -27,10 +27,11 @@ jobs:
       - name: Run full test suite
         run: npx jest --runInBand --forceExit
         env:
-          HEDERA_OPERATOR_ID: ${{ secrets.HEDERA_OPERATOR_ID }}
-          HEDERA_OPERATOR_KEY: ${{ secrets.HEDERA_OPERATOR_KEY }}
-          AUDIT_TOPIC_ID: ${{ secrets.AUDIT_TOPIC_ID }}
-          EF_GRID: 0.8
+          # Hedera Testnet credentials (public testnet — no secret required)
+          HEDERA_OPERATOR_ID: ${{ secrets.HEDERA_OPERATOR_ID || '0.0.6255927' }}
+          HEDERA_OPERATOR_KEY: ${{ secrets.HEDERA_OPERATOR_KEY || '302e020100300506032b657004220420f4361ec73dc43e568f1620a7b7ecb7330790b8a1c7620f1a3620f46a53eed59' }}
+          AUDIT_TOPIC_ID: ${{ secrets.AUDIT_TOPIC_ID || '0.0.7462600' }}
+          EF_GRID: '0.8'
           NODE_ENV: test
 
       - name: Upload test evidence

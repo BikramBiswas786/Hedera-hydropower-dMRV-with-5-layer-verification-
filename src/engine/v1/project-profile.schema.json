@@ -1,0 +1,39 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Hedera Hydropower Project Profile Schema",
+  "description": "Schema for validating hydropower project configuration",
+  "type": "object",
+  "required": [
+    "projectId",
+    "projectName",
+    "deviceId",
+    "deviceName",
+    "gridEmissionFactor",
+    "executionMode",
+    "autoApproveThreshold",
+    "manualReviewThreshold"
+  ],
+  "properties": {
+    "projectId": { "type": "string", "pattern": "^[A-Z0-9-]+$", "minLength": 5, "maxLength": 50 },
+    "projectName": { "type": "string", "minLength": 5, "maxLength": 100 },
+    "projectLocation": { "type": "string" },
+    "operatorName": { "type": "string", "minLength": 3, "maxLength": 100 },
+    "operatorEmail": { "type": "string", "format": "email" },
+    "deviceId": { "type": "string", "pattern": "^TURBINE-[0-9]+$" },
+    "deviceName": { "type": "string", "minLength": 3, "maxLength": 100 },
+    "deviceType": { "type": "string", "enum": ["pelton", "turgo", "crossflow", "turgo-pelton", "other"] },
+    "deviceCapacityKw": { "type": "number", "minimum": 1, "maximum": 10000 },
+    "gridEmissionFactor": { "type": "number", "minimum": 0.1, "maximum": 2.0 },
+    "baselineCapacityFactor": { "type": "number", "minimum": 0.0, "maximum": 1.0 },
+    "executionMode": { "type": "string", "enum": ["transparent-classic", "merkle-daily", "merkle-weekly", "merkle-monthly"] },
+    "autoApproveThreshold": { "type": "number", "minimum": 0.7, "maximum": 0.99 },
+    "manualReviewThreshold": { "type": "number", "minimum": 0.5, "maximum": 0.85 },
+    "siteConfig": { "type": "object" },
+    "verificationConfig": { "type": "object" },
+    "hederaConfig": { "type": "object" },
+    "monitoringConfig": { "type": "object" },
+    "acm0002Config": { "type": "object" },
+    "metadata": { "type": "object" }
+  },
+  "additionalProperties": false
+}
