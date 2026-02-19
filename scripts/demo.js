@@ -113,7 +113,7 @@ async function main() {
   // STEP 2 — Token
   step(2, 'HREC Token (Hedera Token Service)');
   ok(`Token ID  : ${REC_TOKEN_ID}`);
-  ok(`Token Name: HREC (1 token = 1 verified MWh)');
+  ok(`Token Name: HREC (1 token = 1 verified MWh)`);
   info(`HashScan  : https://hashscan.io/testnet/token/${REC_TOKEN_ID}`);
 
   // STEP 3 — Approved reading
