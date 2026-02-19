@@ -101,50 +101,37 @@ class Workflow {
     }
 
     try {
-      // Verify the reading
-      const verification = await this.engine.verifyReading(telemetry);
+      // Prepare telemetry in EngineV1 format
+      const telemetryPacket = {
+        deviceId: this.deviceId,
+        timestamp: telemetry.timestamp || new Date().toISOString(),
+        readings: {
+          flowRate_m3_per_s: telemetry.flowRate || telemetry.flowRate_m3_per_s || 0,
+          headHeight_m: telemetry.head || telemetry.headHeight_m || 0,
+          generatedKwh: telemetry.generatedKwh || 0,
+          pH: telemetry.pH || 7.0,
+          turbidity_ntu: telemetry.turbidity_ntu || 10,
+          temperature_celsius: telemetry.temperature_celsius || 20,
+          efficiency: telemetry.efficiency || 0.85
+        }
+      };
+
+      // Verify using EngineV1
+      const result = await this.engine.verifyAndPublish(telemetryPacket);
       
       // Store reading
       this.readings.push({
         ...telemetry,
-        verification,
-        timestamp: new Date().toISOString()
+        attestation: result.attestation,
+        timestamp: telemetryPacket.timestamp
       });
-
-      // Create attestation
-      const attestation = await this.attestation.createAttestation({
-        deviceId: this.deviceId,
-        reading: telemetry,
-        verification,
-        gridEmissionFactor: this.gridEmissionFactor
-      });
-
-      // Submit to Hedera (if configured)
-      let transactionId = null;
-      if (this.auditTopicId && this.client) {
-        try {
-          const message = JSON.stringify(attestation);
-          const transaction = await new TopicMessageSubmitTransaction()
-            .setTopicId(this.auditTopicId)
-            .setMessage(message)
-            .execute(this.client);
-          
-          const receipt = await transaction.getReceipt(this.client);
-          transactionId = transaction.transactionId.toString();
-        } catch (error) {
-          console.warn('Hedera submission failed:', error.message);
-          transactionId = `mock-tx-${Date.now()}`;
-        }
-      } else {
-        transactionId = `mock-tx-${Date.now()}`;
-      }
 
       return {
         success: true,
-        transactionId,
-        verificationStatus: verification.status || 'APPROVED',
-        trustScore: verification.trustScore || 0.95,
-        attestation
+        transactionId: result.transactionId,
+        verificationStatus: result.attestation.verificationStatus,
+        trustScore: result.attestation.trustScore,
+        attestation: result.attestation
       };
     } catch (error) {
       console.error('Submit reading failed:', error);
@@ -191,13 +178,13 @@ class Workflow {
 
     const totalReadings = this.readings.length;
     const approvedReadings = this.readings.filter(
-      r => r.verification?.status === 'APPROVED'
+      r => r.attestation?.verificationStatus === 'APPROVED'
     ).length;
     const flaggedReadings = this.readings.filter(
-      r => r.verification?.status === 'FLAGGED'
+      r => r.attestation?.verificationStatus === 'FLAGGED'
     ).length;
     const rejectedReadings = this.readings.filter(
-      r => r.verification?.status === 'REJECTED'
+      r => r.attestation?.verificationStatus === 'REJECTED'
     ).length;
 
     const totalGeneration = this.readings.reduce(
@@ -217,7 +204,7 @@ class Workflow {
       totalGenerationMWh: totalGeneration / 1000,
       averageTrustScore:
         totalReadings > 0
-          ? this.readings.reduce((sum, r) => sum + (r.verification?.trustScore || 0), 0) /
+          ? this.readings.reduce((sum, r) => sum + (r.attestation?.trustScore || 0), 0) /
             totalReadings
           : 0
     };
