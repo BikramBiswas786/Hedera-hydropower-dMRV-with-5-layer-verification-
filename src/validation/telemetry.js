@@ -1,85 +1,168 @@
 /**
- * Telemetry validation for edge gateway submissions
- * Prevents silent defaults and ensures data quality
+ * Telemetry Validation Layer
+ * Prevents silent defaults and ensures data integrity before MRV processing
+ * 
+ * Key Principle: NO SILENT DEFAULTS
+ * - Missing critical fields → REJECT immediately
+ * - Missing optional fields → LOG and mark as partial
+ * - Invalid ranges → REJECT with clear error
  */
 
-const REQUIRED_FIELDS = ['flowRate', 'head', 'generatedKwh', 'timestamp'];
-const OPTIONAL_FIELDS = ['pH', 'turbidity', 'temperature', 'efficiency'];
+const { telemetryCounter } = require('../monitoring/metrics');
 
 /**
- * Validate telemetry reading before submission
- * @param {Object} reading - Raw telemetry reading from sensors
- * @returns {Object} { valid: boolean, errors: string[], normalized: Object }
+ * Validation rules for telemetry readings
  */
-function validateTelemetry(reading) {
+const VALIDATION_RULES = {
+  // Required fields - must be present and valid
+  required: {
+    flowRate: { min: 0.1, max: 100, unit: 'm³/s' },
+    head: { min: 1, max: 500, unit: 'meters' },
+    generatedKwh: { min: 0.01, max: 50000, unit: 'kWh' },
+    timestamp: { type: 'number' }
+  },
+  
+  // Optional fields - if present, must be valid
+  optional: {
+    pH: { min: 4.0, max: 10.0, unit: 'pH' },
+    turbidity: { min: 0, max: 1000, unit: 'NTU' },
+    temperature: { min: 0, max: 40, unit: '°C' },
+    efficiency: { min: 0.1, max: 1.0, unit: 'decimal' },
+    dissolved_oxygen: { min: 0, max: 20, unit: 'mg/L' }
+  }
+};
+
+/**
+ * Validate a single telemetry reading
+ * @param {Object} reading - Raw telemetry data
+ * @param {Object} context - Plant/device context for logging
+ * @returns {Object} { valid: boolean, errors: string[], warnings: string[], normalized: Object }
+ */
+function validateTelemetry(reading, context = {}) {
   const errors = [];
   const warnings = [];
   const normalized = {};
-
-  // Check required fields
-  for (const field of REQUIRED_FIELDS) {
+  
+  // 1. Validate required fields
+  for (const [field, rules] of Object.entries(VALIDATION_RULES.required)) {
     if (reading[field] === undefined || reading[field] === null) {
       errors.push(`Missing required field: ${field}`);
-    } else if (typeof reading[field] === 'number' && !isFinite(reading[field])) {
-      errors.push(`Invalid ${field}: must be finite number, got ${reading[field]}`);
-    } else {
-      normalized[field] = reading[field];
+      continue;
     }
-  }
-
-  // Validate field ranges (basic sanity checks)
-  if (normalized.flowRate !== undefined) {
-    if (normalized.flowRate < 0 || normalized.flowRate > 100) {
-      errors.push(`flowRate out of range: ${normalized.flowRate} m³/s (expected 0-100)`);
+    
+    const value = reading[field];
+    
+    // Type validation
+    if (rules.type === 'number' && typeof value !== 'number') {
+      errors.push(`Invalid type for ${field}: expected number, got ${typeof value}`);
+      continue;
     }
-  }
-
-  if (normalized.head !== undefined) {
-    if (normalized.head < 0 || normalized.head > 500) {
-      errors.push(`head out of range: ${normalized.head} m (expected 0-500)`);
+    
+    // Range validation
+    if (rules.min !== undefined && value < rules.min) {
+      errors.push(`${field} below minimum: ${value} < ${rules.min} ${rules.unit || ''}`);
     }
-  }
-
-  if (normalized.generatedKwh !== undefined) {
-    if (normalized.generatedKwh < 0) {
-      errors.push(`generatedKwh cannot be negative: ${normalized.generatedKwh}`);
+    if (rules.max !== undefined && value > rules.max) {
+      errors.push(`${field} above maximum: ${value} > ${rules.max} ${rules.unit || ''}`);
     }
+    
+    normalized[field] = value;
   }
-
-  // Handle optional fields - NO SILENT DEFAULTS
-  for (const field of OPTIONAL_FIELDS) {
-    if (reading[field] !== undefined && reading[field] !== null) {
-      if (typeof reading[field] === 'number' && !isFinite(reading[field])) {
-        warnings.push(`Invalid ${field}: ${reading[field]}, omitting from submission`);
-      } else {
-        normalized[field] = reading[field];
-      }
-    } else {
-      warnings.push(`Optional field ${field} not provided - will use AI Guardian defaults`);
+  
+  // 2. Validate optional fields (if present)
+  for (const [field, rules] of Object.entries(VALIDATION_RULES.optional)) {
+    if (reading[field] === undefined || reading[field] === null) {
+      // Optional field missing - log but don't fail
+      warnings.push(`Optional field missing: ${field} (will not be used in verification)`);
+      continue;
     }
-  }
-
-  // Validate timestamp
-  if (normalized.timestamp) {
-    const ts = new Date(normalized.timestamp);
-    if (isNaN(ts.getTime())) {
-      errors.push(`Invalid timestamp: ${normalized.timestamp}`);
-    } else {
-      // Check if timestamp is reasonable (not too far in past/future)
-      const now = Date.now();
-      const diff = Math.abs(now - ts.getTime());
-      if (diff > 24 * 60 * 60 * 1000) { // 24 hours
-        warnings.push(`Timestamp differs from current time by ${Math.round(diff/3600000)} hours`);
-      }
+    
+    const value = reading[field];
+    
+    // If present, must be valid
+    if (typeof value !== 'number') {
+      warnings.push(`Invalid type for optional field ${field}: expected number, got ${typeof value}`);
+      continue;
     }
+    
+    if (rules.min !== undefined && value < rules.min) {
+      warnings.push(`${field} below expected range: ${value} < ${rules.min} ${rules.unit}`);
+    }
+    if (rules.max !== undefined && value > rules.max) {
+      warnings.push(`${field} above expected range: ${value} > ${rules.max} ${rules.unit}`);
+    }
+    
+    normalized[field] = value;
   }
-
-  return {
-    valid: errors.length === 0,
-    errors,
-    warnings,
-    normalized
-  };
+  
+  // 3. Add metadata
+  normalized.validatedAt = Date.now();
+  normalized.partial = warnings.length > 0;
+  
+  const valid = errors.length === 0;
+  
+  // 4. Log validation result
+  if (!valid) {
+    console.error(`[VALIDATION FAILED] Plant: ${context.plantId}, Device: ${context.deviceId}`);
+    console.error(`Errors: ${errors.join(', ')}`);
+  }
+  if (warnings.length > 0) {
+    console.warn(`[VALIDATION WARNINGS] Plant: ${context.plantId}, Device: ${context.deviceId}`);
+    console.warn(`Warnings: ${warnings.join(', ')}`);
+  }
+  
+  return { valid, errors, warnings, normalized };
 }
 
-module.exports = { validateTelemetry };
+/**
+ * Validate and normalize telemetry before submission
+ * Throws if validation fails (fail-fast approach)
+ * @param {Object} reading - Raw telemetry data
+ * @param {Object} context - Plant/device context
+ * @returns {Object} Normalized and validated reading
+ */
+function validateAndNormalize(reading, context = {}) {
+  const result = validateTelemetry(reading, context);
+  
+  if (!result.valid) {
+    // Increment rejection counter
+    telemetryCounter.inc({ 
+      status: 'VALIDATION_FAILED', 
+      plant_id: context.plantId || 'unknown' 
+    });
+    
+    throw new Error(`Telemetry validation failed: ${result.errors.join(', ')}`);
+  }
+  
+  return result.normalized;
+}
+
+/**
+ * Check if reading has critical missing fields (would fail physics validation anyway)
+ * This is a pre-flight check before expensive verification
+ * @param {Object} reading - Telemetry reading
+ * @returns {boolean} True if reading is complete enough for verification
+ */
+function hasMinimumFields(reading) {
+  return (
+    reading.flowRate !== undefined &&
+    reading.head !== undefined &&
+    reading.generatedKwh !== undefined
+  );
+}
+
+/**
+ * Get validation rules (useful for API documentation)
+ * @returns {Object} Validation rules
+ */
+function getValidationRules() {
+  return VALIDATION_RULES;
+}
+
+module.exports = {
+  validateTelemetry,
+  validateAndNormalize,
+  hasMinimumFields,
+  getValidationRules,
+  VALIDATION_RULES
+};

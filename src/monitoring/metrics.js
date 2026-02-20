@@ -1,100 +1,109 @@
 /**
- * Prometheus metrics for Hedera Hydropower MRV
- * Exposes operational metrics for observability
+ * Prometheus Metrics for Hedera Hydropower MRV
+ * Provides operational visibility into system health and performance
+ * 
+ * Usage:
+ *   const { telemetryCounter, hederaTxFailures } = require('./monitoring/metrics');
+ *   telemetryCounter.inc({ status: 'APPROVED' });
+ *   hederaTxFailures.inc({ error_type: 'TRANSACTION_EXPIRED' });
  */
 
 const promClient = require('prom-client');
 
-// Enable default metrics (CPU, memory, event loop lag)
-promClient.collectDefaultMetrics({ timeout: 5000 });
+// Create separate registry for MRV metrics
+const register = new promClient.Registry();
 
-// Custom MRV metrics
-const telemetrySubmissions = new promClient.Counter({
+// Add default metrics (memory, CPU, etc.) - useful for debugging
+promClient.collectDefaultMetrics({ register });
+
+/**
+ * Counter: Total telemetry submissions by verification status
+ * Labels: status (APPROVED, FLAGGED, REJECTED)
+ */
+const telemetryCounter = new promClient.Counter({
   name: 'mrv_telemetry_submissions_total',
-  help: 'Total telemetry submissions by status',
-  labelNames: ['plant_id', 'device_id', 'status'] // APPROVED, FLAGGED, REJECTED
+  help: 'Total number of telemetry submissions processed',
+  labelNames: ['status', 'plant_id'],
+  registers: [register]
 });
 
-const verificationLatency = new promClient.Histogram({
-  name: 'mrv_verification_duration_seconds',
-  help: 'Time to verify telemetry reading',
-  labelNames: ['plant_id'],
-  buckets: [0.1, 0.5, 1, 2, 5, 10] // seconds
-});
-
+/**
+ * Counter: Hedera transaction failures by error type
+ * Labels: error_type (TRANSACTION_EXPIRED, TIMEOUT, NETWORK_ERROR, OTHER)
+ */
 const hederaTxFailures = new promClient.Counter({
   name: 'mrv_hedera_tx_failures_total',
-  help: 'Failed Hedera transactions',
-  labelNames: ['error_type'] // TRANSACTION_EXPIRED, TIMEOUT, OTHER
+  help: 'Total Hedera transaction failures',
+  labelNames: ['error_type', 'topic_id'],
+  registers: [register]
 });
 
-const hederaTxLatency = new promClient.Histogram({
-  name: 'mrv_hedera_tx_duration_seconds',
-  help: 'Time to submit to Hedera HCS',
-  buckets: [0.5, 1, 2, 5, 10, 30]
+/**
+ * Histogram: Verification processing duration in seconds
+ * Tracks p50, p95, p99 latencies
+ */
+const verificationDuration = new promClient.Histogram({
+  name: 'mrv_verification_duration_seconds',
+  help: 'Time taken to verify telemetry readings',
+  labelNames: ['status'],
+  buckets: [0.1, 0.5, 1, 2, 5, 10], // seconds
+  registers: [register]
 });
 
+/**
+ * Gauge: Current trust score per plant
+ * Tracks real-time trust level (0-1.0)
+ */
 const trustScoreGauge = new promClient.Gauge({
   name: 'mrv_trust_score',
-  help: 'Latest trust score per plant',
-  labelNames: ['plant_id', 'device_id']
+  help: 'Current trust score for plant',
+  labelNames: ['plant_id', 'device_id'],
+  registers: [register]
 });
 
 /**
- * Record telemetry submission
+ * Counter: Carbon credits (RECs) minted
+ * Tracks total tCO2e issued
  */
-function recordTelemetrySubmission(plantId, deviceId, status) {
-  telemetrySubmissions.inc({ plant_id: plantId, device_id: deviceId, status });
+const recsMinted = new promClient.Counter({
+  name: 'mrv_recs_minted_total',
+  help: 'Total Renewable Energy Credits minted (tCO2e)',
+  labelNames: ['plant_id', 'token_id'],
+  registers: [register]
+});
+
+/**
+ * Helper function to time async operations
+ * @param {Function} fn - Async function to time
+ * @param {string} status - Status label for histogram
+ * @returns {Promise} Result of fn()
+ */
+async function timeVerification(fn, status = 'unknown') {
+  const end = verificationDuration.startTimer({ status });
+  try {
+    const result = await fn();
+    end();
+    return result;
+  } catch (error) {
+    end();
+    throw error;
+  }
 }
 
 /**
- * Record verification latency
- */
-function recordVerificationLatency(plantId, durationSeconds) {
-  verificationLatency.observe({ plant_id: plantId }, durationSeconds);
-}
-
-/**
- * Record Hedera transaction failure
- */
-function recordHederaTxFailure(errorType) {
-  hederaTxFailures.inc({ error_type: errorType });
-}
-
-/**
- * Record Hedera transaction latency
- */
-function recordHederaTxLatency(durationSeconds) {
-  hederaTxLatency.observe(durationSeconds);
-}
-
-/**
- * Update trust score gauge
- */
-function updateTrustScore(plantId, deviceId, score) {
-  trustScoreGauge.set({ plant_id: plantId, device_id: deviceId }, score);
-}
-
-/**
- * Get all metrics in Prometheus format
- */
-async function getMetrics() {
-  return await promClient.register.metrics();
-}
-
-/**
- * Reset all metrics (for testing)
+ * Reset all metrics (useful for testing)
  */
 function resetMetrics() {
-  promClient.register.clear();
+  register.resetMetrics();
 }
 
 module.exports = {
-  recordTelemetrySubmission,
-  recordVerificationLatency,
-  recordHederaTxFailure,
-  recordHederaTxLatency,
-  updateTrustScore,
-  getMetrics,
+  register,
+  telemetryCounter,
+  hederaTxFailures,
+  verificationDuration,
+  trustScoreGauge,
+  recsMinted,
+  timeVerification,
   resetMetrics
 };
