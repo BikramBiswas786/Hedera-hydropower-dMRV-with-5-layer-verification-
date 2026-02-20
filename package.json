@@ -1,12 +1,13 @@
 {
   "name": "hedera-hydropower-mrv",
-  "version": "1.1.0",
+  "version": "1.2.0",
   "description": "Hedera-based MRV system for run-of-river Hydropower — Apex Hackathon 2026",
   "main": "src/engine/v1/engine-v1.js",
   "scripts": {
     "test": "jest",
     "demo": "node scripts/demo.js",
     "start": "node scripts/demo.js",
+    "api": "node src/api/server.js",
     "engine-v1": "node src/engine/v1/engine-v1.js",
     "deploy-did": "node scripts/deployment/01_deploy_did_complete.js",
     "create-token": "node scripts/tokens/02_create_rec_token_final.js",
@@ -14,12 +15,17 @@
     "generate-report": "node scripts/generate-report.js",
     "run-with-evidence": "node scripts/run-with-evidence.js",
     "bridge:modbus": "node examples/plant-bridge-modbus.js",
-    "bridge:http": "node examples/plant-bridge-http.js"
+    "bridge:http": "node examples/plant-bridge-http.js",
+    "bridge:api": "node examples/plant-bridge-rest-api.js"
   },
   "dependencies": {
     "@hashgraph/sdk": "^2.80.0",
     "dotenv": "^17.3.1",
-    "prom-client": "^15.1.0"
+    "prom-client": "^15.1.0",
+    "express": "^4.18.2",
+    "cors": "^2.8.5",
+    "helmet": "^7.1.0",
+    "express-rate-limit": "^7.1.5"
   },
   "optionalDependencies": {
     "modbus-serial": "^8.0.17",
@@ -37,5 +43,5 @@
     "type": "git",
     "url": "https://github.com/BikramBiswas786/https-github.com-BikramBiswas786-hedera-hydropower-mrv"
   },
-  "keywords": ["hedera", "hydropower", "mrv", "carbon", "sustainability", "hcs", "hts", "did", "acm0002", "modbus", "scada", "iot"]
+  "keywords": ["hedera", "hydropower", "mrv", "carbon", "sustainability", "hcs", "hts", "did", "acm0002", "modbus", "scada", "iot", "prometheus", "rest-api"]
 }
