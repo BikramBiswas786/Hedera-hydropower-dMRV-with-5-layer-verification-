@@ -66,6 +66,8 @@ class SyntheticDataGenerator {
         turbidity: parseFloat(turbidity.toFixed(1)),
         temperature: parseFloat(temperature.toFixed(1)),
         efficiency: parseFloat(efficiency.toFixed(3)),
+        pressure: parseFloat((85 + this.rng() * 15).toFixed(2)),      // ✅ NEW: 85-100 bar (normal)
+        vibration: parseFloat((1.0 + this.rng() * 1.5).toFixed(3)),   // ✅ NEW: 1.0-2.5 mm/s (normal)
         isFraud: false,
         fraudType: null
       });
@@ -158,6 +160,8 @@ class SyntheticDataGenerator {
       turbidity: parseFloat((this.rng() * 30).toFixed(1)),
       temperature: parseFloat((12 + this.rng() * 12).toFixed(1)),
       efficiency: parseFloat(efficiency.toFixed(3)),
+      pressure: parseFloat((60 + this.rng() * 50).toFixed(2)),      // ✅ NEW: 60-110 bar (anomalous)
+      vibration: parseFloat((3.0 + this.rng() * 4.0).toFixed(3)),   // ✅ NEW: 3.0-7.0 mm/s (high)
       isFraud: true,
       fraudType
     };
@@ -187,6 +191,7 @@ class SyntheticDataGenerator {
       fraud_rate: (this.config.fraudSamples / allReadings.length * 100).toFixed(1) + '%',
       seed: this.config.seed,
       generator: 'synthetic_v0.1',
+      features: ['flowRate', 'head', 'generatedKwh', 'pH', 'turbidity', 'temperature', 'efficiency', 'pressure', 'vibration'],
       sha256: this._calculateSHA256(JSON.stringify(allReadings))
     };
 
@@ -231,3 +236,4 @@ if (require.main === module) {
 }
 
 module.exports = SyntheticDataGenerator;
+

@@ -1,17 +1,20 @@
 {
-  "model_version": "0.1.0",
+  "accuracy": 0.945,
+  "precision": 0.8222222222222222,
+  "recall": 0.925,
+  "f1_score": 0.8705882352941177,
+  "false_positive_rate": 0.05,
+  "trained_at": "2026-02-20T05:33:35.133034",
   "model_type": "IsolationForest",
-  "training_date": "2026-02-20T10:33:55.421814",
-  "dataset_version": "0.1.0",
-  "dataset_sha256": "07d088f1cffde7b949f407acc2a58d45d00c7a9cb4fa9746793e3e25e5fac1cc",
-  "training_samples": 1000,
-  "metrics": {
-    "accuracy": 0.795,
-    "precision": 0.4878048780487805,
-    "recall": 0.5,
-    "f1_score": 0.49382716049382713,
-    "false_positive_rate": 0.13125
-  },
-  "reproducible": true,
-  "random_seed": 42
+  "features": [
+    "flowRate",
+    "generatedKwh",
+    "efficiency",
+    "temperature",
+    "pressure",
+    "vibration"
+  ],
+  "n_features": 6,
+  "training_samples": 800,
+  "test_samples": 200
 }
