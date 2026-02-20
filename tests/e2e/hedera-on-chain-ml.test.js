@@ -1,49 +1,47 @@
 /**
- * Hedera On-Chain ML End-to-End Test
- * Tests complete flow: ML detection → Hedera submission
+ * Hedera On-Chain ML E2E Test (Jest)
  */
-
-const { describe, it, before, after } = require('mocha');
-const { expect } = require('chai');
 const FraudDetector = require('../../ml/src/fraud_detector');
 
-describe('🌐 Hedera On-Chain ML E2E Test', function() {
-  this.timeout(30000);
-
+describe('🌐 Hedera On-Chain ML E2E Test', () => {
   let fraudDetector;
-  let results = [];
+  let testResults = [];
 
-  before(async function() {
+  beforeAll(async () => {
     fraudDetector = new FraudDetector();
     await fraudDetector.initialize();
-
+    
     console.log('\n🚀 E2E Test Setup:');
     console.log('  ML Model:', fraudDetector.isModelLoaded() ? 'Active ✅' : 'Fallback ⚠️');
-  });
+  }, 30000);
 
-  it('should run complete ML + Hedera flow', async function() {
+  test('should run complete ML + Hedera flow', async () => {
     const testCases = [
-      { waterFlow: 125, powerOutput: 95, efficiency: 0.88, expected: 'clean' },
-      { waterFlow: 250, powerOutput: 45, efficiency: 0.25, expected: 'fraud' }
+      { waterFlow: 130, powerOutput: 98, efficiency: 0.91 },
+      { waterFlow: 220, powerOutput: 50, efficiency: 0.30 }
     ];
-
+    
     console.log('\n📊 Processing test cases:');
-
-    for (const test of testCases) {
-      const result = await fraudDetector.predict(test);
-      console.log(`  ${test.expected === 'fraud' ? '🚨' : '✅'} ${test.expected.toUpperCase()}: Score=${result.score.toFixed(2)}, Method=${result.method}`);
-      results.push(result);
+    
+    for (const reading of testCases) {
+      const result = await fraudDetector.predict(reading);
+      console.log(`  ${result.isFraud ? '🚨 FRAUD' : '✅ CLEAN'}: Score=${result.score.toFixed(2)}, Method=${result.method}`);
+      testResults.push(result);
     }
+    
+    // Verify all processed with ML
+    testResults.forEach(r => {
+      expect(r.method).toBe('ML_ISOLATION_FOREST');
+    });
+  }, 30000);
 
-    expect(results.length).to.equal(2);
-  });
-
-  after(function() {
+  afterAll(() => {
     const stats = fraudDetector.getStats();
+    
     console.log('\n═══════════════════════════════════════');
     console.log('🎉 E2E TEST COMPLETE');
     console.log('═══════════════════════════════════════');
-    console.log('Total Tests:', results.length);
+    console.log('Total Tests:', testResults.length);
     console.log('ML Usage Rate:', stats.mlUsageRate.toFixed(1) + '%');
     console.log('═══════════════════════════════════════\n');
   });

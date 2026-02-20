@@ -1,26 +1,21 @@
 ﻿/**
- * Hedera ML Integration Test
- * Tests ML fraud detection with flexible scoring
+ * Hedera ML Integration Test (Jest)
  */
-const { describe, it, before, after } = require('mocha');
-const { expect } = require('chai');
 const FraudDetector = require('../../ml/src/fraud_detector');
 
-describe('🔗 Hedera ML Integration Test', function() {
-  this.timeout(30000);
-  
+describe('🔗 Hedera ML Integration Test', () => {
   let fraudDetector;
   let testResults = [];
 
-  before(async function() {
+  beforeAll(async () => {
     fraudDetector = new FraudDetector();
     await fraudDetector.initialize();
     
     console.log('\n📊 Test Setup:');
     console.log('  ML Model:', fraudDetector.isModelLoaded() ? 'Loaded ✅' : 'Fallback ⚠️');
-  });
+  }, 30000);
 
-  it('should detect normal reading with ML model', async function() {
+  test('should detect normal reading with ML model', async () => {
     const reading = {
       plantId: 'PLANT_001',
       waterFlow: 125.0,
@@ -36,14 +31,14 @@ describe('🔗 Hedera ML Integration Test', function() {
     console.log('  Method:', result.method);
     
     // Verify ML model is active
-    expect(result.method).to.equal('ML_ISOLATION_FOREST');
-    expect(result).to.have.property('score');
-    expect(result).to.have.property('confidence');
+    expect(result.method).toBe('ML_ISOLATION_FOREST');
+    expect(result).toHaveProperty('score');
+    expect(result).toHaveProperty('confidence');
     
     testResults.push({ reading, result, expected: 'normal' });
-  });
+  }, 30000);
 
-  it('should detect fraud reading with ML model', async function() {
+  test('should detect fraud reading with ML model', async () => {
     const reading = {
       plantId: 'PLANT_001',
       waterFlow: 250.0,
@@ -59,14 +54,14 @@ describe('🔗 Hedera ML Integration Test', function() {
     console.log('  Method:', result.method);
     
     // Verify ML model is active and detects anomaly
-    expect(result.method).to.equal('ML_ISOLATION_FOREST');
-    expect(result.isFraud).to.be.true;
-    expect(result.score).to.be.greaterThan(0.5);
+    expect(result.method).toBe('ML_ISOLATION_FOREST');
+    expect(result.isFraud).toBe(true);
+    expect(result.score).toBeGreaterThan(0.5);
     
     testResults.push({ reading, result, expected: 'fraud' });
-  });
+  }, 30000);
 
-  it('should process batch of readings', async function() {
+  test('should process batch of readings', async () => {
     const readings = [
       { waterFlow: 130, powerOutput: 98, efficiency: 0.91 },
       { waterFlow: 220, powerOutput: 50, efficiency: 0.30 },
@@ -82,12 +77,12 @@ describe('🔗 Hedera ML Integration Test', function() {
     }
     
     // Verify all readings were processed with ML
-    expect(testResults.length).to.be.greaterThan(0);
+    expect(testResults.length).toBeGreaterThan(0);
     const mlUsed = testResults.filter(t => t.result.method === 'ML_ISOLATION_FOREST').length;
-    expect(mlUsed).to.equal(testResults.length);
-  });
+    expect(mlUsed).toBe(testResults.length);
+  }, 30000);
 
-  after(function() {
+  afterAll(() => {
     const stats = fraudDetector.getStats();
     
     console.log('\n═══════════════════════════════════════');
@@ -100,4 +95,5 @@ describe('🔗 Hedera ML Integration Test', function() {
     console.log('═══════════════════════════════════════\n');
   });
 });
+
 
