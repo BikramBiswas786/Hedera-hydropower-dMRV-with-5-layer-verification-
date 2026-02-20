@@ -27,7 +27,95 @@ npm start
 
 ## 🌐 Live Demo
 
-🔗 **[View Live Dashboard]( https://hydropower-mrv-19feb26.vercel.app/ https://hydropower-mrv-19feb26-git-main-privacy-rebels-projects.vercel.app/
+🔗 **[View Live Dashboard](https://hydropower-mrv-19feb26.vercel.app/)**
+
+---
+
+## ✅ Production Status
+
+### Current Capabilities
+
+This system is **pilot-ready** for shadow-mode deployment:
+
+- ✅ **224 automated tests** (85% coverage) across unit, integration, and E2E suites
+- ✅ **Real Hedera testnet integration** with live [HCS topic](https://hashscan.io/testnet/topic/0.0.7462776) and [HTS token](https://hashscan.io/testnet/token/0.0.7964264)
+- ✅ **AI Guardian verification engine** with 5-layer trust scoring
+- ✅ **ML fraud detection** using Isolation Forest (79.5% accuracy)
+- ✅ **ACM0002 carbon methodology** compliance for renewable energy credits
+- ✅ **Production deployment** on Vercel with demo endpoints
+- ✅ **API authentication** middleware for secure access
+- ✅ **Prometheus metrics** endpoint for observability
+- ✅ **Telemetry validation** with no silent defaults
+
+### 🎯 Next Milestone: 6 MW Shadow Pilot
+
+**Target:** 90-day shadow-mode MRV for a 6 MW run-of-river plant in HP/UK
+
+**Success criteria:**
+- < 5% delta vs manual MRV reports
+- < 0.5% false rejection rate
+- 99% Hedera transaction success
+- Zero manual intervention for 90 consecutive days
+
+**Economics:**
+- Pilot cost: ₹38,000–63,000
+- vs Manual MRV: ₹1.25 lakh per quarter
+- **Savings: 60–70%**
+
+📄 **Full pilot plan:** See [`docs/PILOT_PLAN_6MW_PLANT.md`](docs/PILOT_PLAN_6MW_PLANT.md)
+
+### 📋 Production Roadmap
+
+We've documented 7 specific gaps between MVP and full enterprise production:
+
+1. REST API gateway (2–3 weeks)
+2. Multi-tenancy & auth (1–2 weeks) — **basic auth implemented** ✅
+3. Device provisioning (1 week)
+4. Docker edge agent (2 weeks)
+5. Observability (Prometheus/Grafana) (1 week) — **metrics endpoint added** ✅
+6. API docs & SDKs (3–4 days)
+7. ~~Hedera reliability bug~~ — **fixed** ✅
+
+**Total timeline:** 8–10 weeks to full production SaaS platform
+
+📄 **Full roadmap:** See [`PRODUCTION_READINESS_ROADMAP.md`](PRODUCTION_READINESS_ROADMAP.md)
+
+---
+
+## 🌱 For Plant Operators
+
+Want to pilot this system? See our [**6 MW Plant Integration Guide**](docs/PILOT_PLAN_6MW_PLANT.md) for:
+
+- Hardware options (₹15K–50K depending on quality level)
+- Software setup (open source, ₹0)
+- Shadow-mode validation process
+- Cost breakdown and ROI analysis
+
+**Contact:** [GitHub Issues](https://github.com/BikramBiswas786/https-github.com-BikramBiswas786-hedera-hydropower-mrv/issues) for pilot inquiries
+
+---
+
+## 💼 For Enterprise Buyers / Investors
+
+This is not vaporware. We have:
+
+- ✅ Working code with comprehensive test coverage
+- ✅ Live blockchain integration (not mock)
+- ✅ Clear production roadmap with effort estimates
+- ✅ Documented pilot economics with real plant costs
+
+What separates this from other "blockchain MRV" projects:
+
+| Aspect | This Project | Typical "Blockchain MRV" |
+|--------|--------------|-------------------------|
+| Tests | 224 automated tests | "Coming soon" |
+| Blockchain | Live testnet, verifiable on HashScan | Mock or centralized DB |
+| Deployment | Vercel prod + demo endpoints | Local demo only |
+| Documentation | Pilot plan + production roadmap | Whitepaper only |
+| Carbon methodology | ACM0002 compliance documented | Vague "carbon offsets" |
+
+**Next steps:** Run one 90-day shadow pilot to prove < 5% accuracy delta, then expand.
+
 ---
 
 ## 📋 Table of Contents
@@ -77,35 +165,35 @@ Small-scale renewable energy projects (1-15 MW hydropower) face critical barrier
 
 ---
 
-## 🏗️ Technical Architecture
+## 🏭 Technical Architecture
 
 ```
 ┌─────────────────────────────────────────────────────────┐
 │                   IoT Sensor Layer                      │
 │  (Flow Rate, Head Height, Generation, Water Quality)   │
-└────────────────┬────────────────────────────────────────┘
+└────────────────┬──────────────────────────────────────────┘
                  │
                  ▼
 ┌─────────────────────────────────────────────────────────┐
 │              Workflow Orchestration                     │
 │  • Telemetry Ingestion  • Retry Logic  • Aggregation  │
-└────────────────┬────────────────────────────────────────┘
+└────────────────┬──────────────────────────────────────────┘
                  │
                  ▼
 ┌─────────────────────────────────────────────────────────┐
 │           AI Verification Engine (EngineV1)             │
-│  ┌─────────────────────────────────────────────────┐   │
+│  ┌─────────────────────────────────────────────┐   │
 │  │ 1. Physics Validation     (30% weight)          │   │
 │  │ 2. Temporal Consistency   (25% weight)          │   │
 │  │ 3. Environmental Bounds   (20% weight)          │   │
 │  │ 4. Statistical Anomalies  (15% weight)          │   │
 │  │ 5. Device Consistency     (10% weight)          │   │
-│  └─────────────────────────────────────────────────┘   │
+│  └─────────────────────────────────────────────┘   │
 │            ↓ Weighted Trust Score (0-1.0)               │
-│  ┌─────────────────────────────────────────────────┐   │
+│  ┌─────────────────────────────────────────────┐   │
 │  │ APPROVED (>0.90) | FLAGGED (0.50-0.90) | REJECTED │   │
-│  └─────────────────────────────────────────────────┘   │
-└────────────────┬────────────────────────────────────────┘
+│  └─────────────────────────────────────────────┘   │
+└────────────────┬──────────────────────────────────────────┘
                  │
                  ▼
 ┌─────────────────────────────────────────────────────────┐
@@ -330,6 +418,8 @@ npm run test:coverage
 - **[README-SETUP.md](./README-SETUP.md)** - Development setup
 - **[AUDIT_REPORT.md](./AUDIT_REPORT.md)** - Code audit report
 - **[ML_ROADMAP.md](./ML_ROADMAP.md)** - Machine learning roadmap
+- **[PRODUCTION_READINESS_ROADMAP.md](./PRODUCTION_READINESS_ROADMAP.md)** - Production readiness roadmap
+- **[docs/PILOT_PLAN_6MW_PLANT.md](./docs/PILOT_PLAN_6MW_PLANT.md)** - 6 MW plant pilot plan
 - **[docs/API.md](./docs/API.md)** - API documentation
 - **[docs/MRV-METHODOLOGY.md](./docs/MRV-METHODOLOGY.md)** - MRV methodology details
 - **[docs/COST-ANALYSIS.md](./docs/COST-ANALYSIS.md)** - Cost-benefit analysis

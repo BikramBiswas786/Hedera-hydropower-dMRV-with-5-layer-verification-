@@ -1,0 +1,40 @@
+[Unit]
+Description=Hedera Hydropower MRV Bridge Service
+Documentation=https://github.com/BikramBiswas786/https-github.com-BikramBiswas786-hedera-hydropower-mrv
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=mrv
+Group=mrv
+WorkingDirectory=/opt/hedera-hydropower-mrv
+EnvironmentFile=/opt/hedera-hydropower-mrv/.env
+
+# Main process
+ExecStart=/usr/bin/node examples/plant-bridge-modbus.js
+
+# Restart policy
+Restart=on-failure
+RestartSec=10s
+StartLimitBurst=5
+StartLimitIntervalSec=300
+
+# Security hardening
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/opt/hedera-hydropower-mrv/data
+
+# Resource limits
+LimitNOFILE=65536
+LimitNPROC=4096
+
+# Logging
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=hedera-mrv
+
+[Install]
+WantedBy=multi-user.target
