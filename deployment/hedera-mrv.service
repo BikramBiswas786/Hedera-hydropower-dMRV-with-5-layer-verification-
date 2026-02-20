@@ -1,40 +1,40 @@
 [Unit]
-Description=Hedera Hydropower MRV Bridge Service
+Description=Hedera Hydropower MRV Edge Gateway
+After=network.target
 Documentation=https://github.com/BikramBiswas786/https-github.com-BikramBiswas786-hedera-hydropower-mrv
-After=network-online.target
-Wants=network-online.target
 
 [Service]
 Type=simple
-User=mrv
-Group=mrv
-WorkingDirectory=/opt/hedera-hydropower-mrv
-EnvironmentFile=/opt/hedera-hydropower-mrv/.env
+User=root
+WorkingDirectory=/opt/hedera-mrv
 
-# Main process
+# Change ExecStart based on your integration type:
+# For Modbus: /usr/bin/node examples/plant-bridge-modbus.js
+# For HTTP API: /usr/bin/node examples/plant-bridge-http.js
 ExecStart=/usr/bin/node examples/plant-bridge-modbus.js
 
 # Restart policy
 Restart=on-failure
 RestartSec=10s
+StartLimitInterval=200s
 StartLimitBurst=5
-StartLimitIntervalSec=300
+
+# Logging
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=hedera-mrv
+
+# Environment
+Environment="NODE_ENV=production"
+EnvironmentFile=/opt/hedera-mrv/.env
 
 # Security hardening
 NoNewPrivileges=true
 PrivateTmp=true
 ProtectSystem=strict
 ProtectHome=true
-ReadWritePaths=/opt/hedera-hydropower-mrv/data
-
-# Resource limits
-LimitNOFILE=65536
-LimitNPROC=4096
-
-# Logging
-StandardOutput=journal
-StandardError=journal
-SyslogIdentifier=hedera-mrv
+ReadWritePaths=/var/log/hedera-mrv
+ReadWritePaths=/opt/hedera-mrv
 
 [Install]
 WantedBy=multi-user.target

@@ -1,164 +1,211 @@
 #!/bin/bash
 #
-# Hedera Hydropower MRV Installation Script
-# 
-# This script automates the installation of the MRV system on edge gateways.
-# Tested on: Raspberry Pi OS, Ubuntu 20.04/22.04, Debian 11
-#
-# USAGE:
-#   sudo bash deployment/install.sh
-#
-# OR
-#   curl -fsSL https://raw.githubusercontent.com/BikramBiswas786/https-github.com-BikramBiswas786-hedera-hydropower-mrv/main/deployment/install.sh | sudo bash
+# Hedera Hydropower MRV - One-Command Installer
+# Usage: curl -fsSL https://install.hydropower-mrv.io/setup.sh | sudo bash -s -- --plant-id PLANT-001 --api-key ghdk_xyz
 #
 
-set -e  # Exit on error
+set -e
 
-# Colors for output
+# Colors
 RED='\033[0;31m'
 GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
 NC='\033[0m' # No Color
 
-echo "====================================="
-echo "Hedera Hydropower MRV Installer"
-echo "====================================="
+# Default values
+INSTALL_DIR="/opt/hedera-mrv"
+NODE_VERSION="18"
+REPO_URL="https://github.com/BikramBiswas786/https-github.com-BikramBiswas786-hedera-hydropower-mrv.git"
+BRANCH="main"
+
+# Parse arguments
+while [[ $# -gt 0 ]]; do
+  case $1 in
+    --plant-id)
+      PLANT_ID="$2"
+      shift 2
+      ;;
+    --device-id)
+      DEVICE_ID="$2"
+      shift 2
+      ;;
+    --api-key)
+      API_KEY="$2"
+      shift 2
+      ;;
+    --ef-grid)
+      EF_GRID="$2"
+      shift 2
+      ;;
+    --install-dir)
+      INSTALL_DIR="$2"
+      shift 2
+      ;;
+    --branch)
+      BRANCH="$2"
+      shift 2
+      ;;
+    *)
+      echo "Unknown option: $1"
+      exit 1
+      ;;
+  esac
+done
+
+# Validate required params
+if [ -z "$PLANT_ID" ]; then
+  echo -e "${RED}Error: --plant-id is required${NC}"
+  exit 1
+fi
+
+if [ -z "$API_KEY" ]; then
+  echo -e "${RED}Error: --api-key is required${NC}"
+  exit 1
+fi
+
+# Set defaults for optional params
+DEVICE_ID=${DEVICE_ID:-"TURBINE-001"}
+EF_GRID=${EF_GRID:-"0.82"}
+
+echo -e "${GREEN}=== Hedera Hydropower MRV Installer ===${NC}"
+echo "Plant ID: $PLANT_ID"
+echo "Device ID: $DEVICE_ID"
+echo "Install Directory: $INSTALL_DIR"
+echo "Branch: $BRANCH"
 echo ""
 
 # Check if running as root
-if [ "$EUID" -ne 0 ]; then 
+if [ "$EUID" -ne 0 ]; then
   echo -e "${RED}Error: This script must be run as root (use sudo)${NC}"
   exit 1
 fi
 
 # Detect OS
 if [ -f /etc/os-release ]; then
-    . /etc/os-release
-    OS=$ID
-    VERSION=$VERSION_ID
-    echo -e "${GREEN}Detected OS: $OS $VERSION${NC}"
+  . /etc/os-release
+  OS=$ID
+  VER=$VERSION_ID
 else
-    echo -e "${RED}Cannot detect OS. Exiting.${NC}"
+  echo -e "${RED}Error: Cannot detect OS${NC}"
+  exit 1
+fi
+
+echo -e "${GREEN}[1/7] Detected OS: $OS $VER${NC}"
+
+# Install Node.js
+echo -e "${GREEN}[2/7] Installing Node.js $NODE_VERSION...${NC}"
+if ! command -v node &> /dev/null; then
+  if [ "$OS" = "ubuntu" ] || [ "$OS" = "debian" ] || [ "$OS" = "raspbian" ]; then
+    curl -fsSL https://deb.nodesource.com/setup_${NODE_VERSION}.x | bash -
+    apt-get install -y nodejs git
+  elif [ "$OS" = "centos" ] || [ "$OS" = "rhel" ]; then
+    curl -fsSL https://rpm.nodesource.com/setup_${NODE_VERSION}.x | bash -
+    yum install -y nodejs git
+  else
+    echo -e "${YELLOW}Warning: Unsupported OS for auto Node.js install. Please install Node.js $NODE_VERSION manually.${NC}"
     exit 1
-fi
-
-# Check if Node.js 18+ is installed
-echo ""
-echo "[1/7] Checking Node.js..."
-if command -v node &> /dev/null; then
-    NODE_VERSION=$(node -v | cut -d'v' -f2 | cut -d'.' -f1)
-    if [ "$NODE_VERSION" -ge 18 ]; then
-        echo -e "${GREEN}Node.js $(node -v) already installed${NC}"
-    else
-        echo -e "${YELLOW}Node.js version too old. Upgrading...${NC}"
-        curl -fsSL https://deb.nodesource.com/setup_18.x | bash -
-        apt-get install -y nodejs
-    fi
+  fi
 else
-    echo -e "${YELLOW}Installing Node.js 18...${NC}"
-    curl -fsSL https://deb.nodesource.com/setup_18.x | bash -
-    apt-get install -y nodejs
-fi
-
-# Check if Git is installed
-echo ""
-echo "[2/7] Checking Git..."
-if ! command -v git &> /dev/null; then
-    echo -e "${YELLOW}Installing Git...${NC}"
-    apt-get install -y git
-else
-    echo -e "${GREEN}Git already installed${NC}"
+  echo "Node.js already installed: $(node --version)"
 fi
 
 # Clone repository
-echo ""
-echo "[3/7] Cloning repository..."
-INSTALL_DIR="/opt/hedera-hydropower-mrv"
-
+echo -e "${GREEN}[3/7] Cloning MRV repository...${NC}"
 if [ -d "$INSTALL_DIR" ]; then
-    echo -e "${YELLOW}Directory exists. Pulling latest changes...${NC}"
-    cd "$INSTALL_DIR"
-    git pull origin main
+  echo -e "${YELLOW}Warning: $INSTALL_DIR already exists. Pulling latest...${NC}"
+  cd "$INSTALL_DIR"
+  git pull origin "$BRANCH"
 else
-    echo -e "${GREEN}Cloning fresh installation...${NC}"
-    git clone https://github.com/BikramBiswas786/https-github.com-BikramBiswas786-hedera-hydropower-mrv.git "$INSTALL_DIR"
-    cd "$INSTALL_DIR"
+  git clone -b "$BRANCH" "$REPO_URL" "$INSTALL_DIR"
+  cd "$INSTALL_DIR"
 fi
 
 # Install dependencies
-echo ""
-echo "[4/7] Installing Node.js dependencies..."
-npm install --production
+echo -e "${GREEN}[4/7] Installing npm dependencies...${NC}"
+npm ci --production
 
-# Create dedicated user
-echo ""
-echo "[5/7] Creating system user..."
-if ! id -u mrv &> /dev/null; then
-    useradd -r -s /bin/false -d "$INSTALL_DIR" mrv
-    echo -e "${GREEN}User 'mrv' created${NC}"
-else
-    echo -e "${GREEN}User 'mrv' already exists${NC}"
-fi
+# Create .env file
+echo -e "${GREEN}[5/7] Creating .env configuration...${NC}"
+cat > "$INSTALL_DIR/.env" <<EOF
+# Hedera Network Configuration
+HEDERA_NETWORK=testnet
+HEDERA_OPERATOR_ID=0.0.6255927
+HEDERA_OPERATOR_KEY=
+AUDIT_TOPIC_ID=0.0.7462776
+REC_TOKEN_ID=0.0.7964264
 
-# Create data directory
-echo ""
-echo "[6/7] Setting up directories..."
-mkdir -p "$INSTALL_DIR/data"
-chown -R mrv:mrv "$INSTALL_DIR"
-chmod 750 "$INSTALL_DIR"
-chmod 770 "$INSTALL_DIR/data"
+# Plant Configuration
+PLANT_ID=$PLANT_ID
+DEVICE_ID=$DEVICE_ID
+EF_GRID=$EF_GRID
 
-# Setup .env file
-echo ""
-echo "[7/7] Configuring environment..."
-if [ ! -f "$INSTALL_DIR/.env" ]; then
-    echo -e "${YELLOW}Creating .env file from template...${NC}"
-    cp "$INSTALL_DIR/.env.example" "$INSTALL_DIR/.env"
-    
-    echo ""
-    echo -e "${YELLOW}⚠️  IMPORTANT: Edit /opt/hedera-hydropower-mrv/.env with your credentials:${NC}"
-    echo "  - HEDERA_OPERATOR_ID"
-    echo "  - HEDERA_OPERATOR_KEY"
-    echo "  - PLANT_ID"
-    echo "  - DEVICE_ID"
-    echo "  - VALID_API_KEYS"
-    echo ""
-    echo "Get free testnet credentials: https://portal.hedera.com/faucet"
-    echo ""
-else
-    echo -e "${GREEN}.env file already exists${NC}"
-fi
+# API Authentication
+VALID_API_KEYS=$API_KEY
+
+# Modbus Configuration (if using Modbus bridge)
+MODBUS_TYPE=RTU
+MODBUS_PORT=/dev/ttyUSB0
+MODBUS_BAUD_RATE=9600
+MODBUS_SLAVE_ID=1
+
+# HTTP API Configuration (if using HTTP bridge)
+PLC_API_BASE_URL=http://192.168.1.10:8080
+PLC_API_USERNAME=admin
+PLC_API_PASSWORD=admin
+
+# Monitoring
+PORT=3000
+LOG_LEVEL=info
+POLL_INTERVAL=300000
+
+# Backup
+BACKUP_LOG_PATH=/var/log/hedera-mrv/failed-readings.log
+EOF
+
+chmod 600 "$INSTALL_DIR/.env"
+
+echo -e "${YELLOW}Note: Update HEDERA_OPERATOR_KEY in $INSTALL_DIR/.env with your private key${NC}"
+
+# Create log directory
+mkdir -p /var/log/hedera-mrv
 
 # Install systemd service
-echo ""
-read -p "Install as systemd service? (y/n) " -n 1 -r
-echo ""
-if [[ $REPLY =~ ^[Yy]$ ]]; then
-    echo "Installing systemd service..."
-    cp "$INSTALL_DIR/deployment/hedera-mrv.service" /etc/systemd/system/
-    systemctl daemon-reload
-    systemctl enable hedera-mrv
-    echo -e "${GREEN}Service installed and enabled${NC}"
-    echo ""
-    echo "Start the service with:"
-    echo "  sudo systemctl start hedera-mrv"
-    echo ""
-    echo "View logs with:"
-    echo "  sudo journalctl -u hedera-mrv -f"
-fi
+echo -e "${GREEN}[6/7] Installing systemd service...${NC}"
+cat > /etc/systemd/system/hedera-mrv.service <<EOF
+[Unit]
+Description=Hedera Hydropower MRV Edge Gateway
+After=network.target
 
-# Final instructions
+[Service]
+Type=simple
+User=root
+WorkingDirectory=$INSTALL_DIR
+ExecStart=/usr/bin/node examples/plant-bridge-modbus.js
+Restart=on-failure
+RestartSec=10s
+StandardOutput=journal
+StandardError=journal
+
+# Environment
+Environment="NODE_ENV=production"
+
+[Install]
+WantedBy=multi-user.target
+EOF
+
+systemctl daemon-reload
+
+# Enable but don't start yet
+echo -e "${GREEN}[7/7] Enabling service...${NC}"
+systemctl enable hedera-mrv
+
 echo ""
-echo "====================================="
-echo -e "${GREEN}Installation Complete!${NC}"
-echo "====================================="
+echo -e "${GREEN}✓ Installation complete!${NC}"
 echo ""
 echo "Next steps:"
-echo "  1. Edit configuration: sudo nano /opt/hedera-hydropower-mrv/.env"
-echo "  2. Adjust Modbus registers: sudo nano /opt/hedera-hydropower-mrv/examples/plant-bridge-modbus.js"
-echo "  3. Run tests: cd /opt/hedera-hydropower-mrv && npm test"
-echo "  4. Start service: sudo systemctl start hedera-mrv"
-echo "  5. Check status: sudo systemctl status hedera-mrv"
+echo "1. Edit $INSTALL_DIR/.env and add your HEDERA_OPERATOR_KEY"
+echo "2. Configure Modbus/HTTP settings in .env"
+echo "3. Start the service: sudo systemctl start hedera-mrv"
+echo "4. Check logs: sudo journalctl -u hedera-mrv -f"
 echo ""
-echo "Documentation: https://github.com/BikramBiswas786/https-github.com-BikramBiswas786-hedera-hydropower-mrv/blob/main/docs/PILOT_PLAN_6MW_PLANT.md"
-echo ""
+echo "For more details, see: https://github.com/BikramBiswas786/https-github.com-BikramBiswas786-hedera-hydropower-mrv"

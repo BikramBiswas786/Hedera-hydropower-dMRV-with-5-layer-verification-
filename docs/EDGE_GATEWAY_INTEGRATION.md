@@ -49,7 +49,7 @@ The MRV system runs on an **edge gateway** (industrial computer or Raspberry Pi)
 - Works with most USB-to-RS485 adapters
 
 **Cons:**
-- Not industrial-rated (0–50°C vs −40 to +75°C)
+- Not industrial-rated (0–50°C vs ‑40 to +75°C)
 - SD card reliability (use industrial-grade SD or SSD)
 - Requires separate enclosure
 
@@ -69,7 +69,7 @@ The MRV system runs on an **edge gateway** (industrial computer or Raspberry Pi)
 ### Option B: Industrial Edge Gateway (₹60K total)
 
 **Pros:**
-- Industrial temperature range (−40 to +75°C)
+- Industrial temperature range (‑40 to +75°C)
 - Ruggedized design (vibration, humidity resistant)
 - Built-in RS485/RS232 ports
 - DIN rail mounting

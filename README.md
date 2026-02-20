@@ -508,3 +508,5 @@ Hackathon: AngelHack Apex 2026 • Sustainability Track
 ---
 
 **Built with 💚 for a sustainable future**
+ 
+ 

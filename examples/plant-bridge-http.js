@@ -1,192 +1,197 @@
 /**
- * Example Plant Bridge Script for HTTP/REST API Integration
+ * HTTP/REST Edge Bridge for Hedera MRV
  * 
- * This script demonstrates how to integrate Hedera MRV with SCADA systems
- * that expose data via REST APIs (common with modern IoT gateways).
+ * For PLCs/SCADA systems with HTTP API or OPC-UA endpoints.
+ * Polls data via HTTP GET/POST and submits to MRV system.
  * 
- * HARDWARE REQUIREMENTS:
- * - SCADA/PLC with HTTP API enabled
- * - Network connectivity to SCADA system
- * 
- * INSTALLATION:
- * npm install axios
- * 
- * USAGE:
- * node examples/plant-bridge-http.js
+ * Use case: Modern PLCs with REST APIs (Siemens S7-1500, Allen-Bradley, etc.)
  */
 
-require('dotenv').config();
+const axios = require('axios');
 const Workflow = require('../src/workflow');
 const { validateTelemetry } = require('../src/validation/telemetry');
-const axios = require('axios');
 const fs = require('fs');
-const path = require('path');
+
+require('dotenv').config();
 
 // Configuration
-const SCADA_API_URL = process.env.SCADA_API_URL || 'http://192.168.1.100/api/telemetry';
-const SCADA_API_KEY = process.env.SCADA_API_KEY;
-const POLLING_INTERVAL_MS = parseInt(process.env.POLLING_INTERVAL_MS || '300000'); // 5 minutes
-const PLANT_ID = process.env.PLANT_ID || 'PLANT-HP-001';
-const DEVICE_ID = process.env.DEVICE_ID || 'TURBINE-001';
-const EF_GRID = parseFloat(process.env.EF_GRID || '0.82');
+const CONFIG = {
+  // PLC API endpoint
+  plcApi: {
+    baseUrl: process.env.PLC_API_BASE_URL || 'http://192.168.1.10:8080',
+    username: process.env.PLC_API_USERNAME || 'admin',
+    password: process.env.PLC_API_PASSWORD || 'admin',
+    timeout: parseInt(process.env.PLC_API_TIMEOUT || '10000') // 10 seconds
+  },
+  
+  // Endpoint paths (adjust per your PLC API)
+  endpoints: {
+    flowRate: '/api/sensors/flow',
+    headPressure: '/api/sensors/pressure',
+    activePower: '/api/sensors/power',
+    pH: '/api/sensors/ph',
+    turbidity: '/api/sensors/turbidity'
+  },
+  
+  // MRV settings
+  pollInterval: parseInt(process.env.POLL_INTERVAL || '300000'), // 5 minutes
+  plantId: process.env.PLANT_ID || 'PLANT-HP-001',
+  deviceId: process.env.DEVICE_ID || 'TURBINE-001',
+  efGrid: parseFloat(process.env.EF_GRID || '0.82'),
+  
+  // Backup log path
+  backupLogPath: process.env.BACKUP_LOG_PATH || '/data/failed-readings.log'
+};
 
-let workflow = null;
-let isRunning = false;
+// HTTP client with auth
+const httpClient = axios.create({
+  baseURL: CONFIG.plcApi.baseUrl,
+  timeout: CONFIG.plcApi.timeout,
+  auth: {
+    username: CONFIG.plcApi.username,
+    password: CONFIG.plcApi.password
+  }
+});
+
+let workflow;
 
 /**
- * Fetch telemetry from SCADA HTTP API
+ * Fetch sensor value from PLC HTTP API
  */
-async function fetchSCADAData() {
+async function fetchSensor(name, endpoint) {
   try {
-    const headers = {};
-    if (SCADA_API_KEY) {
-      headers['Authorization'] = `Bearer ${SCADA_API_KEY}`;
-    }
-
-    const response = await axios.get(SCADA_API_URL, {
-      headers,
-      timeout: 10000 // 10s timeout
-    });
-
-    // Assuming SCADA returns data in this format:
-    // {
-    //   "flow_rate_m3s": 2.5,
-    //   "head_pressure_bar": 4.4,
-    //   "active_power_kw": 900,
-    //   "ph": 7.2,
-    //   "turbidity_ntu": 12
-    // }
+    const response = await httpClient.get(endpoint);
+    const value = response.data.value || response.data; // Handle different response formats
     
-    const data = response.data;
-
-    // Map to MRV telemetry format
-    const rawTelemetry = {
-      flowRate: data.flow_rate_m3s || data.flowRate,
-      head: data.head_pressure_bar ? data.head_pressure_bar * 10.2 : data.head,
-      generatedKwh: data.active_power_kw ? data.active_power_kw * (POLLING_INTERVAL_MS / (1000 * 60 * 60)) : data.generatedKwh,
-      pH: data.ph || data.pH || undefined,
-      turbidity: data.turbidity_ntu || data.turbidity || undefined,
-      temperature: data.temperature_celsius || data.temperature || undefined,
-      timestamp: data.timestamp || new Date().toISOString()
-    };
-
-    return rawTelemetry;
+    console.log(`[HTTP] ${name}: ${value}`);
+    return typeof value === 'number' ? value : parseFloat(value);
+    
   } catch (error) {
-    if (error.code === 'ECONNREFUSED') {
-      throw new Error('Cannot connect to SCADA API. Check URL and network.');
+    if (error.response) {
+      console.error(`[HTTP] ${name} returned ${error.response.status}: ${error.response.statusText}`);
+    } else if (error.request) {
+      console.error(`[HTTP] ${name} no response (timeout or network error)`);
+    } else {
+      console.error(`[HTTP] ${name} error:`, error.message);
     }
-    throw error;
+    return undefined;
   }
 }
 
 /**
- * Main polling loop
+ * Poll all sensors and submit telemetry
  */
-async function pollAndSubmit() {
-  if (!isRunning) return;
-
+async function pollSensors() {
+  console.log('\n[Poll] Starting sensor poll...');
+  const timestamp = new Date().toISOString();
+  
   try {
-    console.log(`\n[${new Date().toISOString()}] Fetching from SCADA API...`);
+    // Fetch all sensors in parallel
+    const [flowRate, headPressure, activePower, pH, turbidity] = await Promise.all([
+      fetchSensor('flowRate', CONFIG.endpoints.flowRate),
+      fetchSensor('headPressure', CONFIG.endpoints.headPressure),
+      fetchSensor('activePower', CONFIG.endpoints.activePower),
+      fetchSensor('pH', CONFIG.endpoints.pH),
+      fetchSensor('turbidity', CONFIG.endpoints.turbidity)
+    ]);
     
-    // Fetch data from SCADA
-    const rawTelemetry = await fetchSCADAData();
-    console.log('[SCADA] Data received:', JSON.stringify(rawTelemetry, null, 2));
-
-    // Validate telemetry
+    // Convert units (adjust per your PLC API response format)
+    const rawTelemetry = {
+      flowRate: flowRate,
+      head: headPressure ? headPressure * 10.2 : undefined, // assuming pressure in bar
+      generatedKwh: activePower ? activePower * (CONFIG.pollInterval / 3600000) : undefined, // kW to kWh
+      pH: pH,
+      turbidity: turbidity,
+      timestamp: timestamp
+    };
+    
+    console.log('[Poll] Raw telemetry:', JSON.stringify(rawTelemetry, null, 2));
+    
+    // Validate before submission
     const validation = validateTelemetry(rawTelemetry);
-
+    
     if (!validation.valid) {
-      console.error('[VALIDATION] FAILED:', validation.errors);
+      console.error('[Validation] FAILED:', validation.errors);
       
-      const logPath = path.join(__dirname, '../data/failed-readings.log');
-      fs.appendFileSync(
-        logPath,
-        `${Date.now()},${JSON.stringify(rawTelemetry)},${validation.errors.join('; ')}\n`
-      );
+      // Log to backup file
+      const logEntry = `${Date.now()},${JSON.stringify(rawTelemetry)},${validation.errors.join('; ')}\n`;
+      fs.appendFileSync(CONFIG.backupLogPath, logEntry);
       
       return;
     }
-
+    
     if (validation.warnings.length > 0) {
-      console.warn('[VALIDATION] Warnings:', validation.warnings);
+      console.warn('[Validation] Warnings:', validation.warnings);
     }
-
-    // Submit to MRV
+    
+    // Submit to MRV system
     console.log('[MRV] Submitting to Hedera...');
     const result = await workflow.submitReading(validation.normalized);
-
-    console.log('[MRV] Verification complete:');
-    console.log(`  Status: ${result.verificationStatus}`);
-    console.log(`  Trust Score: ${result.trustScore.toFixed(4)}`);
-    console.log(`  Transaction ID: ${result.transactionId || 'N/A'}`);
-
-    if (result.verificationStatus === 'APPROVED') {
-      const logPath = path.join(__dirname, '../data/approved-readings.log');
-      fs.appendFileSync(
-        logPath,
-        `${Date.now()},${result.trustScore},${result.transactionId},${JSON.stringify(validation.normalized)}\n`
-      );
-    }
-
-  } catch (error) {
-    console.error('[ERROR]', error.message);
     
-    const errorLogPath = path.join(__dirname, '../data/errors.log');
-    fs.appendFileSync(
-      errorLogPath,
-      `${new Date().toISOString()},${error.message}\n`
+    console.log(
+      `[MRV] ✓ Status: ${result.verificationStatus} | ` +
+      `Trust: ${result.trustScore.toFixed(4)} | ` +
+      `TX: ${result.transactionId || 'N/A'}`
     );
-  } finally {
-    if (isRunning) {
-      setTimeout(pollAndSubmit, POLLING_INTERVAL_MS);
+    
+    if (result.verificationStatus === 'REJECTED') {
+      console.warn('[MRV] ⚠ Reading REJECTED by AI Guardian');
     }
-  }
-}
-
-process.on('SIGINT', async () => {
-  console.log('\n[SHUTDOWN] Graceful shutdown...');
-  isRunning = false;
-  
-  if (workflow) {
-    await workflow.cleanup();
-  }
-  
-  process.exit(0);
-});
-
-async function main() {
-  console.log('=== Hedera Hydropower MRV Plant Bridge (HTTP) ===');
-  console.log(`Plant ID: ${PLANT_ID}`);
-  console.log(`Device ID: ${DEVICE_ID}`);
-  console.log(`SCADA API: ${SCADA_API_URL}`);
-  console.log(`Polling interval: ${POLLING_INTERVAL_MS / 1000}s`);
-  console.log();
-
-  const dataDir = path.join(__dirname, '../data');
-  if (!fs.existsSync(dataDir)) {
-    fs.mkdirSync(dataDir, { recursive: true });
-  }
-
-  try {
-    console.log('[MRV] Initializing workflow...');
-    workflow = new Workflow();
-    await workflow.initialize(PLANT_ID, DEVICE_ID, EF_GRID);
-    console.log('[MRV] Workflow initialized');
+    
   } catch (error) {
-    console.error('[FATAL] Workflow init failed:', error.message);
-    process.exit(1);
+    console.error('[Poll] Error:', error.message);
   }
-
-  isRunning = true;
-  console.log(`[START] Polling every ${POLLING_INTERVAL_MS / 1000}s. Press Ctrl+C to stop.\n`);
-  pollAndSubmit();
 }
 
-if (require.main === module) {
-  main().catch(error => {
-    console.error('[FATAL]', error);
+/**
+ * Main entry point
+ */
+async function main() {
+  console.log('=== Hedera MRV Edge Gateway ===');
+  console.log('Mode: HTTP/REST API');
+  console.log('PLC API:', CONFIG.plcApi.baseUrl);
+  console.log('Plant ID:', CONFIG.plantId);
+  console.log('Device ID:', CONFIG.deviceId);
+  console.log('Poll Interval:', CONFIG.pollInterval / 1000, 'seconds');
+  console.log('================================\n');
+  
+  // Initialize MRV workflow
+  try {
+    workflow = new Workflow();
+    await workflow.initialize(CONFIG.plantId, CONFIG.deviceId, CONFIG.efGrid);
+    console.log('[MRV] Workflow initialized\n');
+  } catch (error) {
+    console.error('[MRV] Failed to initialize:', error.message);
     process.exit(1);
+  }
+  
+  // Test PLC connectivity
+  try {
+    console.log('[HTTP] Testing PLC connectivity...');
+    await httpClient.get('/api/health'); // adjust endpoint
+    console.log('[HTTP] PLC API reachable\n');
+  } catch (error) {
+    console.warn('[HTTP] PLC API health check failed, continuing anyway...\n');
+  }
+  
+  // Start polling loop
+  console.log('[Poll] Starting continuous polling...\n');
+  
+  // Poll immediately
+  await pollSensors();
+  
+  // Then poll every interval
+  setInterval(pollSensors, CONFIG.pollInterval);
+  
+  // Handle graceful shutdown
+  process.on('SIGINT', () => {
+    console.log('\n[Shutdown] Stopping polling...');
+    process.exit(0);
   });
 }
 
-module.exports = { fetchSCADAData, pollAndSubmit };
+// Run
+main().catch(error => {
+  console.error('[Fatal]', error);
+  process.exit(1);
+});

@@ -1,247 +1,230 @@
 /**
- * Example Plant Bridge Script for Modbus RTU/TCP Sensors
+ * Modbus RTU/TCP Edge Bridge for Hedera MRV
  * 
- * This script demonstrates how to integrate Hedera MRV with existing
- * SCADA/PLC systems using Modbus protocol.
+ * Connects to PLC/SCADA via Modbus protocol, reads sensor data,
+ * validates it, and submits to MRV system.
  * 
- * HARDWARE REQUIREMENTS:
- * - Edge gateway (Raspberry Pi 4 or industrial gateway)
- * - Modbus RTU/TCP sensors (flow, pressure, power)
- * - Network connectivity (Ethernet preferred over WiFi)
- * 
- * INSTALLATION:
- * npm install modbus-serial
- * 
- * USAGE:
- * node examples/plant-bridge-modbus.js
+ * Hardware: Raspberry Pi 4 with RS485 HAT or industrial edge gateway
+ * Protocol: Modbus RTU (serial) or Modbus TCP (ethernet)
  */
 
-require('dotenv').config();
+const ModbusRTU = require('modbus-serial');
 const Workflow = require('../src/workflow');
 const { validateTelemetry } = require('../src/validation/telemetry');
-const ModbusRTU = require('modbus-serial');
 const fs = require('fs');
 const path = require('path');
 
-// Configuration
-const MODBUS_PORT = process.env.MODBUS_PORT || '/dev/ttyUSB0';
-const MODBUS_BAUDRATE = parseInt(process.env.MODBUS_BAUDRATE || '9600');
-const MODBUS_SLAVE_ID = parseInt(process.env.MODBUS_SLAVE_ID || '1');
-const POLLING_INTERVAL_MS = parseInt(process.env.POLLING_INTERVAL_MS || '300000'); // 5 minutes
-const PLANT_ID = process.env.PLANT_ID || 'PLANT-HP-001';
-const DEVICE_ID = process.env.DEVICE_ID || 'TURBINE-001';
-const EF_GRID = parseFloat(process.env.EF_GRID || '0.82');
+require('dotenv').config();
 
-// Modbus register map (adjust per your PLC manual)
-const REGISTERS = {
-  FLOW_RATE: 100,      // Register 100: Flow rate in m³/s × 100
-  HEAD_PRESSURE: 102,  // Register 102: Head pressure in bar × 100
-  ACTIVE_POWER: 104,   // Register 104: Active power in kW
-  PH: 106,             // Register 106: pH × 100 (optional)
-  TURBIDITY: 108       // Register 108: Turbidity in NTU × 10 (optional)
+// Configuration
+const CONFIG = {
+  // Modbus connection
+  modbus: {
+    type: process.env.MODBUS_TYPE || 'RTU', // RTU or TCP
+    port: process.env.MODBUS_PORT || '/dev/ttyUSB0',
+    baudRate: parseInt(process.env.MODBUS_BAUD_RATE || '9600'),
+    tcpHost: process.env.MODBUS_TCP_HOST || '192.168.1.10',
+    tcpPort: parseInt(process.env.MODBUS_TCP_PORT || '502'),
+    slaveId: parseInt(process.env.MODBUS_SLAVE_ID || '1')
+  },
+  
+  // Register mapping (adjust per your PLC manual)
+  registers: {
+    flowRate: { address: 100, scale: 100 },      // m³/s (value/100)
+    headPressure: { address: 102, scale: 100 },  // bar (value/100)
+    activePower: { address: 104, scale: 1 },     // kW
+    pH: { address: 106, scale: 100 },            // pH (value/100)
+    turbidity: { address: 108, scale: 10 }       // NTU (value/10)
+  },
+  
+  // MRV settings
+  pollInterval: parseInt(process.env.POLL_INTERVAL || '300000'), // 5 minutes
+  plantId: process.env.PLANT_ID || 'PLANT-HP-001',
+  deviceId: process.env.DEVICE_ID || 'TURBINE-001',
+  efGrid: parseFloat(process.env.EF_GRID || '0.82'),
+  
+  // Backup log path
+  backupLogPath: process.env.BACKUP_LOG_PATH || '/data/failed-readings.log'
 };
 
 // Initialize Modbus client
 const modbusClient = new ModbusRTU();
-
-// Initialize MRV workflow
-let workflow = null;
-let isRunning = false;
+let workflow;
+let isConnected = false;
 
 /**
- * Initialize Modbus connection
+ * Connect to Modbus device
  */
-async function initModbus() {
+async function connectModbus() {
   try {
-    console.log(`[MODBUS] Connecting to ${MODBUS_PORT} at ${MODBUS_BAUDRATE} baud...`);
-    await modbusClient.connectRTUBuffered(MODBUS_PORT, {
-      baudRate: MODBUS_BAUDRATE
-    });
-    modbusClient.setID(MODBUS_SLAVE_ID);
-    console.log('[MODBUS] Connected successfully');
-    return true;
-  } catch (error) {
-    console.error('[MODBUS] Connection failed:', error.message);
-    return false;
-  }
-}
-
-/**
- * Read sensor data from Modbus registers
- */
-async function readSensors() {
-  try {
-    // Read all registers (adjust per your sensor layout)
-    const flowRate = await modbusClient.readHoldingRegisters(REGISTERS.FLOW_RATE, 1);
-    const headPressure = await modbusClient.readHoldingRegisters(REGISTERS.HEAD_PRESSURE, 1);
-    const activePower = await modbusClient.readHoldingRegisters(REGISTERS.ACTIVE_POWER, 1);
+    if (CONFIG.modbus.type === 'RTU') {
+      console.log(`[Modbus] Connecting to ${CONFIG.modbus.port} @ ${CONFIG.modbus.baudRate} baud...`);
+      await modbusClient.connectRTUBuffered(CONFIG.modbus.port, {
+        baudRate: CONFIG.modbus.baudRate
+      });
+    } else if (CONFIG.modbus.type === 'TCP') {
+      console.log(`[Modbus] Connecting to ${CONFIG.modbus.tcpHost}:${CONFIG.modbus.tcpPort}...`);
+      await modbusClient.connectTCP(CONFIG.modbus.tcpHost, {
+        port: CONFIG.modbus.tcpPort
+      });
+    } else {
+      throw new Error(`Unsupported Modbus type: ${CONFIG.modbus.type}`);
+    }
     
-    // Optional sensors (may not be present in all plants)
-    let pH, turbidity;
-    try {
-      pH = await modbusClient.readHoldingRegisters(REGISTERS.PH, 1);
-    } catch (e) {
-      pH = null;
-    }
-    try {
-      turbidity = await modbusClient.readHoldingRegisters(REGISTERS.TURBIDITY, 1);
-    } catch (e) {
-      turbidity = null;
-    }
-
-    // Convert raw values
-    const rawTelemetry = {
-      flowRate: flowRate.data[0] / 100, // Convert from centim³/s to m³/s
-      head: (headPressure.data[0] / 100) * 10.2, // bar to meters (1 bar ≈ 10.2m water column)
-      generatedKwh: activePower.data[0] * (POLLING_INTERVAL_MS / (1000 * 60 * 60)), // kW × hours → kWh
-      pH: pH && pH.data[0] !== 0 ? pH.data[0] / 100 : undefined,
-      turbidity: turbidity && turbidity.data[0] !== 0 ? turbidity.data[0] / 10 : undefined,
-      timestamp: new Date().toISOString()
-    };
-
-    return rawTelemetry;
+    modbusClient.setID(CONFIG.modbus.slaveId);
+    modbusClient.setTimeout(5000); // 5 second timeout
+    isConnected = true;
+    console.log('[Modbus] Connected successfully');
+    
   } catch (error) {
-    console.error('[MODBUS] Read error:', error.message);
+    console.error('[Modbus] Connection failed:', error.message);
+    isConnected = false;
     throw error;
   }
 }
 
 /**
- * Main polling loop
+ * Read sensor value from Modbus register
  */
-async function pollAndSubmit() {
-  if (!isRunning) return;
-
+async function readRegister(name, config) {
   try {
-    console.log(`\n[${new Date().toISOString()}] Reading sensors...`);
+    const result = await modbusClient.readHoldingRegisters(config.address, 1);
+    const rawValue = result.data[0];
+    const scaledValue = rawValue / config.scale;
     
-    // Read raw sensor data
-    const rawTelemetry = await readSensors();
-    console.log('[SENSORS] Raw data:', JSON.stringify(rawTelemetry, null, 2));
-
-    // Validate telemetry BEFORE submission
-    const validation = validateTelemetry(rawTelemetry);
-
-    if (!validation.valid) {
-      console.error('[VALIDATION] FAILED:', validation.errors);
-      
-      // Log to backup file for debugging
-      const logPath = path.join(__dirname, '../data/failed-readings.log');
-      fs.appendFileSync(
-        logPath,
-        `${Date.now()},${JSON.stringify(rawTelemetry)},${validation.errors.join('; ')}\n`
-      );
-      
-      console.log('[BACKUP] Failed reading logged to', logPath);
-      return; // Skip this reading
-    }
-
-    if (validation.warnings.length > 0) {
-      console.warn('[VALIDATION] Warnings:', validation.warnings);
-    }
-
-    // Submit validated telemetry to MRV system
-    console.log('[MRV] Submitting to Hedera...');
-    const result = await workflow.submitReading(validation.normalized);
-
-    console.log('[MRV] Verification complete:');
-    console.log(`  Status: ${result.verificationStatus}`);
-    console.log(`  Trust Score: ${result.trustScore.toFixed(4)}`);
-    console.log(`  Transaction ID: ${result.transactionId || 'N/A'}`);
-
-    // Log approved readings to separate file
-    if (result.verificationStatus === 'APPROVED') {
-      const logPath = path.join(__dirname, '../data/approved-readings.log');
-      fs.appendFileSync(
-        logPath,
-        `${Date.now()},${result.trustScore},${result.transactionId},${JSON.stringify(validation.normalized)}\n`
-      );
-    }
-
+    console.log(`[Modbus] ${name}: ${rawValue} (raw) → ${scaledValue.toFixed(2)} (scaled)`);
+    return scaledValue;
+    
   } catch (error) {
-    console.error('[ERROR]', error.message);
-    
-    // Log errors
-    const errorLogPath = path.join(__dirname, '../data/errors.log');
-    fs.appendFileSync(
-      errorLogPath,
-      `${new Date().toISOString()},${error.message}\n`
-    );
-  } finally {
-    // Schedule next poll
-    if (isRunning) {
-      setTimeout(pollAndSubmit, POLLING_INTERVAL_MS);
-    }
+    console.error(`[Modbus] Failed to read ${name}:`, error.message);
+    return undefined;
   }
 }
 
 /**
- * Graceful shutdown handler
+ * Poll all sensors and submit telemetry
  */
-process.on('SIGINT', async () => {
-  console.log('\n[SHUTDOWN] Received SIGINT, shutting down gracefully...');
-  isRunning = false;
+async function pollSensors() {
+  console.log('\n[Poll] Starting sensor poll...');
+  const timestamp = new Date().toISOString();
   
   try {
-    if (modbusClient.isOpen) {
-      modbusClient.close();
+    // Ensure Modbus connected
+    if (!isConnected) {
+      await connectModbus();
     }
-    if (workflow) {
-      await workflow.cleanup();
+    
+    // Read all sensors
+    const flowRate = await readRegister('flowRate', CONFIG.registers.flowRate);
+    const headPressure = await readRegister('headPressure', CONFIG.registers.headPressure);
+    const activePower = await readRegister('activePower', CONFIG.registers.activePower);
+    const pH = await readRegister('pH', CONFIG.registers.pH);
+    const turbidity = await readRegister('turbidity', CONFIG.registers.turbidity);
+    
+    // Convert units
+    const rawTelemetry = {
+      flowRate: flowRate,
+      head: headPressure ? headPressure * 10.2 : undefined, // bar to meters (1 bar ≈ 10.2m H2O)
+      generatedKwh: activePower ? activePower * (CONFIG.pollInterval / 3600000) : undefined, // kW × hours → kWh
+      pH: pH,
+      turbidity: turbidity,
+      timestamp: timestamp
+    };
+    
+    console.log('[Poll] Raw telemetry:', JSON.stringify(rawTelemetry, null, 2));
+    
+    // Validate before submission
+    const validation = validateTelemetry(rawTelemetry);
+    
+    if (!validation.valid) {
+      console.error('[Validation] FAILED:', validation.errors);
+      
+      // Log to backup file
+      const logEntry = `${Date.now()},${JSON.stringify(rawTelemetry)},${validation.errors.join('; ')}\n`;
+      fs.appendFileSync(CONFIG.backupLogPath, logEntry);
+      
+      return;
     }
+    
+    if (validation.warnings.length > 0) {
+      console.warn('[Validation] Warnings:', validation.warnings);
+    }
+    
+    // Submit to MRV system
+    console.log('[MRV] Submitting to Hedera...');
+    const result = await workflow.submitReading(validation.normalized);
+    
+    console.log(
+      `[MRV] ✓ Status: ${result.verificationStatus} | ` +
+      `Trust: ${result.trustScore.toFixed(4)} | ` +
+      `TX: ${result.transactionId || 'N/A'}`
+    );
+    
+    if (result.verificationStatus === 'REJECTED') {
+      console.warn('[MRV] ⚠ Reading REJECTED by AI Guardian');
+    }
+    
   } catch (error) {
-    console.error('[SHUTDOWN] Cleanup error:', error.message);
+    console.error('[Poll] Error:', error.message);
+    
+    // Try to reconnect on next poll
+    isConnected = false;
   }
-  
-  process.exit(0);
-});
+}
 
 /**
  * Main entry point
  */
 async function main() {
-  console.log('=== Hedera Hydropower MRV Plant Bridge ===');
-  console.log(`Plant ID: ${PLANT_ID}`);
-  console.log(`Device ID: ${DEVICE_ID}`);
-  console.log(`Polling interval: ${POLLING_INTERVAL_MS / 1000}s`);
-  console.log();
-
-  // Ensure data directory exists
-  const dataDir = path.join(__dirname, '../data');
-  if (!fs.existsSync(dataDir)) {
-    fs.mkdirSync(dataDir, { recursive: true });
-  }
-
-  // Initialize Modbus
-  const modbusConnected = await initModbus();
-  if (!modbusConnected) {
-    console.error('[FATAL] Cannot connect to Modbus. Check wiring and configuration.');
-    process.exit(1);
-  }
-
+  console.log('=== Hedera MRV Edge Gateway ===');
+  console.log('Mode: Modbus', CONFIG.modbus.type);
+  console.log('Plant ID:', CONFIG.plantId);
+  console.log('Device ID:', CONFIG.deviceId);
+  console.log('Poll Interval:', CONFIG.pollInterval / 1000, 'seconds');
+  console.log('================================\n');
+  
   // Initialize MRV workflow
   try {
-    console.log('[MRV] Initializing workflow...');
     workflow = new Workflow();
-    await workflow.initialize(PLANT_ID, DEVICE_ID, EF_GRID);
-    console.log('[MRV] Workflow initialized');
+    await workflow.initialize(CONFIG.plantId, CONFIG.deviceId, CONFIG.efGrid);
+    console.log('[MRV] Workflow initialized\n');
   } catch (error) {
-    console.error('[FATAL] Workflow init failed:', error.message);
+    console.error('[MRV] Failed to initialize:', error.message);
     process.exit(1);
   }
-
+  
+  // Connect to Modbus
+  try {
+    await connectModbus();
+  } catch (error) {
+    console.error('[Modbus] Initial connection failed, will retry on first poll');
+  }
+  
   // Start polling loop
-  isRunning = true;
-  console.log(`[START] Polling every ${POLLING_INTERVAL_MS / 1000}s. Press Ctrl+C to stop.\n`);
-  pollAndSubmit();
-}
-
-// Run
-if (require.main === module) {
-  main().catch(error => {
-    console.error('[FATAL]', error);
-    process.exit(1);
+  console.log('[Poll] Starting continuous polling...\n');
+  
+  // Poll immediately
+  await pollSensors();
+  
+  // Then poll every interval
+  setInterval(pollSensors, CONFIG.pollInterval);
+  
+  // Handle graceful shutdown
+  process.on('SIGINT', async () => {
+    console.log('\n[Shutdown] Closing connections...');
+    if (modbusClient.isOpen) {
+      modbusClient.close(() => {
+        console.log('[Shutdown] Modbus connection closed');
+        process.exit(0);
+      });
+    } else {
+      process.exit(0);
+    }
   });
 }
 
-module.exports = { readSensors, pollAndSubmit };
+// Run
+main().catch(error => {
+  console.error('[Fatal]', error);
+  process.exit(1);
+});
