@@ -325,10 +325,15 @@ npm run test:coverage
 ## 📚 Documentation
 
 - **[HACKATHON.md](./HACKATHON.md)** - Submission checklist
-- **[IMPACT.md](./IMPACT.md)** - Hedera network impact metrics
-- **[VALIDATION.md](./VALIDATION.md)** - Market research & validation
+- **[VALIDATION.md](./VALIDATION.md)** - Market research & evidence-based validation
+- **[VERIFY.md](./VERIFY.md)** - AI verification methodology
 - **[DEMO_GUIDE.md](./DEMO_GUIDE.md)** - Video script & deployment guide
-- **[CONTRIBUTING.md](./CONTRIBUTING.md)** - Development setup & known issues
+- **[README-SETUP.md](./README-SETUP.md)** - Development setup
+- **[AUDIT_REPORT.md](./AUDIT_REPORT.md)** - Code audit report
+- **[ML_ROADMAP.md](./ML_ROADMAP.md)** - Machine learning roadmap
+- **[docs/API.md](./docs/API.md)** - API documentation
+- **[docs/MRV-METHODOLOGY.md](./docs/MRV-METHODOLOGY.md)** - MRV methodology details
+- **[docs/COST-ANALYSIS.md](./docs/COST-ANALYSIS.md)** - Cost-benefit analysis
 
 ---
 
@@ -340,7 +345,7 @@ npm run test:coverage
 ✅ **Hedera Integration**: HCS, HTS, Testnet Account  
 ✅ **Code Repository**: [GitHub](https://github.com/BikramBiswas786/https-github.com-BikramBiswas786-hedera-hydropower-mrv)  
 ✅ **Live Demo**: [Vercel Dashboard](https://hedera-hydropower-mrv.vercel.app)  
-✅ **Documentation**: Comprehensive README + 4 supplementary docs  
+✅ **Documentation**: Comprehensive README + 10 supplementary docs  
 ✅ **Tests**: 224 passing with 85% coverage  
 ✅ **License**: MIT  
 
@@ -385,7 +390,7 @@ npm run test:coverage
 
 ## 🤝 Contributing
 
-See [CONTRIBUTING.md](./CONTRIBUTING.md) for development setup and guidelines.
+See [README-SETUP.md](./README-SETUP.md) for development setup and guidelines.
 
 ---
 
