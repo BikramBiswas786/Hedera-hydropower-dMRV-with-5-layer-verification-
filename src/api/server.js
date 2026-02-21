@@ -2,7 +2,7 @@
  * Hedera Hydropower MRV REST API Server
  * Production-ready HTTP endpoints with ALL features integrated
  * 
- * Version: 1.6.0 - MULTI-TENANT MVP ADDED
+ * Version: 1.6.1 - BILLING ROUTES FIXED
  * Completion: 93% core + Multi-tenant foundation (disabled by default)
  * Features: MRV, ML, Forecasting, Clustering, Active Learning, Multi-Plant, Renewable Adapter, Multi-Tenant
  */
@@ -47,7 +47,7 @@ app.get('/health', (req, res) => {
     status: 'healthy', 
     timestamp: Date.now(),
     uptime: process.uptime(),
-    version: '1.6.0',
+    version: '1.6.1',
     completion: '93%',
     features: {
       forecasting: true,
@@ -452,14 +452,27 @@ console.log('✅ Multi-plant endpoints enabled: /api/v1/plants/*');
 // Revenue potential: ₹15.73-220.95 Cr/year
 
 const { router: tenantRouter } = require('./v1/tenants');
+
+// Mount tenant/subscription/pricing routes at /api/v1/tenants
 app.use('/api/v1/tenants', tenantRouter);
 
-console.log('✅ Multi-tenant endpoints enabled: /api/v1/tenants/*');
+// Mount billing routes separately at /api/v1/billing (not nested under /tenants)
+const { router: billingRouter } = require('./v1/billing');
+app.use('/api/v1/billing', billingRouter);
+
+// Mount subscription routes separately at /api/v1/subscriptions
+const { router: subscriptionRouter } = require('./v1/subscriptions');
+app.use('/api/v1/subscriptions', subscriptionRouter);
+
+console.log('✅ Multi-tenant endpoints enabled:');
+console.log('   • /api/v1/tenants/* (create, validate, me, pricing)');
+console.log('   • /api/v1/subscriptions/* (subscribe, me)');
+console.log('   • /api/v1/billing/* (meters, usage)');
 console.log('   ℹ️ Multi-tenant mode: DISABLED (set ENABLE_MULTI_TENANT=true to activate)');
 console.log('   📚 Revenue strategy: docs/revenue_integration_strategy.docx');
 
 // ═══════════════════════════════════════════════════════════════
-// 📊 FEATURE STATUS ENDPOINT (HONEST UPDATE v1.6.0)
+// 📊 FEATURE STATUS ENDPOINT (HONEST UPDATE v1.6.1)
 // ═══════════════════════════════════════════════════════════════
 
 app.get('/api/features', (req, res) => {
@@ -507,7 +520,7 @@ app.get('/api/features', (req, res) => {
       carbon_marketplace: { status: '30%', code_exists: true, mock_only: true, blocker: 'Requires Verra/Gold Standard API credentials' }
     },
     metadata: {
-      version: '1.6.0',
+      version: '1.6.1',
       last_updated: new Date().toISOString(),
       total_modules: 15,
       production_ready_count: 14,
@@ -515,7 +528,7 @@ app.get('/api/features', (req, res) => {
       completion_percentage: 93,
       multi_tenant_mvp: true,
       verified: true,
-      notes: 'Core 93% complete. Multi-tenant MVP added (disabled by default for hackathon stability)'
+      notes: 'Core 93% complete. Multi-tenant MVP added (disabled by default for hackathon stability). Billing routes fixed.'
     }
   });
 });
@@ -528,8 +541,8 @@ app.use('/api/v1/telemetry', telemetryRouter);
 app.get('/', (req, res) => {
   res.json({
     name: 'Hedera Hydropower MRV API',
-    version: '1.6.0',
-    status: '93% complete + Multi-tenant MVP',
+    version: '1.6.1',
+    status: '93% complete + Multi-tenant MVP (6/6 endpoints working)',
     documentation: 'https://github.com/BikramBiswas786/https-github.com-BikramBiswas786-hedera-hydropower-mrv/blob/main/docs/API.md',
     honest_status: 'https://github.com/BikramBiswas786/https-github.com-BikramBiswas786-hedera-hydropower-mrv/blob/main/HONEST_STATUS.md',
     multi_tenant_guide: 'https://github.com/BikramBiswas786/https-github.com-BikramBiswas786-hedera-hydropower-mrv/blob/main/docs/multi-tenant-guide.md',
@@ -569,6 +582,7 @@ app.get('/', (req, res) => {
         pricing: 'GET /api/v1/tenants/pricing',
         subscribe: 'POST /api/v1/subscriptions/subscribe',
         subscription: 'GET /api/v1/subscriptions/me',
+        meter: 'POST /api/v1/billing/meters',
         usage: 'GET /api/v1/billing/usage',
         note: 'Set ENABLE_MULTI_TENANT=true to activate tenant isolation'
       }
@@ -600,7 +614,7 @@ app.use((error, req, res, next) => {
 if (require.main === module) {
   app.listen(PORT, '0.0.0.0', () => {
     console.log(`\n${'='.repeat(70)}`);
-    console.log(`🚀 Hedera Hydropower MRV API v1.6.0`);
+    console.log(`🚀 Hedera Hydropower MRV API v1.6.1`);
     console.log(`${'='.repeat(70)}`);
     console.log(`✅ Server:     http://localhost:${PORT}`);
     console.log(`✅ Health:     http://localhost:${PORT}/health`);
