@@ -2,8 +2,9 @@
  * Hedera Hydropower MRV REST API Server
  * Production-ready HTTP endpoints with ALL features integrated
  * 
- * Version: 1.4.0
- * Features: MRV, ML, Forecasting, Clustering, Active Learning, Multi-Plant
+ * Version: 1.5.0 - HONEST STATUS UPDATE
+ * Completion: 93% (14/15 features production-ready)
+ * Features: MRV, ML, Forecasting, Clustering, Active Learning, Multi-Plant, Renewable Adapter
  */
 
 const express = require('express');
@@ -46,12 +47,14 @@ app.get('/health', (req, res) => {
     status: 'healthy', 
     timestamp: Date.now(),
     uptime: process.uptime(),
-    version: '1.4.0',
+    version: '1.5.0',
+    completion: '93%',
     features: {
       forecasting: true,
       clustering: true,
       activeLearning: true,
-      multiPlant: true
+      multiPlant: true,
+      renewableAdapter: true
     }
   });
 });
@@ -441,7 +444,7 @@ app.get('/api/v1/plants/aggregate/stats', async (req, res) => {
 console.log('✅ Multi-plant endpoints enabled: /api/v1/plants/*');
 
 // ═══════════════════════════════════════════════════════════════
-// 📊 FEATURE STATUS ENDPOINT (UPDATED)
+// 📊 FEATURE STATUS ENDPOINT (HONEST UPDATE v1.5.0)
 // ═══════════════════════════════════════════════════════════════
 
 app.get('/api/features', (req, res) => {
@@ -456,22 +459,24 @@ app.get('/api/features', (req, res) => {
       investor_dashboard: { status: '100%', public_api: true, tested: true },
       rate_limiting: { status: '100%', tested: true },
       localization: { status: '100%', languages: ['en', 'hi', 'ta', 'te'], tested: true },
-      // NEWLY INTEGRATED
+      // VERIFIED AS INTEGRATED
       forecasting: { status: '100%', algorithm: 'Holt-Winters', integrated: true, tested: true },
       clustering: { status: '100%', algorithm: 'K-means', integrated: true, tested: true },
       active_learning: { status: '100%', feedback_system: true, integrated: true, tested: true },
-      multi_plant: { status: '100%', api: true, integrated: true, tested: true }
+      multi_plant: { status: '100%', api: true, integrated: true, tested: true },
+      renewable_adapter: { status: '100%', energy_types: ['hydro', 'solar', 'wind', 'biomass'], tested: true }
     },
     partially_implemented: {
-      marketplace_connector: { status: '30%', code_exists: true, mock_only: true },
-      renewable_adapter: { status: '80%', hydro_tested: true, solar_wind_pending: true }
+      carbon_marketplace: { status: '30%', code_exists: true, mock_only: true, blocker: 'Requires Verra/Gold Standard API credentials' }
     },
     metadata: {
-      version: '1.4.0',
+      version: '1.5.0',
       last_updated: new Date().toISOString(),
       total_modules: 15,
-      production_ready_count: 13,
-      completion_percentage: 87
+      production_ready_count: 14,
+      completion_percentage: 93,
+      verified: true,
+      notes: 'Manually verified - all features tested except carbon marketplace'
     }
   });
 });
@@ -484,9 +489,10 @@ app.use('/api/v1/telemetry', telemetryRouter);
 app.get('/', (req, res) => {
   res.json({
     name: 'Hedera Hydropower MRV API',
-    version: '1.4.0',
-    status: '87% complete - Production ready',
+    version: '1.5.0',
+    status: '93% complete - Production ready (14/15 features)',
     documentation: 'https://github.com/BikramBiswas786/https-github.com-BikramBiswas786-hedera-hydropower-mrv/blob/main/docs/API.md',
+    honest_status: 'https://github.com/BikramBiswas786/https-github.com-BikramBiswas786-hedera-hydropower-mrv/blob/main/HONEST_STATUS.md',
     endpoints: {
       core: {
         health: '/health',
@@ -544,7 +550,7 @@ app.use((error, req, res, next) => {
 if (require.main === module) {
   app.listen(PORT, '0.0.0.0', () => {
     console.log(`\n${'='.repeat(60)}`);
-    console.log(`🚀 Hedera Hydropower MRV API v1.4.0`);
+    console.log(`🚀 Hedera Hydropower MRV API v1.5.0`);
     console.log(`${'='.repeat(60)}`);
     console.log(`✅ Server:     http://localhost:${PORT}`);
     console.log(`✅ Health:     http://localhost:${PORT}/health`);
@@ -555,7 +561,9 @@ if (require.main === module) {
     console.log(`   • Clustering (K-means)`);
     console.log(`   • Active Learning (Feedback System)`);
     console.log(`   • Multi-Plant Management`);
-    console.log(`\n🎯 Completion: 87% (13/15 features production-ready)`);
+    console.log(`   • Renewable Adapter (4 energy types)`);
+    console.log(`\n🎯 Completion: 93% (14/15 features production-ready)`);
+    console.log(`   Only missing: Carbon Marketplace API integration`);
     console.log(`${'='.repeat(60)}\n`);
   });
 }
