@@ -11,6 +11,8 @@
  * Run: node scripts/carbon-credit-demo-approved.js
  */
 
+require('dotenv').config();
+const { Client, AccountId, PrivateKey } = require('@hashgraph/sdk');
 const { CarbonCreditManager } = require('../src/carbon-credits/CarbonCreditManager');
 const { VerraIntegration } = require('../src/carbon-credits/VerraIntegration');
 const { GoldStandardIntegration } = require('../src/carbon-credits/GoldStandardIntegration');
@@ -35,9 +37,52 @@ function section(title) {
   console.log('='.repeat(60) + '\n');
 }
 
+function initializeHederaClient() {
+  if (process.env.USE_REAL_HEDERA !== 'true') {
+    log('yellow', '📝 Mock mode - set USE_REAL_HEDERA=true for real blockchain minting');
+    return null;
+  }
+
+  try {
+    const operatorId = process.env.HEDERA_OPERATOR_ID || process.env.HEDERA_ACCOUNT_ID;
+    const operatorKey = process.env.HEDERA_OPERATOR_KEY || process.env.HEDERA_PRIVATE_KEY;
+    const network = process.env.HEDERA_NETWORK || 'testnet';
+
+    if (!operatorId || !operatorKey) {
+      log('red', '❌ Missing HEDERA_OPERATOR_ID or HEDERA_OPERATOR_KEY in .env');
+      return null;
+    }
+
+    let client;
+    if (network === 'mainnet') {
+      client = Client.forMainnet();
+    } else {
+      client = Client.forTestnet();
+    }
+
+    client.setOperator(
+      AccountId.fromString(operatorId),
+      PrivateKey.fromString(operatorKey)
+    );
+
+    log('green', `✅ Hedera client initialized (${network})`);
+    log('magenta', '🔥 REAL ON-CHAIN MINTING ENABLED!');
+    log('cyan', `📊 Token: ${process.env.CARBON_TOKEN_ID}`);
+    log('cyan', `👤 Operator: ${operatorId}`);
+    
+    return client;
+  } catch (error) {
+    log('red', `❌ Failed to initialize Hedera client: ${error.message}`);
+    return null;
+  }
+}
+
 async function runDemo() {
   section('CARBON CREDIT WORKFLOW DEMO');
   log('yellow', 'Using PRE-APPROVED attestation (bypassing ML verification)');
+
+  // Initialize Hedera client
+  const hederaClient = initializeHederaClient();
 
   // STEP 1: Create APPROVED attestation
   section('STEP 1: Create APPROVED Attestation');
@@ -62,7 +107,10 @@ async function runDemo() {
 
   // STEP 2: Calculate Carbon Credits
   section('STEP 2: Calculate Carbon Credits');
-  const manager = new CarbonCreditManager(null);
+  const manager = new CarbonCreditManager(hederaClient, {
+    tokenId: process.env.CARBON_TOKEN_ID,
+    treasuryKey: process.env.TREASURY_PRIVATE_KEY
+  });
   const creditCalc = manager.calculateCredits(attestation);
   log('green', '✅ Carbon credits calculated:');
   console.log(JSON.stringify(creditCalc, null, 2));
@@ -87,11 +135,12 @@ async function runDemo() {
   log('green', '✅ Tokens minted:');
   console.log(JSON.stringify(mintResult, null, 2));
 
-  if (process.env.USE_REAL_HEDERA === 'true') {
+  if (mintResult.status === 'minted' && process.env.USE_REAL_HEDERA === 'true') {
     log('magenta', '\n🎉 REAL HEDERA TRANSACTION EXECUTED!');
-    log('magenta', `Transaction ID: ${mintResult.hedera_transaction_id}`);
-    log('magenta', `View on HashScan: https://hashscan.io/testnet/transaction/${mintResult.hedera_transaction_id}`);
-  } else {
+    log('green', `✅ Transaction ID: ${mintResult.hedera_transaction_id}`);
+    log('cyan', `🔗 View on HashScan: https://hashscan.io/testnet/transaction/${mintResult.hedera_transaction_id}`);
+    log('cyan', `🪙 Token: https://hashscan.io/testnet/token/${process.env.CARBON_TOKEN_ID}`);
+  } else if (mintResult.status === 'minted_mock') {
     log('yellow', '\n⚠️  Mock mode - add USE_REAL_HEDERA=true to .env for real minting');
   }
 
@@ -156,12 +205,18 @@ async function runDemo() {
   console.log(`Total Value: $${sellOrder.order.total_value_usd} USD`);
   console.log(`Total Value: ₹${sellOrder.order.total_value_inr} INR`);
   
-  if (process.env.USE_REAL_HEDERA === 'true') {
+  if (mintResult.status === 'minted' && process.env.USE_REAL_HEDERA === 'true') {
     log('green', '\n✅ Complete carbon credit lifecycle with REAL Hedera minting!');
-    log('cyan', `View your tokens: https://hashscan.io/testnet/token/${process.env.CARBON_TOKEN_ID}`);
+    log('cyan', `🔗 View transaction: https://hashscan.io/testnet/transaction/${mintResult.hedera_transaction_id}`);
+    log('cyan', `🪙 View token: https://hashscan.io/testnet/token/${process.env.CARBON_TOKEN_ID}`);
   } else {
     log('green', '\n✅ Complete carbon credit lifecycle executed successfully!');
     log('yellow', '💡 To enable real Hedera minting, add USE_REAL_HEDERA=true to .env');
+  }
+
+  // Close client
+  if (hederaClient) {
+    hederaClient.close();
   }
 }
 
