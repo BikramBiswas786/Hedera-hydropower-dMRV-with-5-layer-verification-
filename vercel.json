@@ -1,27 +1,27 @@
-﻿{
-    "builds":  [
-                   {
-                       "src":  "public/**",
-                       "use":  "@vercel/static"
-                   },
-                   {
-                       "src":  "src/api/server.js",
-                       "use":  "@vercel/node"
-                   }
-               ],
-    "routes":  [
-                   {
-                       "src":  "/",
-                       "dest":  "/public/index.html"
-                   },
-                   {
-                       "src":  "/api/(.*)",
-                       "dest":  "src/api/server.js"
-                   },
-                   {
-                       "src":  "/(health|metrics|features)",
-                       "dest":  "src/api/server.js"
-                   }
-               ],
-    "version":  2
+{
+  "version": 2,
+  "builds": [
+    {
+      "src": "public/**",
+      "use": "@vercel/static"
+    },
+    {
+      "src": "src/api/server.js",
+      "use": "@vercel/node"
+    }
+  ],
+  "routes": [
+    {
+      "src": "/",
+      "dest": "/public/index.html"
+    },
+    {
+      "src": "/api/(.*)",
+      "dest": "/src/api/server.js"
+    },
+    {
+      "src": "/(health|metrics|features)",
+      "dest": "/src/api/server.js"
+    }
+  ]
 }
