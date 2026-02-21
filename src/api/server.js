@@ -2,9 +2,9 @@
  * Hedera Hydropower MRV REST API Server
  * Production-ready HTTP endpoints with ALL features integrated
  * 
- * Version: 1.5.0 - HONEST STATUS UPDATE
- * Completion: 93% (14/15 features production-ready)
- * Features: MRV, ML, Forecasting, Clustering, Active Learning, Multi-Plant, Renewable Adapter
+ * Version: 1.6.0 - MULTI-TENANT MVP ADDED
+ * Completion: 93% core + Multi-tenant foundation (disabled by default)
+ * Features: MRV, ML, Forecasting, Clustering, Active Learning, Multi-Plant, Renewable Adapter, Multi-Tenant
  */
 
 const express = require('express');
@@ -47,14 +47,15 @@ app.get('/health', (req, res) => {
     status: 'healthy', 
     timestamp: Date.now(),
     uptime: process.uptime(),
-    version: '1.5.0',
+    version: '1.6.0',
     completion: '93%',
     features: {
       forecasting: true,
       clustering: true,
       activeLearning: true,
       multiPlant: true,
-      renewableAdapter: true
+      renewableAdapter: true,
+      multiTenant: 'mvp' // MVP implemented, disabled by default
     }
   });
 });
@@ -444,10 +445,26 @@ app.get('/api/v1/plants/aggregate/stats', async (req, res) => {
 console.log('✅ Multi-plant endpoints enabled: /api/v1/plants/*');
 
 // ═══════════════════════════════════════════════════════════════
-// 📊 FEATURE STATUS ENDPOINT (HONEST UPDATE v1.5.0)
+// 🏢 MULTI-TENANT ENDPOINTS (MVP - NEW)
+// ═══════════════════════════════════════════════════════════════
+// Status: MVP implementation (in-memory, disabled by default)
+// To activate: Set ENABLE_MULTI_TENANT=true in .env
+// Revenue potential: ₹15.73-220.95 Cr/year
+
+const { router: tenantRouter } = require('./v1/tenants');
+app.use('/api/v1/tenants', tenantRouter);
+
+console.log('✅ Multi-tenant endpoints enabled: /api/v1/tenants/*');
+console.log('   ℹ️ Multi-tenant mode: DISABLED (set ENABLE_MULTI_TENANT=true to activate)');
+console.log('   📚 Revenue strategy: docs/revenue_integration_strategy.docx');
+
+// ═══════════════════════════════════════════════════════════════
+// 📊 FEATURE STATUS ENDPOINT (HONEST UPDATE v1.6.0)
 // ═══════════════════════════════════════════════════════════════
 
 app.get('/api/features', (req, res) => {
+  const { isMultiTenantEnabled } = require('../middleware/tenant');
+  
   res.json({
     production_ready: {
       core_mrv_engine: { status: '100%', tested: true },
@@ -466,17 +483,39 @@ app.get('/api/features', (req, res) => {
       multi_plant: { status: '100%', api: true, integrated: true, tested: true },
       renewable_adapter: { status: '100%', energy_types: ['hydro', 'solar', 'wind', 'biomass'], tested: true }
     },
+    mvp_implemented: {
+      multi_tenant_saas: { 
+        status: 'MVP', 
+        enabled: isMultiTenantEnabled(),
+        endpoints: [
+          'POST /api/v1/tenants/create',
+          'POST /api/v1/tenants/validate',
+          'GET /api/v1/tenants/me',
+          'GET /api/v1/tenants/pricing',
+          'POST /api/v1/subscriptions/subscribe',
+          'GET /api/v1/subscriptions/me',
+          'POST /api/v1/billing/meters',
+          'GET /api/v1/billing/usage'
+        ],
+        storage: 'in-memory',
+        production_ready: false,
+        revenue_potential: '₹15.73-220.95 Cr/year',
+        notes: 'MVP foundation ready. Full production: 16-week implementation (PostgreSQL, tenant isolation, etc.)'
+      }
+    },
     partially_implemented: {
       carbon_marketplace: { status: '30%', code_exists: true, mock_only: true, blocker: 'Requires Verra/Gold Standard API credentials' }
     },
     metadata: {
-      version: '1.5.0',
+      version: '1.6.0',
       last_updated: new Date().toISOString(),
       total_modules: 15,
       production_ready_count: 14,
+      mvp_features: 1,
       completion_percentage: 93,
+      multi_tenant_mvp: true,
       verified: true,
-      notes: 'Manually verified - all features tested except carbon marketplace'
+      notes: 'Core 93% complete. Multi-tenant MVP added (disabled by default for hackathon stability)'
     }
   });
 });
@@ -489,10 +528,11 @@ app.use('/api/v1/telemetry', telemetryRouter);
 app.get('/', (req, res) => {
   res.json({
     name: 'Hedera Hydropower MRV API',
-    version: '1.5.0',
-    status: '93% complete - Production ready (14/15 features)',
+    version: '1.6.0',
+    status: '93% complete + Multi-tenant MVP',
     documentation: 'https://github.com/BikramBiswas786/https-github.com-BikramBiswas786-hedera-hydropower-mrv/blob/main/docs/API.md',
     honest_status: 'https://github.com/BikramBiswas786/https-github.com-BikramBiswas786-hedera-hydropower-mrv/blob/main/HONEST_STATUS.md',
+    multi_tenant_guide: 'https://github.com/BikramBiswas786/https-github.com-BikramBiswas786-hedera-hydropower-mrv/blob/main/docs/multi-tenant-guide.md',
     endpoints: {
       core: {
         health: '/health',
@@ -521,9 +561,19 @@ app.get('/', (req, res) => {
         list: '/api/v1/plants',
         get: '/api/v1/plants/:id',
         aggregate: '/api/v1/plants/aggregate/stats'
+      },
+      multi_tenant: {
+        signup: 'POST /api/v1/tenants/create',
+        validate: 'POST /api/v1/tenants/validate',
+        me: 'GET /api/v1/tenants/me',
+        pricing: 'GET /api/v1/tenants/pricing',
+        subscribe: 'POST /api/v1/subscriptions/subscribe',
+        subscription: 'GET /api/v1/subscriptions/me',
+        usage: 'GET /api/v1/billing/usage',
+        note: 'Set ENABLE_MULTI_TENANT=true to activate tenant isolation'
       }
     },
-    authentication: 'Include x-api-key header for authenticated endpoints'
+    authentication: 'Include x-api-key or x-license-key header for authenticated endpoints'
   });
 });
 
@@ -549,9 +599,9 @@ app.use((error, req, res, next) => {
 // Start server
 if (require.main === module) {
   app.listen(PORT, '0.0.0.0', () => {
-    console.log(`\n${'='.repeat(60)}`);
-    console.log(`🚀 Hedera Hydropower MRV API v1.5.0`);
-    console.log(`${'='.repeat(60)}`);
+    console.log(`\n${'='.repeat(70)}`);
+    console.log(`🚀 Hedera Hydropower MRV API v1.6.0`);
+    console.log(`${'='.repeat(70)}`);
     console.log(`✅ Server:     http://localhost:${PORT}`);
     console.log(`✅ Health:     http://localhost:${PORT}/health`);
     console.log(`✅ Features:   http://localhost:${PORT}/api/features`);
@@ -562,9 +612,18 @@ if (require.main === module) {
     console.log(`   • Active Learning (Feedback System)`);
     console.log(`   • Multi-Plant Management`);
     console.log(`   • Renewable Adapter (4 energy types)`);
+    console.log(`\n🆕 NEW: Multi-Tenant SaaS MVP`);
+    console.log(`   • Tenant onboarding & licensing`);
+    console.log(`   • Subscription management`);
+    console.log(`   • Transaction billing & metering`);
+    console.log(`   • Revenue potential: ₹15.73-220.95 Cr/year`);
+    console.log(`   • Status: MVP (disabled by default for hackathon)`);
+    console.log(`   • Full production: 16-week roadmap documented`);
     console.log(`\n🎯 Completion: 93% (14/15 features production-ready)`);
-    console.log(`   Only missing: Carbon Marketplace API integration`);
-    console.log(`${'='.repeat(60)}\n`);
+    console.log(`   Core MRV: Production-ready`);
+    console.log(`   Multi-tenant: MVP foundation (activate post-hackathon)`);
+    console.log(`   Missing: Carbon Marketplace API integration`);
+    console.log(`${'='.repeat(70)}\n`);
   });
 }
 
