@@ -37,9 +37,6 @@ class Workflow {
     this.readings = [];
   }
 
-  /**
-   * Initialize the workflow with project and device details
-   */
   async initialize(projectId, deviceId, gridEmissionFactor = 0.8) {
     if (!projectId) throw new Error('projectId is required');
     if (!deviceId) throw new Error('deviceId is required');
@@ -79,11 +76,6 @@ class Workflow {
     }
   }
 
-  /**
-   * Submit message to Hedera HCS with proper retry logic.
-   * CRITICAL: Generates a FRESH transaction on every attempt to
-   * prevent TRANSACTION_EXPIRED errors from reused frozen txns.
-   */
   async submitToHederaWithRetry(message, topicId, maxRetries = 3) {
     if (!this.client) throw new Error('Hedera client not initialized');
 
@@ -94,7 +86,7 @@ class Workflow {
         const transaction = new TopicMessageSubmitTransaction()
           .setTopicId(topicId)
           .setMessage(message)
-          .setTransactionValidDuration(180); // 3 min (vs default 120 s)
+          .setTransactionValidDuration(180);
 
         const signedTx = await transaction.freezeWith(this.client);
 
@@ -119,7 +111,6 @@ class Workflow {
 
         console.warn(`[Hedera] Attempt ${attempt}/${maxRetries} failed: ${msg}`);
 
-        // Terminal errors — do not retry
         if (
           msg.includes('INVALID_TOPIC_ID') ||
           msg.includes('UNAUTHORIZED') ||
@@ -144,27 +135,38 @@ class Workflow {
   }
 
   /**
-   * Calculate carbon credits per ACM0002 methodology.
-   * ER = generatedMWh * EF_grid (simplified, no leakage for run-of-river)
-   * @param {number} generatedKwh
-   * @param {number} efGrid  tCO2/MWh
-   * @returns {{ amount_tco2e: number, methodology: string }}
+   * Build carbon-credit object from engine's ACM0002 calculations.
+   * Prefers the pre-computed ER_tCO2 from the engine; falls back to
+   * re-computing from EG_MWh when the engine value is absent.
+   *
+   * Engine attestation.calculations shape:
+   *   { EG_MWh, EF_grid_tCO2_per_MWh, BE_tCO2, PE_tCO2, LE_tCO2, ER_tCO2, RECs_issued }
    */
-  _calculateCarbonCredits(generatedKwh, efGrid) {
-    const generatedMWh = generatedKwh / 1000;
-    const amount_tco2e = parseFloat((generatedMWh * efGrid).toFixed(4));
-    return {
-      amount_tco2e,
-      generated_mwh: parseFloat(generatedMWh.toFixed(4)),
-      ef_grid_tco2_per_mwh: efGrid,
-      methodology: 'ACM0002'
-    };
+  _buildCarbonCredits(calcs, fallbackKwh, efGrid) {
+    // Path 1: engine already computed ER_tCO2
+    if (calcs && typeof calcs.ER_tCO2 === 'number' && calcs.ER_tCO2 > 0) {
+      return {
+        amount_tco2e: calcs.ER_tCO2,
+        generated_mwh: calcs.EG_MWh ?? parseFloat((fallbackKwh / 1000).toFixed(4)),
+        ef_grid_tco2_per_mwh: calcs.EF_grid_tCO2_per_MWh ?? efGrid,
+        methodology: 'ACM0002'
+      };
+    }
+
+    // Path 2: fallback — re-compute from raw kWh
+    if (fallbackKwh > 0) {
+      const mwh = parseFloat((fallbackKwh / 1000).toFixed(4));
+      return {
+        amount_tco2e: parseFloat((mwh * efGrid).toFixed(4)),
+        generated_mwh: mwh,
+        ef_grid_tco2_per_mwh: efGrid,
+        methodology: 'ACM0002'
+      };
+    }
+
+    return null;
   }
 
-  /**
-   * Submit a telemetry reading for verification and blockchain storage.
-   * Returns a shape the REST API layer can consume directly.
-   */
   async submitReading(telemetry) {
     if (!this.initialized) throw new Error('Workflow not initialized');
 
@@ -184,15 +186,17 @@ class Workflow {
         }
       };
 
-      // Run AI Guardian verification
       const result = await this.engine.verifyAndPublish(telemetryPacket);
 
-      const att = result.attestation;
-      const checks = att.checks || {};
-      const calcs = att.calculations || {};
+      const att    = result.attestation;
+      const checks = att.checks       || {};
+      const calcs  = att.calculations || {};
 
-      // Store reading for report generation
-      this.readings.push({ ...telemetry, attestation: att, timestamp: telemetryPacket.timestamp });
+      this.readings.push({
+        ...telemetry,
+        attestation: att,
+        timestamp: telemetryPacket.timestamp
+      });
 
       if (this.attestation && att) {
         this.attestation.createAttestation(
@@ -205,21 +209,17 @@ class Workflow {
         );
       }
 
-      // --- Carbon credits (only for APPROVED readings) ---
+      // Carbon credits — use engine's ACM0002 output directly
       let carbonCredits = null;
       if (att.verificationStatus === 'APPROVED') {
-        const generatedKwh =
-          calcs.generatedKwh ||
-          telemetryPacket.readings.generatedKwh;
-        if (generatedKwh > 0) {
-          carbonCredits = this._calculateCarbonCredits(
-            generatedKwh,
-            this.gridEmissionFactor
-          );
-        }
+        carbonCredits = this._buildCarbonCredits(
+          calcs,
+          telemetryPacket.readings.generatedKwh,
+          this.gridEmissionFactor
+        );
       }
 
-      // --- Verification details (human-readable from checks) ---
+      // Verification details — map engine check statuses
       const verificationDetails = {
         physicsCheck:
           checks.physics?.status ||
@@ -234,7 +234,6 @@ class Workflow {
         flags: att.flags || []
       };
 
-      // --- Reading ID for traceability ---
       const readingId = `RDG-${
         this.projectId
       }-${Date.now().toString(36).toUpperCase()}`;
@@ -247,9 +246,9 @@ class Workflow {
         timestamp: telemetryPacket.timestamp,
         verificationStatus: att.verificationStatus,
         trustScore: att.trustScore,
-        carbonCredits,           // null for FLAGGED/REJECTED, object for APPROVED
-        verificationDetails,     // always populated
-        attestation: att         // full attestation for downstream use
+        carbonCredits,
+        verificationDetails,
+        attestation: att
       };
     } catch (error) {
       console.error('Submit reading failed:', error);
@@ -257,9 +256,6 @@ class Workflow {
     }
   }
 
-  /**
-   * Submit reading with retry logic.
-   */
   async retrySubmission(telemetry) {
     if (!this.initialized) throw new Error('Workflow not initialized');
 
@@ -280,32 +276,16 @@ class Workflow {
     throw lastError;
   }
 
-  /**
-   * Generate monitoring report for the project.
-   */
   async generateMonitoringReport() {
     if (!this.initialized) throw new Error('Workflow not initialized');
 
-    const totalReadings = this.readings.length;
-    const approvedReadings = this.readings.filter(
-      r => r.attestation?.verificationStatus === 'APPROVED'
-    ).length;
-    const flaggedReadings = this.readings.filter(
-      r => r.attestation?.verificationStatus === 'FLAGGED'
-    ).length;
-    const rejectedReadings = this.readings.filter(
-      r => r.attestation?.verificationStatus === 'REJECTED'
-    ).length;
+    const totalReadings    = this.readings.length;
+    const approvedReadings = this.readings.filter(r => r.attestation?.verificationStatus === 'APPROVED').length;
+    const flaggedReadings  = this.readings.filter(r => r.attestation?.verificationStatus === 'FLAGGED').length;
+    const rejectedReadings = this.readings.filter(r => r.attestation?.verificationStatus === 'REJECTED').length;
 
-    const totalGeneration = this.readings.reduce(
-      (sum, r) => sum + (r.generatedKwh || 0),
-      0
-    );
-
-    const totalCarbonCredits = this._calculateCarbonCredits(
-      totalGeneration,
-      this.gridEmissionFactor
-    );
+    const totalGeneration = this.readings.reduce((sum, r) => sum + (r.generatedKwh || 0), 0);
+    const totalCarbonCredits = this._buildCarbonCredits(null, totalGeneration, this.gridEmissionFactor);
 
     return {
       success: true,
@@ -318,24 +298,16 @@ class Workflow {
       rejectedReadings,
       totalGeneration,
       totalGenerationMWh: parseFloat((totalGeneration / 1000).toFixed(4)),
-      totalCarbonCredits_tco2e: totalCarbonCredits.amount_tco2e,
+      totalCarbonCredits_tco2e: totalCarbonCredits?.amount_tco2e ?? 0,
       averageTrustScore:
         totalReadings > 0
           ? parseFloat(
-              (
-                this.readings.reduce(
-                  (sum, r) => sum + (r.attestation?.trustScore || 0),
-                  0
-                ) / totalReadings
-              ).toFixed(4)
+              (this.readings.reduce((sum, r) => sum + (r.attestation?.trustScore || 0), 0) / totalReadings).toFixed(4)
             )
           : 0
     };
   }
 
-  /**
-   * Deploy a DID for the device on Hedera.
-   */
   async deployDeviceDID(deviceId = null) {
     const targetDeviceId = deviceId || this.deviceId;
     if (!targetDeviceId) throw new Error('deviceId is required');
@@ -352,9 +324,6 @@ class Workflow {
     }
   }
 
-  /**
-   * Create a REC token on Hedera Token Service.
-   */
   async createRECToken(tokenName, tokenSymbol) {
     if (!tokenName) throw new Error('tokenName is required');
     if (!tokenSymbol) throw new Error('tokenSymbol is required');
@@ -369,9 +338,6 @@ class Workflow {
     }
   }
 
-  /**
-   * Mint REC tokens based on verified emission reductions.
-   */
   async mintRECs(amount, attestationId) {
     if (!this.tokenId) {
       await this.createRECToken('Hydro REC', 'HREC');
