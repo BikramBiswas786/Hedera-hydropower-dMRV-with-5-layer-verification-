@@ -1,0 +1,23 @@
+{
+  "app": {
+    "title": "हेडेरा हाइड्रोपावर MRV",
+    "description": "ब्लॉकचेन-सत्यापित नवीकरणीय ऊर्जा निगरानी"
+  },
+  "dashboard": {
+    "generation": "उत्पादन",
+    "carbon_offset": "कार्बन ऑफसेट",
+    "uptime": "अपटाइम",
+    "attestations": "सत्यापन"
+  },
+  "status": {
+    "approved": "स्वीकृत",
+    "flagged": "चिह्नित",
+    "rejected": "अस्वीकृत"
+  },
+  "units": {
+    "mwh": "MWh",
+    "tco2e": "tCO₂e",
+    "percentage": "%",
+    "currency": "₹"
+  }
+}

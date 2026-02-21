@@ -1,0 +1,23 @@
+{
+  "app": {
+    "title": "హెడెరా హైడ్రోపవర్ MRV",
+    "description": "బ్లాక్‌చెయిన్ ధృవీకరించబడిన పునరుత్పాదక శక్తి పర్యవేక్షణ"
+  },
+  "dashboard": {
+    "generation": "ఉత్పత్తి",
+    "carbon_offset": "కార్బన్ ఆఫ్‌సెట్",
+    "uptime": "అప్‌టైమ్",
+    "attestations": "ధృవీకరణలు"
+  },
+  "status": {
+    "approved": "ఆమోదించబడింది",
+    "flagged": "ఫ్లాగ్ చేయబడింది",
+    "rejected": "తిరస్కరించబడింది"
+  },
+  "units": {
+    "mwh": "MWh",
+    "tco2e": "tCO₂e",
+    "percentage": "%",
+    "currency": "₹"
+  }
+}

@@ -1,0 +1,23 @@
+{
+  "app": {
+    "title": "ஹெடெரா ஹைட்ரோபவர் MRV",
+    "description": "பிளாக்செயின் சரிபார்க்கப்பட்ட புதுப்பிக்கத்தக்க எரிசக்தி கண்காணிப்பு"
+  },
+  "dashboard": {
+    "generation": "உற்பத்தி",
+    "carbon_offset": "கார்பன் ஈடுகட்டல்",
+    "uptime": "இயக்க நேரம்",
+    "attestations": "சான்றுகள்"
+  },
+  "status": {
+    "approved": "அங்கீகரிக்கப்பட்டது",
+    "flagged": "குறிக்கப்பட்டது",
+    "rejected": "நிராகரிக்கப்பட்டது"
+  },
+  "units": {
+    "mwh": "MWh",
+    "tco2e": "tCO₂e",
+    "percentage": "%",
+    "currency": "₹"
+  }
+}
