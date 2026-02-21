@@ -1,0 +1,22 @@
+{
+  "dashboard": {
+    "title": "Hedera Hydropower MRV",
+    "panels": [
+      {
+        "title": "Total Readings",
+        "targets": [{"expr": "mrv_readings_total"}],
+        "type": "stat"
+      },
+      {
+        "title": "Anomaly Detection Rate",
+        "targets": [{"expr": "rate(mrv_anomalies_detected[5m])"}],
+        "type": "graph"
+      },
+      {
+        "title": "Hedera TX Success Rate",
+        "targets": [{"expr": "mrv_hedera_tx_success / (mrv_hedera_tx_success + mrv_hedera_tx_failure)"}],
+        "type": "gauge"
+      }
+    ]
+  }
+}
