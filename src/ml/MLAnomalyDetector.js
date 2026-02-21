@@ -19,14 +19,14 @@
  * On first instantiation the model auto-trains on 2000 synthetic
  * samples (< 400 ms).  Use loadModel() / saveModel() for persistence.
  *
- * **Explainability:**
- *   detectWithExplanation() returns which features triggered anomaly.
+ * **New in v1.4.0:** Anomaly clustering for pattern analysis
  */
 
 const fs   = require('fs');
 const path = require('path');
 const { IsolationForest }      = require('./IsolationForest');
 const { generateDataset }      = require('./SyntheticDataGenerator');
+const { AnomalyClusterer }     = require('./AnomalyClusterer');
 
 // ─── Feature config ──────────────────────────────────────
 
@@ -114,6 +114,7 @@ class MLAnomalyDetector {
    * @param {string}  options.modelPath     Path to saved model JSON
    * @param {boolean} options.autoTrain     Auto-train if no saved model (default true)
    * @param {number}  options.trainSamples  Synthetic training samples   (default 2000)
+   * @param {number}  options.maxAnomalyHistory Max anomalies to track (default 1000)
    */
   constructor(options = {}) {
     this._options = {
@@ -122,12 +123,16 @@ class MLAnomalyDetector {
       contamination:options.contamination || 0.10,
       modelPath:    options.modelPath     || path.join(__dirname, '../../ml/model.json'),
       autoTrain:    options.autoTrain     !== false,
-      trainSamples: options.trainSamples  || 2000
+      trainSamples: options.trainSamples  || 2000,
+      maxAnomalyHistory: options.maxAnomalyHistory || 1000
     };
     this._model   = null;
     this._trained = false;
     this._trainedOn = 0;
     this._trainedAt = null;
+    
+    // NEW: Anomaly history for clustering
+    this._anomalyHistory = [];
 
     this._initialize();
   }
@@ -214,8 +219,13 @@ class MLAnomalyDetector {
       };
     }
 
-    const { features } = extractFeatures(reading);
+    const { features, raw } = extractFeatures(reading);
     const result   = this._model.score(features);
+
+    // NEW: Track anomalies for clustering
+    if (result.isAnomaly) {
+      this._trackAnomaly(reading, raw, features, result);
+    }
 
     return {
       score:         result.score,
@@ -227,6 +237,160 @@ class MLAnomalyDetector {
       trainedAt:     this._trainedAt,
       featureVector: features.map(v => parseFloat(v.toFixed(4))),
       featureNames:  FEATURE_NAMES
+    };
+  }
+
+  /**
+   * NEW: Track detected anomaly for clustering analysis
+   * @private
+   */
+  _trackAnomaly(reading, raw, features, result) {
+    const anomaly = {
+      timestamp: Date.now(),
+      reading: reading,
+      raw: raw,
+      features: features,
+      score: result.score,
+      confidence: result.confidence
+    };
+
+    this._anomalyHistory.push(anomaly);
+
+    // Keep only the most recent anomalies
+    if (this._anomalyHistory.length > this._options.maxAnomalyHistory) {
+      this._anomalyHistory.shift();
+    }
+  }
+
+  /**
+   * NEW: Cluster detected anomalies to find patterns
+   * @param {number} limit - Max number of recent anomalies to cluster (default 100)
+   * @returns {{
+   *   clusters: Array<{
+   *     id: number,
+   *     name: string,
+   *     count: number,
+   *     avgScore: number,
+   *     centroid: object,
+   *     samples: Array
+   *   }>,
+   *   totalAnomalies: number,
+   *   clusteringTime: number
+   * }}
+   */
+  clusterAnomalies(limit = 100) {
+    if (this._anomalyHistory.length < 4) {
+      return {
+        error: 'Insufficient anomalies for clustering',
+        required: 4,
+        available: this._anomalyHistory.length,
+        clusters: []
+      };
+    }
+
+    const t0 = Date.now();
+    
+    // Get recent anomalies
+    const recent = this._anomalyHistory.slice(-limit);
+    
+    // Extract feature vectors
+    const features = recent.map(a => a.features);
+    
+    // Cluster using K-means (k=4)
+    const clusterer = new AnomalyClusterer({ k: 4 });
+    const assignments = clusterer.cluster(features);
+    
+    // Group anomalies by cluster
+    const clusters = [];
+    for (let i = 0; i < 4; i++) {
+      const clusterAnomalies = recent.filter((_, idx) => assignments[idx] === i);
+      
+      if (clusterAnomalies.length === 0) continue;
+      
+      // Calculate cluster statistics
+      const avgScore = clusterAnomalies.reduce((sum, a) => sum + a.score, 0) / clusterAnomalies.length;
+      
+      // Determine cluster name based on dominant features
+      const name = this._nameCluster(clusterAnomalies);
+      
+      // Get centroid in original feature space
+      const centroid = {};
+      FEATURE_NAMES.forEach((fname, idx) => {
+        const values = clusterAnomalies.map(a => a.raw[fname]);
+        centroid[fname] = values.reduce((sum, v) => sum + v, 0) / values.length;
+      });
+      
+      clusters.push({
+        id: i,
+        name: name,
+        count: clusterAnomalies.length,
+        avgScore: parseFloat(avgScore.toFixed(4)),
+        centroid: centroid,
+        samples: clusterAnomalies.slice(0, 5).map(a => ({ // First 5 samples
+          timestamp: a.timestamp,
+          score: a.score,
+          reading: a.reading
+        }))
+      });
+    }
+    
+    const clusteringTime = Date.now() - t0;
+    
+    return {
+      status: 'success',
+      totalAnomalies: this._anomalyHistory.length,
+      analyzedCount: recent.length,
+      clusters: clusters.sort((a, b) => b.count - a.count), // Sort by size
+      clusteringTime: clusteringTime
+    };
+  }
+
+  /**
+   * Determine cluster name based on which features are most abnormal
+   * @private
+   */
+  _nameCluster(anomalies) {
+    // Calculate average raw values
+    const avgFeatures = {};
+    FEATURE_NAMES.forEach(fname => {
+      const values = anomalies.map(a => a.raw[fname]);
+      avgFeatures[fname] = values.reduce((sum, v) => sum + v, 0) / values.length;
+    });
+
+    // Check for specific patterns
+    if (avgFeatures.efficiencyRatio > 1.2) {
+      return 'fraud_high_efficiency';
+    }
+    if (avgFeatures.generatedKwh > 3000) {
+      return 'generation_spike';
+    }
+    if (avgFeatures.pH < 5.5 || avgFeatures.pH > 9.0 || avgFeatures.turbidity_ntu > 200) {
+      return 'environmental_anomaly';
+    }
+    if (avgFeatures.powerDensity > 30) {
+      return 'power_density_outlier';
+    }
+    
+    return 'mixed_anomalies';
+  }
+
+  /**
+   * Get anomaly history statistics
+   * @returns {{ count: number, oldestTimestamp: number, newestTimestamp: number }}
+   */
+  getAnomalyStats() {
+    if (this._anomalyHistory.length === 0) {
+      return {
+        count: 0,
+        oldestTimestamp: null,
+        newestTimestamp: null
+      };
+    }
+
+    return {
+      count: this._anomalyHistory.length,
+      oldestTimestamp: this._anomalyHistory[0].timestamp,
+      newestTimestamp: this._anomalyHistory[this._anomalyHistory.length - 1].timestamp
     };
   }
 
@@ -271,6 +435,11 @@ class MLAnomalyDetector {
     const summary = explanation.isAnomaly
       ? `Anomaly triggered by: ${featureList}`
       : `Normal reading. Top features: ${featureList}`;
+
+    // Track anomalies
+    if (explanation.isAnomaly) {
+      this._trackAnomaly(reading, raw, features, explanation);
+    }
 
     return {
       score:         explanation.score,
@@ -340,7 +509,8 @@ class MLAnomalyDetector {
       sampleSize: this._options.sampleSize,
       contamination: this._options.contamination,
       featureNames:  FEATURE_NAMES,
-      algorithm:  'IsolationForest (Liu et al., ICDM 2008)'
+      algorithm:  'IsolationForest (Liu et al., ICDM 2008)',
+      anomalyHistory: this._anomalyHistory.length
     };
   }
 }
