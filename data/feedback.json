@@ -1,0 +1,12 @@
+[
+  {
+    "id": "fb_1771678087577_zzq3a7uzr",
+    "timestamp": 1771678087577,
+    "readingId": "RDG-TEST-001",
+    "originalLabel": "anomaly",
+    "correctLabel": "normal",
+    "confidence": 0.65,
+    "reading": null,
+    "notes": "False positive - turbine maintenance"
+  }
+]
