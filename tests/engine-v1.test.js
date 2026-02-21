@@ -154,7 +154,7 @@ describe('EngineV1 verification pipeline', () => {
     expect(env.details.temperature.status).not.toBe('PERFECT');
   });
 
-  test('statistical anomaly detection marks strong outliers as OUTLIER', async () => {
+  test('statistical anomaly detection marks strong outliers as anomaly (ML)', async () => {
     const engine = new EngineV1();
 
     // Build history with fairly stable generation
@@ -168,7 +168,7 @@ describe('EngineV1 verification pipeline', () => {
       );
     }
 
-    // Now an extreme outlier
+    // Extreme outlier: 5000 kWh when physics predicts ~938 kWh (5.3x inflation)
     const extreme = makeTelemetry({
       readings: {
         generatedKwh: 5000
@@ -178,8 +178,21 @@ describe('EngineV1 verification pipeline', () => {
     const result = await engine.verifyAndPublish(extreme);
     const stat = result.attestation.checks.statistical;
 
-    expect(stat.status).toBe('OUTLIER');
-    expect(stat.zScore).toBeGreaterThanOrEqual(3.0);
+    // ── ML-based assertions (replaces old Z-score checks) ─────────────────
+    // The Isolation Forest must flag this as an anomaly
+    expect(stat.isAnomaly).toBe(true);
+
+    // Method must identify real ML (not legacy Z-score)
+    expect(stat.method).toBe('ISOLATION_FOREST_ML');
+
+    // Anomaly score must be above midpoint (anomalies score > 0.5)
+    expect(stat.anomalyScore).toBeGreaterThan(0.5);
+
+    // Status must be one of the anomaly buckets (not NORMAL / ACCEPTABLE)
+    expect(['OUTLIER', 'SUSPICIOUS', 'QUESTIONABLE']).toContain(stat.status);
+
+    // Legacy Z-score field is intentionally null (replaced by ML)
+    expect(stat.zScore).toBeNull();
   });
 
   test('device consistency check fails when readings exceed profile limits', async () => {
