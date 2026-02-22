@@ -542,3 +542,23 @@ Hackathon: AngelHack Apex 2026 • Sustainability Track
 ---
 
 **Built with 💚 for a sustainable future**
+
+---
+
+## ðŸ“š Documentation Structure
+
+All documentation has been organized into a clean, professional structure:
+
+- **[docs/README.md](docs/README.md)** - Comprehensive documentation index
+- **[docs/](docs/)** - Core technical documentation (~40 files)
+- **[docs/archived/](docs/archived/)** - Deprecated/outdated documentation (~35 files)
+- **[evidence/](evidence/)** - Transaction records and test evidence
+- **[examples/](examples/)** - Example code and usage
+- **[ml/](ml/)** - Machine learning module documentation
+
+**Quick Links**:
+- [Architecture](docs/ARCHITECTURE.md) | [API Reference](docs/API.md) | [Verra Guide](docs/VERRA-GUIDEBOOK.md)
+- [Deployment Guide](docs/deployment/DEPLOYMENT-GUIDE.md) | [Operator Guide](docs/OPERATOR_GUIDE.md)
+- [Testing Guide](TESTING_GUIDE.md) | [Security](docs/SECURITY.md)
+
+*Documentation consolidation completed February 22, 2026 - reduced from 93 to 40 core files*

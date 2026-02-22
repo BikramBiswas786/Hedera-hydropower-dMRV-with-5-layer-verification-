@@ -1,247 +1,116 @@
-# 📚 Documentation Index
+﻿# Documentation Index
 
-**Last Updated**: February 22, 2026  
-**Total Documents**: 35 core docs (consolidated from 93)
+Comprehensive guide to all documentation in the Hedera Hydropower MRV project.
 
----
+## Quick Start
 
-## 🚀 Quick Start
+- [README.md](../README.md) - Project overview and quick start
+- [QUICK_START.md](../QUICK_START.md) - Fast setup guide
+- [API_QUICKSTART.md](API_QUICKSTART.md) - API quick reference
 
-**New to the project? Start here:**
-
-1. **[Quick Start Guide](../QUICK_START.md)** - 5-minute setup
-2. **[Demo Guide](../DEMO_GUIDE.md)** - Run the live demo
-3. **[Test Results Dashboard](https://hedera-hydropower-mrv.vercel.app)** - View live test results
-4. **[Live Demo Results](../evidence/LIVE_DEMO_RESULTS.md)** - Real transaction proof
-
----
-
-## 📚 Core Documentation
+## Core Documentation
 
 ### System Architecture
-- **[Architecture Overview](./ARCHITECTURE.md)** - System design and components
-- **[Engine V1](./ENGINE-V1.md)** - AI verification engine
-- **[Engine V2](./ENGINE-V2-TWO-TIER-MODES.md)** - Two-tier verification modes
-- **[Security](./SECURITY.md)** - Security considerations
+- [ARCHITECTURE.md](ARCHITECTURE.md) - System design and component overview
+- [MRV-METHODOLOGY.md](MRV-METHODOLOGY.md) - MRV methodology overview
+- [ENGINE-V1.md](ENGINE-V1.md) - AI Trust Scoring Engine V1
+- [ENGINE-V2-TWO-TIER-MODES.md](ENGINE-V2-TWO-TIER-MODES.md) - Two-tier anchoring modes
 
-### API & Integration
-- **[API Reference](./API.md)** - Complete REST API documentation
-- **[Integration Guide](../INTEGRATION_GUIDE.md)** - How to integrate
-- **[Edge Gateway Integration](./EDGE_GATEWAY_INTEGRATION.md)** - Edge device setup
+### API Documentation
+- [API.md](API.md) - REST API reference
+- [api/openapi.yaml](api/openapi.yaml) - OpenAPI specification
+- [API_QUICKSTART.md](API_QUICKSTART.md) - API quick start guide
 
-### Testing & Validation
-- **[Testing Guide](../TESTING_GUIDE.md)** - Run 237 tests
-- **[Verification Guide](../VERIFICATION_GUIDE.md)** - Verification procedures
-- **[Validation](../VALIDATION.md)** - Market validation
+### Verra & Carbon Credits
+- [VERRA-GUIDEBOOK.md](VERRA-GUIDEBOOK.md) - Verra submission guide
+- [ACM0002-ALIGNMENT-MATRIX.md](ACM0002-ALIGNMENT-MATRIX.md) - Methodology compliance matrix
+- [CARBON-CREDITS-QUICK-START.md](../CARBON-CREDITS-QUICK-START.md) - Carbon credits overview
 
----
+## Operations
 
-## 🌱 Carbon Credits & Compliance
+### Deployment & Production
+- [deployment/DEPLOYMENT-GUIDE.md](deployment/DEPLOYMENT-GUIDE.md) - Production deployment procedures
+- [deployment/PRODUCTION-CHECKLIST.md](deployment/PRODUCTION-CHECKLIST.md) - Pre-deployment checklist
+- [VERCEL-DEPLOYMENT-GUIDE.md](VERCEL-DEPLOYMENT-GUIDE.md) - Vercel-specific deployment
+- [MAINNET-CHECKLIST.md](MAINNET-CHECKLIST.md) - Mainnet verification checklist
 
-### Methodology
-- **[Verra Guidebook](./VERRA-GUIDEBOOK.md)** - Verra submission guide
-- **[ACM0002 Alignment Matrix](./ACM0002-ALIGNMENT-MATRIX.md)** - UN CDM methodology
-- **[Monitoring Plan](./MONITORING-PLAN.md)** - Data collection procedures
-- **[Methodology Analysis](./methodology_analysis.md)** - Detailed analysis
+### Monitoring & Operations
+- [MONITORING-PLAN.md](MONITORING-PLAN.md) - Data collection and monitoring procedures
+- [OPERATOR_GUIDE.md](OPERATOR_GUIDE.md) - Day-to-day operator procedures
+- [REC-GENERATION-WORKFLOW-EXECUTION.md](REC-GENERATION-WORKFLOW-EXECUTION.md) - REC generation workflow
+- [REC-GENERATION-WORKFLOW-TESTNET.md](REC-GENERATION-WORKFLOW-TESTNET.md) - Testnet REC workflow
 
-### Carbon Credit Workflow
-- **[Carbon Credits Quick Start](../CARBON-CREDITS-QUICK-START.md)** - Getting started
-- **[REC Generation Workflow](./REC-GENERATION-WORKFLOW-EXECUTION.md)** - Execution guide
-- **[REC Testnet Workflow](./REC-GENERATION-WORKFLOW-TESTNET.md)** - Testnet testing
+## Development
 
----
+### Testing & Quality
+- [TESTING_GUIDE.md](../TESTING_GUIDE.md) - Testing procedures and guidelines
+- [VALIDATION.md](../VALIDATION.md) - Validation procedures
+- [VERIFICATION_GUIDE.md](../VERIFICATION_GUIDE.md) - Verification guide
+- [SCENARIO1-SPEC.md](SCENARIO1-SPEC.md) - Test scenario specification
 
-## 🛠️ Deployment & Operations
-
-### Deployment
-- **[Vercel Deployment Guide](./VERCEL-DEPLOYMENT-GUIDE.md)** - Deploy dashboard
-- **[Deployment Guide](./deployment/DEPLOYMENT-GUIDE.md)** - Production deployment
-- **[Production Checklist](./deployment/PRODUCTION-CHECKLIST.md)** - Pre-launch checklist
-- **[Mainnet Verification Checklist](./Mainnet Verification & Production Readiness Checklist.md)** - Mainnet readiness
-
-### Operations
-- **[Operator Guide](./OPERATOR_GUIDE.md)** - Day-to-day operations
-- **[Monitoring Plan](./MONITORING-PLAN.md)** - System monitoring
-- **[Smart Sampling Strategy](./SMART-SAMPLING-STRATEGY.md)** - Data sampling
-
----
-
-## 💼 Business & Planning
-
-### Pilot & Implementation
-- **[6MW Pilot Plan](./PILOT_PLAN_6MW_PLANT.md)** - 90-day pilot guide
-- **[Implementation Plan](./IMPLEMENTATION-PLAN-COMPREHENSIVE.md)** - Comprehensive plan
-- **[Scenario 1 Spec](./SCENARIO1-SPEC.md)** - Test scenario
-
-### Financial Analysis
-- **[Cost Analysis](./COST-ANALYSIS.md)** - Detailed cost breakdown
-- **[Investment Summary](../INVESTMENT_SUMMARY.md)** - ROI analysis
-- **[Impact Statement](../IMPACT.md)** - Environmental impact
-
-### Market Analysis
-- **[Competitive Analysis](./Competitive Analysis_ Hedera Hydropower MRV vs. Incumbents.md)** - Market comparison
-
----
-
-## 🔧 Technical Guides
-
-### Multi-Tenancy
-- **[Multi-Tenant Guide](./multi-tenant-guide.md)** - Multi-tenancy setup
-- **[Project Profile Schema](./project-profile.schema.json)** - JSON schema
-
-### Hedera Integration
-- **[Anchoring Modes](./ANCHORING-MODES.md)** - HCS anchoring strategies
+### Integration
+- [INTEGRATION_GUIDE.md](../INTEGRATION_GUIDE.md) - System integration guide
+- [EDGE_GATEWAY_INTEGRATION.md](EDGE_GATEWAY_INTEGRATION.md) - Edge gateway integration
+- [multi-tenant-guide.md](multi-tenant-guide.md) - Multi-tenancy setup
 
 ### Security
-- **[Security Audit Checklist](./Security Audit Checklist.md)** - Security audit
+- [SECURITY.md](SECURITY.md) - Security considerations
+- [SECURITY-AUDIT-CHECKLIST.md](SECURITY-AUDIT-CHECKLIST.md) - Security audit checklist
+
+## Planning & Analysis
+
+### Roadmap & Strategy
+- [ROADMAP.md](../ROADMAP.md) - Project roadmap
+- [IMPLEMENTATION-PLAN-COMPREHENSIVE.md](IMPLEMENTATION-PLAN-COMPREHENSIVE.md) - Implementation plan
+- [PILOT_PLAN_6MW_PLANT.md](PILOT_PLAN_6MW_PLANT.md) - 6MW pilot deployment plan
+
+### Analysis & Research
+- [COST-ANALYSIS.md](COST-ANALYSIS.md) - Cost breakdown and analysis
+- [COMPETITIVE-ANALYSIS.md](COMPETITIVE-ANALYSIS.md) - Market competitive analysis
+- [INVESTMENT_SUMMARY.md](../INVESTMENT_SUMMARY.md) - Investment overview
+- [IMPACT.md](../IMPACT.md) - Environmental impact statement
+- [methodology_analysis.md](methodology_analysis.md) - Methodology analysis
+
+## Technical Specifications
+
+### Anchoring & Sampling
+- [ANCHORING-MODES.md](ANCHORING-MODES.md) - Blockchain anchoring modes
+- [SMART-SAMPLING-STRATEGY.md](SMART-SAMPLING-STRATEGY.md) - Data sampling strategy
+
+### Schemas & Data Models
+- [project-profile.schema.json](project-profile.schema.json) - Project profile JSON schema
+- [multi-tenant-schema.sql](multi-tenant-schema.sql) - Multi-tenant database schema
+
+## Project Info
+
+### General
+- [FEATURES.md](../FEATURES.md) - Feature list
+- [DEMO_GUIDE.md](../DEMO_GUIDE.md) - Demo walkthrough
+- [CHANGELOG.md](../CHANGELOG.md) - Version history
+- [CONTRIBUTING.md](../CONTRIBUTING.md) - Contribution guidelines
+
+### Consolidation Notes
+- [MERGE-NOTES.md](MERGE-NOTES.md) - Documentation consolidation notes
+- [DOC-CONSOLIDATION-PLAN.md](DOC-CONSOLIDATION-PLAN.md) - Consolidation plan
+- [archived/](archived/) - Archived/deprecated documentation
+
+## Evidence & Data
+
+See [../evidence/](../evidence/) directory for:
+- Transaction records
+- Test outputs
+- Hashscan links
+- Evidence data files
+
+## Machine Learning
+
+See [../ml/](../ml/) directory for:
+- ML module documentation
+- AI integration guides
+- Model specifications
 
 ---
 
-## 📊 Evidence & Test Results
-
-### Live Evidence
-- **[Test Results Dashboard](https://hedera-hydropower-mrv.vercel.app)** - Live dashboard
-- **[Evidence Documentation](../evidence/EVIDENCE.md)** - All evidence
-- **[HashScan Links](../evidence/HASHSCAN-LINKS.md)** - Blockchain verification
-- **[Transaction List](../evidence/transactions.txt)** - All transactions
-- **[Raw Test Output](../evidence/raw-test-output.txt)** - Complete test logs
-
-### Test Reports
-- **[Monitoring Report - Scenario 1](../evidence/Monitoring-Report-Testnet-Scenario1.md)** - Testnet scenario
-
----
-
-## 👥 Contributing
-
-### Developer Resources
-- **[Contributing Guide](../CONTRIBUTING.md)** - How to contribute
-- **[Changelog](../CHANGELOG.md)** - Version history
-- **[Features](../FEATURES.md)** - Feature list
-- **[Roadmap](../ROADMAP.md)** - Future plans
-
-### Examples
-- **[Examples](../examples/README.md)** - Code examples
-- **[ML Integration](../ml/INTEGRATION_GUIDE.md)** - ML model integration
-- **[Installation Guide](../scripts/INSTALLATION-GUIDE.md)** - Setup scripts
-
----
-
-## 🗂️ Archived Documentation
-
-**Outdated or duplicate files** (kept for historical reference):
-
-- **[Archived Docs](./archived/)** - 58 archived files
-  - Status files (8 files)
-  - Duplicate deployment guides (5 files)
-  - Outdated test results (5 files)
-  - Duplicate roadmaps (3 files)
-  - Outdated audits (6 files)
-  - And more...
-
-**To view archived docs**:
-```bash
-cd docs/archived/
-ls
-```
-
----
-
-## 🔍 How to Find Documentation
-
-### By Role
-
-**👨‍💻 Developers**:
-- [Quick Start](../QUICK_START.md)
-- [API Reference](./API.md)
-- [Architecture](./ARCHITECTURE.md)
-- [Testing Guide](../TESTING_GUIDE.md)
-
-**🏭 Plant Operators**:
-- [6MW Pilot Plan](./PILOT_PLAN_6MW_PLANT.md)
-- [Operator Guide](./OPERATOR_GUIDE.md)
-- [Edge Gateway Setup](./EDGE_GATEWAY_INTEGRATION.md)
-
-**💼 Enterprise/Investors**:
-- [Cost Analysis](./COST-ANALYSIS.md)
-- [Investment Summary](../INVESTMENT_SUMMARY.md)
-- [Competitive Analysis](./Competitive Analysis_ Hedera Hydropower MRV vs. Incumbents.md)
-
-**🌱 Carbon Credit Buyers**:
-- [Verra Guidebook](./VERRA-GUIDEBOOK.md)
-- [Carbon Credits Quick Start](../CARBON-CREDITS-QUICK-START.md)
-- [ACM0002 Alignment](./ACM0002-ALIGNMENT-MATRIX.md)
-
-### By Topic
-
-**Hedera Integration**:
-- [Architecture](./ARCHITECTURE.md)
-- [Anchoring Modes](./ANCHORING-MODES.md)
-- [HashScan Links](../evidence/HASHSCAN-LINKS.md)
-
-**Testing**:
-- [Testing Guide](../TESTING_GUIDE.md)
-- [Test Results Dashboard](https://hedera-hydropower-mrv.vercel.app)
-- [Evidence](../evidence/EVIDENCE.md)
-
-**Deployment**:
-- [Vercel Guide](./VERCEL-DEPLOYMENT-GUIDE.md)
-- [Production Checklist](./deployment/PRODUCTION-CHECKLIST.md)
-- [Mainnet Checklist](./Mainnet Verification & Production Readiness Checklist.md)
-
----
-
-## ❓ FAQ
-
-### Where do I start?
-Read [Quick Start Guide](../QUICK_START.md) first, then run the [Demo](../DEMO_GUIDE.md).
-
-### Where are test results?
-Live dashboard: [hedera-hydropower-mrv.vercel.app](https://hedera-hydropower-mrv.vercel.app)
-
-### How do I deploy?
-Follow [Vercel Deployment Guide](./VERCEL-DEPLOYMENT-GUIDE.md).
-
-### Where are real transactions?
-View on [HashScan](../evidence/HASHSCAN-LINKS.md) or the [live dashboard](https://hedera-hydropower-mrv.vercel.app).
-
-### How much does it cost?
-See [Cost Analysis](./COST-ANALYSIS.md) for detailed breakdown.
-
-### Can I pilot this?
-Yes! See [6MW Pilot Plan](./PILOT_PLAN_6MW_PLANT.md).
-
----
-
-## 📝 Documentation Statistics
-
-**Before Consolidation**:
-- Total files: 93 markdown files
-- Duplicates: ~20 files
-- Outdated: ~25 files
-- Status files: ~8 files
-
-**After Consolidation**:
-- Core docs: **35 files**
-- Archived: **58 files**
-- Reduction: **62% fewer files**
-
-**Benefits**:
-- ✅ Clearer structure
-- ✅ No duplicates
-- ✅ Single source of truth
-- ✅ Easy navigation
-- ✅ Better discoverability
-
----
-
-## 🔗 Quick Links
-
-- **👨‍💻 [GitHub Repo](https://github.com/BikramBiswas786/https-github.com-BikramBiswas786-hedera-hydropower-mrv)**
-- **📊 [Test Dashboard](https://hedera-hydropower-mrv.vercel.app)**
-- **🔍 [HashScan Explorer](https://hashscan.io/testnet/account/0.0.6255927)**
-- **📚 [Main README](../README.md)**
-
----
-
-**💚 Built for a sustainable future**  
-**Last Updated**: February 22, 2026
+**Last Updated**: February 22, 2026  
+**Total Active Docs**: ~40 files  
+**Archived Docs**: ~35 files in docs/archived/
