@@ -23,7 +23,7 @@ jobs:
       run: npm ci
 
     - name: Generate training data
-      run: npm run ml:generate-data
+      run: npm run ml:generate
 
     - name: Upload training data
       uses: actions/upload-artifact@v4
