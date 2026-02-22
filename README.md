@@ -26,7 +26,7 @@ Cost per verification: ~$0.0001. Time: seconds instead of months.
 
 ## Live system
 
-**Deployed:** [hydropower-mrv-19feb26.vercel.app](https://hydropower-mrv-19feb26.vercel.app/)
+**Deployed:** [hydropower-mrv-19feb26.vercel.app]([[https://hydropower-mrv-19feb26.vercel.app/)](https://https-github-com-bikram-biswas786-h.vercel.app/](https://https-github-com-bikram-biswas786-h.vercel.app/))
 
 **Hedera testnet:**
 - Audit topic: [0.0.7462776 on HashScan](https://hashscan.io/testnet/topic/0.0.7462776)
