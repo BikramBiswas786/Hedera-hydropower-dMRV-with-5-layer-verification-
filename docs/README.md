@@ -1,261 +1,247 @@
-# Hedera Hydropower dMRV – ACM0002-Style Digital MRV Tool on Hedera Testnet
+# 📚 Documentation Index
 
-Author: Bikram Biswas (@biswasbikram786)  
-Network: Hedera Testnet  
-Programme: DLT Earth Bounty  
-Status: Live digital MRV proof-of-concept (PoC) + Methodology Idea Note (MIN) submitted to Verra
+**Last Updated**: February 22, 2026  
+**Total Documents**: 35 core docs (consolidated from 93)
 
 ---
 
-## 1. What this repository actually is
+## 🚀 Quick Start
 
-This repository contains a **complete, on-chain proof-of-concept** for a **hydropower-focused digital MRV tool** that follows the structure and calculations of ACM0002 (grid-connected renewable electricity), implemented on **Hedera Testnet**.
+**New to the project? Start here:**
 
-The tool is designed to be:
-
-- **Hydropower-specific** – it assumes a grid-connected hydro unit with continuous generation and meter readings.  
-- **Digital-first** – it uses DIDs, signed telemetry, and a public DLT (Hedera Consensus Service) as an immutable audit trail.  
-- **Methodology-aligned, not methodology-replacing** – it implements ACM0002-style formulas and monitoring concepts but does **not** claim to be a new approved methodology by itself.
-
-It is currently used to demonstrate a single synthetic scenario (“Scenario 1”) on Testnet and to support a **Verra Methodology Idea Note (MIN)** submission, not to run a live crediting project.
+1. **[Quick Start Guide](../QUICK_START.md)** - 5-minute setup
+2. **[Demo Guide](../DEMO_GUIDE.md)** - Run the live demo
+3. **[Test Results Dashboard](https://hedera-hydropower-mrv.vercel.app)** - View live test results
+4. **[Live Demo Results](../evidence/LIVE_DEMO_RESULTS.md)** - Real transaction proof
 
 ---
 
-## 2. Honest status (February 2026)
+## 📚 Core Documentation
 
-Today, all of the following are true:
+### System Architecture
+- **[Architecture Overview](./ARCHITECTURE.md)** - System design and components
+- **[Engine V1](./ENGINE-V1.md)** - AI verification engine
+- **[Engine V2](./ENGINE-V2-TWO-TIER-MODES.md)** - Two-tier verification modes
+- **[Security](./SECURITY.md)** - Security considerations
 
-- A working **Testnet mini-tool** is live:
-  - `POST /telemetry` accepts signed payloads for a turbine (“TURBINE-1”), verifies signatures against a DID on an HCS topic, and writes `AUDITv1` envelopes on-chain.
-  - `GET /mrv-snapshot/TURBINE-1?period=2026-01` aggregates telemetry and returns ACM0002-style MRV numbers:
-    - 91 readings for January 2026  
-    - `EG_MWh = 16,800` (synthetic total net generation)  
-    - `EF_grid = 0.8 tCO2/MWh` (illustrative)  
-    - `BE_tCO2 = 13,440`, `PE_tCO2 = 0`, `LE_tCO2 = 0`, `ER_tCO2 = 13,440`.
+### API & Integration
+- **[API Reference](./API.md)** - Complete REST API documentation
+- **[Integration Guide](../INTEGRATION_GUIDE.md)** - How to integrate
+- **[Edge Gateway Integration](./EDGE_GATEWAY_INTEGRATION.md)** - Edge device setup
 
-- A **full monitoring report** for this scenario exists:
-  - `docs/Monitoring-Report-Testnet-Scenario1.md` tells the story of TURBINE-1 in 2026‑01, explains the inputs, shows the baseline and ER math, and links to on-chain evidence.
-
-- A **clean evidence index** exists:
-  - `evidence/txids.csv` lists:
-    - Operator accounts (e.g., `0.0.6255927`, `0.0.6255880`).
-    - DID / audit topics (e.g., `0.0.7462776`).
-    - Tokens used in the PoC.
-    - Key transactions (mint, burn, transfers, DID topic messages).
-    - At least one TELEMETRY row tying Scenario 1 mini-tool telemetry to a real Testnet transaction.
-
-- A **Verra MIN** has been submitted:
-  - VCS-MIN-v5.0-1: “Digitized Tool/Revision for ACM0002 – Blockchain-Enabled Digital MRV for Grid-Connected Hydropower Projects”.
-  - It includes:
-    - An ACM0002 Alignment Matrix mapping methodology sections to your digital implementation.
-    - A Testnet evidence package derived from `evidence/txids.csv`.
-    - Architecture and integrity details.
-
-- A **roadmap of phases 0–5** exists in docs:
-  - Phase 0 – Clean Testnet foundation (evidence, tests, integrity + regulatory docs).
-  - Phase 1 – Verra MIN submitted, waiting/responding properly.
-  - Phase 2 – Mini-tool API on Testnet.
-  - Phase 3 – Canonical Scenario 1 (this 91-reading run) and monitoring report.
-  - Phase 4 – Use this PoC to secure a pilot plant and a VVB.
-  - Phase 5 – How a pilot evolves into a full Verra project (PDD, validation, registration, credits).
-
-You **do not** yet have:
-
-- A Verra-approved methodology.  
-- A Verra-registered project.  
-- Issued credits from a real hydropower plant using this tool.
-
-Those belong to Phases 4–5 with real partners.
+### Testing & Validation
+- **[Testing Guide](../TESTING_GUIDE.md)** - Run 237 tests
+- **[Verification Guide](../VERIFICATION_GUIDE.md)** - Verification procedures
+- **[Validation](../VALIDATION.md)** - Market validation
 
 ---
 
-## 3. Why this is hydropower-specific and relevant
+## 🌱 Carbon Credits & Compliance
 
-Guardian and many MRV tools support generic renewable/carbon workflows. This repo narrows that to a **hydropower-focused** MRV story that includes:
+### Methodology
+- **[Verra Guidebook](./VERRA-GUIDEBOOK.md)** - Verra submission guide
+- **[ACM0002 Alignment Matrix](./ACM0002-ALIGNMENT-MATRIX.md)** - UN CDM methodology
+- **[Monitoring Plan](./MONITORING-PLAN.md)** - Data collection procedures
+- **[Methodology Analysis](./methodology_analysis.md)** - Detailed analysis
 
-- Turbine-/gateway-level DIDs (each device can be identified and signed).  
-- A pattern for continuous generation (daily net export readings, not one-off events).  
-- A clear mapping to ACM0002 sections:
-  - Baseline EG and EF,  
-  - Project emissions and leakage (set to zero in the PoC but structurally present),  
-  - Periodic emission reductions.
-
-The **value** is not that the chain “does MRV by itself”, but that:
-
-- **Data capture** is cryptographically signed and timestamped.  
-- **Audit trail** is immutable and publicly verifiable (Hedera topics + txids).  
-- **Calculations** are transparent and testable (unit tests and documented formulas).
-
-This makes it easier for a VVB or Verra to:
-
-- Recompute baseline and ER from raw data and compare with the tool.  
-- Click HashScan links and see that the audit envelopes and DID messages really exist.  
-- Understand exactly how the tool supports, rather than replaces, ACM0002.
+### Carbon Credit Workflow
+- **[Carbon Credits Quick Start](../CARBON-CREDITS-QUICK-START.md)** - Getting started
+- **[REC Generation Workflow](./REC-GENERATION-WORKFLOW-EXECUTION.md)** - Execution guide
+- **[REC Testnet Workflow](./REC-GENERATION-WORKFLOW-TESTNET.md)** - Testnet testing
 
 ---
 
-## 4. Verra / VVB / operator view – how to read this repo
+## 🛠️ Deployment & Operations
 
-If you are a **Verra reviewer**, **VVB**, or **hydropower operator**, the recommended reading order is:
+### Deployment
+- **[Vercel Deployment Guide](./VERCEL-DEPLOYMENT-GUIDE.md)** - Deploy dashboard
+- **[Deployment Guide](./deployment/DEPLOYMENT-GUIDE.md)** - Production deployment
+- **[Production Checklist](./deployment/PRODUCTION-CHECKLIST.md)** - Pre-launch checklist
+- **[Mainnet Verification Checklist](./Mainnet Verification & Production Readiness Checklist.md)** - Mainnet readiness
 
-1. **Overall guidebook and status**  
-   - `docs/VERRA-GUIDEBOOK.md` – explains, in plain language, how this digital MRV tool can fit into a Verra ACM0002 project (and what it does *not* claim).  
-   - `docs/PHASE0-STARTING-POINT.md` – describes the current Testnet foundation and existing assets.  
-   - `docs/PHASE1-2-TESTNET-ROADMAP.md` – shows how the MIN and Testnet mini-tool fit into the roadmap.  
-   - `docs/PHASE3-PILOT-READY-TESTNET.md` – focuses on the canonical Scenario 1 PoC.  
-   - `docs/PHASE4-PILOTS-AND-VVB.md` – outlines how to use this PoC for pilot and VVB conversations.  
-   - `docs/PHASE5-VERRA-PROJECT-PATH.md` – explains the path from pilot to PDD, validation, registration, and issuance.
-
-2. **ACM0002 mapping and tests**  
-   - `docs/ACM0002-ALIGNMENT-MATRIX.md` – complete row-by-row mapping of ACM0002 sections to implementation with code references and testnet evidence.  
-   - `docs/ACM0002-ADDITIONALITY.md` – additionality analysis, investment analysis, barrier analysis, and common practice analysis.  
-   - `docs/ACM0002-BASELINE-STUDY.md` – baseline EG calculation, grid emission factor methodology, and baseline emissions calculation.  
-   - `docs/TEST-RESULTS.md` – lists numeric test cases (e.g., EG=10,000 MWh, EF=0.8 → BE=8,000 tCO2) and confirms the tool's calculations match ACM0002 formulas.
-
-3. **Data integrity and regulatory status**  
-   - `docs/DATA-INTEGRITY-DESIGN.md` – describes DIDs, key management, nonces, replay protection, audit envelope structure, and use of Hedera topics.  
-   - `docs/REGULATORY-STATUS.md` – makes it explicit that:
-     - The tool is designed to support ACM0002 projects.
-     - It has not yet been reviewed/approved as a methodology or used in a registered project.
-
-4. **Testnet run and on-chain proof**  
-   - `docs/Monitoring-Report-Testnet-Scenario1.md` – the “paper” report for TURBINE-1 in 2026‑01 (16,800 MWh, 13,440 tCO2, 91 readings).  
-   - `evidence/txids.csv` – the index of accounts, topics, tokens, and TELEMETRY txids with HashScan URLs you can click to verify the PoC on Hedera Testnet.
+### Operations
+- **[Operator Guide](./OPERATOR_GUIDE.md)** - Day-to-day operations
+- **[Monitoring Plan](./MONITORING-PLAN.md)** - System monitoring
+- **[Smart Sampling Strategy](./SMART-SAMPLING-STRATEGY.md)** - Data sampling
 
 ---
 
-## 5. Code and structure – what runs where
+## 💼 Business & Planning
 
-High-level repo map:
+### Pilot & Implementation
+- **[6MW Pilot Plan](./PILOT_PLAN_6MW_PLANT.md)** - 90-day pilot guide
+- **[Implementation Plan](./IMPLEMENTATION-PLAN-COMPREHENSIVE.md)** - Comprehensive plan
+- **[Scenario 1 Spec](./SCENARIO1-SPEC.md)** - Test scenario
 
-- `code/service/` – **Mini-tool API (Testnet PoC)**
-  - `index.js` – Node service exposing:
-    - `POST /telemetry` – ingest signed payloads, verify DID, write `AUDITv1`.
-    - `GET /mrv-snapshot/:deviceId?period=YYYY-MM` – compute EG, EF, BE, PE, LE, ER and return JSON (e.g., 16,800 MWh, 13,440 tCO2, 91 readings).  
-  - `scenario1-seed.js` – generates a synthetic 30-day net export pattern and pushes it through `/telemetry` to build Scenario 1 on Testnet.
+### Financial Analysis
+- **[Cost Analysis](./COST-ANALYSIS.md)** - Detailed cost breakdown
+- **[Investment Summary](../INVESTMENT_SUMMARY.md)** - ROI analysis
+- **[Impact Statement](../IMPACT.md)** - Environmental impact
 
-- `code/playground/` – **low-level Hedera demos (Testnet, PoC only)**  
-  - Scripts like `01-deploy-did.js`, `02-gateway-sign.js`, `03-orchestrator-verify.js` show:
-    - Topic creation and DID publishing.  
-    - Gateway keypair generation and payload signing.  
-    - Orchestrator verification and token minting.  
-  - All scripts are clearly labeled as **Playground PoC**, not full ACM0002 MRV.
-
-- `docs/` – **Narrative and formal docs** (Verra guidebook, phases 0–5, alignment, integrity, monitoring report).  
-
-- `evidence/` – **Testnet evidence bundle**  
-  - `txids.csv` – one-line-per-artifact list of the most important accounts, topics, tokens, and transactions, including TELEMETRY rows for Scenario 1.
+### Market Analysis
+- **[Competitive Analysis](./Competitive Analysis_ Hedera Hydropower MRV vs. Incumbents.md)** - Market comparison
 
 ---
 
-## 6. One-line summary (for slides and emails)
+## 🔧 Technical Guides
 
-> An ACM0002-style hydropower digital MRV tool running on Hedera Testnet, with device DIDs, signed telemetry, on-chain audit envelopes, and a 91-reading January 2026 Scenario 1 monitoring report, designed to support future Verra ACM0002 projects but not yet used in an approved project.
-## 7. For developers – how to rerun Scenario 1 locally
+### Multi-Tenancy
+- **[Multi-Tenant Guide](./multi-tenant-guide.md)** - Multi-tenancy setup
+- **[Project Profile Schema](./project-profile.schema.json)** - JSON schema
 
-Prerequisites:
+### Hedera Integration
+- **[Anchoring Modes](./ANCHORING-MODES.md)** - HCS anchoring strategies
 
-- Node.js installed (LTS is fine).
-- Access to Hedera Testnet credentials (for the underlying Guardian / Playground flows).
-
-Steps:
-
-1. Clone and install:
-
-   ```bash
-   git clone https://github.com/BikramBiswas786/hedera-hydropower-mrv
-   cd hedera-hydropower-mrv/code/service
-   npm install
-   ```
-
-2. Start the Testnet mini-tool:
-
-   ```bash
-   npm start
-   ```
-
-   You should see: `Testnet mini-tool listening on http://localhost:3000`.
-
-3. Seed Scenario 1 (synthetic January 2026 for TURBINE-1):
-
-   ```bash
-   node scenario1-seed.js
-   ```
-
-   This will send 30 synthetic daily readings multiple times until the total count reaches 91, printing lines like `Day X sent: ... storedCount: 91`.
-
-4. Get the MRV snapshot:
-
-   ```bash
-   curl "http://localhost:3000/mrv-snapshot/TURBINE-1?period=2026-01"
-   ```
-
-   Expected JSON (values may differ slightly if you reseed, but should stay consistent with the pattern):
-
-   ```json
-   {
-     "deviceId": "TURBINE-1",
-     "period": "2026-01",
-     "EG_MWh": 16800,
-     "EF_grid_tCO2_per_MWh": 0.8,
-     "BE_tCO2": 13440,
-     "PE_tCO2": 0,
-     "LE_tCO2": 0,
-     "ER_tCO2": 13440,
-     "count": 91
-   }
-   ```
-
-5. Cross-check with docs and evidence:
-
-   - Compare these values with `docs/Monitoring-Report-Testnet-Scenario1.md`.
-   - Explore `evidence/txids.csv` and open the listed HashScan URLs for DID topics and TELEMETRY txids.
-## 8. Execution Modes
-
-This repo ships one Verra-aligned MRV engine (ENGINE V1) plus a configurable execution layer.
-All behaviour is controlled via `config/project-profile.json`:
-- Scope: device vs project vs both.
-- Anchoring: direct vs Merkle, plus frequency and batch mode.
-- Verification: human-only vs AI-assisted, with adjustable trust threshold.
-See `docs/ENGINE-V1.md` for the fixed engine definition and `docs/ANCHORING-MODES.md` for example profiles (Transparent Classic, Extreme Cost Saver, etc.).
+### Security
+- **[Security Audit Checklist](./Security Audit Checklist.md)** - Security audit
 
 ---
 
-## 9. Evidence Verification
+## 📊 Evidence & Test Results
 
-All on-chain evidence is publicly verifiable on Hedera Testnet:
+### Live Evidence
+- **[Test Results Dashboard](https://hedera-hydropower-mrv.vercel.app)** - Live dashboard
+- **[Evidence Documentation](../evidence/EVIDENCE.md)** - All evidence
+- **[HashScan Links](../evidence/HASHSCAN-LINKS.md)** - Blockchain verification
+- **[Transaction List](../evidence/transactions.txt)** - All transactions
+- **[Raw Test Output](../evidence/raw-test-output.txt)** - Complete test logs
 
+### Test Reports
+- **[Monitoring Report - Scenario 1](../evidence/Monitoring-Report-Testnet-Scenario1.md)** - Testnet scenario
+
+---
+
+## 👥 Contributing
+
+### Developer Resources
+- **[Contributing Guide](../CONTRIBUTING.md)** - How to contribute
+- **[Changelog](../CHANGELOG.md)** - Version history
+- **[Features](../FEATURES.md)** - Feature list
+- **[Roadmap](../ROADMAP.md)** - Future plans
+
+### Examples
+- **[Examples](../examples/README.md)** - Code examples
+- **[ML Integration](../ml/INTEGRATION_GUIDE.md)** - ML model integration
+- **[Installation Guide](../scripts/INSTALLATION-GUIDE.md)** - Setup scripts
+
+---
+
+## 🗂️ Archived Documentation
+
+**Outdated or duplicate files** (kept for historical reference):
+
+- **[Archived Docs](./archived/)** - 58 archived files
+  - Status files (8 files)
+  - Duplicate deployment guides (5 files)
+  - Outdated test results (5 files)
+  - Duplicate roadmaps (3 files)
+  - Outdated audits (6 files)
+  - And more...
+
+**To view archived docs**:
 ```bash
-# Verify all HashScan links
-node scripts/verify-evidence.js
+cd docs/archived/
+ls
 ```
 
-This generates a verification report at `evidence/VERIFICATION-REPORT.md`.
+---
+
+## 🔍 How to Find Documentation
+
+### By Role
+
+**👨‍💻 Developers**:
+- [Quick Start](../QUICK_START.md)
+- [API Reference](./API.md)
+- [Architecture](./ARCHITECTURE.md)
+- [Testing Guide](../TESTING_GUIDE.md)
+
+**🏭 Plant Operators**:
+- [6MW Pilot Plan](./PILOT_PLAN_6MW_PLANT.md)
+- [Operator Guide](./OPERATOR_GUIDE.md)
+- [Edge Gateway Setup](./EDGE_GATEWAY_INTEGRATION.md)
+
+**💼 Enterprise/Investors**:
+- [Cost Analysis](./COST-ANALYSIS.md)
+- [Investment Summary](../INVESTMENT_SUMMARY.md)
+- [Competitive Analysis](./Competitive Analysis_ Hedera Hydropower MRV vs. Incumbents.md)
+
+**🌱 Carbon Credit Buyers**:
+- [Verra Guidebook](./VERRA-GUIDEBOOK.md)
+- [Carbon Credits Quick Start](../CARBON-CREDITS-QUICK-START.md)
+- [ACM0002 Alignment](./ACM0002-ALIGNMENT-MATRIX.md)
+
+### By Topic
+
+**Hedera Integration**:
+- [Architecture](./ARCHITECTURE.md)
+- [Anchoring Modes](./ANCHORING-MODES.md)
+- [HashScan Links](../evidence/HASHSCAN-LINKS.md)
+
+**Testing**:
+- [Testing Guide](../TESTING_GUIDE.md)
+- [Test Results Dashboard](https://hedera-hydropower-mrv.vercel.app)
+- [Evidence](../evidence/EVIDENCE.md)
+
+**Deployment**:
+- [Vercel Guide](./VERCEL-DEPLOYMENT-GUIDE.md)
+- [Production Checklist](./deployment/PRODUCTION-CHECKLIST.md)
+- [Mainnet Checklist](./Mainnet Verification & Production Readiness Checklist.md)
 
 ---
 
-## 10. Cost Analysis (Honest Breakdown)
+## ❓ FAQ
 
-See `docs/COST-ANALYSIS.md` for detailed cost breakdown:
-- Blockchain transaction costs: 95% reduction
-- Verifier labor costs: 50-80% reduction (via AI automation)
-- Total MRV costs: 75-90% reduction
-- Realistic projections for single plant and 500-plant market
+### Where do I start?
+Read [Quick Start Guide](../QUICK_START.md) first, then run the [Demo](../DEMO_GUIDE.md).
+
+### Where are test results?
+Live dashboard: [hedera-hydropower-mrv.vercel.app](https://hedera-hydropower-mrv.vercel.app)
+
+### How do I deploy?
+Follow [Vercel Deployment Guide](./VERCEL-DEPLOYMENT-GUIDE.md).
+
+### Where are real transactions?
+View on [HashScan](../evidence/HASHSCAN-LINKS.md) or the [live dashboard](https://hedera-hydropower-mrv.vercel.app).
+
+### How much does it cost?
+See [Cost Analysis](./COST-ANALYSIS.md) for detailed breakdown.
+
+### Can I pilot this?
+Yes! See [6MW Pilot Plan](./PILOT_PLAN_6MW_PLANT.md).
 
 ---
 
-## 11. Production Deployment Checklist
+## 📝 Documentation Statistics
 
-Before deploying to production:
+**Before Consolidation**:
+- Total files: 93 markdown files
+- Duplicates: ~20 files
+- Outdated: ~25 files
+- Status files: ~8 files
 
-- [ ] Verra MIN approved
-- [ ] VVB validation complete
-- [ ] Project Design Document (PDD) submitted
-- [ ] Real hydropower plant partner identified
-- [ ] Hedera mainnet accounts created
-- [ ] Guardian policy deployed to mainnet
-- [ ] Security audit completed
-- [ ] Monitoring and alerting configured
-- [ ] Runbooks and documentation complete
+**After Consolidation**:
+- Core docs: **35 files**
+- Archived: **58 files**
+- Reduction: **62% fewer files**
 
-See `docs/PHASE4-PILOTS-AND-VVB.md` and `docs/PHASE5-VERRA-PROJECT-PATH.md` for details.
+**Benefits**:
+- ✅ Clearer structure
+- ✅ No duplicates
+- ✅ Single source of truth
+- ✅ Easy navigation
+- ✅ Better discoverability
+
+---
+
+## 🔗 Quick Links
+
+- **👨‍💻 [GitHub Repo](https://github.com/BikramBiswas786/https-github.com-BikramBiswas786-hedera-hydropower-mrv)**
+- **📊 [Test Dashboard](https://hedera-hydropower-mrv.vercel.app)**
+- **🔍 [HashScan Explorer](https://hashscan.io/testnet/account/0.0.6255927)**
+- **📚 [Main README](../README.md)**
+
+---
+
+**💚 Built for a sustainable future**  
+**Last Updated**: February 22, 2026
