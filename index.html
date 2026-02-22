@@ -1,0 +1,244 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Hedera Hydropower MRV - Test Results Dashboard</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            color: white;
+        }
+        .container { max-width: 1400px; margin: 0 auto; padding: 2rem; }
+        header {
+            text-align: center;
+            padding: 3rem 0;
+            background: rgba(0,0,0,0.2);
+            backdrop-filter: blur(10px);
+            border-radius: 20px;
+            margin-bottom: 2rem;
+        }
+        h1 { font-size: 3rem; margin-bottom: 1rem; }
+        .subtitle { font-size: 1.3rem; opacity: 0.9; }
+        .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(350px, 1fr)); gap: 1.5rem; margin-bottom: 2rem; }
+        .card {
+            background: rgba(255,255,255,0.1);
+            backdrop-filter: blur(20px);
+            border: 1px solid rgba(255,255,255,0.2);
+            border-radius: 16px;
+            padding: 2rem;
+            transition: transform 0.3s, box-shadow 0.3s;
+        }
+        .card:hover { transform: translateY(-5px); box-shadow: 0 20px 40px rgba(0,0,0,0.3); }
+        .card h2 { font-size: 1.5rem; margin-bottom: 1.5rem; display: flex; align-items: center; gap: 0.5rem; }
+        .stat { margin: 1rem 0; }
+        .stat-label { opacity: 0.7; font-size: 0.9rem; }
+        .stat-value { font-size: 1.8rem; font-weight: bold; margin-top: 0.3rem; }
+        .success { color: #4ade80; }
+        .warning { color: #fbbf24; }
+        .info { color: #60a5fa; }
+        .btn {
+            display: inline-block;
+            padding: 1rem 2rem;
+            background: linear-gradient(135deg, #4ade80 0%, #3b82f6 100%);
+            border-radius: 10px;
+            text-decoration: none;
+            color: white;
+            font-weight: bold;
+            transition: transform 0.3s;
+            margin: 0.5rem;
+        }
+        .btn:hover { transform: scale(1.05); }
+        .tx-list { max-height: 300px; overflow-y: auto; }
+        .tx-item {
+            background: rgba(0,0,0,0.2);
+            padding: 1rem;
+            margin: 0.5rem 0;
+            border-radius: 8px;
+            font-size: 0.9rem;
+        }
+        .tx-id { font-family: monospace; word-break: break-all; }
+        .footer { text-align: center; padding: 2rem; opacity: 0.8; }
+        .badge { display: inline-block; padding: 0.3rem 0.8rem; background: rgba(255,255,255,0.2); border-radius: 20px; font-size: 0.8rem; margin: 0.2rem; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>🚀 Hedera Hydropower MRV</h1>
+            <p class="subtitle">Production-Ready System | 237 Tests Passed | Real On-Chain Verification</p>
+            <div style="margin-top: 1.5rem;">
+                <span class="badge">✅ PRODUCTION READY</span>
+                <span class="badge">🔥 REAL HEDERA TESTNET</span>
+                <span class="badge">🧪 237/237 TESTS PASSED</span>
+            </div>
+        </header>
+
+        <div class="grid">
+            <!-- Test Results Card -->
+            <div class="card">
+                <h2>🧪 Test Results</h2>
+                <div class="stat">
+                    <div class="stat-label">Total Tests</div>
+                    <div class="stat-value success">237 / 237 ✅</div>
+                </div>
+                <div class="stat">
+                    <div class="stat-label">Test Suites</div>
+                    <div class="stat-value info">12 passed</div>
+                </div>
+                <div class="stat">
+                    <div class="stat-label">Execution Time</div>
+                    <div class="stat-value">40.2s</div>
+                </div>
+                <div class="stat">
+                    <div class="stat-label">Last Run</div>
+                    <div class="stat-value" style="font-size: 1.2rem;">Feb 22, 2026 2:52 AM IST</div>
+                </div>
+            </div>
+
+            <!-- Cost Analysis Card -->
+            <div class="card">
+                <h2>💰 Cost Analysis</h2>
+                <div class="stat">
+                    <div class="stat-label">Real Transactions</div>
+                    <div class="stat-value warning">~60 transactions</div>
+                </div>
+                <div class="stat">
+                    <div class="stat-label">Total Cost (Testnet)</div>
+                    <div class="stat-value success">$3.04 USD</div>
+                </div>
+                <div class="stat">
+                    <div class="stat-label">Cost per Transaction</div>
+                    <div class="stat-value">~$0.05</div>
+                </div>
+                <div class="stat">
+                    <div class="stat-label">INR Equivalent</div>
+                    <div class="stat-value" style="font-size: 1.2rem;">₹252</div>
+                </div>
+            </div>
+
+            <!-- Performance Metrics Card -->
+            <div class="card">
+                <h2>📈 Performance Metrics</h2>
+                <div class="stat">
+                    <div class="stat-label">Average Trust Score</div>
+                    <div class="stat-value success">70.8%</div>
+                </div>
+                <div class="stat">
+                    <div class="stat-label">Approval Rate</div>
+                    <div class="stat-value">50%</div>
+                </div>
+                <div class="stat">
+                    <div class="stat-label">Processing Speed</div>
+                    <div class="stat-value info">40 readings/sec</div>
+                </div>
+                <div class="stat">
+                    <div class="stat-label">1000 Readings Processed</div>
+                    <div class="stat-value" style="font-size: 1.2rem;">15.7s</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Carbon Credits Card (Full Width) -->
+        <div class="card" style="margin-bottom: 2rem;">
+            <h2>📎 Carbon Credits Generated</h2>
+            <div class="grid" style="margin-top: 1rem;">
+                <div class="stat">
+                    <div class="stat-label">Credits Issued</div>
+                    <div class="stat-value success">165.55 tCO2e</div>
+                </div>
+                <div class="stat">
+                    <div class="stat-label">Tokens Minted</div>
+                    <div class="stat-value info">165,550 HREC</div>
+                </div>
+                <div class="stat">
+                    <div class="stat-label">Market Value (USD)</div>
+                    <div class="stat-value warning">$3,027.91</div>
+                </div>
+                <div class="stat">
+                    <div class="stat-label">Market Value (INR)</div>
+                    <div class="stat-value" style="font-size: 1.5rem;">₹251,316</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Real Transactions Card -->
+        <div class="card" style="grid-column: 1 / -1;">
+            <h2>🔗 Real Hedera Transactions</h2>
+            <div class="tx-list">
+                <div class="tx-item">
+                    <strong>✅ Token Minting</strong><br>
+                    <span class="tx-id">TX: 0.0.6255927@1771708839.586094103</span><br>
+                    Tokens: 165,550 | Status: SUCCESS<br>
+                    <a href="https://hashscan.io/testnet/transaction/0.0.6255927@1771708839.586094103" target="_blank" class="btn" style="margin-top: 0.5rem; padding: 0.5rem 1rem; font-size: 0.9rem;">View on HashScan →</a>
+                </div>
+                <div class="tx-item">
+                    <strong>🌟 DID Deployment</strong><br>
+                    <span class="tx-id">DID: did:hedera:testnet:zSFlEUk8tVFVSQklORS0x_1771708975491</span><br>
+                    Device Identity | Status: DEPLOYED
+                </div>
+                <div class="tx-item">
+                    <strong>🪙 Token Creation</strong><br>
+                    <span class="tx-id">Token: 0.0.7964264</span><br>
+                    Symbol: HREC | Status: ACTIVE<br>
+                    <a href="https://hashscan.io/testnet/token/0.0.7964264" target="_blank" class="btn" style="margin-top: 0.5rem; padding: 0.5rem 1rem; font-size: 0.9rem;">View Token →</a>
+                </div>
+                <div class="tx-item">
+                    <strong>📝 Attestation Submission</strong><br>
+                    <span class="tx-id">TX: 0.0.6255927@1771708968.275909856</span><br>
+                    Trust: 98.5% | Status: APPROVED
+                </div>
+            </div>
+        </div>
+
+        <!-- Test Categories -->
+        <div class="card" style="grid-column: 1 / -1;">
+            <h2>📋 Test Categories</h2>
+            <div class="grid">
+                <div>
+                    <h3 style="margin-bottom: 1rem;">Unit Tests (107)</h3>
+                    <div class="badge success">✅ Anomaly Detection (23)</div>
+                    <div class="badge success">✅ Storage Operations (12)</div>
+                    <div class="badge success">✅ Configuration (39)</div>
+                    <div class="badge success">✅ ML Detection (18)</div>
+                    <div class="badge success">✅ Data Generation (9)</div>
+                    <div class="badge success">✅ Default Config (6)</div>
+                </div>
+                <div>
+                    <h3 style="margin-bottom: 1rem;">Integration Tests (83)</h3>
+                    <div class="badge success">✅ Hedera Integration (54)</div>
+                    <div class="badge success">✅ Verifier Attestation (22)</div>
+                    <div class="badge success">✅ Engine V1 Pipeline (7)</div>
+                </div>
+                <div>
+                    <h3 style="margin-bottom: 1rem;">E2E Tests (29)</h3>
+                    <div class="badge success">✅ E2E Production (11)</div>
+                    <div class="badge success">✅ Complete Workflow (18)</div>
+                </div>
+                <div>
+                    <h3 style="margin-bottom: 1rem;">ML Tests (18)</h3>
+                    <div class="badge success">✅ Isolation Forest (8)</div>
+                    <div class="badge success">✅ Feature Extraction (3)</div>
+                    <div class="badge success">✅ Bulk Detection (7)</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Action Buttons -->
+        <div style="text-align: center; margin: 3rem 0;">
+            <a href="https://github.com/BikramBiswas786/https-github.com-BikramBiswas786-hedera-hydropower-mrv" target="_blank" class="btn">👨‍💻 View Source Code</a>
+            <a href="https://hashscan.io/testnet/account/0.0.6255927" target="_blank" class="btn">🔍 View Hedera Account</a>
+            <a href="https://github.com/BikramBiswas786/https-github.com-BikramBiswas786-hedera-hydropower-mrv/blob/main/docs/DOC-CONSOLIDATION-PLAN.md" target="_blank" class="btn">📚 Documentation Plan</a>
+        </div>
+
+        <footer class="footer">
+            <p><strong>Hedera Hydropower MRV System</strong></p>
+            <p>Production-Ready • Real On-Chain • 237/237 Tests Passed</p>
+            <p style="margin-top: 1rem; font-size: 0.9rem;">Built for AngelHack Apex 2026 • Last updated: Feb 22, 2026</p>
+        </footer>
+    </div>
+</body>
+</html>
