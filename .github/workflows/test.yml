@@ -34,44 +34,26 @@ jobs:
       uses: actions/setup-node@v4
       with:
         node-version: ${{ matrix.node-version }}
-        cache: 'npm'
 
     - name: Install dependencies
-      run: npm ci
+      run: npm install
 
     - name: Create ml/data directory
       run: mkdir -p ml/data
 
-    - name: Train ML model (monsoon-aware)
-      run: npm run ml:train || echo "⚠️ ML training failed, using backup model"
+    - name: Train ML model
+      run: npm run ml:train || echo "⚠️ ML training skipped"
       continue-on-error: true
-
-    - name: Check if ML model exists
-      run: |
-        if [ -f "ml/model.json" ]; then
-          echo "✅ ML model exists"
-          ls -lh ml/model.json
-        else
-          echo "⚠️ ML model not found"
-        fi
 
     - name: Run all tests
       run: npm test -- --forceExit --testTimeout=30000 --maxWorkers=2
       env:
         NODE_ENV: test
         CI: true
-      continue-on-error: false
 
     - name: Test Summary
       if: always()
       run: |
         echo "## Test Results" >> $GITHUB_STEP_SUMMARY
-        echo "" >> $GITHUB_STEP_SUMMARY
-        if [ $? -eq 0 ]; then
-          echo "✅ **Status:** Tests passed" >> $GITHUB_STEP_SUMMARY
-        else
-          echo "⚠️ **Status:** Tests completed with issues" >> $GITHUB_STEP_SUMMARY
-        fi
         echo "**Node Version:** ${{ matrix.node-version }}" >> $GITHUB_STEP_SUMMARY
-        echo "" >> $GITHUB_STEP_SUMMARY
-        echo "🔧 **Note:** Integration tests with real Hedera network are mocked in CI" >> $GITHUB_STEP_SUMMARY
+        echo "🔧 **Hedera SDK:** Mocked for CI" >> $GITHUB_STEP_SUMMARY

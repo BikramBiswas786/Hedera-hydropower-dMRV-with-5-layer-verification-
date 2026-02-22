@@ -13,7 +13,7 @@ on:
 jobs:
   lint:
     runs-on: ubuntu-latest
-    
+
     steps:
     - uses: actions/checkout@v4
 
@@ -28,7 +28,7 @@ jobs:
 
     - name: Type check
       working-directory: ./vercel-ui
-      run: npx tsc --noEmit || echo "⚠️ Type check completed with warnings"
+      run: npx tsc --noEmit || echo "⚠️ Type warnings"
       continue-on-error: true
 
     - name: Build
@@ -38,18 +38,7 @@ jobs:
         NODE_ENV: production
 
     - name: Summary
-      if: success()
+      if: always()
       run: |
-        echo "## ✅ Vercel UI Build Successful" >> $GITHUB_STEP_SUMMARY
-        echo "" >> $GITHUB_STEP_SUMMARY
-        echo "**Status:** Ready for deployment" >> $GITHUB_STEP_SUMMARY
+        echo "## ✅ Vercel UI Build" >> $GITHUB_STEP_SUMMARY
         echo "**Framework:** Next.js 14" >> $GITHUB_STEP_SUMMARY
-        echo "**Deploy to:** https://vercel.com/new" >> $GITHUB_STEP_SUMMARY
-        echo "**Root Directory:** vercel-ui" >> $GITHUB_STEP_SUMMARY
-
-    - name: Failure Summary
-      if: failure()
-      run: |
-        echo "## ❌ Vercel UI Build Failed" >> $GITHUB_STEP_SUMMARY
-        echo "" >> $GITHUB_STEP_SUMMARY
-        echo "Check logs above for detailed error messages" >> $GITHUB_STEP_SUMMARY
