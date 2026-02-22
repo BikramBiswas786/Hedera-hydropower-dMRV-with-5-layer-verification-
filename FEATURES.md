@@ -1,12 +1,12 @@
-# 🎉 Complete Feature List - Hedera Hydropower MRV
+# Features - Hedera Hydropower MRV
 
-## 🛡️ **ALL 15 FEATURES IMPLEMENTED (100%)**
+This document describes the implemented features organized by functional area.
 
 ---
 
-## 📦 Phase 1: Production Infrastructure (30 min)
+## Infrastructure
 
-### ✅ A1. Docker + Production Config
+### Docker and Production Config
 
 **Files:**
 - `Dockerfile` - Multi-stage build with Alpine Linux (~150 MB)
@@ -14,46 +14,45 @@
 - `.env.example` - Production environment template
 - `scripts/init-db.sql` - PostgreSQL schema with indexes
 
-**Features:**
+**Notes:**
 - Health checks on all services
 - Non-root user for security
-- Automatic ML model training during build
+- ML model training runs automatically during build
 - Named volumes for data persistence
-- Network isolation
+- Network isolation between services
 
-**Usage:**
+**Start the stack:**
 ```bash
 cp .env.example .env
 docker-compose up -d
-# ✅ Stack running in 30 seconds
 ```
 
 ---
 
-### ✅ A3. API Auth + Rate Limiting
+### API Authentication and Rate Limiting
 
 **Files:**
 - `src/middleware/auth.js` - JWT + API key authentication
 - `src/middleware/rateLimiter.js` - Redis-backed sliding window
 
-**Authentication strategies:**
-1. **JWT tokens** - For dashboard users (expires 7 days)
-2. **API keys** - For device telemetry (HMAC-SHA256 hashed)
-3. **Role-based access** - admin, operator, auditor, viewer
+**Authentication methods:**
+1. JWT tokens - For dashboard users (expires 7 days)
+2. API keys - For device telemetry (HMAC-SHA256 hashed)
+3. Role-based access - admin, operator, auditor, viewer
 
 **Rate limits:**
 - Anonymous: 100 req / 15 min
 - Authenticated: 1000 req / 15 min
 - Devices: 10,000 req / hour
 
-**Features:**
-- Graceful fallback to in-memory store if Redis unavailable
-- Helpful headers (`X-RateLimit-Limit`, `X-RateLimit-Remaining`)
+**Notes:**
+- Falls back to in-memory store if Redis is unavailable
+- Returns `X-RateLimit-Limit` and `X-RateLimit-Remaining` headers
 - bcrypt password hashing (cost 10)
 
 ---
 
-### ✅ Database Schema (PostgreSQL)
+### Database Schema (PostgreSQL)
 
 **Tables:**
 - `devices` - Registered hydropower devices
@@ -63,18 +62,18 @@ docker-compose up -d
 - `carbon_credits` - REC issuance records
 - `users` - Dashboard users with roles
 
-**Features:**
+**Notes:**
 - JSONB columns for flexible data
 - Foreign keys with CASCADE
-- Composite indexes for fast queries
+- Composite indexes for query performance
 - UUID primary keys
 - Timestamps with timezone
 
 ---
 
-## 🧠 Phase 2: Advanced ML (130 min)
+## Machine Learning
 
-### ✅ B1. Time-Series Forecasting
+### Time-Series Forecasting
 
 **File:** `src/ml/Forecaster.js`
 
@@ -84,47 +83,37 @@ docker-compose up -d
 - Predicts next 24 hours of generation
 - 95% confidence intervals
 
-**Features:**
-- Detect underperformance (actual < forecast by 5%+)
-- Alert operators to maintenance needs
-- Export/import model state
+**Notes:**
+- Detects underperformance (actual < forecast by 5%+)
+- Alerts operators to maintenance needs
+- Model state can be exported and imported
 
-**Use cases:**
-- "Predict tomorrow's MWh for grid planning"
-- "Turbine efficiency degrading — schedule maintenance"
-- "Monsoon forecast: expect +40% generation next week"
-
-**API:**
+**Example:**
 ```javascript
 const forecaster = new Forecaster();
 forecaster.train(historicalReadings);
-const forecast = forecaster.predict(24); // Next 24 hours
+const forecast = forecaster.predict(24);
 const check = forecaster.checkUnderperformance(actualKwh, 1);
 // { underperforming: true, severity: 'HIGH', deltaPercent: -15.2 }
 ```
 
 ---
 
-### ✅ B2. Anomaly Clustering
+### Anomaly Clustering
 
 **File:** `src/ml/AnomalyClusterer.js`
 
 **Algorithm:** K-means clustering on anomaly feature vectors
 - Groups similar anomalies (fraud, sensor fault, environmental, normal variance)
-- Unsupervised learning (no labels needed)
+- Unsupervised - no labels required
 - Automatic cluster naming
 
-**Features:**
-- Classify new anomalies into known patterns
+**Notes:**
+- Classifies new anomalies into known patterns
 - Confidence scoring based on distance to centroid
 - Cluster statistics (size, percentage, centroid coordinates)
 
-**Use cases:**
-- "This anomaly looks 87% similar to previous fraud cases"
-- "Sensor drift detected (cluster: environmental_anomaly)"
-- "Normal monsoon spike (not fraud)"
-
-**Cluster names (auto-generated):**
+**Generated cluster names:**
 - `fraud_high_efficiency`
 - `generation_spike`
 - `environmental_anomaly`
@@ -132,242 +121,153 @@ const check = forecaster.checkUnderperformance(actualKwh, 1);
 
 ---
 
-### ✅ B3. Active Learning Loop
+### Active Learning Loop
 
 **File:** `src/ml/ActiveLearner.js`
 
-**Human-in-the-loop ML refinement:**
+**How it works:**
 - Operators label flagged readings (approve/reject/uncertain)
 - Model retrains automatically after 50+ feedbacks
-- False positive rate tracking
-- Performance metrics (precision, recall, F1)
+- Tracks false positive rate
+- Reports precision, recall, F1 metrics
 
-**Features:**
-- Smart sampling (ask human about uncertain cases)
-- Confidence-weighted learning
-- Auto-retrain trigger when FP rate > 30%
-- Metrics dashboard integration
+**Notes:**
+- Prioritizes uncertain cases for human review
+- Auto-retrain trigger when FP rate exceeds 30%
+- Integrates with metrics dashboard
 
 **Feedback types:**
 - `true_positive` - Correctly flagged fraud
-- `false_positive` - Wrongly flagged normal
+- `false_positive` - Wrongly flagged normal reading
 - `false_negative` - Missed fraud
-- `true_negative` - Correctly approved normal
-
-**Use cases:**
-- Reduce false alarms from 20% to <5% over 3 months
-- Adapt to new fraud patterns automatically
-- Transfer domain expert knowledge to ML
+- `true_negative` - Correctly approved normal reading
 
 ---
 
-## 💼 Phase 3: Business Intelligence (115 min)
+## Carbon Markets
 
-### ✅ C1. Carbon Marketplace Integration
+### Carbon Marketplace Integration
 
 **File:** `src/carbon/MarketplaceConnector.js`
 
 **Integrations:**
-- **Verra Registry** - World's leading carbon credit registry
-- **Gold Standard** - Premium carbon credits
-- **Carbon price APIs** - Real-time spot market pricing
+- Verra Registry
+- Gold Standard
+- Carbon price APIs (real-time spot pricing)
 
-**Features:**
-- Auto-submit verified RECs for certification
-- Track REC prices (USD per tCO₂e)
-- Revenue projections (USD & INR)
-- Monthly revenue reports
-- Batch REC retirement
+**Notes:**
+- Submits verified RECs for certification automatically
+- Tracks REC prices in USD per tCO2e
+- Calculates revenue projections in USD and INR
+- Supports batch REC retirement
 
-**API:**
+**Example:**
 ```javascript
 const connector = new MarketplaceConnector();
-
-// Submit to Verra
 const result = await connector.submitToVerra(attestations);
-// { submission_id: 'VERRA-12345', status: 'pending_review' }
-
-// Get current price
 const price = await connector.getCurrentPrice();
-// { price_usd_per_tco2e: 15.50, source: 'climate_trade' }
-
-// Revenue projection
-const revenue = await connector.calculateRevenue(100); // 100 tCO₂e
-// { estimated_revenue_usd: 1550, estimated_revenue_inr: 128650 }
+const revenue = await connector.calculateRevenue(100); // 100 tCO2e
 ```
 
 ---
 
-### ✅ C2. Investor Dashboard
+### Investor Dashboard
 
 **File:** `src/dashboard/InvestorDashboard.js`
 
 **Public-facing metrics** (no sensitive operational data):
 - Real-time MWh generation counter
-- Total CO₂ offset since inception
+- Total CO2 offset since inception
 - Uptime percentage
 - Monthly generation charts
-- Impact metrics (cars off road, homes powered, trees planted)
+- Impact metrics (equivalent cars, homes powered, trees)
 
-**API:**
+**Endpoint:**
 ```http
 GET /api/public/metrics
-
-Response:
-{
-  "realtime": {
-    "total_generation_mwh": 12500.5,
-    "total_carbon_offset_tco2e": 10.25,
-    "uptime_percentage": 98.5,
-    "last_updated": "2026-02-21T11:00:00Z"
-  },
-  "impact": {
-    "co2_equivalent_cars_off_road": 2228,
-    "homes_powered_annually": 1157,
-    "trees_planted_equivalent": 512500
-  },
-  "verification": {
-    "blockchain": "Hedera",
-    "methodology": "ACM0002",
-    "average_trust_score": 0.9542
-  }
-}
 ```
-
-**Use cases:**
-- Embed on company website
-- Show to investors in pitch decks
-- Public transparency reports
 
 ---
 
-### ✅ C3. Multi-Plant Fleet Management
+### Multi-Plant Fleet Management
 
 **File:** `src/multi-plant/PlantManager.js`
 
-**Features:**
-- Manage 10+ hydropower plants
-- Aggregate statistics across fleet
-- Comparative analytics (Plant A vs Plant B efficiency)
-- Regional breakdown (Maharashtra vs Kerala monsoon patterns)
+**Notes:**
+- Manages 10+ hydropower plants
+- Aggregates statistics across the fleet
+- Comparative analytics (plant vs. plant efficiency)
+- Regional breakdown by monsoon pattern
 
-**API:**
+**Example:**
 ```javascript
 const manager = new PlantManager();
-
-// Register plants
 manager.registerPlant('HYDRO-001', { name: 'Pune Plant', capacity_mw: 6, region: 'Maharashtra' });
-manager.registerPlant('HYDRO-002', { name: 'Kerala Plant', capacity_mw: 4, region: 'Kerala' });
-
-// Fleet stats
 const fleet = manager.getFleetStats();
-// { total_plants: 2, total_capacity_mw: 10, fleet_generation_mwh: 25000 }
-
-// Compare plants
 const comparison = manager.comparePlants('HYDRO-001', 'HYDRO-002');
-// { generation_ratio: 1.5, uptime_diff: 2.3, efficiency_comparison: {...} }
-
-// Regional breakdown
-const regional = manager.getRegionalBreakdown();
-// [{ region: 'Maharashtra', plant_count: 1, total_generation_mwh: 15000 }, ...]
 ```
 
 ---
 
-## 🌍 Phase 4: Geographic Expansion (50 min)
+## Geographic Expansion
 
-### ✅ E2. Renewable Source Adapters
+### Renewable Source Adapters
 
 **File:** `src/renewable/RenewableAdapter.js`
 
 **Supported sources:**
-1. **Hydropower** - (already native)
-2. **Solar** - Irradiance, panel temperature, inverter efficiency
-3. **Wind** - Wind speed, direction, blade RPM, hub height
-4. **Biomass** - Fuel type, combustion temperature, moisture content
+1. Hydropower (native)
+2. Solar - irradiance, panel temperature, inverter efficiency
+3. Wind - wind speed, direction, blade RPM, hub height
+4. Biomass - fuel type, combustion temperature, moisture content
 
-**Features:**
-- Normalize telemetry to standard format
+**Notes:**
+- Normalizes telemetry to a standard format
 - Source-specific efficiency calculations
-- Generic MRV engine (same for all sources)
-
-**API:**
-```javascript
-const solarAdapter = new RenewableAdapter('solar');
-const normalized = solarAdapter.normalizeTelemetry({
-  deviceId: 'SOLAR-001',
-  irradiance: 1000,
-  panelArea_m2: 100,
-  panelTemperature_c: 35,
-  generatedKwh: 18.5
-});
-// Returns standard format compatible with MRV workflow
-```
+- Same MRV engine handles all source types
 
 ---
 
-### ✅ E3. Localization (Hindi, Tamil, Telugu)
+### Localization
 
 **Files:**
-- `src/locales/hi.json` - हिंदी (Hindi)
-- `src/locales/ta.json` - தமிழ் (Tamil)
-- `src/locales/te.json` - తెలుగు (Telugu)
+- `src/locales/hi.json` - Hindi
+- `src/locales/ta.json` - Tamil
+- `src/locales/te.json` - Telugu
 - `src/middleware/i18n.js` - Translation middleware
 
-**Features:**
-- Auto-detect language from `Accept-Language` header
-- Currency formatting (₹ INR)
-- Date format (DD/MM/YYYY)
-- Timezone (Asia/Kolkata)
-
-**Supported strings:**
-- Dashboard labels
-- Status messages
-- Units (MWh, tCO₂e)
-- Error messages
-
-**API:**
-```http
-GET /api/metrics?lang=hi
-
-Response:
-{
-  "उत्पादन": "12500 MWh",
-  "कार्बन ऑफसेट": "10.25 tCO₂e"
-}
-```
+**Notes:**
+- Language auto-detected from `Accept-Language` header
+- INR currency formatting
+- DD/MM/YYYY date format
+- Asia/Kolkata timezone
 
 ---
 
-## 🔒 Phase 5: Security + Monitoring (170 min)
+## Monitoring and Security
 
-### ✅ A2. Prometheus + Grafana Monitoring
+### Prometheus and Grafana
 
 **Files:**
 - `src/monitoring/PrometheusMetrics.js` - Metrics exporter
 - `monitoring/prometheus.yml` - Prometheus config
 - `monitoring/grafana/dashboards/mrv-dashboard.json` - Pre-built dashboard
 
-**Metrics tracked:**
-- `mrv_readings_total` - Total readings processed
-- `mrv_readings_approved` - Approved readings counter
-- `mrv_readings_flagged` - Flagged for review
-- `mrv_anomalies_detected` - ML anomaly detections
-- `mrv_hedera_tx_success` - Successful HCS transactions
-- `mrv_api_latency_avg` - Average API response time
+**Tracked metrics:**
+- `mrv_readings_total`
+- `mrv_readings_approved`
+- `mrv_readings_flagged`
+- `mrv_anomalies_detected`
+- `mrv_hedera_tx_success`
+- `mrv_api_latency_avg`
 
-**Grafana panels:**
-1. Total Readings (stat)
-2. Anomaly Detection Rate (graph)
-3. Hedera TX Success Rate (gauge)
-4. Trust Score Distribution (histogram)
-5. API Latency (heatmap)
+**Grafana panels:** total readings, anomaly rate, Hedera TX success rate, trust score distribution, API latency
 
-**Access:** http://localhost:3001 (admin/admin)
+Access Grafana at `http://localhost:3001` (default credentials in `.env.example`).
 
 ---
 
-### ✅ D2. Multi-Signature Wallet
+### Multi-Signature Wallet
 
 **File:** `src/security/MultiSigWallet.js`
 
@@ -376,85 +276,34 @@ Response:
 - Signer 2: Third-party auditor
 - Signer 3: Regulatory authority
 
-**Features:**
-- Propose REC minting transaction
-- Collect signatures from authorized signers
-- Execute only when threshold (2) met
-- Prevents unilateral fraud
-
-**API:**
-```javascript
-const wallet = new MultiSigWallet(['owner', 'auditor', 'regulator']);
-
-// Owner proposes minting 100 RECs
-const tx = wallet.proposeMint(100, 'ATT-12345', 'owner');
-// { txId: 'TX-1708516800', status: 'pending', signaturesNeeded: 1 }
-
-// Auditor signs
-wallet.sign(tx.txId, 'auditor');
-// { status: 'approved', canExecute: true }
-
-// Execute minting
-wallet.execute(tx.txId);
-// { success: true, amount: 100, signatures: ['owner', 'auditor'] }
-```
+**Notes:**
+- REC minting requires threshold signatures before execution
+- Prevents unilateral changes
 
 ---
 
-### ✅ D3. Security Auditor
+### Security Auditor
 
 **File:** `src/security/SecurityAuditor.js`
 
-**OWASP Top 10 tests:**
-1. SQL Injection - Parameterized queries
-2. XSS - JSON API only (no HTML rendering)
-3. Broken Authentication - JWT + bcrypt
-4. Sensitive Data Exposure - Hashed API keys
-5. XML External Entities - Not applicable (JSON)
-6. Broken Access Control - RBAC middleware
-7. Security Misconfiguration - Automated checklist
-8. Insecure Deserialization - Input validation
-9. Insufficient Logging - All HCS transactions logged
-10. SSRF - Allowlist for external APIs
+Runs checks against OWASP Top 10 categories: SQL injection, XSS, authentication, sensitive data exposure, access control, security misconfiguration, insecure deserialization, logging, and SSRF.
 
-**API:**
 ```javascript
 const auditor = new SecurityAuditor();
 const report = auditor.runFullAudit();
-// { tests: [...], summary: { passed: 10, failed: 0 } }
 ```
 
 ---
 
-## 📊 Statistics
+## Summary
 
-- **Total features implemented:** 15
-- **Development time:** ~90 minutes
-- **Lines of code added:** ~5,000+
-- **Files created:** 30+
-- **Docker services:** 5 (API, Redis, PostgreSQL, Prometheus, Grafana)
-- **API endpoints:** 20+
-- **ML algorithms:** 4 (Isolation Forest, Holt-Winters, K-means, Active Learning)
-- **Supported languages:** 4 (English, Hindi, Tamil, Telugu)
-- **Renewable sources:** 4 (Hydro, Solar, Wind, Biomass)
-- **Security tests:** 10 (OWASP Top 10)
-- **Production-ready:** ✅ YES
+| Area | Count |
+|------|-------|
+| ML algorithms | 4 (Isolation Forest, Holt-Winters, K-means, Active Learning) |
+| API endpoints | 20+ |
+| Docker services | 5 (API, Redis, PostgreSQL, Prometheus, Grafana) |
+| Supported languages | 4 (English, Hindi, Tamil, Telugu) |
+| Renewable source types | 4 (Hydro, Solar, Wind, Biomass) |
+| OWASP security checks | 10 |
 
----
-
-## 🚀 Deployment
-
-**See [DEPLOYMENT.md](DEPLOYMENT.md) for full guide.**
-
-**Quick start:**
-```bash
-cp .env.example .env
-docker-compose up -d
-# ✅ Stack running in 30 seconds
-# Access: http://localhost:3000
-# Grafana: http://localhost:3001
-```
-
----
-
-**⚡ Powered by Hedera | 🌱 Verified Clean Energy | 🔒 Blockchain Security**
+See [DEPLOYMENT.md](DEPLOYMENT.md) for setup instructions.
