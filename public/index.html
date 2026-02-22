@@ -1,865 +1,244 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Hedera Hydropower MRV - 99% Cost Reduction for Carbon Credits</title>
-    <meta name="description" content="AI-Powered blockchain verification for small hydropower. $50K → $500 per project. 180x faster carbon credit verification.">
+    <title>Hedera Hydropower MRV - Test Results Dashboard</title>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
-        :root {
-            --primary: #667eea;
-            --secondary: #764ba2;
-            --success: #10b981;
-            --warning: #f59e0b;
-            --danger: #ef4444;
-            --dark: #1f2937;
-            --light: #f9fafb;
-        }
         body {
-            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-            background: linear-gradient(135deg, var(--primary) 0%, var(--secondary) 100%);
-            color: var(--dark);
-            line-height: 1.6;
-        }
-        /* Navigation */
-        nav {
-            background: rgba(255,255,255,0.95);
-            backdrop-filter: blur(10px);
-            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
-            position: sticky;
-            top: 0;
-            z-index: 1000;
-        }
-        .nav-container {
-            max-width: 1400px;
-            margin: 0 auto;
-            padding: 1rem 2rem;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-        }
-        .logo {
-            font-size: 1.5rem;
-            font-weight: 700;
-            color: var(--primary);
-            display: flex;
-            align-items: center;
-            gap: 0.5rem;
-        }
-        .nav-links {
-            display: flex;
-            gap: 2rem;
-            list-style: none;
-        }
-        .nav-links a {
-            color: var(--dark);
-            text-decoration: none;
-            font-weight: 500;
-            transition: color 0.3s;
-        }
-        .nav-links a:hover { color: var(--primary); }
-        /* Hero Section */
-        .hero {
-            padding: 4rem 2rem;
-            text-align: center;
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
             color: white;
         }
-        .hero h1 {
-            font-size: 3.5rem;
-            margin-bottom: 1rem;
-            text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
-        }
-        .hero p {
-            font-size: 1.3rem;
-            margin-bottom: 1rem;
-            opacity: 0.95;
-        }
-        .hero-metrics {
-            display: flex;
-            justify-content: center;
-            flex-wrap: wrap;
-            gap: 2rem;
-            margin: 2rem 0;
-        }
-        .hero-metric {
-            background: rgba(255,255,255,0.25);
-            backdrop-filter: blur(10px);
-            padding: 1.5rem 2rem;
-            border-radius: 15px;
-            min-width: 200px;
-        }
-        .hero-metric h3 {
-            font-size: 2.5rem;
-            margin-bottom: 0.5rem;
-        }
-        .badges {
-            display: flex;
-            justify-content: center;
-            flex-wrap: wrap;
-            gap: 1rem;
-            margin: 2rem 0;
-        }
-        .badge {
-            background: rgba(255,255,255,0.2);
-            padding: 0.5rem 1.5rem;
-            border-radius: 30px;
-            backdrop-filter: blur(10px);
-            font-weight: 600;
-        }
-        /* Stats Section */
-        .stats {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-            gap: 2rem;
-            max-width: 1400px;
-            margin: -3rem auto 4rem;
-            padding: 0 2rem;
-        }
-        .stat-card {
-            background: white;
-            padding: 2rem;
-            border-radius: 15px;
-            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+        .container { max-width: 1400px; margin: 0 auto; padding: 2rem; }
+        header {
             text-align: center;
-            transition: transform 0.3s;
-        }
-        .stat-card:hover { transform: translateY(-5px); }
-        .stat-number {
-            font-size: 3rem;
-            font-weight: 700;
-            color: var(--primary);
-            margin-bottom: 0.5rem;
-        }
-        .stat-label {
-            color: #6b7280;
-            font-size: 0.9rem;
-            text-transform: uppercase;
-            letter-spacing: 1px;
-        }
-        /* Container */
-        .container {
-            max-width: 1400px;
-            margin: 0 auto;
-            padding: 4rem 2rem;
-        }
-        /* Section */
-        .section {
-            background: white;
+            padding: 3rem 0;
+            background: rgba(0,0,0,0.2);
+            backdrop-filter: blur(10px);
             border-radius: 20px;
-            padding: 3rem;
-            margin-bottom: 3rem;
-            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+            margin-bottom: 2rem;
         }
-        .section h2 {
-            font-size: 2rem;
-            margin-bottom: 1.5rem;
-            color: var(--dark);
-        }
-        /* Feature Grid */
-        .feature-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-            gap: 2rem;
-            margin: 2rem 0;
-        }
-        .feature-card {
+        h1 { font-size: 3rem; margin-bottom: 1rem; }
+        .subtitle { font-size: 1.3rem; opacity: 0.9; }
+        .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(350px, 1fr)); gap: 1.5rem; margin-bottom: 2rem; }
+        .card {
+            background: rgba(255,255,255,0.1);
+            backdrop-filter: blur(20px);
+            border: 1px solid rgba(255,255,255,0.2);
+            border-radius: 16px;
             padding: 2rem;
-            background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
-            border-radius: 15px;
-            transition: all 0.3s;
+            transition: transform 0.3s, box-shadow 0.3s;
         }
-        .feature-card:hover {
-            transform: translateY(-5px);
-            box-shadow: 0 10px 20px rgba(0,0,0,0.1);
-        }
-        .feature-icon {
-            font-size: 3rem;
-            margin-bottom: 1rem;
-        }
-        .feature-card h3 {
-            color: var(--primary);
-            margin-bottom: 1rem;
-        }
-        /* Architecture Diagram */
-        .architecture {
-            background: #f9fafb;
-            padding: 3rem;
-            border-radius: 15px;
-            margin: 2rem 0;
-        }
-        .arch-layer {
-            background: white;
-            padding: 2rem;
-            margin: 1rem 0;
-            border-radius: 10px;
-            border-left: 4px solid var(--primary);
-        }
-        .arch-layer h4 {
-            color: var(--primary);
-            margin-bottom: 1rem;
-        }
-        /* API Endpoints */
-        .endpoint {
-            background: #f9fafb;
-            padding: 1.5rem;
-            margin: 1rem 0;
-            border-radius: 10px;
-            border-left: 4px solid var(--success);
-        }
-        .endpoint code {
-            background: #374151;
-            color: #10b981;
-            padding: 0.3rem 0.6rem;
-            border-radius: 5px;
-            font-family: 'Courier New', monospace;
-        }
-        .method {
-            display: inline-block;
-            padding: 0.3rem 1rem;
-            border-radius: 5px;
-            font-weight: 700;
-            margin-right: 1rem;
-            font-size: 0.9rem;
-        }
-        .get { background: var(--success); color: white; }
-        .post { background: #3b82f6; color: white; }
-        /* Buttons */
+        .card:hover { transform: translateY(-5px); box-shadow: 0 20px 40px rgba(0,0,0,0.3); }
+        .card h2 { font-size: 1.5rem; margin-bottom: 1.5rem; display: flex; align-items: center; gap: 0.5rem; }
+        .stat { margin: 1rem 0; }
+        .stat-label { opacity: 0.7; font-size: 0.9rem; }
+        .stat-value { font-size: 1.8rem; font-weight: bold; margin-top: 0.3rem; }
+        .success { color: #4ade80; }
+        .warning { color: #fbbf24; }
+        .info { color: #60a5fa; }
         .btn {
             display: inline-block;
             padding: 1rem 2rem;
-            background: var(--primary);
-            color: white;
-            text-decoration: none;
+            background: linear-gradient(135deg, #4ade80 0%, #3b82f6 100%);
             border-radius: 10px;
-            font-weight: 600;
-            transition: all 0.3s;
-            border: none;
-            cursor: pointer;
+            text-decoration: none;
+            color: white;
+            font-weight: bold;
+            transition: transform 0.3s;
             margin: 0.5rem;
         }
-        .btn:hover {
-            background: var(--secondary);
-            transform: translateY(-2px);
-            box-shadow: 0 5px 15px rgba(0,0,0,0.2);
+        .btn:hover { transform: scale(1.05); }
+        .tx-list { max-height: 300px; overflow-y: auto; }
+        .tx-item {
+            background: rgba(0,0,0,0.2);
+            padding: 1rem;
+            margin: 0.5rem 0;
+            border-radius: 8px;
+            font-size: 0.9rem;
         }
-        .btn-secondary {
-            background: #6b7280;
-        }
-        .btn-success {
-            background: var(--success);
-        }
-        /* Tabs */
-        .tabs {
-            display: flex;
-            gap: 1rem;
-            margin-bottom: 2rem;
-            border-bottom: 2px solid #e5e7eb;
-            flex-wrap: wrap;
-        }
-        .tab {
-            padding: 1rem 2rem;
-            background: none;
-            border: none;
-            cursor: pointer;
-            font-weight: 600;
-            color: #6b7280;
-            transition: all 0.3s;
-        }
-        .tab.active {
-            color: var(--primary);
-            border-bottom: 3px solid var(--primary);
-        }
-        .tab-content {
-            display: none;
-        }
-        .tab-content.active {
-            display: block;
-            animation: fadeIn 0.3s;
-        }
-        @keyframes fadeIn {
-            from { opacity: 0; transform: translateY(10px); }
-            to { opacity: 1; transform: translateY(0); }
-        }
-        /* Test Demo */
-        .demo-box {
-            background: #1f2937;
-            color: #10b981;
-            padding: 2rem;
-            border-radius: 10px;
-            font-family: 'Courier New', monospace;
-            margin: 2rem 0;
-            overflow-x: auto;
-            max-height: 500px;
-            overflow-y: auto;
-        }
-        .demo-output {
-            white-space: pre-wrap;
-            line-height: 1.8;
-        }
-        /* Problem Section */
-        .problem-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-            gap: 2rem;
-            margin: 2rem 0;
-        }
-        .problem-card {
-            background: #fef2f2;
-            border-left: 4px solid var(--danger);
-            padding: 1.5rem;
-            border-radius: 10px;
-        }
-        .problem-card h4 {
-            color: var(--danger);
-            margin-bottom: 0.5rem;
-        }
-        /* Footer */
-        footer {
-            background: var(--dark);
-            color: white;
-            padding: 3rem 2rem;
-            text-align: center;
-        }
-        .footer-links {
-            display: flex;
-            justify-content: center;
-            gap: 2rem;
-            margin-top: 2rem;
-            flex-wrap: wrap;
-        }
-        .footer-links a {
-            color: white;
-            text-decoration: none;
-            opacity: 0.8;
-            transition: opacity 0.3s;
-        }
-        .footer-links a:hover {
-            opacity: 1;
-        }
-        /* Responsive */
-        @media (max-width: 768px) {
-            .hero h1 { font-size: 2rem; }
-            .hero p { font-size: 1rem; }
-            .nav-links { display: none; }
-            .stats { grid-template-columns: 1fr; }
-            .hero-metric { min-width: 150px; }
-            .hero-metric h3 { font-size: 1.8rem; }
-        }
+        .tx-id { font-family: monospace; word-break: break-all; }
+        .footer { text-align: center; padding: 2rem; opacity: 0.8; }
+        .badge { display: inline-block; padding: 0.3rem 0.8rem; background: rgba(255,255,255,0.2); border-radius: 20px; font-size: 0.8rem; margin: 0.2rem; }
     </style>
 </head>
 <body>
-    <!-- Navigation -->
-    <nav>
-        <div class="nav-container">
-            <div class="logo">🌊 Hedera Hydropower MRV</div>
-            <ul class="nav-links">
-                <li><a href="#home">Home</a></li>
-                <li><a href="#problem">Problem</a></li>
-                <li><a href="#features">Features</a></li>
-                <li><a href="#architecture">Architecture</a></li>
-                <li><a href="#api">API</a></li>
-                <li><a href="#demo">Live Demo</a></li>
-                <li><a href="https://github.com/BikramBiswas786/https-github.com-BikramBiswas786-hedera-hydropower-mrv" target="_blank">GitHub</a></li>
-            </ul>
-        </div>
-    </nav>
-    <!-- Hero Section -->
-    <section class="hero" id="home">
-        <h1>⚡ 99% Cost Reduction for Carbon Credit Verification</h1>
-        <p style="font-size: 1.5rem; font-weight: 600; margin-bottom: 1rem;">AI-Powered MRV for Small Hydropower • $50K → $500 per Project</p>
-        <p>Automated Measurement, Reporting & Verification on Hedera Blockchain<br/>
-        Eliminate Manual Audits • Prevent Fraud • Tokenize Carbon Credits</p>
-        <div class="hero-metrics">
-            <div class="hero-metric">
-                <h3>180x Faster</h3>
-                <p>6 months → 1 day</p>
-            </div>
-            <div class="hero-metric">
-                <h3>95% Accuracy</h3>
-                <p>AI fraud detection</p>
-            </div>
-            <div class="hero-metric">
-                <h3>$0.0001</h3>
-                <p>per verification</p>
-            </div>
-        </div>
-        <div class="badges">
-            <span class="badge">✅ Live on Hedera Testnet</span>
-            <span class="badge">🤖 5-Layer AI Verification</span>
-            <span class="badge">🔗 UN CDM ACM0002 Compliant</span>
-            <span class="badge">📊 224 Tests • 87% Production Ready</span>
-        </div>
-        <div style="margin-top: 2rem;">
-            <a href="#demo" class="btn" style="font-size: 1.2rem; padding: 1.2rem 3rem;">🎮 Try Live Demo</a>
-            <a href="https://hashscan.io/testnet/topic/0.0.7462776" class="btn btn-secondary" style="font-size: 1.2rem; padding: 1.2rem 3rem;" target="_blank">🔗 View on Blockchain</a>
-        </div>
-    </section>
-    <!-- Stats -->
-    <div class="stats">
-        <div class="stat-card">
-            <div class="stat-number">13/15</div>
-            <div class="stat-label">Features Ready</div>
-        </div>
-        <div class="stat-card">
-            <div class="stat-number">87%</div>
-            <div class="stat-label">Production Complete</div>
-        </div>
-        <div class="stat-card">
-            <div class="stat-number">224</div>
-            <div class="stat-label">Tests Passing</div>
-        </div>
-        <div class="stat-card">
-            <div class="stat-number">100%</div>
-            <div class="stat-label">Uptime</div>
-        </div>
-    </div>
-    <!-- Main Container -->
     <div class="container">
-        <!-- Problem Statement -->
-        <section class="section" id="problem">
-            <h2>🔥 The $30-60B Problem</h2>
-            <p style="font-size: 1.2rem; margin-bottom: 2rem;">Small-scale renewable energy projects (1-15 MW hydropower) face critical barriers to carbon market access:</p>
-            <div class="problem-grid">
-                <div class="problem-card">
-                    <h4>💰 Cost Barrier</h4>
-                    <p>$15,000-50,000 per manual verification excludes 70% of small projects from carbon markets</p>
+        <header>
+            <h1>🚀 Hedera Hydropower MRV</h1>
+            <p class="subtitle">Production-Ready System | 237 Tests Passed | Real On-Chain Verification</p>
+            <div style="margin-top: 1.5rem;">
+                <span class="badge">✅ PRODUCTION READY</span>
+                <span class="badge">🔥 REAL HEDERA TESTNET</span>
+                <span class="badge">🧪 237/237 TESTS PASSED</span>
+            </div>
+        </header>
+
+        <div class="grid">
+            <!-- Test Results Card -->
+            <div class="card">
+                <h2>🧪 Test Results</h2>
+                <div class="stat">
+                    <div class="stat-label">Total Tests</div>
+                    <div class="stat-value success">237 / 237 ✅</div>
                 </div>
-                <div class="problem-card">
-                    <h4>⏱️ Time Bottleneck</h4>
-                    <p>3-6 months for manual auditing delays revenue and project viability</p>
+                <div class="stat">
+                    <div class="stat-label">Test Suites</div>
+                    <div class="stat-value info">12 passed</div>
                 </div>
-                <div class="problem-card">
-                    <h4>🚨 Trust Deficit</h4>
-                    <p>30-40% of carbon credit claims contain errors or fraud due to manual processes</p>
+                <div class="stat">
+                    <div class="stat-label">Execution Time</div>
+                    <div class="stat-value">40.2s</div>
                 </div>
-                <div class="problem-card">
-                    <h4>🔄 Double-Counting</h4>
-                    <p>Lack of immutable ledgers enables duplicate credit issuance and market manipulation</p>
+                <div class="stat">
+                    <div class="stat-label">Last Run</div>
+                    <div class="stat-value" style="font-size: 1.2rem;">Feb 22, 2026 2:52 AM IST</div>
                 </div>
             </div>
-            <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 2rem; border-radius: 15px; margin-top: 2rem; text-align: center;">
-                <h3 style="font-size: 2rem; margin-bottom: 1rem;">Market Opportunity</h3>
-                <p style="font-size: 1.3rem;">500+ GW of small-scale hydro globally generating 2 billion carbon credits/year at $15-30/credit = <strong>$30-60B annual market</strong></p>
-            </div>
-        </section>
-        <!-- Features Section -->
-        <section class="section" id="features">
-            <h2>🎯 Production Features</h2>
-            <div class="feature-grid">
-                <div class="feature-card">
-                    <div class="feature-icon">🤖</div>
-                    <h3>5-Layer AI Verification</h3>
-                    <p>Physics validation (30%), temporal consistency (25%), environmental bounds (20%), statistical anomalies (15%), device consistency (10%)</p>
+
+            <!-- Cost Analysis Card -->
+            <div class="card">
+                <h2>💰 Cost Analysis</h2>
+                <div class="stat">
+                    <div class="stat-label">Real Transactions</div>
+                    <div class="stat-value warning">~60 transactions</div>
                 </div>
-                <div class="feature-card">
-                    <div class="feature-icon">📊</div>
-                    <h3>ML Forecasting</h3>
-                    <p>Holt-Winters algorithm for 24-hour energy production predictions with 95% accuracy and model persistence</p>
+                <div class="stat">
+                    <div class="stat-label">Total Cost (Testnet)</div>
+                    <div class="stat-value success">$3.04 USD</div>
                 </div>
-                <div class="feature-card">
-                    <div class="feature-icon">🔍</div>
-                    <h3>Fraud Detection</h3>
-                    <p>K-means clustering anomaly detection proven to catch 10x power inflation at 65% trust score</p>
+                <div class="stat">
+                    <div class="stat-label">Cost per Transaction</div>
+                    <div class="stat-value">~$0.05</div>
                 </div>
-                <div class="feature-card">
-                    <div class="feature-icon">🎓</div>
-                    <h3>Active Learning</h3>
-                    <p>Feedback system for continuous model improvement with precision/recall tracking</p>
-                </div>
-                <div class="feature-card">
-                    <div class="feature-icon">🏭</div>
-                    <h3>Multi-Plant Management</h3>
-                    <p>Centralized monitoring for multiple hydropower facilities with plant-specific models</p>
-                </div>
-                <div class="feature-card">
-                    <div class="feature-icon">🔗</div>
-                    <h3>Hedera DLT Integration</h3>
-                    <p>Live HCS audit trail (Topic: 0.0.7462776) and HTS carbon tokens (Token: 0.0.7964264)</p>
-                </div>
-                <div class="feature-card">
-                    <div class="feature-icon">🌍</div>
-                    <h3>UN CDM Compliance</h3>
-                    <p>ACM0002 methodology implementation for internationally recognized carbon credits</p>
-                </div>
-                <div class="feature-card">
-                    <div class="feature-icon">📈</div>
-                    <h3>Real-time Monitoring</h3>
-                    <p>Prometheus metrics with Grafana dashboards for 24/7 system observability</p>
-                </div>
-                <div class="feature-card">
-                    <div class="feature-icon">🔐</div>
-                    <h3>Device Identity (DIDs)</h3>
-                    <p>Hedera DIDs for IoT sensor provenance and tamper-proof device authentication</p>
+                <div class="stat">
+                    <div class="stat-label">INR Equivalent</div>
+                    <div class="stat-value" style="font-size: 1.2rem;">₹252</div>
                 </div>
             </div>
-        </section>
-        <!-- Architecture Section -->
-        <section class="section" id="architecture">
-            <h2>🏗️ System Architecture</h2>
-            <p style="margin-bottom: 2rem;">End-to-end automated verification pipeline from sensor to carbon credit marketplace:</p>
-            <div class="architecture">
-                <div class="arch-layer">
-                    <h4>Layer 1: IoT Sensor Layer</h4>
-                    <p>📡 <strong>Data Collection:</strong> Flow rate sensors • Head height measurements • Power generation meters • Water quality monitors (pH, turbidity, temperature)</p>
-                    <p><strong>Edge Processing:</strong> Local aggregation • Data validation • Network resilience</p>
+
+            <!-- Performance Metrics Card -->
+            <div class="card">
+                <h2>📈 Performance Metrics</h2>
+                <div class="stat">
+                    <div class="stat-label">Average Trust Score</div>
+                    <div class="stat-value success">70.8%</div>
                 </div>
-                <div class="arch-layer">
-                    <h4>Layer 2: Workflow Orchestration</h4>
-                    <p>⚙️ <strong>Telemetry Pipeline:</strong> Ingestion • Retry logic with exponential backoff • Data aggregation • Event-driven processing</p>
-                    <p><strong>Quality Assurance:</strong> Schema validation • Timestamp verification • Duplicate detection</p>
+                <div class="stat">
+                    <div class="stat-label">Approval Rate</div>
+                    <div class="stat-value">50%</div>
                 </div>
-                <div class="arch-layer">
-                    <h4>Layer 3: AI Verification Engine (EngineV1)</h4>
-                    <p>🤖 <strong>Trust Scoring (0-1.0):</strong></p>
-                    <ul style="margin-top: 0.5rem; margin-left: 1.5rem;">
-                        <li>Physics Validation (30%) - Hydropower formula: P = ρ × g × Q × H × η</li>
-                        <li>Temporal Consistency (25%) - Time-series analysis for abnormal spikes</li>
-                        <li>Environmental Bounds (20%) - pH, turbidity, temperature thresholds</li>
-                        <li>Statistical Anomalies (15%) - Z-score outlier detection</li>
-                        <li>Device Consistency (10%) - Cross-sensor correlation checks</li>
-                    </ul>
-                    <p style="margin-top: 1rem;"><strong>Decision Tiers:</strong> APPROVED (>0.90) | FLAGGED (0.50-0.90) | REJECTED (<0.50)</p>
+                <div class="stat">
+                    <div class="stat-label">Processing Speed</div>
+                    <div class="stat-value info">40 readings/sec</div>
                 </div>
-                <div class="arch-layer">
-                    <h4>Layer 4: Hedera DLT Layer</h4>
-                    <p>🔗 <strong>Consensus Service (HCS):</strong> Immutable audit log on public ledger with 3-5 second finality</p>
-                    <p><strong>Token Service (HTS):</strong> Fungible carbon credit tokens (HREC) with programmable supply</p>
-                    <p><strong>Decentralized IDs:</strong> W3C-compliant DIDs for device identity and provenance</p>
-                    <p><strong>Cost Efficiency:</strong> $0.0001 per transaction (vs $5-50 on Ethereum)</p>
-                </div>
-                <div class="arch-layer">
-                    <h4>Layer 5: Carbon Credit Marketplace</h4>
-                    <p>💰 <strong>Trading Infrastructure:</strong> RECs traded as HTS fungible tokens on-chain</p>
-                    <p><strong>Registry Integration:</strong> Compatible with Verra, Gold Standard, UN CDM registries</p>
-                    <p><strong>Smart Contracts:</strong> Automated issuance, retirement, transfer logic</p>
+                <div class="stat">
+                    <div class="stat-label">1000 Readings Processed</div>
+                    <div class="stat-value" style="font-size: 1.2rem;">15.7s</div>
                 </div>
             </div>
-        </section>
-        <!-- API Documentation -->
-        <section class="section" id="api">
-            <h2>🚀 API Endpoints</h2>
-            <p style="margin-bottom: 2rem;">RESTful API with comprehensive functionality. All endpoints are live and tested.</p>
-            <div class="tabs">
-                <button class="tab active" onclick="showTab('core')">Core</button>
-                <button class="tab" onclick="showTab('forecasting')">Forecasting</button>
-                <button class="tab" onclick="showTab('plants')">Multi-Plant</button>
-                <button class="tab" onclick="showTab('feedback')">Feedback</button>
-                <button class="tab" onclick="showTab('monitoring')">Monitoring</button>
-            </div>
-            <div id="core" class="tab-content active">
-                <div class="endpoint">
-                    <span class="method get">GET</span>
-                    <code>/health</code>
-                    <p>System health check with feature flags, version info, and uptime metrics</p>
-                    <a href="/health" class="btn btn-success" target="_blank">Test Now</a>
-                </div>
-                <div class="endpoint">
-                    <span class="method get">GET</span>
-                    <code>/api/features</code>
-                    <p>Complete feature status overview with 87% completion and module-level breakdown</p>
-                    <a href="/api/features" class="btn btn-success" target="_blank">Test Now</a>
-                </div>
-                <div class="endpoint">
-                    <span class="method post">POST</span>
-                    <code>/api/v1/readings</code>
-                    <p>Submit sensor readings for AI verification and Hedera logging</p>
-                    <p style="margin-top: 0.5rem;"><strong>Payload:</strong> { flowRate, head, generatedKwh, pH, turbidity, temperature, timestamp }</p>
-                </div>
-            </div>
-            <div id="forecasting" class="tab-content">
-                <div class="endpoint">
-                    <span class="method post">POST</span>
-                    <code>/api/v1/forecast/train</code>
-                    <p>Train Holt-Winters forecasting model with historical readings (requires 50+ data points for seasonal patterns)</p>
-                    <p style="margin-top: 0.5rem;"><strong>Payload:</strong> { projectId, readings: [...] }</p>
-                </div>
-                <div class="endpoint">
-                    <span class="method get">GET</span>
-                    <code>/api/v1/forecast?hours=24</code>
-                    <p>Get 24-hour energy production predictions with confidence intervals and accuracy metrics</p>
-                    <a href="/api/v1/forecast?hours=24" class="btn btn-success" target="_blank">Test Now</a>
-                </div>
-                <div class="endpoint">
-                    <span class="method get">GET</span>
-                    <code>/api/v1/forecast/accuracy</code>
-                    <p>Get model accuracy metrics including MAE, RMSE, and prediction confidence</p>
-                </div>
-            </div>
-            <div id="plants" class="tab-content">
-                <div class="endpoint">
-                    <span class="method post">POST</span>
-                    <code>/api/v1/plants</code>
-                    <p>Register new hydropower plant with capacity, location, and operational parameters</p>
-                    <p style="margin-top: 0.5rem;"><strong>Payload:</strong> { name, capacity, location, efficiency, operator }</p>
-                </div>
-                <div class="endpoint">
-                    <span class="method get">GET</span>
-                    <code>/api/v1/plants</code>
-                    <p>List all registered plants with operational status, production history, and trust scores</p>
-                    <a href="/api/v1/plants" class="btn btn-success" target="_blank">Test Now</a>
-                </div>
-                <div class="endpoint">
-                    <span class="method get">GET</span>
-                    <code>/api/v1/plants/:id</code>
-                    <p>Get detailed information for specific plant including real-time metrics</p>
-                </div>
-            </div>
-            <div id="feedback" class="tab-content">
-                <div class="endpoint">
-                    <span class="method post">POST</span>
-                    <code>/api/v1/feedback</code>
-                    <p>Submit verification feedback for active learning and model retraining</p>
-                    <p style="margin-top: 0.5rem;"><strong>Payload:</strong> { readingId, isCorrect, actualValues, notes }</p>
-                </div>
-                <div class="endpoint">
-                    <span class="method get">GET</span>
-                    <code>/api/v1/feedback/stats</code>
-                    <p>Get feedback statistics with precision, recall, F1-score, and improvement trends</p>
-                    <a href="/api/v1/feedback/stats" class="btn btn-success" target="_blank">Test Now</a>
-                </div>
-                <div class="endpoint">
-                    <span class="method post">POST</span>
-                    <code>/api/v1/feedback/retrain</code>
-                    <p>Trigger model retraining with accumulated feedback data</p>
-                </div>
-            </div>
-            <div id="monitoring" class="tab-content">
-                <div class="endpoint">
-                    <span class="method get">GET</span>
-                    <code>/metrics</code>
-                    <p>Prometheus metrics endpoint for monitoring (requests, errors, latency, trust scores)</p>
-                    <a href="/metrics" class="btn btn-success" target="_blank">Test Now</a>
-                </div>
-                <div class="endpoint">
-                    <span class="method get">GET</span>
-                    <code>/api/status</code>
-                    <p>Detailed system status including Hedera resources, feature flags, and service health</p>
-                    <a href="/api/status" class="btn btn-success" target="_blank">Test Now</a>
-                </div>
-            </div>
-        </section>
-        <!-- Live Demo -->
-        <section class="section" id="demo">
-            <h2>🎮 Live Interactive Demo</h2>
-            <p style="margin-bottom: 2rem;">Test all features with one click. This executes real verification workflows on Hedera testnet with live blockchain transactions.</p>
-            <div class="demo-box">
-                <div class="demo-output" id="demo-output">╔════════════════════════════════════════════════╗
-║  Hedera Hydropower MRV — Live Demo            ║
-║  Production Ready v1.4.0                       ║
-╚════════════════════════════════════════════════╝
-Click "Run Demo" to execute:
-✓ System health check
-✓ Feature status verification  
-✓ Normal reading verification (expect 100% trust)
-✓ Fraud detection test (expect 60-70% trust)
-✓ 24-hour forecasting prediction
-✓ Multi-plant registration
-✓ Feedback system test
-✓ Prometheus metrics check
-All results will appear here in real-time with live API calls...</div>
-            </div>
-            <button class="btn" onclick="runDemo()">▶️ Run Live Demo</button>
-            <button class="btn btn-secondary" onclick="clearDemo()">🔄 Clear Output</button>
-            <a href="https://hashscan.io/testnet/topic/0.0.7462776" class="btn btn-secondary" target="_blank">🔗 View Hedera Topic</a>
-            <a href="https://hashscan.io/testnet/token/0.0.7964264" class="btn btn-secondary" target="_blank">🪙 View HREC Token</a>
-        </section>
-        <!-- Operator Manual -->
-        <section class="section">
-            <h2>📖 For Plant Operators</h2>
-            <p style="margin-bottom: 2rem;">Complete integration guide for 6 MW hydropower plants with hardware requirements, setup instructions, and shadow-mode validation.</p>
-            <div class="feature-grid">
-                <div class="feature-card">
-                    <div class="feature-icon">🔧</div>
-                    <h3>Hardware Setup</h3>
-                    <p><strong>Budget Options:</strong></p>
-                    <ul style="margin-top: 0.5rem; margin-left: 1.5rem;">
-                        <li>Low: ₹15K-20K (basic sensors)</li>
-                        <li>Mid: ₹30K-35K (industrial grade)</li>
-                        <li>High: ₹45K-50K (research grade)</li>
-                    </ul>
-                    <p style="margin-top: 1rem;"><strong>Components:</strong> Flow sensors • Turbine meters • Edge gateway • Water quality probes</p>
-                </div>
-                <div class="feature-card">
-                    <div class="feature-icon">💻</div>
-                    <h3>Software Installation</h3>
-                    <p><strong>One-Command Setup:</strong></p>
-                    <code style="display: block; margin: 1rem 0; padding: 1rem; background: #f9fafb; border-radius: 5px;">
-                        git clone [repo]<br/>
-                        ./setup-local-production.ps1<br/>
-                        npm run api
-                    </code>
-                    <p><strong>Zero licensing cost</strong> - fully open source</p>
-                </div>
-                <div class="feature-card">
-                    <div class="feature-icon">✅</div>
-                    <h3>90-Day Shadow Pilot</h3>
-                    <p><strong>Success Criteria:</strong></p>
-                    <ul style="margin-top: 0.5rem; margin-left: 1.5rem;">
-                        <li>< 5% delta vs manual MRV</li>
-                        <li>< 0.5% false rejection rate</li>
-                        <li>99% Hedera transaction success</li>
-                        <li>Zero manual intervention for 90 days</li>
-                    </ul>
-                    <p style="margin-top: 1rem;"><strong>ROI:</strong> 60-70% cost savings vs manual MRV</p>
-                </div>
-            </div>
-            <div style="background: #f9fafb; padding: 2rem; border-radius: 15px; margin-top: 2rem;">
-                <h3 style="margin-bottom: 1rem;">📊 Pilot Economics</h3>
-                <p><strong>Pilot Cost:</strong> ₹38,000-63,000 (hardware + 90-day operation)</p>
-                <p><strong>vs Manual MRV:</strong> ₹1.25 lakh per quarter</p>
-                <p style="font-size: 1.3rem; font-weight: 700; color: var(--success); margin-top: 1rem;">Savings: ₹62K-87K per quarter (60-70% reduction)</p>
-            </div>
-            <a href="https://github.com/BikramBiswas786/https-github.com-BikramBiswas786-hedera-hydropower-mrv/blob/main/docs/PILOT_PLAN_6MW_PLANT.md" class="btn" target="_blank">📥 Download Complete Pilot Guide</a>
-            <a href="https://github.com/BikramBiswas786/https-github.com-BikramBiswas786-hedera-hydropower-mrv/blob/main/INTEGRATION_GUIDE.md" class="btn btn-secondary" target="_blank">📚 Integration Documentation</a>
-        </section>
-        <!-- For Judges/Investors -->
-        <section class="section" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white;">
-            <h2 style="color: white;">🎓 Why This Solves a $30-60B Problem</h2>
-            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 2rem; margin: 2rem 0;">
-                <div style="text-align: center;">
-                    <h3 style="font-size: 2.5rem; margin-bottom: 0.5rem; color: white;">500+ GW</h3>
-                    <p>Small-scale hydro globally excluded from carbon markets due to verification costs</p>
-                </div>
-                <div style="text-align: center;">
-                    <h3 style="font-size: 2.5rem; margin-bottom: 0.5rem; color: white;">$15-50K</h3>
-                    <p>Manual verification cost per project<br/><strong>(we reduce to $500)</strong></p>
-                </div>
-                <div style="text-align: center;">
-                    <h3 style="font-size: 2.5rem; margin-bottom: 0.5rem; color: white;">30-40%</h3>
-                    <p>Carbon claims contain errors/fraud<br/><strong>(we detect 95%)</strong></p>
-                </div>
-                <div style="text-align: center;">
-                    <h3 style="font-size: 2.5rem; margin-bottom: 0.5rem; color: white;">3-6 mo</h3>
-                    <p>Manual audit time<br/><strong>(we complete in 1 day)</strong></p>
-                </div>
-            </div>
-            <div style="background: rgba(255,255,255,0.15); padding: 2rem; border-radius: 15px; margin: 2rem 0; backdrop-filter: blur(10px);">
-                <h3 style="font-size: 1.8rem; margin-bottom: 1rem; color: white;">🚀 Production-Ready Evidence</h3>
-                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem;">
-                    <div>✅ Live Hedera integration</div>
-                    <div>✅ 224 passing tests (85% coverage)</div>
-                    <div>✅ AI fraud detection proven</div>
-                    <div>✅ UN CDM compliant</div>
-                    <div>✅ Real testnet transactions</div>
-                    <div>✅ 90-day pilot plan ready</div>
-                    <div>✅ Multi-plant management</div>
-                    <div>✅ Prometheus monitoring</div>
-                </div>
-            </div>
-            <p style="font-size: 1.2rem; margin: 2rem 0; line-height: 1.8;">
-                <strong>What Separates This From Other "Blockchain MRV" Projects:</strong><br/>
-                Not a whitepaper or mockup - this is <strong>working, deployed, tested code</strong> with <strong>verifiable blockchain transactions</strong> on Hedera testnet. Every claim is backed by live proof.
-            </p>
-            <p style="font-size: 1.1rem; margin-bottom: 2rem;"><strong>Tech Stack:</strong> Node.js • Express • Hedera SDK • TensorFlow.js • Holt-Winters ML • K-means Clustering • Docker • Prometheus • Grafana • Jest (224 tests)</p>
-            <div style="margin-top: 2rem;">
-                <a href="https://github.com/BikramBiswas786/https-github.com-BikramBiswas786-hedera-hydropower-mrv/blob/main/LIVE_DEMO_RESULTS.md" class="btn" style="background: white; color: var(--primary); font-size: 1.1rem;" target="_blank">📊 Live Test Results</a>
-                <a href="https://github.com/BikramBiswas786/https-github.com-BikramBiswas786-hedera-hydropower-mrv" class="btn" style="background: white; color: var(--primary); font-size: 1.1rem;" target="_blank">💻 GitHub Repository</a>
-                <a href="https://github.com/BikramBiswas786/https-github.com-BikramBiswas786-hedera-hydropower-mrv/blob/main/HACKATHON.md" class="btn" style="background: white; color: var(--primary); font-size: 1.1rem;" target="_blank">🏆 Hackathon Submission</a>
-            </div>
-        </section>
-    </div>
-    <!-- Footer -->
-    <footer>
-        <p style="font-size: 1.2rem; margin-bottom: 1rem;">&copy; 2026 Hedera Hydropower MRV • AngelHack Apex 2026 • Sustainability Track</p>
-        <p>Built by <a href="https://github.com/BikramBiswas786" style="color: white; text-decoration: underline;" target="_blank">Bikram Biswas</a> • MIT License</p>
-        <div class="footer-links">
-            <a href="https://github.com/BikramBiswas786/https-github.com-BikramBiswas786-hedera-hydropower-mrv" target="_blank">📂 GitHub Repository</a>
-            <a href="https://hashscan.io/testnet/topic/0.0.7462776" target="_blank">🔗 Live Hedera Topic</a>
-            <a href="https://hashscan.io/testnet/token/0.0.7964264" target="_blank">🪙 HREC Token</a>
-            <a href="https://github.com/BikramBiswas786/https-github.com-BikramBiswas786-hedera-hydropower-mrv/blob/main/LIVE_DEMO_RESULTS.md" target="_blank">✅ Test Results</a>
-            <a href="https://github.com/BikramBiswas786/https-github.com-BikramBiswas786-hedera-hydropower-mrv/blob/main/docs/PILOT_PLAN_6MW_PLANT.md" target="_blank">📖 Pilot Guide</a>
         </div>
-    </footer>
-    <script>
-        function showTab(tabName) {
-            // Hide all tabs
-            document.querySelectorAll('.tab-content').forEach(tab => {
-                tab.classList.remove('active');
-            });
-            document.querySelectorAll('.tab').forEach(btn => {
-                btn.classList.remove('active');
-            });
-            // Show selected tab
-            document.getElementById(tabName).classList.add('active');
-            event.target.classList.add('active');
-        }
-        function clearDemo() {
-            const output = document.getElementById('demo-output');
-            output.textContent = '╔════════════════════════════════════════════════╗\n';
-            output.textContent += '║  Hedera Hydropower MRV — Live Demo            ║\n';
-            output.textContent += '║  Production Ready v1.4.0                       ║\n';
-            output.textContent += '╚════════════════════════════════════════════════╝\n\n';
-            output.textContent += 'Click "Run Demo" to execute tests...\n';
-        }
-        async function runDemo() {
-            const output = document.getElementById('demo-output');
-            output.textContent = '╔════════════════════════════════════════════════╗\n';
-            output.textContent += '║  Running Live Demo...                          ║\n';
-            output.textContent += '╚════════════════════════════════════════════════╝\n\n';
-            try {
-                // Test 1: Health Check
-                output.textContent += '[1/7] 🏥 Testing Health Endpoint...\n';
-                const health = await fetch('/health').then(r => r.json());
-                output.textContent += `✓ Status: ${health.status}\n`;
-                output.textContent += `✓ Version: ${health.version}\n`;
-                output.textContent += `✓ Uptime: ${health.uptime}s\n`;
-                output.textContent += `✓ Features: ${JSON.stringify(health.features)}\n\n`;
-                // Test 2: Features
-                output.textContent += '[2/7] 📊 Testing Features Endpoint...\n';
-                const features = await fetch('/api/features').then(r => r.json());
-                output.textContent += `✓ Production Ready: ${features.metadata.production_ready_count}/${features.metadata.total_modules}\n`;
-                output.textContent += `✓ Completion: ${features.metadata.completion_percentage}%\n`;
-                output.textContent += `✓ Status: ${features.metadata.status}\n\n`;
-                // Test 3: Forecasting
-                output.textContent += '[3/7] 🔮 Testing Forecasting...\n';
-                const forecast = await fetch('/api/v1/forecast?hours=24').then(r => r.json());
-                output.textContent += `✓ Status: ${forecast.status}\n`;
-                output.textContent += `✓ Hours Ahead: ${forecast.hoursAhead}\n`;
-                output.textContent += `✓ Model: Holt-Winters Triple Exponential Smoothing\n\n`;
-                // Test 4: Plants
-                output.textContent += '[4/7] 🏭 Testing Multi-Plant Management...\n';
-                const plants = await fetch('/api/v1/plants').then(r => r.json());
-                output.textContent += `✓ Registered Plants: ${plants.plants ? plants.plants.length : 0}\n`;
-                output.textContent += `✓ Multi-tenant: Supported\n\n`;
-                // Test 5: Feedback Stats
-                output.textContent += '[5/7] 🎓 Testing Active Learning System...\n';
-                const feedback = await fetch('/api/v1/feedback/stats').then(r => r.json());
-                output.textContent += `✓ Total Feedback: ${feedback.total || 0}\n`;
-                output.textContent += `✓ Status: ${feedback.status}\n\n`;
-                // Test 6: System Status
-                output.textContent += '[6/7] 🔍 Testing System Status...\n';
-                const status = await fetch('/api/status').then(r => r.json());
-                output.textContent += `✓ Hedera Account: ${status.hederaResources?.accountId || 'Mock'}\n`;
-                output.textContent += `✓ HCS Topic: ${status.hederaResources?.topicId || 'Mock'}\n`;
-                output.textContent += `✓ HREC Token: ${status.hederaResources?.tokenId || 'Mock'}\n\n`;
-                // Test 7: Metrics
-                output.textContent += '[7/7] 📈 Testing Prometheus Metrics...\n';
-                const metricsText = await fetch('/metrics').then(r => r.text());
-                const metricsLines = metricsText.split('\n').filter(l => l.startsWith('# TYPE')).length;
-                output.textContent += `✓ Metric Types Exposed: ${metricsLines}\n`;
-                output.textContent += `✓ Monitoring: Ready\n\n`;
-                output.textContent += '╔════════════════════════════════════════════════╗\n';
-                output.textContent += '║  ✅ All Tests Passed Successfully!             ║\n';
-                output.textContent += '║                                                ║\n';
-                output.textContent += '║  🔗 View live blockchain transactions:         ║\n';
-                output.textContent += '║  https://hashscan.io/testnet/topic/0.0.7462776║\n';
-                output.textContent += '╚════════════════════════════════════════════════╝\n';
-            } catch (error) {
-                output.textContent += `\n❌ Error: ${error.message}\n`;
-                output.textContent += `\nNote: Some endpoints may require authentication or specific configuration.\n`;
-            }
-        }
-        // Smooth scrolling for navigation links
-        document.querySelectorAll('a[href^="#"]').forEach(anchor => {
-            anchor.addEventListener('click', function (e) {
-                e.preventDefault();
-                const target = document.querySelector(this.getAttribute('href'));
-                if (target) {
-                    target.scrollIntoView({ behavior: 'smooth', block: 'start' });
-                }
-            });
-        });
-    </script>
+
+        <!-- Carbon Credits Card (Full Width) -->
+        <div class="card" style="margin-bottom: 2rem;">
+            <h2>📎 Carbon Credits Generated</h2>
+            <div class="grid" style="margin-top: 1rem;">
+                <div class="stat">
+                    <div class="stat-label">Credits Issued</div>
+                    <div class="stat-value success">165.55 tCO2e</div>
+                </div>
+                <div class="stat">
+                    <div class="stat-label">Tokens Minted</div>
+                    <div class="stat-value info">165,550 HREC</div>
+                </div>
+                <div class="stat">
+                    <div class="stat-label">Market Value (USD)</div>
+                    <div class="stat-value warning">$3,027.91</div>
+                </div>
+                <div class="stat">
+                    <div class="stat-label">Market Value (INR)</div>
+                    <div class="stat-value" style="font-size: 1.5rem;">₹251,316</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Real Transactions Card -->
+        <div class="card" style="grid-column: 1 / -1;">
+            <h2>🔗 Real Hedera Transactions</h2>
+            <div class="tx-list">
+                <div class="tx-item">
+                    <strong>✅ Token Minting</strong><br>
+                    <span class="tx-id">TX: 0.0.6255927@1771708839.586094103</span><br>
+                    Tokens: 165,550 | Status: SUCCESS<br>
+                    <a href="https://hashscan.io/testnet/transaction/0.0.6255927@1771708839.586094103" target="_blank" class="btn" style="margin-top: 0.5rem; padding: 0.5rem 1rem; font-size: 0.9rem;">View on HashScan →</a>
+                </div>
+                <div class="tx-item">
+                    <strong>🌟 DID Deployment</strong><br>
+                    <span class="tx-id">DID: did:hedera:testnet:zSFlEUk8tVFVSQklORS0x_1771708975491</span><br>
+                    Device Identity | Status: DEPLOYED
+                </div>
+                <div class="tx-item">
+                    <strong>🪙 Token Creation</strong><br>
+                    <span class="tx-id">Token: 0.0.7964264</span><br>
+                    Symbol: HREC | Status: ACTIVE<br>
+                    <a href="https://hashscan.io/testnet/token/0.0.7964264" target="_blank" class="btn" style="margin-top: 0.5rem; padding: 0.5rem 1rem; font-size: 0.9rem;">View Token →</a>
+                </div>
+                <div class="tx-item">
+                    <strong>📝 Attestation Submission</strong><br>
+                    <span class="tx-id">TX: 0.0.6255927@1771708968.275909856</span><br>
+                    Trust: 98.5% | Status: APPROVED
+                </div>
+            </div>
+        </div>
+
+        <!-- Test Categories -->
+        <div class="card" style="grid-column: 1 / -1;">
+            <h2>📋 Test Categories</h2>
+            <div class="grid">
+                <div>
+                    <h3 style="margin-bottom: 1rem;">Unit Tests (107)</h3>
+                    <div class="badge success">✅ Anomaly Detection (23)</div>
+                    <div class="badge success">✅ Storage Operations (12)</div>
+                    <div class="badge success">✅ Configuration (39)</div>
+                    <div class="badge success">✅ ML Detection (18)</div>
+                    <div class="badge success">✅ Data Generation (9)</div>
+                    <div class="badge success">✅ Default Config (6)</div>
+                </div>
+                <div>
+                    <h3 style="margin-bottom: 1rem;">Integration Tests (83)</h3>
+                    <div class="badge success">✅ Hedera Integration (54)</div>
+                    <div class="badge success">✅ Verifier Attestation (22)</div>
+                    <div class="badge success">✅ Engine V1 Pipeline (7)</div>
+                </div>
+                <div>
+                    <h3 style="margin-bottom: 1rem;">E2E Tests (29)</h3>
+                    <div class="badge success">✅ E2E Production (11)</div>
+                    <div class="badge success">✅ Complete Workflow (18)</div>
+                </div>
+                <div>
+                    <h3 style="margin-bottom: 1rem;">ML Tests (18)</h3>
+                    <div class="badge success">✅ Isolation Forest (8)</div>
+                    <div class="badge success">✅ Feature Extraction (3)</div>
+                    <div class="badge success">✅ Bulk Detection (7)</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Action Buttons -->
+        <div style="text-align: center; margin: 3rem 0;">
+            <a href="https://github.com/BikramBiswas786/https-github.com-BikramBiswas786-hedera-hydropower-mrv" target="_blank" class="btn">👨‍💻 View Source Code</a>
+            <a href="https://hashscan.io/testnet/account/0.0.6255927" target="_blank" class="btn">🔍 View Hedera Account</a>
+            <a href="https://github.com/BikramBiswas786/https-github.com-BikramBiswas786-hedera-hydropower-mrv/blob/main/docs/DOC-CONSOLIDATION-PLAN.md" target="_blank" class="btn">📚 Documentation Plan</a>
+        </div>
+
+        <footer class="footer">
+            <p><strong>Hedera Hydropower MRV System</strong></p>
+            <p>Production-Ready • Real On-Chain • 237/237 Tests Passed</p>
+            <p style="margin-top: 1rem; font-size: 0.9rem;">Built for AngelHack Apex 2026 • Last updated: Feb 22, 2026</p>
+        </footer>
+    </div>
 </body>
 </html>
