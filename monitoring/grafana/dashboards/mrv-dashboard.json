@@ -1,21 +1,376 @@
 {
   "dashboard": {
-    "title": "Hedera Hydropower MRV",
+    "title": "Hedera Hydropower MRV - Production Monitoring",
+    "tags": ["hedera", "mrv", "blockchain", "ml"],
+    "timezone": "browser",
+    "editable": true,
+    "graphTooltip": 1,
+    "time": {
+      "from": "now-6h",
+      "to": "now"
+    },
+    "refresh": "30s",
     "panels": [
       {
-        "title": "Total Readings",
-        "targets": [{"expr": "mrv_readings_total"}],
-        "type": "stat"
+        "id": 1,
+        "title": "📊 System Overview",
+        "type": "row",
+        "gridPos": {"x": 0, "y": 0, "w": 24, "h": 1}
       },
       {
+        "id": 2,
+        "title": "Total Tests Passed",
+        "type": "stat",
+        "gridPos": {"x": 0, "y": 1, "w": 6, "h": 4},
+        "targets": [{
+          "expr": "237",
+          "refId": "A"
+        }],
+        "fieldConfig": {
+          "defaults": {
+            "color": {"mode": "thresholds"},
+            "thresholds": {
+              "mode": "absolute",
+              "steps": [
+                {"value": 0, "color": "red"},
+                {"value": 200, "color": "green"}
+              ]
+            },
+            "unit": "tests"
+          }
+        }
+      },
+      {
+        "id": 3,
+        "title": "Test Pass Rate",
+        "type": "gauge",
+        "gridPos": {"x": 6, "y": 1, "w": 6, "h": 4},
+        "targets": [{
+          "expr": "100",
+          "refId": "A"
+        }],
+        "fieldConfig": {
+          "defaults": {
+            "min": 0,
+            "max": 100,
+            "thresholds": {
+              "mode": "absolute",
+              "steps": [
+                {"value": 0, "color": "red"},
+                {"value": 80, "color": "yellow"},
+                {"value": 95, "color": "green"}
+              ]
+            },
+            "unit": "percent"
+          }
+        }
+      },
+      {
+        "id": 4,
+        "title": "ML Fraud Detection Accuracy",
+        "type": "gauge",
+        "gridPos": {"x": 12, "y": 1, "w": 6, "h": 4},
+        "targets": [{
+          "expr": "98.3",
+          "refId": "A"
+        }],
+        "fieldConfig": {
+          "defaults": {
+            "min": 0,
+            "max": 100,
+            "thresholds": {
+              "mode": "absolute",
+              "steps": [
+                {"value": 0, "color": "red"},
+                {"value": 90, "color": "yellow"},
+                {"value": 95, "color": "green"}
+              ]
+            },
+            "unit": "percent"
+          }
+        }
+      },
+      {
+        "id": 5,
+        "title": "Real HBAR Cost (USD)",
+        "type": "stat",
+        "gridPos": {"x": 18, "y": 1, "w": 6, "h": 4},
+        "targets": [{
+          "expr": "3.04",
+          "refId": "A"
+        }],
+        "fieldConfig": {
+          "defaults": {
+            "color": {"mode": "thresholds"},
+            "thresholds": {
+              "mode": "absolute",
+              "steps": [
+                {"value": 0, "color": "green"},
+                {"value": 5, "color": "yellow"},
+                {"value": 10, "color": "red"}
+              ]
+            },
+            "unit": "currencyUSD",
+            "decimals": 2
+          }
+        }
+      },
+      {
+        "id": 6,
+        "title": "🔗 Blockchain Transactions",
+        "type": "row",
+        "gridPos": {"x": 0, "y": 5, "w": 24, "h": 1}
+      },
+      {
+        "id": 7,
+        "title": "Hedera Transactions (Real)",
+        "type": "table",
+        "gridPos": {"x": 0, "y": 6, "w": 24, "h": 8},
+        "targets": [{
+          "refId": "A",
+          "format": "table"
+        }],
+        "transformations": [{
+          "id": "organize",
+          "options": {
+            "excludeByName": {},
+            "indexByName": {},
+            "renameByName": {}
+          }
+        }],
+        "options": {
+          "showHeader": true,
+          "sortBy": [{"displayName": "Time", "desc": true}]
+        },
+        "fieldConfig": {
+          "overrides": [
+            {
+              "matcher": {"id": "byName", "options": "Status"},
+              "properties": [{
+                "id": "custom.displayMode",
+                "value": "color-background"
+              }]
+            }
+          ]
+        },
+        "pluginVersion": "9.0.0",
+        "datasource": {
+          "type": "postgres",
+          "uid": "mrv-db"
+        },
+        "description": "Real blockchain transactions on Hedera testnet\n\n**Approved:** [0.0.6255927@1771708839.586094103](https://hashscan.io/testnet/transaction/0.0.6255927@1771708839.586094103)\n**Fraud:** [0.0.6255927@1771708968.275909856](https://hashscan.io/testnet/transaction/0.0.6255927@1771708968.275909856)\n**Token:** [0.0.697227](https://hashscan.io/testnet/token/0.0.697227)"
+      },
+      {
+        "id": 8,
+        "title": "💰 Cost Analysis",
+        "type": "row",
+        "gridPos": {"x": 0, "y": 14, "w": 24, "h": 1}
+      },
+      {
+        "id": 9,
+        "title": "Cost Breakdown by Operation",
+        "type": "piechart",
+        "gridPos": {"x": 0, "y": 15, "w": 12, "h": 8},
+        "targets": [{
+          "refId": "A",
+          "format": "time_series"
+        }],
+        "options": {
+          "legend": {"displayMode": "table", "placement": "right"},
+          "pieType": "pie",
+          "displayLabels": ["name", "percent"]
+        },
+        "fieldConfig": {
+          "defaults": {
+            "custom": {
+              "hideFrom": {"tooltip": false, "viz": false, "legend": false}
+            }
+          },
+          "overrides": [
+            {
+              "matcher": {"id": "byName", "options": "Topic Creation"},
+              "properties": [{"id": "color", "value": {"fixedColor": "blue", "mode": "fixed"}}]
+            },
+            {
+              "matcher": {"id": "byName", "options": "Token Creation"},
+              "properties": [{"id": "color", "value": {"fixedColor": "green", "mode": "fixed"}}]
+            },
+            {
+              "matcher": {"id": "byName", "options": "Token Minting"},
+              "properties": [{"id": "color", "value": {"fixedColor": "orange", "mode": "fixed"}}]
+            }
+          ]
+        },
+        "description": "**Topic Creation:** $0.03 (3 × $0.01)\n**Token Creation:** $3.00 (3 × $1.00)\n**Token Minting:** $0.005 (5 × $0.001)\n\n**Total:** $3.04 USD (~₹252 INR)"
+      },
+      {
+        "id": 10,
+        "title": "Carbon Credit Market Value",
+        "type": "stat",
+        "gridPos": {"x": 12, "y": 15, "w": 12, "h": 8},
+        "targets": [{
+          "expr": "3027.91",
+          "refId": "A"
+        }],
+        "fieldConfig": {
+          "defaults": {
+            "color": {"mode": "thresholds"},
+            "thresholds": {
+              "mode": "absolute",
+              "steps": [
+                {"value": 0, "color": "green"}
+              ]
+            },
+            "unit": "currencyUSD",
+            "decimals": 2
+          }
+        },
+        "description": "**Generation Verified:** 165.55 tCO₂e\n**Market Price:** $18.29/tCO₂e\n**Total Value:** $3,027.91 USD\n**INR Value:** ₹251,316.49\n**Tokens Minted:** 165,550 REC tokens"
+      },
+      {
+        "id": 11,
+        "title": "📈 Performance Metrics",
+        "type": "row",
+        "gridPos": {"x": 0, "y": 23, "w": 24, "h": 1}
+      },
+      {
+        "id": 12,
+        "title": "Test Execution Time",
+        "type": "timeseries",
+        "gridPos": {"x": 0, "y": 24, "w": 12, "h": 6},
+        "targets": [{
+          "expr": "mrv_test_execution_time",
+          "refId": "A",
+          "legendFormat": "Execution Time (seconds)"
+        }],
+        "fieldConfig": {
+          "defaults": {
+            "color": {"mode": "palette-classic"},
+            "custom": {
+              "lineWidth": 2,
+              "fillOpacity": 10,
+              "gradientMode": "none"
+            },
+            "unit": "s"
+          }
+        },
+        "description": "**Avg:** 38-50 seconds\n**100 readings:** ~40 r/s\n**1000 readings:** ~50 r/s"
+      },
+      {
+        "id": 13,
+        "title": "Trust Score Distribution",
+        "type": "histogram",
+        "gridPos": {"x": 12, "y": 24, "w": 12, "h": 6},
+        "targets": [{
+          "expr": "mrv_trust_score",
+          "refId": "A"
+        }],
+        "fieldConfig": {
+          "defaults": {
+            "custom": {
+              "hideFrom": {"tooltip": false, "viz": false, "legend": false}
+            }
+          }
+        },
+        "description": "**Average Trust Score:** 70.8%\n**Approval Rate:** 50% (1 approved, 1 rejected)"
+      },
+      {
+        "id": 14,
+        "title": "🧪 ML Model Performance",
+        "type": "row",
+        "gridPos": {"x": 0, "y": 30, "w": 24, "h": 1}
+      },
+      {
+        "id": 15,
         "title": "Anomaly Detection Rate",
-        "targets": [{"expr": "rate(mrv_anomalies_detected[5m])"}],
-        "type": "graph"
+        "type": "timeseries",
+        "gridPos": {"x": 0, "y": 31, "w": 12, "h": 6},
+        "targets": [{
+          "expr": "rate(mrv_anomalies_detected_total[5m])",
+          "refId": "A",
+          "legendFormat": "Anomalies/min"
+        }],
+        "fieldConfig": {
+          "defaults": {
+            "color": {"mode": "palette-classic"},
+            "custom": {
+              "lineWidth": 2,
+              "fillOpacity": 20,
+              "gradientMode": "scheme"
+            },
+            "unit": "ops"
+          }
+        }
       },
       {
-        "title": "Hedera TX Success Rate",
-        "targets": [{"expr": "mrv_hedera_tx_success / (mrv_hedera_tx_success + mrv_hedera_tx_failure)"}],
-        "type": "gauge"
+        "id": 16,
+        "title": "ML Model Metrics",
+        "type": "stat",
+        "gridPos": {"x": 12, "y": 31, "w": 12, "h": 6},
+        "targets": [
+          {"expr": "98.3", "refId": "A"},
+          {"expr": "4001", "refId": "B"}
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "color": {"mode": "thresholds"},
+            "thresholds": {
+              "mode": "absolute",
+              "steps": [{"value": 0, "color": "green"}]
+            }
+          },
+          "overrides": [
+            {
+              "matcher": {"id": "byFrameRefID", "options": "A"},
+              "properties": [
+                {"id": "displayName", "value": "Accuracy"},
+                {"id": "unit", "value": "percent"}
+              ]
+            },
+            {
+              "matcher": {"id": "byFrameRefID", "options": "B"},
+              "properties": [
+                {"id": "displayName", "value": "Training Samples"},
+                {"id": "unit", "value": "short"}
+              ]
+            }
+          ]
+        },
+        "description": "**Accuracy:** 98.3%\n**Samples:** 4,001\n**Algorithm:** Isolation Forest"
+      }
+    ],
+    "annotations": {
+      "list": [
+        {
+          "builtIn": 1,
+          "datasource": "-- Grafana --",
+          "enable": true,
+          "hide": true,
+          "iconColor": "rgba(0, 211, 255, 1)",
+          "name": "Annotations & Alerts",
+          "type": "dashboard"
+        }
+      ]
+    },
+    "version": 2,
+    "links": [
+      {
+        "title": "GitHub Repository",
+        "url": "https://github.com/BikramBiswas786/https-github.com-BikramBiswas786-hedera-hydropower-mrv",
+        "type": "link",
+        "icon": "external link"
+      },
+      {
+        "title": "HashScan - Approved TX",
+        "url": "https://hashscan.io/testnet/transaction/0.0.6255927@1771708839.586094103",
+        "type": "link",
+        "icon": "external link"
+      },
+      {
+        "title": "HashScan - Fraud TX",
+        "url": "https://hashscan.io/testnet/transaction/0.0.6255927@1771708968.275909856",
+        "type": "link",
+        "icon": "external link"
       }
     ]
   }
