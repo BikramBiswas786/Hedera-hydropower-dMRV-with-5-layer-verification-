@@ -6,7 +6,7 @@
 
 ---
 
-## 🔬 Technical Validation
+##  Technical Validation
 
 ### 1. Live Hedera Testnet Proof
 
@@ -86,7 +86,7 @@ ACM0002 source: [UNFCCC CDM Methodology Booklet](https://cdm.unfccc.int/methodol
 
 ---
 
-## 💬 Community Feedback & Outreach
+##  Community Feedback & Outreach
 
 ### Hedera Ecosystem Engagement
 
@@ -117,7 +117,7 @@ This document will be updated with signed LOIs as they are received.*
 
 ---
 
-## 📊 Competitive Analysis
+##  Competitive Analysis
 
 | Solution | On-chain? | ACM0002? | Open source? | Hedera-native? |
 |----------|-----------|----------|--------------|----------------|
@@ -131,7 +131,7 @@ readings before they reach the chain — no other open-source Hedera MRV system 
 
 ---
 
-## ✅ Validation Summary
+##  Validation Summary
 
 | Evidence type | Status |
 |---------------|--------|
