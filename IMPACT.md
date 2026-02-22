@@ -1,13 +1,13 @@
 # Hedera Network Impact — Hydropower MRV
 
-> **Judging criterion: Success (20% weight)**
-> This document quantifies the conservative projected impact on the Hedera network and the global carbon market.
+This document estimates the projected impact on the Hedera network and the global carbon market based on current deployment plans.
 
 ---
 
-## 🌐 Hedera Network Impact
+## Hedera Network Impact
 
 ### New Accounts
+
 Each onboarded plant creates:
 - 1 Hedera account for the operator
 - 1 device DID per turbine unit
@@ -21,6 +21,7 @@ Each onboarded plant creates:
 | Long-term Goal | 5,000 | 5,000 | 5,000 | 5,000 |
 
 ### HCS Transaction Volume
+
 Each telemetry reading = 1 HCS transaction.
 
 | Reading Frequency | Plants | Daily HCS TXs | Annual HCS TXs |
@@ -28,17 +29,17 @@ Each telemetry reading = 1 HCS transaction.
 | 1/hour per plant | 500 | 12,000 | 4,380,000 |
 | 1/hour per plant | 5,000 | 120,000 | 43,800,000 |
 
-*At a scale of 500 plants with hourly reporting, we contribute ~4.38 million transactions per year to the Hedera network.*
+At a scale of 500 plants with hourly reporting, the system contributes approximately 4.38 million transactions per year to the Hedera network.
 
 ---
 
-## 💰 Economic Impact
+## Economic Impact
 
 ### Carbon Credit Value (Conservative Estimates)
 
-| Scenario | Annual MWh | CO₂ Credits (800 tCO₂/GWh) | Potential Value |
+| Scenario | Annual MWh | CO2 Credits (800 tCO2/GWh) | Potential Value |
 |----------|-----------|---------------------------|-------------------|
-| 5 pilot plants | 43,800 | 35,040 tCO₂ | ~$525,600/year |
-| 500 plants | 4,380,000 | 3,504,000 tCO₂ | ~$52.5M/year |
+| 5 pilot plants | 43,800 | 35,040 tCO2 | ~$525,600/year |
+| 500 plants | 4,380,000 | 3,504,000 tCO2 | ~$52.5M/year |
 
-*Calculations based on $15/tCO₂ conservative market price. This represents real-world value anchored and verified on the Hedera network.*
+Calculations use $15/tCO2 as a conservative market price. Revenue is verified and recorded on the Hedera network.
