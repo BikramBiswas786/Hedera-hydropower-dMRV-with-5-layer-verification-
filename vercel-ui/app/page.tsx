@@ -62,6 +62,54 @@ export default function Home() {
   const [showCostBreakdown, setShowCostBreakdown] = useState<boolean>(false);
   const [showTechnical, setShowTechnical] = useState<boolean>(false);
 
+  // ✅ HELPER FUNCTION TO FORMAT TEXT AND REMOVE ** SYMBOLS
+  const formatText = (text: string) => {
+    return text.split('\n').map((line, lineIndex) => {
+      // Empty line
+      if (!line.trim()) {
+        return <div key={lineIndex} className="h-2" />;
+      }
+
+      // Bullet point with dash
+      if (line.trim().startsWith('-')) {
+        const bulletText = line.trim().substring(1).trim();
+        const parts = bulletText.split(/\*\*(.*?)\*\*/g);
+        return (
+          <div key={lineIndex} className="flex gap-2 mb-1.5 ml-2">
+            <span className="text-blue-400 mt-0.5">•</span>
+            <span className="text-gray-200 flex-1">
+              {parts.map((part, i) => 
+                i % 2 === 0 ? part : <strong key={i} className="font-semibold text-white">{part}</strong>
+              )}
+            </span>
+          </div>
+        );
+      }
+
+      // Numbered list (e.g., "1. **Text**:")
+      if (/^\d+\.\s/.test(line.trim())) {
+        const parts = line.split(/\*\*(.*?)\*\*/g);
+        return (
+          <div key={lineIndex} className="mb-2 text-gray-200 leading-relaxed">
+            {parts.map((part, i) => 
+              i % 2 === 0 ? part : <strong key={i} className="font-bold text-white">{part}</strong>
+            )}
+          </div>
+        );
+      }
+
+      // Regular line with bold formatting
+      const parts = line.split(/\*\*(.*?)\*\*/g);
+      return (
+        <div key={lineIndex} className="mb-2 text-gray-200 leading-relaxed">
+          {parts.map((part, i) => 
+            i % 2 === 0 ? part : <strong key={i} className="font-bold text-white">{part}</strong>
+          )}
+        </div>
+      );
+    });
+  };
+
   // Correct GitHub Repository Base URL
   const GITHUB_BASE = 'https://github.com/BikramBiswas786/https-github.com-BikramBiswas786-hedera-hydropower-mrv';
 
@@ -547,14 +595,14 @@ export default function Home() {
     setDemoRunning(true);
     setDemoStep(0);
     setDemoOutput([]);
-    
+
     for (let i = 1; i <= 7; i++) {
       await new Promise(resolve => setTimeout(resolve, 1500));
       setDemoStep(i);
       const step = demoSteps[i-1];
       setDemoOutput(prev => [...prev, `✅ Step ${i}: ${step.title} - ${step.data}`]);
     }
-    
+
     setDemoRunning(false);
   };
 
@@ -583,7 +631,7 @@ export default function Home() {
       </header>
 
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
-        
+
         {/* Hero */}
         <div className="text-center mb-16">
           <div className="inline-flex items-center px-6 py-3 rounded-full bg-green-500/20 border border-green-500/50 mb-6">
@@ -596,11 +644,11 @@ export default function Home() {
             <span className="text-purple-400 mr-2">💎</span>
             <span className="font-bold">237 Tests Passing</span>
           </div>
-          
+
           <h2 className="text-5xl md:text-6xl font-bold mb-6 bg-gradient-to-r from-white via-blue-200 to-purple-200 bg-clip-text text-transparent">
             99% Cost Reduction for Carbon Verification
           </h2>
-          
+
           <p className="text-2xl text-blue-200 mb-4 font-semibold">
             AI-Powered MRV • $50,000 → $661/year
           </p>
@@ -671,7 +719,9 @@ export default function Home() {
                 <p className="text-sm text-gray-300 mb-4">{feature.shortDesc}</p>
                 {selectedFeature === feature.name && (
                   <div className="mt-4 pt-4 border-t border-white/20">
-                    <div className="text-sm text-gray-200 whitespace-pre-line mb-4">{feature.fullExplanation}</div>
+                    <div className="text-sm mb-4">
+                      {formatText(feature.fullExplanation)}
+                    </div>
                     <div className="space-y-2">
                       {feature.evidence.map((ev, i) => (
                         <a key={i} href={ev.url} target="_blank" rel="noopener noreferrer" className="block text-xs text-blue-400 hover:text-blue-300 break-all">
@@ -714,8 +764,10 @@ export default function Home() {
                     <p className="text-purple-300">{arch.components.length} Components</p>
                   </div>
                 </div>
-                
-                <div className="text-gray-200 mb-6 whitespace-pre-line">{arch.explanation}</div>
+
+                <div className="mb-6">
+                  {formatText(arch.explanation)}
+                </div>
 
                 <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
                   {arch.components.map((comp, i) => (
@@ -861,14 +913,11 @@ export default function Home() {
           <p className="text-xl text-gray-300 mb-4">All source code, tests, and documentation available on GitHub</p>
           <p className="text-md text-gray-400 mb-8">100+ transactions on Hedera testnet • 237 tests passing • Production ready</p>
           <div className="flex gap-4 justify-center flex-wrap">
-            <a href={GITHUB_BASE} target="_blank" rel="noopener noreferrer" className="px-8 py-4 bg-gray-900 hover:bg-gray-800 text-xl font-bold rounded-2xl transition-all">
-              💻 GitHub Repository
+            <a href={GITHUB_BASE} target="_blank" rel="noopener noreferrer" className="px-10 py-5 bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-xl font-bold rounded-2xl transition-all transform hover:scale-105 shadow-2xl">
+              🚀 View on GitHub
             </a>
-            <a href={`https://hashscan.io/testnet/account/${realTx.account}`} target="_blank" rel="noopener noreferrer" className="px-8 py-4 bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700 text-xl font-bold rounded-2xl transition-all">
-              🔗 Hedera Account
-            </a>
-            <a href={`${GITHUB_BASE}/blob/main/README.md`} target="_blank" rel="noopener noreferrer" className="px-8 py-4 bg-blue-600 hover:bg-blue-700 text-xl font-bold rounded-2xl transition-all">
-              📖 Documentation
+            <a href={`https://hashscan.io/testnet/topic/${realTx.topic}`} target="_blank" rel="noopener noreferrer" className="px-10 py-5 bg-white/10 hover:bg-white/20 border-2 border-white/30 text-xl font-bold rounded-2xl transition-all shadow-xl">
+              🔗 Live Blockchain Data
             </a>
           </div>
         </section>
