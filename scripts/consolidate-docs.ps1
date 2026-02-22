@@ -1,18 +1,18 @@
 # Documentation Consolidation Script
 # Hedera Hydropower MRV Repository
 # Date: February 22, 2026
-# Purpose: Archive 58 redundant files, consolidate 93→35 docs
+# Purpose: Archive 58 redundant files, consolidate 93->35 docs
 
 Write-Host "===================================" -ForegroundColor Cyan
 Write-Host "  Documentation Consolidation" -ForegroundColor Cyan
-Write-Host "  93 files → 35 core docs" -ForegroundColor Cyan
+Write-Host "  93 files -> 35 core docs" -ForegroundColor Cyan
 Write-Host "===================================" -ForegroundColor Cyan
 Write-Host ""
 
 # Step 1: Create archive directory
 Write-Host "[1/5] Creating archive directory..." -ForegroundColor Yellow
 mkdir -Force docs\archived | Out-Null
-Write-Host "✅ Created docs/archived/" -ForegroundColor Green
+Write-Host "✓ Created docs/archived/" -ForegroundColor Green
 Write-Host ""
 
 # Step 2: Archive status files
@@ -36,7 +36,7 @@ foreach ($file in $statusFiles) {
         $archived++
     }
 }
-Write-Host "✅ Archived $archived status files" -ForegroundColor Green
+Write-Host "✓ Archived $archived status files" -ForegroundColor Green
 Write-Host ""
 
 # Step 3: Archive deployment guides
@@ -57,7 +57,7 @@ foreach ($file in $deploymentFiles) {
         $archived++
     }
 }
-Write-Host "✅ Archived $archived deployment guides" -ForegroundColor Green
+Write-Host "✓ Archived $archived deployment guides" -ForegroundColor Green
 Write-Host ""
 
 # Step 4: Archive test files
@@ -78,7 +78,7 @@ foreach ($file in $testFiles) {
         $archived++
     }
 }
-Write-Host "✅ Archived $archived test files" -ForegroundColor Green
+Write-Host "✓ Archived $archived test files" -ForegroundColor Green
 Write-Host ""
 
 # Step 5: Move evidence files
@@ -97,7 +97,7 @@ foreach ($file in $evidenceFiles) {
         $moved++
     }
 }
-Write-Host "✅ Moved $moved evidence files" -ForegroundColor Green
+Write-Host "✓ Moved $moved evidence files" -ForegroundColor Green
 Write-Host ""
 
 # Step 6: Archive docs subdirectory files
@@ -119,7 +119,7 @@ foreach ($file in $docsFiles) {
         $archived++
     }
 }
-Write-Host "✅ Archived $archived docs files" -ForegroundColor Green
+Write-Host "✓ Archived $archived docs files" -ForegroundColor Green
 Write-Host ""
 
 # Step 7: Delete auto-generated files
@@ -136,7 +136,7 @@ foreach ($file in $deleteFiles) {
         $deleted++
     }
 }
-Write-Host "✅ Deleted $deleted auto-generated files" -ForegroundColor Green
+Write-Host "✓ Deleted $deleted auto-generated files" -ForegroundColor Green
 Write-Host ""
 
 # Summary
@@ -144,7 +144,7 @@ Write-Host "===================================" -ForegroundColor Cyan
 Write-Host "  CONSOLIDATION COMPLETE" -ForegroundColor Green
 Write-Host "===================================" -ForegroundColor Cyan
 Write-Host ""
-Write-Host "📊 Summary:" -ForegroundColor White
+Write-Host "Summary:" -ForegroundColor White
 Write-Host "  • Status files archived: 8" -ForegroundColor White
 Write-Host "  • Deployment guides archived: 5" -ForegroundColor White
 Write-Host "  • Test files archived: 5" -ForegroundColor White
@@ -154,9 +154,9 @@ Write-Host "  • Auto-generated deleted: 1" -ForegroundColor White
 Write-Host "  " -ForegroundColor White
 Write-Host "  Total cleaned: ~26 files" -ForegroundColor Yellow
 Write-Host ""
-Write-Host "📋 Next Steps:" -ForegroundColor White
+Write-Host "Next Steps:" -ForegroundColor White
 Write-Host "  1. Review changes: git status" -ForegroundColor DarkGray
-Write-Host "  2. Commit: git commit -m '📚 Consolidate docs'" -ForegroundColor DarkGray
+Write-Host "  2. Commit: git commit -m 'Consolidate docs'" -ForegroundColor DarkGray
 Write-Host "  3. Push: git push origin main" -ForegroundColor DarkGray
 Write-Host ""
-Write-Host "✅ Ready to commit and push!" -ForegroundColor Green
+Write-Host "✓ Ready to commit and push!" -ForegroundColor Green
