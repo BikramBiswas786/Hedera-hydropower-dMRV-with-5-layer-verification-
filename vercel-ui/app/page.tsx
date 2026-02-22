@@ -86,8 +86,8 @@ export default function Home() {
 - Trust Score 0.50-0.90: FLAGGED → Human Review
 - Trust Score < 0.50: REJECTED → Block Submission`,
       evidence: [
-        { type: 'Source Code', url: 'https://github.com/BikramBiswas786/https-github.com-BikramBiswas786-hedera-hydropower-mrv/blob/main/src/ai/EngineV1.js' },
-        { type: 'Test Suite', url: 'https://github.com/BikramBiswas786/https-github.com-BikramBiswas786-hedera-hydropower-mrv/blob/main/tests/ai/EngineV1.test.js' },
+        { type: 'Source Code', url: 'https://github.com/BikramBiswas786/hedera-hydropower-mrv/blob/main/src/ai-guardian-verifier.js' },
+        { type: 'Test Suite', url: 'https://github.com/BikramBiswas786/hedera-hydropower-mrv/blob/main/tests/ai-guardian-verifier.test.js' },
         { type: 'Live TX', url: `https://hashscan.io/testnet/transaction/${realTx.approved}` }
       ]
     },
@@ -102,9 +102,9 @@ export default function Home() {
 
 **Accuracy**: MAPE <5%, RMSE 2.3 MWh, R² 0.94`,
       evidence: [
-        { type: 'Model Code', url: 'https://github.com/BikramBiswas786/https-github.com-BikramBiswas786-hedera-hydropower-mrv/blob/main/src/ml/ForecastModel.js' },
-        { type: 'Saved Model', url: 'https://github.com/BikramBiswas786/https-github.com-BikramBiswas786-hedera-hydropower-mrv/blob/main/models/forecast_model.json' },
-        { type: 'Tests', url: 'https://github.com/BikramBiswas786/https-github.com-BikramBiswas786-hedera-hydropower-mrv/blob/main/tests/ml/ForecastModel.test.js' }
+        { type: 'Model Code', url: 'https://github.com/BikramBiswas786/hedera-hydropower-mrv/blob/main/src/forecast-model.js' },
+        { type: 'Saved Model', url: 'https://github.com/BikramBiswas786/hedera-hydropower-mrv/blob/main/models/forecast_model.json' },
+        { type: 'Tests', url: 'https://github.com/BikramBiswas786/hedera-hydropower-mrv/blob/main/tests/test-forecast-model.test.js' }
       ]
     },
     { 
@@ -116,8 +116,8 @@ export default function Home() {
 
 **Types Detected**: Power inflation, replay attacks, sensor spoofing, temporal fraud, environmental impossibilities.`,
       evidence: [
-        { type: 'Detector Code', url: 'https://github.com/BikramBiswas786/https-github.com-BikramBiswas786-hedera-hydropower-mrv/blob/main/src/ml/AnomalyDetector.js' },
-        { type: '24 Test Cases', url: 'https://github.com/BikramBiswas786/https-github.com-BikramBiswas786-hedera-hydropower-mrv/blob/main/tests/ml/AnomalyDetector.test.js' },
+        { type: 'Detector Code', url: 'https://github.com/BikramBiswas786/hedera-hydropower-mrv/blob/main/src/anomaly-detector.js' },
+        { type: '24 Test Cases', url: 'https://github.com/BikramBiswas786/hedera-hydropower-mrv/blob/main/tests/anomaly-detector.test.js' },
         { type: 'Fraud TX', url: `https://hashscan.io/testnet/transaction/${realTx.demo}` }
       ]
     },
@@ -131,7 +131,7 @@ export default function Home() {
 **100+ messages submitted**: View Topic ${realTx.topic}`,
       evidence: [
         { type: 'Live Topic', url: `https://hashscan.io/testnet/topic/${realTx.topic}` },
-        { type: 'HCS Client', url: 'https://github.com/BikramBiswas786/https-github.com-BikramBiswas786-hedera-hydropower-mrv/blob/main/src/blockchain/HederaClient.js' },
+        { type: 'HCS Client', url: 'https://github.com/BikramBiswas786/hedera-hydropower-mrv/blob/main/hedera/hedera-client.js' },
         { type: 'Latest Message', url: `https://hashscan.io/testnet/transaction/${realTx.latest}` }
       ]
     },
@@ -142,7 +142,9 @@ export default function Home() {
 
 **Token**: ${realTx.token} (HREC - Hydropower Renewable Energy Certificate)
 
-**Example**: 35 MWh → 28 tCO₂e → 28,000 HREC → $504 USD`,
+**Example**: 35 MWh → 28 tCO₂e → 28,000 HREC minted on blockchain
+
+**Carbon Calculation**: Based on UN-approved ACM0002 methodology with 0.8 emission factor`,
       evidence: [
         { type: 'Live Token', url: `https://hashscan.io/testnet/token/${realTx.token}` },
         { type: 'Treasury', url: `https://hashscan.io/testnet/account/${realTx.account}` },
@@ -167,7 +169,7 @@ export default function Home() {
         { name: 'Water Probes', spec: 'pH/turbidity', qty: '1', cost: '₹14K' },
         { name: 'Edge Gateway', spec: 'RPi4', qty: '1', cost: '₹6K' }
       ],
-      github: 'https://github.com/BikramBiswas786/https-github.com-BikramBiswas786-hedera-hydropower-mrv/tree/main/iot-simulator',
+      github: 'https://github.com/BikramBiswas786/hedera-hydropower-mrv/tree/main/iot-simulator',
       evidence: `https://hashscan.io/testnet/account/${realTx.account}`
     },
     {
@@ -183,7 +185,7 @@ export default function Home() {
         { name: 'API Gateway', spec: 'Express.js', throughput: '1000 req/s' },
         { name: 'Redis Queue', spec: 'Streams', latency: '<10ms' }
       ],
-      github: 'https://github.com/BikramBiswas786/https-github.com-BikramBiswas786-hedera-hydropower-mrv/blob/main/src/workflow/WorkflowEngine.js',
+      github: 'https://github.com/BikramBiswas786/hedera-hydropower-mrv/blob/main/src/workflow.js',
       evidence: `https://hashscan.io/testnet/transaction/${realTx.latest}`
     },
     {
@@ -201,7 +203,7 @@ export default function Home() {
         { name: 'Environmental', weight: '20%', params: 'pH 6-9' },
         { name: 'Statistical', weight: '15%', method: 'K-means' }
       ],
-      github: 'https://github.com/BikramBiswas786/https-github.com-BikramBiswas786-hedera-hydropower-mrv/blob/main/src/ai/EngineV1.js',
+      github: 'https://github.com/BikramBiswas786/hedera-hydropower-mrv/blob/main/src/ai-guardian-verifier.js',
       evidence: `https://hashscan.io/testnet/transaction/${realTx.approved}`
     },
     {
@@ -215,7 +217,7 @@ export default function Home() {
         { name: 'HCS Topic', id: realTx.topic, cost: '$0.0001/msg' },
         { name: 'HTS Token', id: realTx.token, symbol: 'HREC' }
       ],
-      github: 'https://github.com/BikramBiswas786/https-github.com-BikramBiswas786-hedera-hydropower-mrv/blob/main/src/blockchain/HederaClient.js',
+      github: 'https://github.com/BikramBiswas786/hedera-hydropower-mrv/blob/main/hedera/hedera-client.js',
       evidence: `https://hashscan.io/testnet/topic/${realTx.topic}`
     },
     {
@@ -224,12 +226,14 @@ export default function Home() {
       icon: '💰',
       explanation: `UN-approved ACM0002 methodology: ER = EG × 0.80
 
+**Calculation**: Energy (MWh) × Emission Factor (0.8 tCO₂e/MWh) = Carbon Credits
+
 **ROI**: <1 month payback, $14.5K-49.5K savings per year`,
       components: [
-        { name: 'Calculator', standard: 'UNFCCC', factor: '0.8' },
-        { name: 'Minting', rate: '1000/tCO₂e', token: realTx.token }
+        { name: 'Calculator', standard: 'UNFCCC ACM0002', factor: '0.8 tCO₂e/MWh' },
+        { name: 'Minting', rate: '1000 HREC/tCO₂e', token: realTx.token }
       ],
-      github: 'https://github.com/BikramBiswas786/https-github.com-BikramBiswas786-hedera-hydropower-mrv/blob/main/src/carbon/CarbonCalculator.js',
+      github: 'https://github.com/BikramBiswas786/hedera-hydropower-mrv/blob/main/src/carbon-calculator.js',
       evidence: `https://hashscan.io/testnet/token/${realTx.token}`
     }
   ];
@@ -539,7 +543,7 @@ export default function Home() {
           <h2 className="text-4xl font-bold mb-6">Ready to Deploy?</h2>
           <p className="text-xl text-gray-300 mb-8">All source code and documentation on GitHub</p>
           <div className="flex gap-4 justify-center flex-wrap">
-            <a href="https://github.com/BikramBiswas786/https-github.com-BikramBiswas786-hedera-hydropower-mrv" target="_blank" rel="noopener noreferrer" className="px-8 py-4 bg-gray-900 hover:bg-gray-800 text-xl font-bold rounded-2xl transition-all">
+            <a href="https://github.com/BikramBiswas786/hedera-hydropower-mrv" target="_blank" rel="noopener noreferrer" className="px-8 py-4 bg-gray-900 hover:bg-gray-800 text-xl font-bold rounded-2xl transition-all">
               💻 GitHub
             </a>
             <a href={`https://hashscan.io/testnet/account/${realTx.account}`} target="_blank" rel="noopener noreferrer" className="px-8 py-4 bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700 text-xl font-bold rounded-2xl transition-all">
