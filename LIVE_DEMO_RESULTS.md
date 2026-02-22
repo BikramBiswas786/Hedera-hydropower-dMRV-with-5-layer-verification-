@@ -5,7 +5,7 @@
 
 ---
 
-## 🎉 System Verification Complete
+##  System Verification Complete
 
 Both local and production deployments are **live and processing real Hedera testnet transactions**.
 
@@ -120,7 +120,7 @@ Both local and production deployments are **live and processing real Hedera test
 
 ---
 
-## 🎬 Demo Script Results (npm run demo)
+##  Demo Script Results (npm run demo)
 
 ### Complete E2E Flow Executed:
 
@@ -182,7 +182,7 @@ Both local and production deployments are **live and processing real Hedera test
 
 ---
 
-## 🔬 Technical Verification
+##  Technical Verification
 
 ### 5-Layer AI Verification Engine Performance
 
@@ -226,7 +226,7 @@ Carbon Credits: null (reading flagged, no credits issued)
 
 ---
 
-## 🌐 Deployment Status
+##  Deployment Status
 
 ### Local Development Server
 - **Status:** 🟢 **RUNNING**
@@ -252,7 +252,7 @@ Carbon Credits: null (reading flagged, no credits issued)
 
 ---
 
-## 💰 Transaction Economics
+##  Transaction Economics
 
 ### Per-Reading Costs (Testnet → Mainnet Estimates)
 
@@ -274,7 +274,7 @@ Carbon Credits: null (reading flagged, no credits issued)
 
 ---
 
-## 📈 Live Metrics (Prometheus)
+##  Live Metrics (Prometheus)
 
 ### Available at: `http://localhost:3000/metrics`
 
@@ -342,7 +342,7 @@ mrv_verification_duration_seconds{operation="api_submission"} 0.042
 
 ---
 
-## 🚀 Next Milestones
+##  Next Milestones
 
 ### Immediate (This Week)
 - [ ] **Grafana Dashboard** — Visualize `/metrics` in real-time (3-5 days)
@@ -362,7 +362,7 @@ mrv_verification_duration_seconds{operation="api_submission"} 0.042
 
 ---
 
-## 🏆 Achievement Summary
+##  Achievement Summary
 
 ### ✅ What Works (Everything!)
 
@@ -380,7 +380,7 @@ mrv_verification_duration_seconds{operation="api_submission"} 0.042
 
 ---
 
-## 📝 Conclusion
+##  Conclusion
 
 The Hedera Hydropower MRV system is **production-ready** and has successfully demonstrated:
 
