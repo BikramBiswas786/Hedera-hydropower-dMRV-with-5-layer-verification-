@@ -21,20 +21,31 @@ jobs:
       uses: actions/setup-node@v4
       with:
         node-version: 18.x
+        cache: 'npm'
+        cache-dependency-path: './vercel-ui/package-lock.json'
 
     - name: Install dependencies
       working-directory: ./vercel-ui
-      run: npm install
+      run: |
+        if [ -f "package-lock.json" ]; then
+          npm ci
+        else
+          npm install
+        fi
 
     - name: Type check
       working-directory: ./vercel-ui
-      run: npx tsc --noEmit || echo "Type check completed with warnings"
+      run: npx tsc --noEmit || echo "⚠️ Type check completed with warnings"
+      continue-on-error: true
 
     - name: Build
       working-directory: ./vercel-ui
       run: npm run build
+      env:
+        NODE_ENV: production
 
     - name: Summary
+      if: success()
       run: |
         echo "## ✅ Vercel UI Build Successful" >> $GITHUB_STEP_SUMMARY
         echo "" >> $GITHUB_STEP_SUMMARY
@@ -42,3 +53,10 @@ jobs:
         echo "**Framework:** Next.js 14" >> $GITHUB_STEP_SUMMARY
         echo "**Deploy to:** https://vercel.com/new" >> $GITHUB_STEP_SUMMARY
         echo "**Root Directory:** vercel-ui" >> $GITHUB_STEP_SUMMARY
+
+    - name: Failure Summary
+      if: failure()
+      run: |
+        echo "## ❌ Vercel UI Build Failed" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+        echo "Check logs above for detailed error messages" >> $GITHUB_STEP_SUMMARY
