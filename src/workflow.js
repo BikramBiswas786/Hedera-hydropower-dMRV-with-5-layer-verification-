@@ -21,6 +21,9 @@ const {
   Hbar
 } = require('@hashgraph/sdk');
 
+// Fix #1: fresh-transaction retry helper (prevents TRANSACTION_EXPIRED on retries)
+const { executeWithRetry } = require('./hedera/retry');
+
 class Workflow {
   constructor(config = {}) {
     this.config = config;
@@ -91,10 +94,12 @@ class Workflow {
 
     for (let attempt = 1; attempt <= maxRetries; attempt++) {
       try {
+        // New transaction object on every attempt: fresh ID + valid window
         const transaction = new TopicMessageSubmitTransaction()
           .setTopicId(topicId)
           .setMessage(message)
-          .setTransactionValidDuration(180);
+          .setTransactionValidDuration(180)     // 3-min window
+          .setRegenerateTransactionId(true);    // Fix #1: SDK-level guard
 
         const signedTx = await transaction.freezeWith(this.client);
 
@@ -195,8 +200,7 @@ class Workflow {
       };
 
       // ═══════════════════════════════════════════════════════════════
-      // NEW: FRAUD DETECTION (before engine verification)
-      // FIX: Changed from checkForFraud to detectFraud
+      // FRAUD DETECTION (before engine verification)
       // ═══════════════════════════════════════════════════════════════
       const fraudCheck = this.fraudDetector.detectFraud(
         telemetryPacket.deviceId, 
@@ -248,13 +252,12 @@ class Workflow {
       }
 
       // ═══════════════════════════════════════════════════════════════
-      // NEW: ACM0002-COMPLIANT CARBON CREDITS
+      // ACM0002-COMPLIANT CARBON CREDITS
       // ═══════════════════════════════════════════════════════════════
       let carbonCredits = null;
       let acm0002Compliance = null;
       
       if (att.verificationStatus === 'APPROVED') {
-        // Use ACM0002 validator for compliant calculation
         const generation_MWh = telemetryPacket.readings.generatedKwh / 1000;
         
         const baselineCalc = this.acm0002Validator.calculateBaselineEmissions({
@@ -264,7 +267,7 @@ class Workflow {
         
         const projectEmissions = this.acm0002Validator.calculateProjectEmissions({
           projectType: 'hydropower',
-          reservoirArea_km2: 0, // Run-of-river
+          reservoirArea_km2: 0,
         });
         
         const leakage = this.acm0002Validator.calculateLeakageEmissions({});
@@ -273,7 +276,7 @@ class Workflow {
           baselineEmissions: baselineCalc.BE_y,
           projectEmissions: projectEmissions.PE_y,
           leakageEmissions: leakage.LE_y,
-          roundingMethod: 'floor', // Conservative per ACM0002 §13
+          roundingMethod: 'floor',
         });
 
         carbonCredits = {
@@ -294,7 +297,6 @@ class Workflow {
         };
       }
 
-      // Verification details — map engine check statuses
       const verificationDetails = {
         physicsCheck:
           checks.physics?.status ||
@@ -307,7 +309,7 @@ class Workflow {
           (att.trustScore >= 0.9 ? 'PASS' : 'WARN'),
         trustScore: att.trustScore,
         flags: att.flags || [],
-        fraudCheck: 'PASSED', // Since we passed fraud detection
+        fraudCheck: 'PASSED',
       };
 
       const readingId = `RDG-${
@@ -317,7 +319,7 @@ class Workflow {
       return {
         success: true,
         readingId,
-        attestationId: readingId, // For minting reference
+        attestationId: readingId,
         transactionId: result.transactionId,
         topicId: result.topicId || process.env.AUDIT_TOPIC_ID || null,
         timestamp: telemetryPacket.timestamp,
@@ -336,7 +338,7 @@ class Workflow {
   }
 
   // ═══════════════════════════════════════════════════════════════
-  // NEW: FRAUD MITIGATION - Verifier Challenge System
+  // FRAUD MITIGATION - Verifier Challenge System
   // ═══════════════════════════════════════════════════════════════
   async challengeAttestation(attestationId, verifierId, reason) {
     if (!attestationId) throw new Error('attestationId is required');
@@ -354,17 +356,15 @@ class Workflow {
   }
 
   // ═══════════════════════════════════════════════════════════════
-  // NEW: PREVENT DOUBLE-MINTING (Fraud Protection)
+  // PREVENT DOUBLE-MINTING (Fraud Protection)
   // ═══════════════════════════════════════════════════════════════
   async mintCarbonCredits(attestationId) {
     if (!attestationId) throw new Error('attestationId is required');
 
-    // Check if already minted
     if (this.mintedAttestations.has(attestationId)) {
       throw new Error(`Carbon credits already minted for attestation ${attestationId}`);
     }
 
-    // Find the attestation
     const reading = this.readings.find(r => 
       r.attestation && r.attestation.verificationStatus === 'APPROVED'
     );
@@ -377,7 +377,6 @@ class Workflow {
       throw new Error(`Cannot mint from rejected/flagged attestation ${attestationId}`);
     }
 
-    // Mark as minted
     this.mintedAttestations.add(attestationId);
 
     const carbonCredits = this._buildCarbonCredits(
@@ -420,9 +419,6 @@ class Workflow {
     const totalGeneration = this.readings.reduce((sum, r) => sum + (r.generatedKwh || 0), 0);
     const totalCarbonCredits = this._buildCarbonCredits(null, totalGeneration, this.gridEmissionFactor);
 
-    // ═══════════════════════════════════════════════════════════════
-    // NEW: ACM0002 MONITORING REPORT
-    // ═══════════════════════════════════════════════════════════════
     const acm0002Report = this.acm0002Validator.generateMonitoringReport({
       projectId: this.projectId,
       monitoringPeriod: `${new Date(Date.now() - 30*24*60*60*1000).toISOString().split('T')[0]} to ${new Date().toISOString().split('T')[0]}`,
@@ -452,7 +448,7 @@ class Workflow {
               (this.readings.reduce((sum, r) => sum + (r.attestation?.trustScore || 0), 0) / totalReadings).toFixed(4)
             )
           : 0,
-      acm0002Report, // NEW: Include ACM0002 compliant report
+      acm0002Report,
     };
   }
 
@@ -486,24 +482,75 @@ class Workflow {
     }
   }
 
+  /**
+   * mintRECs — mint Renewable Energy Certificate tokens on Hedera.
+   *
+   * Fix #1 applied here:
+   *   Uses executeWithRetry(buildTxFn, client) so every retry attempt
+   *   calls buildTxFn() and gets a brand-new TokenMintTransaction with
+   *   a fresh transaction ID and valid window.
+   *
+   *   Falls back to a deterministic mock when Hedera credentials are
+   *   not configured (CI, local dev without .env, test environment).
+   */
   async mintRECs(amount, attestationId) {
     if (!this.tokenId) {
       await this.createRECToken('Hydro REC', 'HREC');
     }
 
-    try {
-      const mockTransactionId = `0.0.${
-        Math.floor(Math.random() * 1000000)
-      }@${Date.now() / 1000}.${Math.floor(Math.random() * 1000000000)}`;
+    // ── Mock fallback: no real Hedera credentials ─────────────────────
+    const accountId  = process.env.HEDERA_ACCOUNT_ID;
+    const privateKey = process.env.HEDERA_PRIVATE_KEY;
+
+    if (!this.client || !accountId || !privateKey) {
+      const ts       = (Date.now() / 1000).toFixed(9);
+      const nonce    = Math.floor(Math.random() * 1_000_000_000);
+      const mockTxId = `0.0.${Math.floor(Math.random() * 1_000_000)}@${ts}.${nonce}`;
+      console.log('[mintRECs] MOCK MODE — Hedera credentials not configured');
       return {
         success: true,
         amount,
-        tokenId: this.tokenId,
-        transactionId: mockTransactionId,
-        attestationId
+        tokenId:       this.tokenId,
+        transactionId: mockTxId,
+        serialNumbers: [],
+        attestationId,
+        mock:          true
+      };
+    }
+
+    // ── Real path: executeWithRetry builds a FRESH TX on every attempt ─
+    try {
+      const tokenId = this.tokenId;
+      const client  = this.client;
+
+      const { receipt, response, attempt } = await executeWithRetry(
+        // Builder is called fresh on every attempt → new ID, new window
+        () => new TokenMintTransaction()
+          .setTokenId(tokenId)
+          .setAmount(amount)
+          .setMaxTransactionFee(new Hbar(2)),
+        client,
+        { maxAttempts: 3, baseDelayMs: 750 }
+      );
+
+      if (attempt > 1) {
+        console.log(
+          `[mintRECs] Recovered from TRANSACTION_EXPIRED — succeeded on attempt ${attempt}`
+        );
+      }
+
+      return {
+        success:       true,
+        amount,
+        tokenId:       this.tokenId,
+        transactionId: response.transactionId.toString(),
+        serialNumbers: receipt.serials?.map(s => s.toString()) ?? [],
+        newSupply:     receipt.totalSupply?.toString(),
+        attestationId,
+        attempt
       };
     } catch (error) {
-      console.error('Token minting failed:', error);
+      console.error('[mintRECs] Token minting failed after all retries:', error);
       throw error;
     }
   }
@@ -517,7 +564,7 @@ class Workflow {
     this.deviceDID = null;
     this.auditTopicId = null;
     this.readings = [];
-    this.mintedAttestations.clear(); // NEW: Reset minting tracker
+    this.mintedAttestations.clear();
   }
 
   async cleanup() {
@@ -536,13 +583,9 @@ class Workflow {
     return await this.submitReading(data);
   }
 
-  // ═══════════════════════════════════════════════════════════════
-  // NEW: Alias for compatibility with test suites
-  // ═══════════════════════════════════════════════════════════════
   async submitTelemetry(telemetry) {
     return this.submitReading(telemetry);
   }
 }
 
 module.exports = Workflow;
-
