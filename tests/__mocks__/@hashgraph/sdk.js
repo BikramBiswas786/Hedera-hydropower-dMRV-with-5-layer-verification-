@@ -63,55 +63,74 @@ const mockTxResponse = () => ({
   getRecord: () => Promise.resolve({ transactionId: TransactionId.generate() })
 });
 
+// ───────────────────────────────────────────────────────────────────────
+// NOTE: every transaction class must include the three methods that
+// retry.js calls on the return value of buildTxFn():
+//   setTransactionValidDuration, setRegenerateTransactionId
+// and any chain methods used in workflow.js before passing to executeWithRetry:
+//   setMaxTransactionFee  (TokenMintTransaction)
+// Without these, the mock tx chain breaks with "is not a function".
+// ───────────────────────────────────────────────────────────────────────
+
 class TopicMessageSubmitTransaction {
-  setTopicId()               { return this; }
-  setMessage()               { return this; }
-  setMaxChunks()             { return this; }
+  setTopicId()                  { return this; }
+  setMessage()                  { return this; }
+  setMaxChunks()                { return this; }
   setTransactionValidDuration() { return this; }
-  freezeWith()               { return this; }
-  sign()                     { return Promise.resolve(this); }
-  execute()                  { return Promise.resolve(mockTxResponse()); }
+  setRegenerateTransactionId()  { return this; }  // used by submitToHederaWithRetry
+  freezeWith()                  { return this; }
+  sign()                        { return Promise.resolve(this); }
+  execute()                     { return Promise.resolve(mockTxResponse()); }
 }
 
 class TopicCreateTransaction {
-  setTopicMemo()   { return this; }
-  setAdminKey()    { return this; }
-  setSubmitKey()   { return this; }
-  freezeWith()     { return this; }
-  sign()           { return Promise.resolve(this); }
-  execute()        { return Promise.resolve(mockTxResponse()); }
+  setTopicMemo()                { return this; }
+  setAdminKey()                 { return this; }
+  setSubmitKey()                { return this; }
+  setTransactionValidDuration() { return this; }
+  setRegenerateTransactionId()  { return this; }
+  freezeWith()                  { return this; }
+  sign()                        { return Promise.resolve(this); }
+  execute()                     { return Promise.resolve(mockTxResponse()); }
 }
 
 class TokenCreateTransaction {
-  setTokenName()        { return this; }
-  setTokenSymbol()      { return this; }
-  setDecimals()         { return this; }
-  setInitialSupply()    { return this; }
-  setTreasuryAccountId(){ return this; }
-  setAdminKey()         { return this; }
-  setSupplyKey()        { return this; }
-  setTokenType()        { return this; }
-  setSupplyType()       { return this; }
-  freezeWith()          { return this; }
-  sign()                { return Promise.resolve(this); }
-  execute()             { return Promise.resolve(mockTxResponse()); }
+  setTokenName()                { return this; }
+  setTokenSymbol()              { return this; }
+  setDecimals()                 { return this; }
+  setInitialSupply()            { return this; }
+  setTreasuryAccountId()        { return this; }
+  setAdminKey()                 { return this; }
+  setSupplyKey()                { return this; }
+  setTokenType()                { return this; }
+  setSupplyType()               { return this; }
+  setTransactionValidDuration() { return this; }
+  setRegenerateTransactionId()  { return this; }
+  freezeWith()                  { return this; }
+  sign()                        { return Promise.resolve(this); }
+  execute()                     { return Promise.resolve(mockTxResponse()); }
 }
 
 class TokenMintTransaction {
-  setTokenId()   { return this; }
-  setAmount()    { return this; }
-  setMetadata()  { return this; }
-  freezeWith()   { return this; }
-  sign()         { return Promise.resolve(this); }
-  execute()      { return Promise.resolve(mockTxResponse()); }
+  setTokenId()                  { return this; }
+  setAmount()                   { return this; }
+  setMetadata()                 { return this; }
+  setMaxTransactionFee()        { return this; }  // used in mintRECs buildTxFn
+  setTransactionValidDuration() { return this; }  // called by retry.js on every attempt
+  setRegenerateTransactionId()  { return this; }  // called by retry.js on every attempt
+  freezeWith()                  { return this; }
+  sign()                        { return Promise.resolve(this); }
+  execute()                     { return Promise.resolve(mockTxResponse()); }
 }
 
 class FileCreateTransaction {
-  setContents()  { return this; }
-  setKeys()      { return this; }
-  freezeWith()   { return this; }
-  sign()         { return Promise.resolve(this); }
-  execute()      { return Promise.resolve(mockTxResponse()); }
+  setContents()                 { return this; }
+  setKeys()                     { return this; }
+  setTransactionValidDuration() { return this; }
+  setRegenerateTransactionId()  { return this; }
+  freezeWith()                  { return this; }
+  sign()                        { return Promise.resolve(this); }
+  execute()                     { return Promise.resolve(mockTxResponse()); }
 }
 
 class Hbar {
@@ -121,8 +140,13 @@ class Hbar {
 }
 
 class Status {
-  static get Success()  { return { toString: () => 'SUCCESS', _code: 22 }; }
-  static get Ok()       { return { toString: () => 'OK',      _code: 200 }; }
+  static get Success()            { return { toString: () => 'SUCCESS',             _code: 22  }; }
+  static get Ok()                 { return { toString: () => 'OK',                  _code: 200 }; }
+  // TransactionExpired must be a distinct defined value so that the guard
+  //   `txExpiredStatus !== undefined && err.status === txExpiredStatus`
+  // in retry.js works correctly. Without this entry, Status.TransactionExpired
+  // is undefined, and `undefined === undefined` would make ALL errors retryable.
+  static get TransactionExpired() { return { toString: () => 'TRANSACTION_EXPIRED', _code: 163 }; }
 }
 
 class KeyList {

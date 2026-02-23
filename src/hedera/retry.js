@@ -8,7 +8,7 @@
  * ROOT CAUSE
  * ----------
  * Every Hedera Transaction has a unique ID derived from the operator
- * account + the moment the SDK object is created.  The transaction is
+ * account + the moment the SDK object is created. The transaction is
  * only valid for `setTransactionValidDuration` seconds from that moment
  * (default 120 s; we set 180 s).
  *
@@ -52,15 +52,23 @@ async function executeWithRetry(buildTxFn, client, opts = {}) {
   const { maxAttempts = 3, baseDelayMs = 750 } = opts;
   let lastError;
 
+  // Resolve the SDK's TransactionExpired sentinel ONCE.
+  // Guard: Status.TransactionExpired may be undefined in mock/test
+  // environments. Without the guard,
+  //   `undefined === undefined`  →  true
+  // which would make EVERY error look like TRANSACTION_EXPIRED and
+  // retry it — breaking fast-fail for UNAUTHORIZED, etc.
+  const txExpiredStatus = Status?.TransactionExpired;
+
   for (let attempt = 1; attempt <= maxAttempts; attempt++) {
     try {
       // ─── Build a FRESH transaction on every attempt ─────────────────
-      // This is the critical line: a new object → new transaction ID
-      // → new valid window. The old expired ID is never reused.
+      // A new object → new transaction ID → new valid window.
+      // The expired ID from the previous attempt is never reused.
       const tx = buildTxFn();
 
       // Belt-and-suspenders: extend valid window + ask SDK to regenerate
-      // the ID if it detects expiry before submission
+      // the ID if it detects expiry before submission.
       tx.setTransactionValidDuration(180);   // 3-minute window on testnet
       tx.setRegenerateTransactionId(true);   // SDK-level guard
 
@@ -72,8 +80,12 @@ async function executeWithRetry(buildTxFn, client, opts = {}) {
     } catch (err) {
       lastError = err;
 
+      // Two-track check:
+      //   1. Real SDK:  compare err.status against the SDK sentinel.
+      //      Only valid when txExpiredStatus is defined (not in mock env).
+      //   2. All envs:  fall back to the string in the error message.
       const isExpired =
-        (Status && err.status === Status.TransactionExpired) ||
+        (txExpiredStatus !== undefined && err.status === txExpiredStatus) ||
         String(err.message || err).includes('TRANSACTION_EXPIRED');
 
       // Only TRANSACTION_EXPIRED is retryable — everything else is
