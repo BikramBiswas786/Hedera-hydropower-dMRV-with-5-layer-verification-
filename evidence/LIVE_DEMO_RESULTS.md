@@ -11,7 +11,7 @@ Both local and production deployments are **live and processing real Hedera test
 
 ---
 
-## 📊 Live Test Results
+##  Live Test Results
 
 ### Test 1: Normal Reading (APPROVED)
 
