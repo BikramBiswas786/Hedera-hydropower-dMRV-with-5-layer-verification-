@@ -2,64 +2,64 @@
 
 /**
  * ML Accuracy Benchmark
- * ───────────────────────────────────────────────────────
+ * ─────────────────────────────────────────────────────
  * Trains Isolation Forest on 2000 synthetic samples.
  * Tests on 500 FRESH samples (never seen during training).
  * Verifies the accuracy claim used in /api/features.
  *
  * Run with:
  *   npm test -- test/ml/accuracy-benchmark.test.js
- *   npx mocha test/ml/accuracy-benchmark.test.js
+ *
+ * IMPORTANT: originally written in Mocha/Chai syntax.
+ * Converted to Jest (project test runner) — no chai dependency needed.
  */
 
-const { expect } = require('chai');
-const { MLAnomalyDetector } = require('../../src/ml/MLAnomalyDetector');
-const { generateDataset }   = require('../../src/ml/SyntheticDataGenerator');
+// Raise Jest timeout for this file — training can take 5-15 s
+jest.setTimeout(60_000);
 
-describe('ML Accuracy Benchmark — Isolation Forest', function () {
-  this.timeout(60_000); // Training can take 5–15 s
+const { MLAnomalyDetector }    = require('../../src/ml/MLAnomalyDetector');
+const { generateDataset }      = require('../../src/ml/SyntheticDataGenerator');
 
+describe('ML Accuracy Benchmark — Isolation Forest', () => {
   let detector;
-  let testDataset;   // 500 labeled samples never used in training
-  let results = {};  // filled in the accuracy test, used in later checks
+  let testDataset;   // 500 labeled samples, never seen during training
+  let results = {};  // filled in the accuracy test, reused in later checks
 
-  // ─── Setup ──────────────────────────────────────────────────────────────
-
-  before(function () {
-    // Train on 2000 synthetic samples (normal + anomaly mix)
+  // ─── Setup ───────────────────────────────────────────────────
+  // beforeAll replaces Mocha’s before()
+  beforeAll(() => {
     detector = new MLAnomalyDetector({
-      nTrees:       100,
-      sampleSize:   256,
+      nTrees:        100,
+      sampleSize:    256,
       contamination: 0.10,
-      autoTrain:    true,
-      trainSamples: 2000
+      autoTrain:     true,
+      trainSamples:  2000
     });
 
-    // Generate 500 fresh labeled samples for evaluation
     testDataset = generateDataset(500);
   });
 
-  // ─── Sanity checks ───────────────────────────────────────────────────────
+  // ─── Sanity checks ───────────────────────────────────────────────
 
-  it('model is trained and reports correct metadata', function () {
+  test('model is trained and reports correct metadata', () => {
     const info = detector.getInfo();
-    expect(info.trained,       'model.trained').to.be.true;
-    expect(info.trainedOn,     'trainedOn').to.be.greaterThan(0);
-    expect(info.featureNames,  'featureNames').to.have.lengthOf(8);
-    expect(info.algorithm,     'algorithm').to.include('IsolationForest');
+    expect(info.trained).toBe(true);
+    expect(info.trainedOn).toBeGreaterThan(0);
+    expect(info.featureNames).toHaveLength(8);
+    expect(info.algorithm).toContain('IsolationForest');
   });
 
-  it('test dataset contains both normal and anomaly samples', function () {
+  test('test dataset contains both normal and anomaly samples', () => {
     const normals   = testDataset.filter(s => s.label === 'normal').length;
     const anomalies = testDataset.filter(s => s.label === 'anomaly').length;
-    expect(normals,   'normal samples').to.be.greaterThan(0);
-    expect(anomalies, 'anomaly samples').to.be.greaterThan(0);
+    expect(normals).toBeGreaterThan(0);
+    expect(anomalies).toBeGreaterThan(0);
     console.log(`  ℹ️  Test dataset: ${normals} normal, ${anomalies} anomaly (total ${testDataset.length})`);
   });
 
-  // ─── Core accuracy benchmark ─────────────────────────────────────────────────
+  // ─── Core accuracy benchmark ───────────────────────────────────────────
 
-  it('achieves >= 90% overall accuracy on 500 fresh labeled samples', function () {
+  test('achieves >= 90% overall accuracy on 500 fresh labeled samples', () => {
     let tp = 0, tn = 0, fp = 0, fn = 0;
 
     testDataset.forEach(sample => {
@@ -78,13 +78,12 @@ describe('ML Accuracy Benchmark — Isolation Forest', function () {
 
     const total     = testDataset.length;
     const accuracy  = (tp + tn) / total;
-    const precision = tp / (tp + fp)  || 0;
-    const recall    = tp / (tp + fn)  || 0;
-    const f1 = precision + recall > 0
+    const precision = tp / (tp + fp) || 0;
+    const recall    = tp / (tp + fn) || 0;
+    const f1 = (precision + recall) > 0
       ? 2 * (precision * recall) / (precision + recall)
       : 0;
 
-    // Persist for later assertions
     results = { accuracy, precision, recall, f1, tp, tn, fp, fn, total };
 
     console.log('\n  📊 ML Benchmark Results:');
@@ -98,97 +97,99 @@ describe('ML Accuracy Benchmark — Isolation Forest', function () {
     expect(
       accuracy,
       `Accuracy ${(accuracy * 100).toFixed(1)}% must be >= 90%`
-    ).to.be.at.least(0.90);
+    ).toBeGreaterThanOrEqual(0.90);
   });
 
-  // ─── Named fraud / normal cases ────────────────────────────────────────────
+  // ─── Named fraud / normal cases ─────────────────────────────────────────
 
-  it('flags extreme fraud: generation >> theoretical max', function () {
-    // Q=2 m³/s, H=20 m  →  P_theoretical = ρ g Q H η = 1000*9.81*2*20*0.85 / 1000 ≈ 333 kW
+  test('flags extreme fraud: generation >> theoretical max', () => {
+    // Q=2 m³/s, H=20 m → P_theoretical = ρ g Q H η = 1000*9.81*2*20*0.85/1000 ≈ 333 kW
     const fraud = {
-      flowRate_m3_per_s:   2.0,
-      headHeight_m:       20,
-      generatedKwh:      9_999,  // 30× theoretical — obvious fraud
-      pH:                 7.0,
-      turbidity_ntu:     10,
-      temperature_celsius: 20
+      flowRate_m3_per_s:    2.0,
+      headHeight_m:         20,
+      generatedKwh:      9_999,   // 30× theoretical — obvious fraud
+      pH:                    7.0,
+      turbidity_ntu:        10,
+      temperature_celsius:  20
     };
     const r = detector.detect(fraud);
-    expect(r.isAnomaly,  'should be anomaly').to.be.true;
-    expect(r.method,     'method').to.equal('ISOLATION_FOREST_ML');
-    expect(r.score,      'score > 0.5').to.be.greaterThan(0.5);
+    expect(r.isAnomaly).toBe(true);
+    expect(r.method).toBe('ISOLATION_FOREST_ML');
+    expect(r.score).toBeGreaterThan(0.5);
   });
 
-  it('flags environmental anomaly: pH out of range (acid event)', function () {
+  test('flags environmental anomaly: pH out of range (acid event)', () => {
     const acidEvent = {
-      flowRate_m3_per_s:   5.0,
-      headHeight_m:       30,
-      generatedKwh:      1200,
-      pH:                  2.5,  // extreme acid
-      turbidity_ntu:     500,
-      temperature_celsius: 20
+      flowRate_m3_per_s:    5.0,
+      headHeight_m:         30,
+      generatedKwh:       1200,
+      pH:                    2.5,  // extreme acid
+      turbidity_ntu:       500,
+      temperature_celsius:  20
     };
     const r = detector.detect(acidEvent);
-    expect(r.isAnomaly, 'acid pH should be anomaly').to.be.true;
+    expect(r.isAnomaly).toBe(true);
   });
 
-  it('classifies a typical normal reading as normal', function () {
+  test('classifies a typical normal reading as normal', () => {
     const normal = {
-      flowRate_m3_per_s:   5.0,
-      headHeight_m:       30,
-      generatedKwh:      1_180,  // ≈ theoretical 1237 kW at 85% efficiency
-      pH:                  7.2,
-      turbidity_ntu:     15,
-      temperature_celsius: 18
+      flowRate_m3_per_s:    5.0,
+      headHeight_m:         30,
+      generatedKwh:      1_180,   // ≈ theoretical 1237 kW at 85% efficiency
+      pH:                    7.2,
+      turbidity_ntu:        15,
+      temperature_celsius:  18
     };
     const r = detector.detect(normal);
-    expect(r.isAnomaly, 'should be normal').to.be.false;
-    expect(r.method).to.equal('ISOLATION_FOREST_ML');
+    expect(r.isAnomaly).toBe(false);
+    expect(r.method).toBe('ISOLATION_FOREST_ML');
   });
 
-  // ─── Feature vector ───────────────────────────────────────────────────────────
+  // ─── Feature vector ──────────────────────────────────────────────────────
 
-  it('returns a normalised 8-dimensional feature vector [0, 1]', function () {
+  test('returns a normalised 8-dimensional feature vector in [0, 1]', () => {
     const r = detector.detect({
-      flowRate_m3_per_s:   3.0,
-      headHeight_m:       25,
+      flowRate_m3_per_s:    3.0,
+      headHeight_m:         25,
       generatedKwh:        600,
-      pH:                  7.0,
-      turbidity_ntu:      10,
-      temperature_celsius: 20
+      pH:                    7.0,
+      turbidity_ntu:        10,
+      temperature_celsius:  20
     });
-    expect(r.featureVector, 'featureVector length').to.have.lengthOf(8);
+    expect(r.featureVector).toHaveLength(8);
     r.featureVector.forEach((v, i) => {
-      expect(v, `feature[${i}] in [0,1]`).to.be.within(0, 1);
+      expect(v).toBeGreaterThanOrEqual(0);
+      expect(v).toBeLessThanOrEqual(1);
     });
   });
 
-  // ─── Explainability ───────────────────────────────────────────────────────────
+  // ─── Explainability ──────────────────────────────────────────────────────
 
-  it('detectWithExplanation returns top features and summary', function () {
+  test('detectWithExplanation returns top features and summary', () => {
     const r = detector.detectWithExplanation({
-      flowRate_m3_per_s:   5.0,
-      headHeight_m:       30,
-      generatedKwh:      8_000,  // suspicious
-      pH:                  7.0,
-      turbidity_ntu:      10,
-      temperature_celsius: 20
+      flowRate_m3_per_s:    5.0,
+      headHeight_m:         30,
+      generatedKwh:      8_000,   // suspicious
+      pH:                    7.0,
+      turbidity_ntu:        10,
+      temperature_celsius:  20
     });
-    expect(r.explanation,             'explanation exists').to.exist;
-    expect(r.explanation.topFeatures, 'topFeatures array').to.be.an('array');
-    expect(r.explanation.summary,     'summary string').to.be.a('string');
+    expect(r.explanation).toBeDefined();
+    expect(r.explanation).not.toBeNull();
+    expect(Array.isArray(r.explanation.topFeatures)).toBe(true);
+    expect(typeof r.explanation.summary).toBe('string');
   });
 
-  // ─── Retraining ──────────────────────────────────────────────────────────────
+  // ─── Retraining ──────────────────────────────────────────────────────────
 
-  it('retrains without error on >= 50 normal readings', function () {
+  test('retrains without error on >= 50 normal readings', () => {
     const freshNormals = generateDataset(100)
       .filter(s => s.label === 'normal')
       .slice(0, 80)
       .map(s => s.reading);
 
-    expect(() => detector.retrain(freshNormals)).to.not.throw();
+    expect(() => detector.retrain(freshNormals)).not.toThrow();
     const info = detector.getInfo();
-    expect(info.trainedOn, 'retrainedOn 80 samples').to.equal(80);
+    expect(info.trainedOn).toBe(80);
   });
 });

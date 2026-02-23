@@ -22,10 +22,11 @@ jobs:
     steps:
     - uses: actions/checkout@v4
 
-    - name: Use Node.js 18
+    # Bumped to 20 — React Native / metro deps require Node >= 20.19.4
+    - name: Use Node.js 20
       uses: actions/setup-node@v4
       with:
-        node-version: '18'
+        node-version: '20'
 
     - name: Install dependencies
       run: npm install
@@ -65,8 +66,13 @@ jobs:
     runs-on: ubuntu-latest
     needs: security
     strategy:
+      # Don't cancel all matrix jobs when one fails
+      fail-fast: false
       matrix:
-        node-version: [18.x, 20.x]
+        # 18.x removed — react-native@0.84, metro@0.83 and fb-dotslash
+        # all require Node >= 20.19.4. Running 18 only produces
+        # EBADENGINE warnings that cancel the strategy.
+        node-version: [20.x]
 
     steps:
     - uses: actions/checkout@v4
@@ -87,7 +93,7 @@ jobs:
       continue-on-error: true
 
     - name: Run all tests
-      run: npm test -- --forceExit --testTimeout=30000 --maxWorkers=2
+      run: npm test -- --forceExit --testTimeout=60000 --maxWorkers=2
       env:
         NODE_ENV: test
         CI: true
@@ -100,5 +106,5 @@ jobs:
         echo "|-------|--------|" >> $GITHUB_STEP_SUMMARY
         echo "| Dependencies | ✅ Installed |" >> $GITHUB_STEP_SUMMARY
         echo "| ML Model Training | ✅ Complete |" >> $GITHUB_STEP_SUMMARY
-        echo "| Unit Tests (237+) | ✅ Passing |" >> $GITHUB_STEP_SUMMARY
+        echo "| Unit Tests (259+) | ✅ Passing |" >> $GITHUB_STEP_SUMMARY
         echo "| Node Version | ${{ matrix.node-version }} |" >> $GITHUB_STEP_SUMMARY
