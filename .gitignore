@@ -22,7 +22,7 @@ yarn-debug.log*
 yarn-error.log*
 .npm
 .node_repl_history
-package-lock.json
+# NOTE: package-lock.json must be committed for reproducible builds
 
 # ==================================================
 # Build output
