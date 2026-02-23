@@ -154,16 +154,16 @@ module.exports = (req, res) => {
   <div class="subtitle">Production-Grade Carbon Credit Verification for Run-of-River Plants</div>
 
   <div style="margin-bottom:2rem">
-    <span class="badge">🏆 Apex Hackathon 2026</span>
-    <span class="badge">🌱 Sustainability Track</span>
-    <span class="badge">🧠 AI Guardian Verifier</span>
-    <span class="badge">⚖️ ACM0002/UNFCCC</span>
-    <span class="badge">✅ 224 Tests Passing</span>
-    <span class="badge">🔗 Hedera Testnet Live</span>
+    <span class="badge"> Apex Hackathon 2026</span>
+    <span class="badge"> Sustainability Track</span>
+    <span class="badge"> AI Guardian Verifier</span>
+    <span class="badge"> ACM0002/UNFCCC</span>
+    <span class="badge"> 224 Tests Passing</span>
+    <span class="badge"> Hedera Testnet Live</span>
   </div>
 
   <div class="card">
-    <h2>📊 Production Evidence & Stats</h2>
+    <h2> Production Evidence & Stats</h2>
     <div class="grid">
       <div class="stat"><div class="stat-val">224</div><div class="stat-label">Verified Tests</div></div>
       <div class="stat"><div class="stat-val">9</div><div class="stat-label">Active Suites</div></div>
@@ -186,7 +186,7 @@ module.exports = (req, res) => {
   </div>
 
   <div class="card">
-    <h2>🔬 5-Layer AI Guardian Verification</h2>
+    <h2> 5-Layer AI Guardian Verification</h2>
     <table>
       <tr><th>Layer</th><th>Verification Method</th><th>Detection Goal</th></tr>
       <tr><td><strong>1. Physics</strong></td><td>Mass-Energy Balance (flow/head/power)</td><td>Oversimplified Fraud</td></tr>
@@ -198,7 +198,7 @@ module.exports = (req, res) => {
   </div>
 
   <div class="card">
-    <h2>🔗 Live Hedera Testnet Evidence</h2>
+    <h2> Live Hedera Testnet Evidence</h2>
     <p>Publicly verifiable infrastructure on the Hedera Network:</p>
     <table>
       <tr><th>Component</th><th>Hedera ID</th><th>Function</th><th>Live Explorer</th></tr>
@@ -227,7 +227,7 @@ module.exports = (req, res) => {
   </div>
 
   <div class="card">
-    <h2>🛠 Technical Feature Matrix</h2>
+    <h2> Technical Feature Matrix</h2>
     <table>
       <tr><th>Feature</th><th>Implementation Details</th><th>Source File</th></tr>
       <tr><td><span class="tag-tech">Hedera</span> HCS Audit</td><td>Async queuing with auto-retry logic</td><td><code>src/workflow.js</code></td></tr>
@@ -239,7 +239,7 @@ module.exports = (req, res) => {
   </div>
 
   <div class="card">
-    <h2>🚀 Interactive System Demo</h2>
+    <h2> Interactive System Demo</h2>
     <p>Trigger the live MRV pipeline (Physics + AI + Hedera):</p>
     <div style="margin-top:1rem">
       <a class="btn" href="/api/demo" target="_blank">▶ RUN LIVE PIPELINE DEMO</a>
@@ -248,7 +248,7 @@ module.exports = (req, res) => {
   </div>
 
   <div class="card">
-    <h2>🌎 Global Market Impact</h2>
+    <h2> Global Market Impact</h2>
     <div class="grid">
       <div class="stat"><div class="stat-val">50,000</div><div class="stat-label">Global RoR Plants</div></div>
       <div class="stat"><div class="stat-val">$50B</div><div class="stat-label">VCM Market 2030</div></div>
