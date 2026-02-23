@@ -12,9 +12,9 @@ This project is a production-grade Measurement, Reporting and Verification (MRV)
 
 | No. | Claim | How to Verify |
 |-----|-------|---------------|
-| 1 | 224 unit and integration tests all pass | `npm test` |
+| 1 | 259 unit and integration tests all pass | `npm test` |
 | 2 | Physics-based telemetry fraud detection works | `tests/anomaly-detector.test.js` |
-| 3 | AI trust scoring (0–100%) correctly classifies readings | `tests/ai-guardian-verifier.test.js` |
+| 3 | AI trust scoring (0–100%) correctly classifies readings | `tests/verifier-attestation.test.js` |
 | 4 | Attestations are cryptographically signed and verifiable | `tests/verifier-attestation.test.js` |
 | 5 | Full MRV pipeline runs on real Hedera testnet | `tests/e2e-production.test.js` |
 | 6 | 1000 readings processed in under 60 seconds | `tests/complete-workflow.test.js` |
@@ -52,10 +52,10 @@ npm test
 ### Expected Output
 
 ```
-Test Suites:  9 passed, 9 total
-Tests:       224 passed, 224 total
+Test Suites:  17 passed, 17 total
+Tests:       259 passed, 259 total
 Snapshots:    0 total
-Time:        ~80s
+Time:        ~3s
 ```
 
 All 224 tests pass. Zero failures.
@@ -71,7 +71,7 @@ You can verify each claim independently by running the corresponding test file:
 npx jest tests/anomaly-detector.test.js --runInBand
 
 # AI trust scoring engine
-npx jest tests/ai-guardian-verifier.test.js --runInBand
+npx jest tests/verifier-attestation.test.js --runInBand
 
 # Cryptographic attestations
 npx jest tests/verifier-attestation.test.js --runInBand
