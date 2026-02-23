@@ -1,4 +1,4 @@
-﻿# 🔬 Live Test Evidence — Hedera Hydropower MRV
+﻿#  Live Test Evidence — Hedera Hydropower MRV
 **Generated:** 2026-02-18 04:06:31 IST
 **Repository:** https://github.com/BikramBiswas786/https-github.com-BikramBiswas786-hedera-hydropower-mrv
 **Network:** Hedera Testnet (real on-chain transactions)
@@ -12,7 +12,7 @@
 | Run Time | ~95 seconds |
 | Network | Hedera Testnet (live) |
 ---
-## 🌐 Live On-Chain Evidence
+##  Live On-Chain Evidence
 ### Device DID (Decentralized Identity)
 | Field | Value |
 |-------|-------|
@@ -42,7 +42,7 @@
 | Token ID | 0.0.7964264 |
 | HashScan Token | https://hashscan.io/testnet/token/0.0.7964264 |
 ---
-## 📊 What Each Test Suite Proves
+##  What Each Test Suite Proves
 | Suite | Tests | Claim Proven |
 |-------|-------|--------------|
 | anomaly-detector.test.js | 22 | Physics, temporal, environmental, statistical fraud detection |
@@ -56,7 +56,7 @@
 | e2e-production.test.js | 11 | Full E2E: DID → REC → telemetry → audit trail |
 | **TOTAL** | **224** | **All passing ✅** |
 ---
-## 🔗 How to Verify Independently
+##  How to Verify Independently
 ### Option 1 — Run tests yourself (3 commands)
 \\\ash
 git clone https://github.com/BikramBiswas786/https-github.com-BikramBiswas786-hedera-hydropower-mrv.git
@@ -69,7 +69,7 @@ npm install && npm test
 - REC Token:   https://hashscan.io/testnet/token/0.0.7964264
 - HCS Topic:   https://hashscan.io/testnet/topic/0.0.7964262
 ---
-## 📈 Performance Results
+##  Performance Results
 | Benchmark | Target | Actual | Result |
 |-----------|--------|--------|--------|
 | 100 readings E2E | < 30 seconds | 5.2 seconds | ✅ PASS |
