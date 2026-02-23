@@ -18,7 +18,7 @@ cd https-github.com-BikramBiswas786-hedera-hydropower-mrv
 npm run api
 ```
 
-✅ **That's it!** Your local server is now connected to the same Hedera testnet resources as production.
+That's it! Your local server is now connected to the same Hedera testnet resources as production.
 
 ---
 
@@ -39,7 +39,7 @@ npm run api
 
 ---
 
-## ✅ Verify Your Setup
+## Verify Your Setup
 
 ### Test 1: Health Check
 
@@ -53,7 +53,7 @@ Invoke-RestMethod -Uri http://localhost:3000/health
   "status": "healthy",
   "timestamp": 1771619234567,
   "uptime": 142.15,
-  "version": "1.0.0"
+  "version": "1.3.0"
 }
 ```
 
@@ -115,7 +115,7 @@ $response | ConvertTo-Json -Depth 10
 }
 ```
 
-✅ **Success!** Your reading has been:
+Success! Your reading has been:
 1. Verified through 5-layer AI validation
 2. Anchored to Hedera HCS topic `0.0.7462776`
 3. Converted to 0.738 tCO2e carbon credits
@@ -146,12 +146,16 @@ Your local API server is now running with **production Hedera credentials**:
 | Hedera Account | `0.0.6255927` | [View on HashScan](https://hashscan.io/testnet/account/0.0.6255927) |
 | HCS Audit Topic | `0.0.7462776` | [View Messages](https://hashscan.io/testnet/topic/0.0.7462776) |
 | HREC Token | `0.0.7964264` | [View Token](https://hashscan.io/testnet/token/0.0.7964264) |
+| Carbon Token (ACM0002) | `0.0.8011564` | [View Token](https://hashscan.io/testnet/token/0.0.8011564) |
+| REC NFT | `0.0.8011565` | [View Token](https://hashscan.io/testnet/token/0.0.8011565) |
+| DID Topic | `0.0.8011563` | [View Messages](https://hashscan.io/testnet/topic/0.0.8011563) |
+| Verify Topic | `0.0.8011566` | [View Messages](https://hashscan.io/testnet/topic/0.0.8011566) |
 
 **Every API call creates:**
-- ✅ Immutable audit log on Hedera HCS
-- ✅ Real-time verification via 5-layer AI engine
-- ✅ Carbon credit calculation using ACM0002 methodology
-- ✅ Publicly verifiable HashScan transaction URL
+- Immutable audit log on Hedera HCS
+- Real-time verification via 5-layer AI engine
+- Carbon credit calculation using ACM0002 v18.0 methodology
+- Publicly verifiable HashScan transaction URL
 
 ---
 
@@ -178,11 +182,11 @@ npm run demo
 ```
 
 **Demo Flow (5 steps):**
-1. 🔐 Create Device DID → `did:hedera:testnet:z545...`
-2. 🪙 Link HREC Token → `0.0.7964264`
-3. ✅ Normal Reading → APPROVED (trust score: 100%)
-4. ⚠️ Fraud Attempt → REJECTED (trust score: 60%)
-5. 💰 Mint HREC → 4.87 MWh → 3.896 tCO2e credits
+1. Create Device DID → `did:hedera:testnet:z545...`
+2. Link HREC Token → `0.0.7964264`
+3. Normal Reading → APPROVED (trust score: 100%)
+4. Fraud Attempt → REJECTED (trust score: 60%)
+5. Mint HREC → 4.87 MWh → 3.896 tCO2e credits
 
 All operations are **permanently recorded** on Hedera HCS topic.
 
@@ -201,7 +205,7 @@ All operations are **permanently recorded** on Hedera HCS topic.
    ```powershell
    npm test
    ```
-   224 tests should pass (85% coverage)
+   259 tests should pass (14 test suites)
 
 3. **View Architecture:**
    - [README.md](./README.md) — Full system overview
@@ -212,14 +216,14 @@ All operations are **permanently recorded** on Hedera HCS topic.
 
 1. **Review Integration Guide:**
    - [docs/PILOT_PLAN_6MW_PLANT.md](./docs/PILOT_PLAN_6MW_PLANT.md)
-   - Hardware options: ₹15K–50K
+   - Hardware options: Rs 15K–50K
    - Shadow-mode validation: 90 days
 
 2. **Cost Analysis:**
    - [docs/COST-ANALYSIS.md](./docs/COST-ANALYSIS.md)
-   - Manual MRV: ₹1.25 lakh/quarter
-   - Automated MRV: ₹38K–63K/quarter
-   - **Savings: 60–70%**
+   - Manual MRV: Rs 1.25 lakh/quarter
+   - Automated MRV: Rs 38K–63K/quarter
+   - Savings: 60–70%
 
 ### For Investors
 
@@ -286,7 +290,9 @@ npm run api
 - **Hedera Explorer:** https://hashscan.io/testnet
 - **Audit Topic:** https://hashscan.io/testnet/topic/0.0.7462776
 - **HREC Token:** https://hashscan.io/testnet/token/0.0.7964264
+- **Carbon Token (ACM0002):** https://hashscan.io/testnet/token/0.0.8011564
+- **REC NFT:** https://hashscan.io/testnet/token/0.0.8011565
 
 ---
 
-**Built for AngelHack Apex 2026  Sustainability Track**
+**Built for AngelHack Apex 2026 Sustainability Track**
