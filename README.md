@@ -545,7 +545,7 @@ Hackathon: AngelHack Apex 2026 • Sustainability Track
 
 ---
 
-## ðŸ“š Documentation Structure
+##  Documentation Structure
 
 All documentation has been organized into a clean, professional structure:
 
