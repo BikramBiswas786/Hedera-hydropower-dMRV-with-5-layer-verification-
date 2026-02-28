@@ -8,16 +8,13 @@ const {
 } = require('@hashgraph/sdk');
 require('dotenv').config();
 
-// FIX Issue 3: standardized EF_GRID to 0.82 (was 0.8), env-configurable
-const EF_GRID = parseFloat(process.env.EF_GRID || '0.82');
+// FIX Issue 3: EF_GRID standardized to 0.82.
+// Accepts: EF_GRID (Vercel/standard) OR GRIDEF (PowerShell legacy)
+const EF_GRID = parseFloat(process.env.EF_GRID || process.env.GRIDEF || '0.82');
 
 // ============================================
 // REAL ML — ISOLATION FOREST ANOMALY DETECTOR
 // ============================================
-// Replaces the previous Z-score arithmetic.
-// IsolationForest auto-trains on 2000 synthetic samples at startup.
-// After the 90-day pilot, call mlDetector.retrain(realReadings) to
-// improve accuracy from synthetic → real-world data.
 
 const { getMLDetector } = require('../../ml/MLAnomalyDetector');
 const mlDetector = getMLDetector();
@@ -34,15 +31,27 @@ function getClient() {
   if (_hederaAvailable === false) return null;
   if (_client) return { client: _client, operatorKey: _operatorKey };
 
-  // FIX Issue 2: accept both HEDERA_OPERATOR_ID and HEDERA_ACCOUNT_ID
-  // and both HEDERA_OPERATOR_KEY and HEDERA_PRIVATE_KEY for Vercel compatibility
+  // Accepts all known env var name variants:
+  //   HEDERA_OPERATOR_ID  (PowerShell / original)
+  //   HEDERA_ACCOUNT_ID   (Vercel standard)
   const OPERATOR_ID      = process.env.HEDERA_OPERATOR_ID || process.env.HEDERA_ACCOUNT_ID;
+
+  //   HEDERA_OPERATOR_KEY (PowerShell / original)
+  //   HEDERA_PRIVATE_KEY  (Vercel standard)
   const OPERATOR_KEY_STR = process.env.HEDERA_OPERATOR_KEY || process.env.HEDERA_PRIVATE_KEY;
-  const AUDIT_TOPIC_ID   = process.env.AUDIT_TOPIC_ID;
+
+  //   AUDIT_TOPIC_ID      (Vercel standard)
+  //   HEDERA_TOPIC_ID     (PowerShell legacy)
+  const AUDIT_TOPIC_ID   = process.env.AUDIT_TOPIC_ID || process.env.HEDERA_TOPIC_ID;
 
   if (!OPERATOR_ID || !OPERATOR_KEY_STR || !AUDIT_TOPIC_ID) {
     if (process.env.NODE_ENV === 'production') {
-      console.error('[EngineV1] FATAL: Hedera credentials missing in production — set HEDERA_ACCOUNT_ID, HEDERA_PRIVATE_KEY, AUDIT_TOPIC_ID');
+      console.error(
+        '[EngineV1] FATAL: Hedera credentials missing in production.\n' +
+        '  Set one of: HEDERA_OPERATOR_ID or HEDERA_ACCOUNT_ID\n' +
+        '  Set one of: HEDERA_OPERATOR_KEY or HEDERA_PRIVATE_KEY\n' +
+        '  Set one of: AUDIT_TOPIC_ID or HEDERA_TOPIC_ID'
+      );
     } else {
       console.warn('[EngineV1] Hedera credentials missing, running in mock mode (dev/test only)');
     }
@@ -66,7 +75,7 @@ function getClient() {
 }
 
 function getAuditTopicId() {
-  return process.env.AUDIT_TOPIC_ID;
+  return process.env.AUDIT_TOPIC_ID || process.env.HEDERA_TOPIC_ID;
 }
 
 // ============================================
@@ -190,19 +199,9 @@ function validateEnvironmentalBounds(reading, siteConfig = {}) {
 //           Isolation Forest (real ML)
 // ============================================
 
-/**
- * Uses the pre-trained Isolation Forest model to detect anomalies.
- * Replaces the previous Z-score / mean-stddev arithmetic.
- * The model auto-trains on startup and can be retrained with real data.
- *
- * @param {object} current  - Current telemetry reading
- * @param {object[]} _history - (kept for API compatibility, not used by ML)
- * @returns {object} Scoring result compatible with engine's expected shape
- */
 function detectStatisticalAnomalies(current, _history) {
   const ml = mlDetector.detect(current);
 
-  // Map ML output to engine's 5-level scoring
   let score, status;
 
   if (!ml.isAnomaly) {
@@ -215,17 +214,15 @@ function detectStatisticalAnomalies(current, _history) {
   }
 
   return {
-    score:        parseFloat(score.toFixed(4)),
+    score:         parseFloat(score.toFixed(4)),
     status,
-    // ML-specific fields (exposed in API response)
-    method:       ml.method,
-    anomalyScore: ml.score,
-    isAnomaly:    ml.isAnomaly,
-    confidence:   ml.confidence,
-    trainedOn:    ml.trainedOn,
-    trainedAt:    ml.trainedAt,
-    featureVector:ml.featureVector,
-    // Legacy fields nulled (was Z-score)
+    method:        ml.method,
+    anomalyScore:  ml.score,
+    isAnomaly:     ml.isAnomaly,
+    confidence:    ml.confidence,
+    trainedOn:     ml.trainedOn,
+    trainedAt:     ml.trainedAt,
+    featureVector: ml.featureVector,
     zScore:  null,
     mean:    null,
     stdDev:  null,
@@ -271,22 +268,22 @@ function validateConsistency(reading, deviceProfile = {}) {
 function calculateTrustScore(results) {
   const weights = { physics: 0.30, temporal: 0.25, environmental: 0.20, statistical: 0.15, consistency: 0.10 };
   return parseFloat((
-    results.physics.score      * weights.physics      +
-    results.temporal.score     * weights.temporal     +
-    results.environmental.score* weights.environmental +
-    results.statistical.score  * weights.statistical  +
-    results.consistency.score  * weights.consistency
+    results.physics.score       * weights.physics      +
+    results.temporal.score      * weights.temporal     +
+    results.environmental.score * weights.environmental +
+    results.statistical.score   * weights.statistical  +
+    results.consistency.score   * weights.consistency
   ).toFixed(4));
 }
 
 function determineVerificationStatus(trustScore, config = {}) {
-  const autoApprove    = config.autoApproveThreshold    ?? 0.90;
-  const manualReview   = config.manualReviewThreshold   ?? 0.50;
+  const autoApprove  = config.autoApproveThreshold  ?? 0.90;
+  const manualReview = config.manualReviewThreshold ?? 0.50;
   let status, method, reasoning;
 
-  if      (trustScore >= autoApprove)  { status = 'APPROVED'; method = 'AI_AUTO_APPROVED';    reasoning = `High confidence (${(trustScore*100).toFixed(1)}%). All checks passed.`;              }
-  else if (trustScore >= manualReview) { status = 'FLAGGED';  method = 'MANUAL_REVIEW_REQUIRED'; reasoning = `Medium confidence (${(trustScore*100).toFixed(1)}%). Some checks questionable.`;  }
-  else                                  { status = 'REJECTED'; method = 'FAILED_VERIFICATION';   reasoning = `Low confidence (${(trustScore*100).toFixed(1)}%). Multiple checks failed.`;        }
+  if      (trustScore >= autoApprove)  { status = 'APPROVED'; method = 'AI_AUTO_APPROVED';       reasoning = `High confidence (${(trustScore*100).toFixed(1)}%). All checks passed.`;             }
+  else if (trustScore >= manualReview) { status = 'FLAGGED';  method = 'MANUAL_REVIEW_REQUIRED';  reasoning = `Medium confidence (${(trustScore*100).toFixed(1)}%). Some checks questionable.`; }
+  else                                  { status = 'REJECTED'; method = 'FAILED_VERIFICATION';    reasoning = `Low confidence (${(trustScore*100).toFixed(1)}%). Multiple checks failed.`;       }
 
   return { status, method, reasoning };
 }
@@ -312,7 +309,7 @@ class EngineV1 {
     this.config = {
       autoApproveThreshold:  0.90,
       manualReviewThreshold: 0.50,
-      siteConfig:   {},
+      siteConfig:    {},
       deviceProfile: { capacity: 1000, maxFlow: 10, maxHead: 500, minEfficiency: 0.70 },
       ...config
     };
@@ -329,18 +326,16 @@ class EngineV1 {
     const history  = this.getHistory(deviceId);
     const previous = history[history.length - 1];
 
-    // ── Run 5 verification layers ──────────────────────────────────
     const physics       = validatePhysicsConstraints(telemetry.readings);
     const temporal      = validateTemporalConsistency(telemetry.readings, previous);
     const environmental = validateEnvironmentalBounds(telemetry.readings, this.config.siteConfig);
-    const statistical   = detectStatisticalAnomalies(telemetry.readings, history);  // ← REAL ML
+    const statistical   = detectStatisticalAnomalies(telemetry.readings, history);
     const consistency   = validateConsistency(telemetry.readings, this.config.deviceProfile);
 
     const validationResults = { physics, temporal, environmental, statistical, consistency };
     const trustScore        = calculateTrustScore(validationResults);
     const decision          = determineVerificationStatus(trustScore, this.config);
 
-    // ── ACM0002 carbon calculations ───────────────────────────────
     const egMWh = telemetry.readings.generatedKwh / 1000;
     const be    = calculateBaselineEmissions(egMWh, EF_GRID);
     const er    = calculateEmissionReductions(be, 0, 0);
@@ -353,24 +348,23 @@ class EngineV1 {
       trustScore,
       reasoning:          decision.reasoning,
       mlEngine: {
-        algorithm:  'IsolationForest',
-        reference:  'Liu, Ting & Zhou, ICDM 2008',
-        trainedOn:  statistical.trainedOn,
-        trainedAt:  statistical.trainedAt
+        algorithm: 'IsolationForest',
+        reference: 'Liu, Ting & Zhou, ICDM 2008',
+        trainedOn: statistical.trainedOn,
+        trainedAt: statistical.trainedAt
       },
       checks: { physics, temporal, environmental, statistical, consistency },
       calculations: {
-        EG_MWh:              parseFloat(egMWh.toFixed(6)),
+        EG_MWh:               parseFloat(egMWh.toFixed(6)),
         EF_grid_tCO2_per_MWh: EF_GRID,
-        BE_tCO2:             be,
-        PE_tCO2:             0,
-        LE_tCO2:             0,
-        ER_tCO2:             er,
-        RECs_issued:         decision.status === 'APPROVED' ? er : 0
+        BE_tCO2:              be,
+        PE_tCO2:              0,
+        LE_tCO2:              0,
+        ER_tCO2:              er,
+        RECs_issued:          decision.status === 'APPROVED' ? er : 0
       }
     };
 
-    // ── Hedera HCS publish ─────────────────────────────────────────
     const hedera       = getClient();
     const auditTopicId = getAuditTopicId();
     let transactionId  = `mock-${Date.now()}`;
@@ -394,7 +388,7 @@ class EngineV1 {
         console.warn(`[EngineV1] HCS submission failed: ${error.message}`);
       }
     } else {
-      console.warn('[EngineV1] Running in MOCK mode — set HEDERA_ACCOUNT_ID, HEDERA_PRIVATE_KEY, AUDIT_TOPIC_ID for real transactions');
+      console.warn('[EngineV1] MOCK mode — no real Hedera tx. Check env vars.');
     }
 
     history.push(telemetry.readings);
@@ -427,7 +421,7 @@ async function main() {
     const gen      = parseFloat(args[4] || '156');
     const ph       = parseFloat(args[5] || '7.2');
 
-    const engine   = new EngineV1();
+    const engine  = new EngineV1();
     const telemetry = {
       deviceId,
       timestamp: new Date().toISOString(),
