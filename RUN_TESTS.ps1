@@ -1,11 +1,11 @@
 #!/usr/bin/env pwsh
 # HEDERA HYDROPOWER dMRV - COMPLETE TEST SUITE (PS1-PS6)
-# Version: 2.2 (Windows PowerShell compatible)
+# Version: 2.3 (Pure ASCII - Windows PowerShell compatible)
 # Date: March 4, 2026
 
-Write-Host "`n╔════════════════════════════════════════════════════════╗" -ForegroundColor Cyan
-Write-Host "║  HEDERA HYDROPOWER dMRV - COMPLETE TEST SUITE (PS1-PS6)║" -ForegroundColor Cyan
-Write-Host "╚════════════════════════════════════════════════════════╝`n" -ForegroundColor Cyan
+Write-Host "`n========================================================" -ForegroundColor Cyan
+Write-Host "  HEDERA HYDROPOWER dMRV - COMPLETE TEST SUITE (PS1-PS6)" -ForegroundColor Cyan
+Write-Host "========================================================`n" -ForegroundColor Cyan
 
 # API Configuration
 $headers = @{
@@ -29,9 +29,9 @@ function Get-EpochMs {
     return [int64](Get-Date).ToUniversalTime().Subtract([datetime]"1970-01-01").TotalMilliseconds
 }
 
-#──────────────────────────────────────────────────────────
+# ========================================================
 # PS1 - Valid APPROVED Telemetry
-#──────────────────────────────────────────────────────────
+# ========================================================
 Write-Host "[PS1] Valid APPROVED Telemetry" -ForegroundColor Green
 
 $validBody = @{
@@ -74,10 +74,10 @@ catch {
     Add-TestResult "PS1" "ERROR"
 }
 
-#──────────────────────────────────────────────────────────
+# ========================================================
 # PS2 - Fraud Detection (Inflated Power 45000 kWh)
-#──────────────────────────────────────────────────────────
-Write-Host "[PS2] Fraud Detection - Inflated Power (45000 kWh)" -ForegroundColor Yellow
+# ========================================================
+Write-Host "[PS2] Fraud Detection - Inflated Power 45000 kWh" -ForegroundColor Yellow
 
 $fraudBody = @{
     plant_id  = "PLANT-ALPHA"
@@ -86,7 +86,7 @@ $fraudBody = @{
         timestamp    = Get-EpochMs
         flowRate     = 2.5
         head         = 45
-        generatedKwh = 45000      # fraud
+        generatedKwh = 45000
         efficiency   = 0.85
     }
 } | ConvertTo-Json -Depth 5
@@ -113,9 +113,9 @@ catch {
     Add-TestResult "PS2" "ERROR"
 }
 
-#──────────────────────────────────────────────────────────
+# ========================================================
 # PS3 - Environmental Violation Detection
-#──────────────────────────────────────────────────────────
+# ========================================================
 Write-Host "[PS3] Environmental Violation Detection" -ForegroundColor Magenta
 
 $envBody = @{
@@ -126,9 +126,9 @@ $envBody = @{
         flowRate     = 2.5
         head         = 45
         generatedKwh = 900
-        pH           = 4.5       # violation
-        turbidity    = 180       # violation
-        temperature  = 35        # violation
+        pH           = 4.5
+        turbidity    = 180
+        temperature  = 35
         efficiency   = 0.85
     }
 } | ConvertTo-Json -Depth 5
@@ -154,17 +154,17 @@ catch {
     Add-TestResult "PS3" "ERROR"
 }
 
-#──────────────────────────────────────────────────────────
-# PS4 - Zero-Flow Fraud (should be blocked)
-#──────────────────────────────────────────────────────────
-Write-Host "[PS4] Zero-Flow Fraud (generatedKwh > 0, flowRate = 0)" -ForegroundColor Red
+# ========================================================
+# PS4 - Zero-Flow Fraud
+# ========================================================
+Write-Host "[PS4] Zero-Flow Fraud" -ForegroundColor Red
 
 $zeroBody = @{
     plant_id  = "PLANT-ALPHA"
     device_id = "TURBINE-ZEROFLOW-$(Get-Random)"
     readings  = @{
         timestamp    = Get-EpochMs
-        flowRate     = 0          # impossible with kWh > 0
+        flowRate     = 0
         head         = 45
         generatedKwh = 500
         pH           = 7.1
@@ -175,7 +175,6 @@ $zeroBody = @{
 } | ConvertTo-Json -Depth 5
 
 try {
-    # Try to send impossible physics payload
     $zeroResp = Invoke-RestMethod -Uri $apiUrl -Method POST -Headers $headers -Body $zeroBody -ErrorAction Stop
 
     Write-Host "  Status:        $($zeroResp.status)"
@@ -192,7 +191,6 @@ try {
     }
 }
 catch {
-    # Any 400 Bad Request for this impossible physics is also a PASS
     $msg = $_.Exception.Message
     Write-Host "  API error on zero-flow payload: $msg`n" -ForegroundColor Yellow
 
@@ -205,10 +203,10 @@ catch {
     }
 }
 
-#──────────────────────────────────────────────────────────
-# PS5 - Multi-Plant Isolation (PLANT-ALPHA vs PLANT-BETA)
-#──────────────────────────────────────────────────────────
-Write-Host "[PS5] Multi-Plant Isolation (PLANT-ALPHA vs PLANT-BETA)" -ForegroundColor Cyan
+# ========================================================
+# PS5 - Multi-Plant Isolation
+# ========================================================
+Write-Host "[PS5] Multi-Plant Isolation" -ForegroundColor Cyan
 
 $alphaBody = @{
     plant_id  = "PLANT-ALPHA"
@@ -248,7 +246,7 @@ try {
     Write-Host "  PLANT-BETA  TX: $($betaResp.hedera.transaction_id)`n"
 
     if ($alphaResp.hedera.transaction_id -ne $betaResp.hedera.transaction_id) {
-        Write-Host "  [PASS] PS5 PASSED - different plants -> different TXs`n" -ForegroundColor Green
+        Write-Host "  [PASS] PS5 PASSED - different plants have different TXs`n" -ForegroundColor Green
         Add-TestResult "PS5" "PASSED"
     } else {
         Write-Host "  [FAIL] PS5 FAILED - TX IDs should differ`n" -ForegroundColor Red
@@ -260,10 +258,10 @@ catch {
     Add-TestResult "PS5" "ERROR"
 }
 
-#──────────────────────────────────────────────────────────
-# PS6 - Replay Protection (duplicate timestamp)
-#──────────────────────────────────────────────────────────
-Write-Host "[PS6] Replay Protection (Duplicate Timestamp)" -ForegroundColor Yellow
+# ========================================================
+# PS6 - Replay Protection
+# ========================================================
+Write-Host "[PS6] Replay Protection" -ForegroundColor Yellow
 
 $fixedTs = Get-EpochMs
 
@@ -307,12 +305,12 @@ if (-not $skipPS6Second) {
     }
 }
 
-#──────────────────────────────────────────────────────────
+# ========================================================
 # SUMMARY
-#──────────────────────────────────────────────────────────
-Write-Host "`n╔════════════════════════════════════════════════════════╗" -ForegroundColor Cyan
-Write-Host "║                    TESTING COMPLETE                   ║" -ForegroundColor Cyan
-Write-Host "╚════════════════════════════════════════════════════════╝`n" -ForegroundColor Cyan
+# ========================================================
+Write-Host "`n========================================================" -ForegroundColor Cyan
+Write-Host "                    TESTING COMPLETE                   " -ForegroundColor Cyan
+Write-Host "========================================================`n" -ForegroundColor Cyan
 
 $passedCount = ($testResults | Where-Object { $_.Result -eq "PASSED" }).Count
 $totalTests  = $testResults.Count
