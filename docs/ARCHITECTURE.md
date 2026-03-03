@@ -1,97 +1,141 @@
-# Architecture — Hedera Hydropower MRV
+# System Architecture
 
-## System Overview
+**Last reviewed**: March 4, 2026
 
-```text
-[IoT Sensor / Manual Entry]
-|
-v
-[MRV Engine v1]  ← device config + capacity profile
-|
-v
-[AI Guardian Verifier]
-├── Physics Validator (P = ρ·g·Q·H·η)
-├── Temporal Consistency (monotonic timestamp and delta bounds)
-├── Environmental Bounds (pH, turbidity, temperature, flow)
-└── Statistical Anomaly (z-score > 3 = outlier)
-|
-├── Trust Score [0.0 – 1.0]
-└── Decision: APPROVED / FLAGGED / REJECTED
-|
-+-------------------------+
-| Hedera Network          |
-|                         |
-|  HCS Topic 0.0.7964262  ← Immutable audit log (all readings) |
-|  HTS Token 0.0.7964264  ← HREC, minted only on APPROVED      |
-|  Device DID             ← W3C DID for each sensor            |
-+-------------------------+
+---
+
+## System Components
+
+```
+┌─────────────────────────────────────────────────────────┐
+│                    IoT Sensor Layer                     │
+│  Flow sensor · Pressure transducer · Power meter        │
+│  Water quality probe (pH, turbidity, temperature)       │
+└──────────────────────┬──────────────────────────────────┘
+                       │  HTTPS POST /api/v1/telemetry
+                       ▼
+┌─────────────────────────────────────────────────────────┐
+│                   API Gateway (Express)                 │
+│  • Rate limiting (Redis-backed)                         │
+│  • API key authentication                               │
+│  • Input validation                                     │
+│  • Replay protection (Redis)                            │
+└──────────────────────┬──────────────────────────────────┘
+                       │
+                       ▼
+┌─────────────────────────────────────────────────────────┐
+│             Verification Engine (engine-v1)             │
+│  Layer 1: Physics      (30%)                            │
+│  Layer 2: Temporal     (25%)                            │
+│  Layer 3: Environmental(20%)                            │
+│  Layer 4: Statistical  (15%)                            │
+│  Layer 5: Device       (10%)                            │
+│  → Weighted trust score → APPROVED / FLAGGED / REJECTED │
+└──────────────────────┬──────────────────────────────────┘
+                       │
+           ┌───────────┴───────────┐
+           ▼                       ▼
+┌──────────────────┐    ┌──────────────────────────────┐
+│  Hedera HCS      │    │  Carbon Credit Engine        │
+│  Topic: 7462776  │    │  ACM0002 ER calculation      │
+│  Immutable audit │    │  HREC minting (HTS 7964264)  │
+└──────────────────┘    └──────────────────────────────┘
 ```
 
-## Components
+---
 
-### MRV Engine v1 (src/engine/v1/engine-v1.js)
+## Directory Structure
 
-- Entry point for all telemetry submissions.
-- Manages workflow state: initialize → submit → aggregate.
-- Coordinates verifier, Hedera client, attestation store.
-- Exposes: initialize(), submitReading(), generateMonitoringReport(), deployDeviceDID(), createRECToken().
+```
+├── src/
+│   ├── api/
+│   │   └── v1/
+│   │       └── telemetry.js     # POST /api/v1/telemetry handler
+│   ├── engine/
+│   │   └── engine-v1.js         # 5-layer verification engine
+│   ├── hedera/
+│   │   ├── hcs.js               # Hedera Consensus Service client
+│   │   └── hts.js               # Hedera Token Service client
+│   ├── middleware/
+│   │   ├── auth.js              # API key validation
+│   │   ├── rateLimiter.js       # Redis rate limiter
+│   │   └── replayProtection.js  # Duplicate submission prevention
+│   └── workflow.js              # Orchestration layer
+├── tests/
+│   ├── unit/                    # Engine, ACM0002, trust score tests
+│   ├── integration/             # Workflow + mocked Hedera SDK
+│   └── e2e/                     # End-to-end API tests
+├── docs/                        # All documentation (this directory)
+├── RUN_TESTS.ps1                # PS1-PS6 production verification script
+├── .env.example                 # Environment variable template
+└── vercel.json                  # Vercel deployment config
+```
 
-### AI Guardian Verifier (src/verifier/)
+---
 
-- Physics check: computes expected power P = ρ·g·Q·H·η and compares to reported generatedKwh.
-- Temporal check: ensures timestamps increase monotonically; flags unrealistic deltas between consecutive readings per device.
-- Environmental bounds: pH 6.5–8.5, turbidity 0–50 NTU, temperature 0–35 °C, flow rate within device profile.
-- Statistical anomaly: rolling history per device; z-score > 3 triggers outlier flag.
-- Combines all check results into weighted trust score [0.0–1.0].
-- Thresholds: >= 0.90 → APPROVED, 0.70–0.89 → FLAGGED, < 0.70 → REJECTED.
+## Hedera Integration
 
-### Anomaly Detector (src/anomaly/)
+### Hedera Consensus Service (HCS)
 
-- Stateless validation functions (pure, deterministic, unit-testable).
-- Consumed by AI Guardian Verifier.
-- Physics constants: ρ = 997 kg/m³ (water), g = 9.81 m/s².
+Every telemetry reading — regardless of APPROVED/FLAGGED/REJECTED status — is written as a JSON message to HCS topic `0.0.7462776`. This creates an immutable, ordered, timestamped audit trail that cannot be altered by any party, including the system operator.
 
-### Hedera Client (src/hedera/)
+The HCS message schema:
+```json
+{
+  "reading_id":    "RDG-PLANT-ALPHA-XXXXXXXX",
+  "plant_id":      "PLANT-ALPHA",
+  "device_id":     "TURBINE-001",
+  "timestamp":     1772566213769,
+  "trust_score":   0.985,
+  "decision":      "APPROVED",
+  "flags":         [],
+  "carbon_tco2e":  0.72,
+  "submitted_at":  "2026-03-04T01:30:13Z"
+}
+```
 
-- Wraps @hashgraph/sdk.
-- HCS: createTopic(), submitMessage(), getMessages().
-- HTS: createToken(), mintTokens(), transferTokens(), burnTokens().
-- DID: deployDeviceDID() — creates an anchor for DID documents.
-- Includes retry logic with exponential backoff on network errors.
+### Hedera Token Service (HTS)
 
-### Attestation Store (src/verifier/attestation.js)
+For APPROVED readings, HREC (Hedera Renewable Energy Certificate) tokens are minted on HTS token `0.0.7964264`. Each token represents 1 MWh of verified generation. Tokens are fungible and can be transferred or retired on-chain.
 
-- In-memory store (exportable to JSON).
-- Each reading creates an attestation with: deviceId, period, status, trustScore, checks, ACM0002 calculations, cryptographic signature, timestamp.
-- ACM0002 baseline: baselineEmissions = generatedKwh × gridEmissionFactor.
-- REC issuance: 1 REC = 1 MWh of approved generation.
+### Why Hedera
 
-## Data Flow — Single Reading
+| Property | Hedera | Ethereum (for comparison) |
+|---|---|---|
+| Finality | 3–5 seconds | ~13 minutes (PoS) |
+| Cost per transaction | ~$0.0001 | $0.50–$50 |
+| Energy consumption | Carbon-negative | ~0.05 kWh/tx |
+| Governance | Council of 39 enterprises | Open/community |
 
-1. submitReading(telemetry).
-2. ConfigValidator validates telemetry schema.
-3. AnomalyDetector runs all checks → ValidationResult.
-4. AIGuardianVerifier computes trust score → AttestationRecord.
-5. AttestationRecord stored in AttestationStore.
-6. If APPROVED: HTS.mintTokens(MWh amount).
-7. HCS.submitMessage(JSON.stringify(attestation)) for all statuses.
-8. Return { status, trustScore, attestationId, transactionId }.
+---
 
-## Scalability Notes
+## Data Flow: Single Reading (Happy Path)
 
-- 1000 readings processed in roughly 20 seconds (tested).
-- Hedera HCS handles high throughput on mainnet/testnet.
-- Attestation store is in-memory; production should use a persistent database.
-- Device profile cache prevents repeated database lookups.
+1. IoT device POSTs telemetry to `/api/v1/telemetry` with `x-api-key` header.
+2. Auth middleware validates the API key. Rejects with 401 if invalid.
+3. Rate limiter checks the per-key request quota. Rejects with 429 if exceeded.
+4. Input validator checks required fields and physics plausibility. Rejects with 400 if invalid.
+5. Replay protection checks for duplicate `plant_id + device_id + timestamp`. Rejects with 409 if seen.
+6. Verification engine runs all 5 layers and computes trust score.
+7. HCS client writes the full result to the audit topic.
+8. If APPROVED: HTS client mints HREC tokens.
+9. API returns the full verification result with transaction ID and HashScan URL.
 
-## Technology Stack
+**Total latency** (testnet): ~1.5–2.5 seconds.
 
-| Layer       | Technology                        |
-|------------|------------------------------------|
-| Runtime    | Node.js 18                         |
-| Blockchain | Hedera Hashgraph (HCS, HTS, DID)  |
-| SDK        | @hashgraph/sdk                     |
-| Testing    | Jest (unit, integration, E2E)      |
-| Identity   | W3C DID via Hedera                 |
-| Methodology| ACM0002 (UNFCCC/Verra)             |
-| Evidence   | HashScan explorer                  |
+---
+
+## Deployment Topology
+
+### Current (Testnet)
+- API: Vercel serverless functions at `hydropower-mrv-19feb26.vercel.app`
+- Redis: WSL-hosted Redis 7.2.9 (development only)
+- Hedera: Testnet
+
+### Target (Mainnet / Production)
+- API: Vercel Pro or dedicated Node.js server
+- Redis: Managed Redis (Upstash, Redis Cloud, or AWS ElastiCache)
+- Hedera: Mainnet
+- Monitoring: Prometheus + Grafana
+
+See [DEPLOYMENT.md](./DEPLOYMENT.md) for full configuration details.

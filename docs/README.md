@@ -1,96 +1,60 @@
-﻿# Documentation
+# Documentation Index
 
-All the docs you need to understand, deploy, and run this project.
+This is the single entry point for all project documentation. Follow the hierarchy below — each document covers a distinct concern and links to more specific resources when needed.
 
 ## Start Here
 
-- [Main README](../README.md) - What is this project?
-- [Quick Start](../QUICK_START.md) - Get running in 5 minutes
-- [API Quick Start](API_QUICKSTART.md) - Try the API
+| If you want to… | Read this |
+|---|---|
+| Understand what the project does | [Root README](../README.md) |
+| Understand *how* the MRV verification works | [METHODOLOGY.md](./METHODOLOGY.md) |
+| Set up the system locally | [Root README → Quick Start](../README.md#quick-start) |
+| Deploy to production | [DEPLOYMENT.md](./DEPLOYMENT.md) |
+| Integrate with the REST API | [API.md](./API.md) |
+| Run the test suite | [TESTING.md](./TESTING.md) |
+| Operate a live plant installation | [OPERATOR_GUIDE.md](./OPERATOR_GUIDE.md) |
+| Plan a pilot deployment | [PILOT_PLAN.md](./PILOT_PLAN.md) |
+| Submit credits to Verra | [VERRA_GUIDE.md](./VERRA_GUIDE.md) |
+| Understand the security model | [SECURITY.md](./SECURITY.md) |
+| Understand the system design | [ARCHITECTURE.md](./ARCHITECTURE.md) |
 
-## How It Works
+## Document Map
 
-**Architecture**
-- [ARCHITECTURE.md](ARCHITECTURE.md) - System overview
-- [MRV-METHODOLOGY.md](MRV-METHODOLOGY.md) - MRV basics
-- [ENGINE-V1.md](ENGINE-V1.md) - Trust scoring
-- [ENGINE-V2-TWO-TIER-MODES.md](ENGINE-V2-TWO-TIER-MODES.md) - Anchoring modes
+```
+docs/
+├── README.md               ← You are here
+├── METHODOLOGY.md          ← Authoritative: 5-layer verification, trust scoring, ACM0002
+├── ARCHITECTURE.md         ← System components, data flow, Hedera integration
+├── API.md                  ← REST API reference (all endpoints)
+├── SECURITY.md             ← Threat model, controls, secure deployment
+├── DEPLOYMENT.md           ← Production deployment guide (Vercel, Docker, bare-metal)
+├── TESTING.md              ← Test suite guide and result interpretation
+├── OPERATOR_GUIDE.md       ← Day-to-day plant operations
+├── PILOT_PLAN.md           ← 90-day shadow-pilot template
+├── VERRA_GUIDE.md          ← Verra VCS / Gold Standard submission guide
+├── ARCHITECTURE.md         ← Technical architecture deep-dive
+├── archived/               ← Superseded documents (read-only reference)
+└── assets/                 ← Diagrams and images
+```
 
-**API**
-- [API.md](API.md) - REST endpoints
-- [api/openapi.yaml](api/openapi.yaml) - OpenAPI spec
+## Authoritative Parameters
 
-**Verra & Carbon Credits**
-- [VERRA-GUIDEBOOK.md](VERRA-GUIDEBOOK.md) - Submit to Verra
-- [ACM0002-ALIGNMENT-MATRIX.md](ACM0002-ALIGNMENT-MATRIX.md) - Methodology mapping
-- [../CARBON-CREDITS-QUICK-START.md](../CARBON-CREDITS-QUICK-START.md) - Carbon credits 101
+The following values are the **single source of truth**. Any discrepancy in other documents should be resolved in favour of the values here.
 
-## Running It
+| Parameter | Value | Source |
+|---|---|---|
+| Physics layer weight | 30% | [METHODOLOGY.md §Trust Score](./METHODOLOGY.md#trust-score-algorithm) |
+| Temporal layer weight | 25% | [METHODOLOGY.md §Trust Score](./METHODOLOGY.md#trust-score-algorithm) |
+| Environmental layer weight | 20% | [METHODOLOGY.md §Trust Score](./METHODOLOGY.md#trust-score-algorithm) |
+| Statistical layer weight | 15% | [METHODOLOGY.md §Trust Score](./METHODOLOGY.md#trust-score-algorithm) |
+| Device consistency weight | 10% | [METHODOLOGY.md §Trust Score](./METHODOLOGY.md#trust-score-algorithm) |
+| APPROVED threshold | > 0.90 | [METHODOLOGY.md §Thresholds](./METHODOLOGY.md#decision-thresholds) |
+| FLAGGED threshold | 0.50 – 0.90 | [METHODOLOGY.md §Thresholds](./METHODOLOGY.md#decision-thresholds) |
+| REJECTED threshold | < 0.50 | [METHODOLOGY.md §Thresholds](./METHODOLOGY.md#decision-thresholds) |
+| Carbon intensity (grid) | 0.8 tCO2e/MWh | [METHODOLOGY.md §ACM0002](./METHODOLOGY.md#acm0002-carbon-calculation) |
+| HCS Topic ID (testnet) | 0.0.7462776 | [HashScan](https://hashscan.io/testnet/topic/0.0.7462776) |
+| HTS Token ID (testnet) | 0.0.7964264 | [HashScan](https://hashscan.io/testnet/token/0.0.7964264) |
 
-**Deployment**
-- [deployment/DEPLOYMENT-GUIDE.md](deployment/DEPLOYMENT-GUIDE.md) - Deploy to prod
-- [deployment/PRODUCTION-CHECKLIST.md](deployment/PRODUCTION-CHECKLIST.md) - Pre-deploy checks
-- [VERCEL-DEPLOYMENT-GUIDE.md](VERCEL-DEPLOYMENT-GUIDE.md) - Vercel setup
-- [MAINNET-CHECKLIST.md](MAINNET-CHECKLIST.md) - Mainnet readiness
+## Archived Documents
 
-**Operations**
-- [MONITORING-PLAN.md](MONITORING-PLAN.md) - Set up monitoring
-- [OPERATOR_GUIDE.md](OPERATOR_GUIDE.md) - Daily operations
-- [REC-GENERATION-WORKFLOW-EXECUTION.md](REC-GENERATION-WORKFLOW-EXECUTION.md) - Generate RECs
-- [REC-GENERATION-WORKFLOW-TESTNET.md](REC-GENERATION-WORKFLOW-TESTNET.md) - Test RECs
-
-## Development
-
-**Testing**
-- [../TESTING_GUIDE.md](../TESTING_GUIDE.md) - Run tests
-- [../VALIDATION.md](../VALIDATION.md) - Validation
-- [../VERIFICATION_GUIDE.md](../VERIFICATION_GUIDE.md) - Verification
-- [SCENARIO1-SPEC.md](SCENARIO1-SPEC.md) - Test scenarios
-
-**Integration**
-- [../INTEGRATION_GUIDE.md](../INTEGRATION_GUIDE.md) - Integrate the system
-- [EDGE_GATEWAY_INTEGRATION.md](EDGE_GATEWAY_INTEGRATION.md) - Edge gateway
-- [multi-tenant-guide.md](multi-tenant-guide.md) - Multi-tenancy
-
-**Security**
-- [SECURITY.md](SECURITY.md) - Security notes
-- [SECURITY-AUDIT-CHECKLIST.md](SECURITY-AUDIT-CHECKLIST.md) - Security checklist
-
-## Planning
-
-**Strategy**
-- [../ROADMAP.md](../ROADMAP.md) - Roadmap
-- [IMPLEMENTATION-PLAN-COMPREHENSIVE.md](IMPLEMENTATION-PLAN-COMPREHENSIVE.md) - Implementation plan
-- [PILOT_PLAN_6MW_PLANT.md](PILOT_PLAN_6MW_PLANT.md) - Pilot plan
-
-**Analysis**
-- [COST-ANALYSIS.md](COST-ANALYSIS.md) - Costs
-- [COMPETITIVE-ANALYSIS.md](COMPETITIVE-ANALYSIS.md) - Competition
-- [../INVESTMENT_SUMMARY.md](../INVESTMENT_SUMMARY.md) - Investment
-- [../IMPACT.md](../IMPACT.md) - Impact
-- [methodology_analysis.md](methodology_analysis.md) - Notes
-
-## Technical Details
-
-- [ANCHORING-MODES.md](ANCHORING-MODES.md) - Blockchain anchoring
-- [SMART-SAMPLING-STRATEGY.md](SMART-SAMPLING-STRATEGY.md) - Sampling
-- [project-profile.schema.json](project-profile.schema.json) - Project schema
-- [multi-tenant-schema.sql](multi-tenant-schema.sql) - Database schema
-
-## Other Stuff
-
-- [FEATURES.md](../FEATURES.md) - Features
-- [DEMO_GUIDE.md](../DEMO_GUIDE.md) - Demo
-- [CHANGELOG.md](../CHANGELOG.md) - Changelog
-- [CONTRIBUTING.md](../CONTRIBUTING.md) - Contributing
-- [archived/](archived/) - Old docs
-- [MERGE-NOTES.md](MERGE-NOTES.md) - Cleanup notes
-
-## Evidence & ML
-
-- [../evidence/](../evidence/) - Transactions, test outputs
-- [../ml/](../ml/) - ML docs
-
----
-
-Last updated: Feb 22, 2026 | Active: ~40 files | Archived: ~35 files
+Documents in `docs/archived/` are superseded and kept for historical reference only. Do not update them. If you need information from an archived document, consolidate it into the relevant canonical file above.
