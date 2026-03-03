@@ -11,6 +11,31 @@ const { apiKey }                 = require('../../middleware/auth');
 const { validateAndNormalize }   = require('../../validation/telemetry');
 const { telemetryCounter, trustScoreGauge, timeVerification } = require('../../monitoring/metrics');
 const Workflow = require('../../workflow');
+// Helper to populate flags from verification details
+function buildFlags(details) {
+  const flags = [];
+  if (!details) return flags;
+  // Check physics layer
+  if (details.physicsCheck && !details.physicsCheck.pass) {
+    flags.push('PHYSICS_VIOLATION');
+    if (details.physicsCheck.reason) {
+      flags.push(details.physicsCheck.reason);
+    }
+  }
+  // Check temporal layer
+  if (details.temporalCheck && !details.temporalCheck.pass) {
+    flags.push('TEMPORAL_ANOMALY');
+  }
+  // Check environmental layer
+  if (details.environmentalCheck && !details.environmentalCheck.pass) {
+    flags.push('ENVIRONMENTAL_ANOMALY');
+  }
+  // Trust score threshold
+  if (details.trustScore && details.trustScore < 0.7) {
+    flags.push('LOW_TRUST_SCORE');
+  }
+  return flags;
+}
 // Apply API key authentication (skip for health/rules)
 router.use((req, res, next) => {
   if (req.path === '/health' || req.path === '/rules') {
@@ -29,6 +54,18 @@ router.post('/', async (req, res) => {
       return res.status(400).json({
         error: 'Invalid request',
         message: 'Required fields: plant_id, device_id, readings'
+      });
+    }
+    // P1: Replay Protection (Redis deduplication)
+    const { checkReplay } = require('../../middleware/replayProtection');
+    const replayResult = await checkReplay(plant_id, device_id, readings?.timestamp);
+    if (replayResult.isDuplicate) {
+      return res.status(409).json({
+        error: 'DUPLICATE_READING',
+        message: 'A reading with this timestamp was already processed for this device.',
+        plant_id,
+        device_id,
+        timestamp: readings?.timestamp
       });
     }
     // 1. Validate — throws on missing required fields
@@ -82,7 +119,7 @@ router.post('/', async (req, res) => {
             temporal_check:    result.verificationDetails.temporalCheck,
             environmental_check: result.verificationDetails.environmentalCheck,
             trust_score:       result.verificationDetails.trustScore,
-            flags:             result.verificationDetails.flags
+            flags: buildFlags(result.verificationDetails)
           }
         : null
     };

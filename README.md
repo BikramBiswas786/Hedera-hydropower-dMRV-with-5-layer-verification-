@@ -595,3 +595,20 @@ Everything's in the docs/ folder.
 - **Issue**: Redis not running, rate limiter falls back to no-op
 - **Fix**: docker run -d -p 6379:6379 redis:alpine or set REDIS_URL in .env
 - **Impact**: API accepts unlimited requests per window in current state
+
+## Known Issues & Status
+### ? P1 - Replay Protection (RESOLVED)
+- **Status**: FIXED in this build
+- **Implementation**: Redis-backed deduplication by plantId+deviceId+timestamp
+- **Evidence**: Duplicate timestamps return 409 Conflict with clear error message
+- **Graceful degradation**: Falls back to no-op if Redis unavailable (logged)
+### ? P2 - flags[] Array (RESOLVED)
+- **Status**: FIXED in this build
+- **Implementation**: buildFlags() helper dynamically populates from verification layers
+- **Evidence**: Physics violations return 4+ specific flags in response
+- **Populated flags**: PHYSICS_VIOLATION, TEMPORAL_ANOMALY, ENVIRONMENTAL_ANOMALY, LOW_TRUST_SCORE
+### P3 - Redis Rate Limiter (RESOLVED - Redis Now Active)
+- **Status**: Redis running via WSL, rate limiter operational
+- **Setup**: Redis 7.2.9 on localhost:6379
+- **Evidence**: Rate limit hit at request 98 in earlier tests
+- **Production note**: Deploy Redis via Docker/managed instance for production

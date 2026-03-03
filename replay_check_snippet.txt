@@ -1,0 +1,14 @@
+﻿  // P1: Replay Protection (checks Redis for duplicate timestamp)
+  const replayResult = await checkReplay(body.plant_id, body.device_id, body.readings?.timestamp);
+  if (replayResult.isDuplicate) {
+    return res.status(409).json({
+      error: 'DUPLICATE_READING',
+      message: 'A reading with this timestamp was already processed for this device.',
+      plant_id: body.plant_id,
+      device_id: body.device_id,
+      timestamp: body.readings?.timestamp
+    });
+  }
+  if (replayResult.degraded) {
+    console.warn('[Telemetry] Replay protection degraded - Redis unavailable');
+  }
