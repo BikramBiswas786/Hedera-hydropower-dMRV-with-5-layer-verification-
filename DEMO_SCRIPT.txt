@@ -1,0 +1,7 @@
+﻿DEMO SCRIPT:
+1. Show health endpoint (v1.6.1, 93% complete)
+2. Submit valid reading → APPROVED, on-chain TX
+3. Submit fraud reading → FLAGGED, 4 flags populated
+4. Submit duplicate → 409 Conflict blocked
+5. Show HashScan immutable record
+6. Show carbon credits minted
