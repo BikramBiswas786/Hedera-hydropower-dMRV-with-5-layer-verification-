@@ -361,11 +361,31 @@ See [README-SETUP.md](./README-SETUP.md) for development environment setup.
 # All tests
 npm test
 
-# Production test suite
+# Start API (required for PowerShell production tests)
+npm run api
+
+# Production PowerShell suite (PS1-PS6)
 powershell -ExecutionPolicy Bypass -File .\RUN_TESTS.ps1
+
+# Cross-platform PowerShell 7 equivalent
+pwsh -File ./RUN_TESTS.ps1
 
 # Coverage report
 npm run test:coverage
+```
+
+#### PS1 testing (explicit)
+
+The `RUN_TESTS.ps1` script includes **PS1: Valid APPROVED Telemetry** as its first test case.
+To verify PS1 quickly after running the suite, check the output for:
+
+- `[PS1] Valid APPROVED Telemetry`
+- `[PASS] PS1 PASSED`
+
+You can also run a direct PS1 smoke request (PowerShell one-liner):
+
+```powershell
+$ts=[int64]([DateTimeOffset]::UtcNow.ToUnixTimeMilliseconds()); $body=@{plant_id='PLANT-ALPHA';device_id='TURBINE-PS1';readings=@{timestamp=$ts;flowRate=2.5;head=45;generatedKwh=900;pH=7.2;turbidity=10;temperature=18;efficiency=0.85}} | ConvertTo-Json -Depth 5; Invoke-RestMethod -Uri 'http://localhost:3000/api/v1/telemetry' -Method POST -Headers @{'x-api-key'='demokey001';'Content-Type'='application/json'} -Body $body
 ```
 
 ---
