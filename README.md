@@ -13,6 +13,56 @@ A production-ready digital MRV (Monitoring, Reporting & Verification) platform t
 
 ---
 
+## System Architecture (Detailed)
+
+The platform is designed as a deterministic verification pipeline where each stage contributes to trust scoring, compliance calculations, and immutable auditability.
+
+### End-to-end processing flow
+1. **Telemetry ingestion**
+   - Plant devices send flow, head, generation, and environmental readings through authenticated API requests.
+   - Payloads include plant identity and timestamps required for replay protection and traceability.
+
+2. **Pre-verification controls**
+   - Schema and boundary validation reject malformed or physically impossible inputs early.
+   - Replay protection checks duplicate timestamp/plant combinations to prevent duplicate credit claims.
+   - Optional Redis-backed controls support low-latency deduplication and rate limiting.
+
+3. **5-layer verification engine**
+   - Layer 1: Physics validation against hydropower fundamentals.
+   - Layer 2: Temporal consistency against recent operating behavior.
+   - Layer 3: Environmental bounds for pH/turbidity/temperature sanity.
+   - Layer 4: Statistical anomaly detection for outlier behavior.
+   - Layer 5: Device consistency checks across correlated measurements.
+   - Weighted aggregation produces a normalized trust score and decision state.
+
+4. **Methodology computation (ACM0002)**
+   - Emission reductions are computed using baseline/project/leakage terms.
+   - Output is attached to verification records for auditable, methodology-aligned reporting.
+
+5. **Hedera integration and audit finalization**
+   - HCS writes immutable evidence of verification events and key metadata.
+   - HTS enables tokenized HREC lifecycle for approved issuance workflows.
+   - Transaction IDs and topic references provide public verifiability on HashScan.
+
+### Component boundaries
+- **API layer (Express/Node.js)**: authentication, validation, request orchestration.
+- **Verification core**: deterministic scoring logic and policy thresholds.
+- **Compliance module**: ACM0002 calculations and reporting fields.
+- **Blockchain adapter**: HCS/HTS submission, retries, and transaction reference capture.
+- **Operational controls**: replay prevention, rate limits, and test/monitoring hooks.
+
+### Trust score policy
+- **> 0.90**: auto-approve (high confidence)
+- **0.50 - 0.90**: flagged for review or conditional handling
+- **< 0.50**: reject (low confidence/high anomaly likelihood)
+
+### Deployment and reliability notes
+- Stateless API deployment supports horizontal scaling.
+- Hedera transaction writes provide an append-only audit trail independent of API state.
+- Test coverage (237 tests) and PS1-PS6 scenarios validate fraud detection, replay controls, and plant isolation behavior.
+
+---
+
 ## Problem
 
 Small renewable projects cannot afford traditional carbon credit verification:
