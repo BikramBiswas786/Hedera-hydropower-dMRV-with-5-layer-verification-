@@ -1,6 +1,6 @@
 #!/usr/bin/env pwsh
 # HEDERA HYDROPOWER dMRV - COMPLETE TEST SUITE (PS1-PS6)
-# Version: 2.5 (ASCII-safe characters for Windows PowerShell)
+# Version: 2.6 (Fixed array initialization for Windows PowerShell)
 # Date: March 6, 2026
 
 Write-Host "
@@ -16,7 +16,8 @@ $headers = @{
 }
 $apiUrl = "http://localhost:3000/api/v1/telemetry"
 
-$testResults = @()
+# Initialize as global array to avoid PowerShell scoping issues
+$global:testResults = @()
 
 function Add-TestResult {
     param(
@@ -348,11 +349,11 @@ Write-Host "              TESTING COMPLETE                        " -ForegroundC
 Write-Host "========================================================" -ForegroundColor Cyan
 Write-Host ""
 
-$passedCount = ($testResults | Where-Object { $_.Result -eq "PASSED" }).Count
-$totalTests  = $testResults.Count
+$passedCount = ($global:testResults | Where-Object { $_.Result -eq "PASSED" }).Count
+$totalTests  = $global:testResults.Count
 
 Write-Host "Test Results:" -ForegroundColor White
-foreach ($r in $testResults) {
+foreach ($r in $global:testResults) {
     $icon = if ($r.Result -eq "PASSED") { "[OK]" } elseif ($r.Result -eq "FAILED") { "[!!]" } else { "[??]" }
     $color = switch ($r.Result) {
         "PASSED" { "Green" }
