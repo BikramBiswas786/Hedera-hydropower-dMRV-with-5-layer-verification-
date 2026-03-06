@@ -8,6 +8,7 @@
         "test:ml": "jest tests/ml --verbose",
         "demo": "node scripts/demo.js",
         "demo:live": "node scripts/demo-live-minting.js",
+        "demo:fresh": "node scripts/demo-complete-fresh.js",
         "start": "node src/api/server.js",
         "api": "node src/api/server.js",
         "engine-v1": "node src/engine/v1/engine-v1.js",
