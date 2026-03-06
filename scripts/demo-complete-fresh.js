@@ -12,9 +12,6 @@
  * - Valid telemetry with verification
  * - Fraud telemetry with detection
  * - Real HTS token minting
- *
- * Cost: ~$2-3 USD per run (one-time setup + transactions)
- * Time: ~60 seconds
  */
 
 require('dotenv').config();
@@ -202,8 +199,6 @@ async function main() {
   console.log(`${C.bold}${C.magenta}╚${'='.repeat(56)}╝${C.reset}`);
   console.log(`${C.green}  🔥 COMPLETE FRESH MODE — All new infrastructure${C.reset}`);
   ok(`Account: ${HEDERA_OPERATOR_ID}`);
-  warn('Cost: ~$2-3 USD in fees (creates new topic + token)');
-  warn('Time: ~60 seconds');
   hr();
 
   // Initialize Hedera client
