@@ -1,14 +1,14 @@
-# ROADMAP PART 1 — FOUNDATION & CLAIM ATTRIBUTION LAYER
-## Hedera Hydropower dMRV | Month 1–6
-### Author: Bikram Biswas | Status: Active Development | Updated: March 24, 2026
+# ROADMAP PART 1 — PROTOCOL FOUNDATION & CORE ENGINE
+## Hedera Hydropower dMRV | Weeks 1–8
+### Author: Bikram Biswas | Status: Active Development | Version: V3.0 | Updated: March 24, 2026
 
-> **My goal is simple:** I am building the cheapest, most tamper-proof carbon credit verification system ever deployed for small hydropower plants. Traditional MRV audits cost ₹12–40 lakh per year. Mine costs ₹8,000–25,000. I do this by replacing human auditors with physics, blockchain, and machine learning. Every generation record goes on Hedera — immutable, auditable, permanent.
+> **What I am building and why it matters:** I am building the cheapest, most tamper-proof carbon credit verification system ever deployed for small hydropower plants. Traditional MRV audits cost ₹12–40 lakh per year. Mine costs ₹8,000–25,000. I replace human auditors with physics, blockchain, and machine learning. Every generation record is committed to Hedera — immutable, auditable, permanent. This roadmap covers the first 8 weeks: the cryptographic and scientific foundation that must survive three levels of scrutiny — auditors, regulators, and anyone with a HashScan link.
 
 ---
 
-## WHERE I AM RIGHT NOW — March 24, 2026
+## 1. CURRENT BASELINE — What Exists Today (March 24, 2026)
 
-Before I plan forward, let me be completely honest about what exists today:
+I started Roadmap 1 by auditing my own repo line by line. No self-delusion. Here is the honest state:
 
 ### ✅ What Is Live and Working
 
@@ -27,169 +27,219 @@ Before I plan forward, let me be completely honest about what exists today:
 | HCS Topic `0.0.7462776` | — | ✅ LIVE | Audit log on Hedera testnet |
 | HTS Token `0.0.7964264` | — | ✅ LIVE | HREC token on Hedera testnet |
 | 2,000+ HCS messages | — | ✅ LIVE | Immutable audit trail exists |
+| **237 tests** | — | ✅ LIVE | 85.3% coverage, 100% on critical paths |
+| **61 source files** | ~2,935 lines | ✅ LIVE | Core logic implemented |
 
-### 🔴 Security Issues — Fix These Before Anything Else
+The foundation is strong. The risk is not "no code" — the risk is no cryptographic guarantees and no clean compliance path.
+
+### 🔴 SECURITY EMERGENCY — Fix Before Writing Any New Code
 
 ```
-.env.backup     → PUBLIC on GitHub → may contain real Hedera private keys
-.env.old        → PUBLIC on GitHub → may contain real secrets
+EXPOSED FILES (public on GitHub right now):
+  .env.backup      → may contain real Hedera private keys
+  .env.old         → may contain real secrets
 
-ALSO DELETE (junk backup files polluting the repo):
+JUNK BACKUP FILES to delete:
   src/api/v1/telemetry.js.backup
   src/api/v1/telemetry.js.before_fixes
   src/api/server-fixed.js
   src/api/server.js.original
 ```
 
-### ❌ What I Have Not Built Yet (This Roadmap Builds These)
+### ❌ What This Roadmap Builds (Currently Missing)
 
 ```
-src/api/v1/claims.js              ❌ — buyer retirement claim lifecycle
-src/api/v1/buyer.js               ❌ — buyer balance + history
-src/api/v1/certificates.js        ❌ — ESG certificate fetch + verify
-src/hedera/token-retirement.js    ❌ — HTS token burn on chain
-src/hedera/hcs-audit-logger.js    ❌ — immutable HCS event logging
-src/hedera/guardian-client.js     ❌ — Guardian policy integration
-src/did/did-manager.js            ❌ — W3C DID for buyers
-src/certificates/certificate-generator.js  ❌ — W3C VC generation
-src/certificates/pdf-renderer.js  ❌ — PDF certificate with QR code
-src/middleware/buyer-auth.js      ❌ — BUYER role JWT validation
-src/middleware/claim-validation.js ❌ — payload validation
-src/ml/adwin-detector.js          ❌ — real-time drift detection (ADWIN)
-src/zkp/verification-circuit.circom ❌ — zero-knowledge proof circuit
-4 database migrations             ❌ — claims, certificates, buyers, retirements
+src/hedera/vc-generator.js            ❌ — W3C Verifiable Credential generation
+src/did/did-manager.js                ❌ — Hedera-native DID management (HIP-29)
+src/carbon-credits/CarbonCreditManager.js ❌ — HREC mint logic tied to engine
+src/certificates/certificate-generator.js ❌ — JSON-LD VC wrapper
+src/certificates/pdf-renderer.js      ❌ — PDF ESG certificate with QR code
+src/api/v1/certificates.js            ❌ — Certificate fetch/verify endpoints
+scripts/deploy_hrec_token.js          ❌ — HTS token deployment script
+4 database migrations                 ❌ — claims, certificates, buyers, retirements
 ```
 
 ---
 
-## THE 5-LAYER VERIFICATION ENGINE — HOW IT Works
+## 2. THE 5-LAYER VERIFICATION ENGINE — Complete Specification
 
-This is the core of everything I have built. Every sensor reading passes through all 5 layers before a trust score is produced. No layer can be skipped. No layer can be faked — all results go to HCS before any token is minted.
+This is the core of everything. Every sensor reading passes through all 5 layers sequentially before a trust score is produced. No layer can be skipped. No layer can be faked — all results are committed to HCS before any token is minted.
 
 ```
 SENSOR READING ARRIVES
         │
         ▼
-┌───────────────────────────────────────────────────────────┐
-│  LAYER 1: PHYSICS VALIDATION (Weight: 30%)                │
-│  Formula: P = ρ × g × Q × H × η                          │
-│  ρ = 998.2 kg/m³ (water density at 20°C)                  │
-│  g = 9.81 m/s²                                            │
-│  Q = flow rate (m³/s)                                     │
-│  H = net head height (meters)                             │
-│  η = turbine efficiency (0.80–0.92 for Francis turbines)  │
-│                                                           │
-│  Expected power is calculated from physics.               │
-│  If actual reported power deviates >15% → score penalty.  │
-│  If deviation >30% → PHYSICS_VIOLATION → auto-reject.     │
-│                                                           │
-│  Example: Q=5.5 m³/s, H=78m, η=0.86                      │
-│  Expected P = 998.2 × 9.81 × 5.5 × 78 × 0.86 = 3,621 kW │
-│  If plant reports 3,645 kW → deviation 0.66% → PASS ✅    │
-│  If plant reports 5,200 kW → deviation 43.6% → REJECT ❌  │
-└─────────────────────┬─────────────────────────────────────┘
-                      │
-                      ▼
-┌───────────────────────────────────────────────────────────┐
-│  LAYER 2: TEMPORAL CONSISTENCY (Weight: 25%)              │
-│  Checks: 15-minute rolling average stability              │
-│  Maximum allowed change per 15 min: ±20% of rated output  │
-│  Ramp rate exceeded? → Temporal anomaly flag              │
-│  Midnight valley check: generation must drop at 2-4 AM    │
-│  Weekend pattern: demand typically 8-15% lower            │
-│  These patterns are plant-specific — each plant has its   │
-│  own baseline built over the first 30 days of pilot.      │
-└─────────────────────┬─────────────────────────────────────┘
-                      │
-                      ▼
-┌───────────────────────────────────────────────────────────┐
-│  LAYER 3: ENVIRONMENTAL CORRELATION (Weight: 20%)         │
-│  Cross-references river flow data with:                   │
-│    → IMD rainfall data (monsoon vs dry season)            │
-│    → CWC river gauge readings (where available)           │
-│    → Satellite precipitation data (TRMM/GPM)             │
-│  High generation in drought months → flag for review      │
-│  Low generation in peak monsoon → investigate             │
-│  Season-aware thresholds — not one-size-fits-all.         │
-└─────────────────────┬─────────────────────────────────────┘
-                      │
-                      ▼
-┌───────────────────────────────────────────────────────────┐
-│  LAYER 4: ML ANOMALY DETECTION (Weight: 15%)              │
-│  Algorithm: Isolation Forest (scikit-learn compatible)    │
-│  Contamination parameter: 0.05 (5% expected anomaly rate) │
-│  Features: [flowRate, headHeight, powerOutput,            │
-│             turbineEfficiency, timestamp_hour,            │
-│             timestamp_dayofweek, season]                  │
-│  Trained on: first 30 days of real pilot readings         │
-│  Output: anomaly score −1 (anomalous) to +1 (normal)      │
-│  Drift detection: DriftDetector class (rolling window 100)│
-│  Drift threshold: >15% anomaly rate → DRIFT_DETECTED      │
-│  Drift action: HCS warning + human review queue           │
-└─────────────────────┬─────────────────────────────────────┘
-                      │
-                      ▼
-┌───────────────────────────────────────────────────────────┐
-│  LAYER 5: DEVICE ATTESTATION (Weight: 10%)                │
-│  HMAC-SHA256 signature on every sensor payload            │
-│  Key stored in hardware HSM at sensor site                │
-│  Signature verified server-side before any processing     │
-│  Replay attack prevention: replayProtection.js middleware │
-│  Nonce + timestamp in every message header                │
-│  Phase 1: software HMAC (development)                     │
-│  Phase 2: TPM/HSM hardware root of trust (Month 4+)       │
-└─────────────────────┬─────────────────────────────────────┘
-                      │
-                      ▼
-┌───────────────────────────────────────────────────────────┐
-│  TRUST SCORE CALCULATION                                  │
-│  score = (L1×0.30) + (L2×0.25) + (L3×0.20) +             │
-│          (L4×0.15) + (L5×0.10)                            │
-│                                                           │
-│  ≥ 0.90 → APPROVED  → auto-mint HREC tokens               │
-│  0.50–0.89 → FLAGGED → human review queue                 │
-│  < 0.50  → REJECTED  → no tokens, HCS rejection log       │
-│                                                           │
-│  Known results from simulation testing:                   │
-│  Normal reading:   Trust 0.923 → APPROVED ✅               │
-│  Anomalous read:   Trust 0.595 → FLAGGED ⚠️               │
-│  Physics violate:  Trust 0.00  → REJECTED ❌               │
-└───────────────────────────────────────────────────────────┘
+┌───────────────────────────────────────────────────────────────────────┐
+│  LAYER 1: PHYSICS VALIDATION                          Weight: 30%     │
+│                                                                       │
+│  Core Formula (ACM0002): P = ρ × g × Q × H × η                       │
+│    ρ = 998.2 kg/m³  (water density at 20°C)                           │
+│    g = 9.81 m/s²    (gravitational constant)                          │
+│    Q = flow rate    (m³/s) — from turbine flow meter                  │
+│    H = net head     (meters) — pressure difference across turbine     │
+│    η = turbine efficiency (0.80–0.92 for Francis turbines)            │
+│                                                                       │
+│  Validation thresholds:                                               │
+│    Deviation > 15% of expected P   → score penalty applied            │
+│    Deviation > 30% of expected P   → PHYSICS_VIOLATION → auto-reject  │
+│    η outside 0.65–0.95 range       → flag for manual review           │
+│    Q or H negative                 → immediate rejection              │
+│                                                                       │
+│  Real simulation results from my testing:                             │
+│    Q=5.5 m³/s, H=78m, η=0.86 → Expected P = 3,621 kW                 │
+│    Plant reports 3,645 kW → deviation 0.66% → PASS ✅                 │
+│    Plant reports 5,200 kW → deviation 43.6% → REJECT ❌               │
+│    Plant reports 1,200 kW → deviation 66.8% → REJECT ❌               │
+│                                                                       │
+│  Why physics as Layer 1: A fraudster can fabricate telemetry JSON.    │
+│  They cannot fabricate the laws of fluid dynamics. The physics check  │
+│  is stateless — it requires no historical data, no ML, no network.   │
+│  It catches the most obvious fraud on the very first reading.         │
+└─────────────────────────┬─────────────────────────────────────────────┘
+                          │ passes with score
+                          ▼
+┌───────────────────────────────────────────────────────────────────────┐
+│  LAYER 2: TEMPORAL CONSISTENCY                        Weight: 25%     │
+│                                                                       │
+│  What this checks:                                                    │
+│    → 15-minute rolling average stability                              │
+│    → Maximum ramp rate: ±20% of rated output per 15 minutes          │
+│    → Midnight valley: generation must drop 8–15% at 2–4 AM           │
+│    → Weekend demand pattern: typically 8–15% lower than weekdays     │
+│    → Seasonal baseline: each plant has its own 30-day learned pattern│
+│                                                                       │
+│  Logic for ramp rate:                                                 │
+│    current_delta = |current_output - previous_output| / rated_output  │
+│    if current_delta > 0.20 → TEMPORAL_RAMP_VIOLATION → flag           │
+│                                                                       │
+│  Why this matters: A solar farm can ramp instantly. A hydropower      │
+│  turbine cannot — water inertia and governor response limit changes   │
+│  to ~20% per 15 minutes under normal operation. A fraudster reporting │
+│  0 kW at 11:59 PM and 3,500 kW at 12:00 AM fails this layer.         │
+└─────────────────────────┬─────────────────────────────────────────────┘
+                          │
+                          ▼
+┌───────────────────────────────────────────────────────────────────────┐
+│  LAYER 3: ENVIRONMENTAL CORRELATION                   Weight: 20%     │
+│                                                                       │
+│  Data sources cross-referenced:                                       │
+│    → IMD rainfall data (monsoon vs dry season classification)         │
+│    → CWC river gauge readings (Central Water Commission, India)       │
+│    → TRMM/GPM satellite precipitation data                           │
+│    → Drought index from NDMC (National Drought Monitoring Centre)    │
+│                                                                       │
+│  Seasonal threshold configuration:                                    │
+│    pre_monsoon  (Mar–May):  baseline flow × 0.6–0.8                   │
+│    monsoon      (Jun–Sep):  baseline flow × 1.5–3.0 (high variance)   │
+│    post_monsoon (Oct–Nov):  baseline flow × 1.0–1.4                   │
+│    dry_season   (Dec–Feb):  baseline flow × 0.3–0.6                   │
+│                                                                       │
+│  Flag conditions:                                                     │
+│    High generation (>120% baseline) during declared drought → flag   │
+│    Low generation (<40% baseline) during peak monsoon → investigate   │
+│    Reported flow inconsistent with river gauge (if available) → flag  │
+└─────────────────────────┬─────────────────────────────────────────────┘
+                          │
+                          ▼
+┌───────────────────────────────────────────────────────────────────────┐
+│  LAYER 4: ML ANOMALY DETECTION                        Weight: 15%     │
+│                                                                       │
+│  Current algorithm: Isolation Forest (scikit-learn compatible JS)     │
+│  Contamination: 0.05 (5% expected anomaly rate in training data)      │
+│                                                                       │
+│  Feature vector per reading:                                          │
+│    [flowRate, headHeight, powerOutput, turbineEfficiency,             │
+│     timestamp_hour, timestamp_dayofweek, season_index,               │
+│     rolling_avg_1h, rolling_avg_24h]                                  │
+│                                                                       │
+│  Training: first 30 days of real pilot readings per plant             │
+│  Output: anomaly score −1 (anomalous) to +1 (normal)                 │
+│                                                                       │
+│  Drift detection (current KS-test, being replaced by ADWIN in R2):   │
+│    Window: 100 readings                                               │
+│    Threshold: >15% anomaly rate in window → DRIFT_DETECTED           │
+│    Action: HCS warning message + human review queue                  │
+│                                                                       │
+│  Known limitation: KS-test is batch — misses gradual drift.           │
+│  ADWIN (Bifet & Gavalda 2007) replaces this in Roadmap 2.             │
+└─────────────────────────┬─────────────────────────────────────────────┘
+                          │
+                          ▼
+┌───────────────────────────────────────────────────────────────────────┐
+│  LAYER 5: DEVICE ATTESTATION                          Weight: 10%     │
+│                                                                       │
+│  Phase 1 (now — software HMAC):                                       │
+│    Every sensor payload signed with HMAC-SHA256                       │
+│    Secret key stored in .env (operator-side)                          │
+│    Signature verified server-side before any processing begins        │
+│    Replay protection: nonce + timestamp in every message header       │
+│    replayProtection.js middleware: nonces stored in Redis, 5-min TTL  │
+│                                                                       │
+│  Phase 2 (Month 4+ — Hardware Root of Trust):                         │
+│    TPM (Trusted Platform Module) chip at sensor site                  │
+│    Private key burned into TPM during manufacturing, non-extractable  │
+│    HMAC generated inside TPM — key never leaves hardware              │
+│    Device DID issued per sensor, registered on Hedera HCS             │
+│    Attestation: device proves identity + reading integrity jointly     │
+│                                                                       │
+│  Why this is Layer 5 not Layer 1: Device attestation proves the       │
+│  message wasn't tampered in transit. But it cannot prove the sensor   │
+│  is reading correctly — a corrupt sensor with valid HMAC still fails  │
+│  Layer 1 physics. The layers are complementary, not redundant.        │
+└─────────────────────────┬─────────────────────────────────────────────┘
+                          │
+                          ▼
+┌───────────────────────────────────────────────────────────────────────┐
+│  TRUST SCORE CALCULATION                                              │
+│                                                                       │
+│  score = (L1 × 0.30) + (L2 × 0.25) + (L3 × 0.20) +                  │
+│          (L4 × 0.15) + (L5 × 0.10)                                   │
+│                                                                       │
+│  Decision thresholds:                                                 │
+│    ≥ 0.90  → APPROVED  → auto-mint HREC tokens → generate VC         │
+│    0.50–0.89 → FLAGGED  → human review queue → no auto-mint           │
+│    < 0.50  → REJECTED  → no tokens → HCS rejection log only           │
+│                                                                       │
+│  Simulation test results (from my own testing):                       │
+│    Normal reading:      Trust 0.923 → APPROVED ✅                     │
+│    Marginal anomaly:    Trust 0.595 → FLAGGED  ⚠️                     │
+│    Physics violation:   Trust 0.000 → REJECTED ❌                     │
+│    Device replay attack: Trust 0.000 → REJECTED ❌                    │
+└───────────────────────────────────────────────────────────────────────┘
 ```
 
 ---
 
-## WEEK 0 (TODAY — March 24, 2026) — SECURITY FIRST
+## 3. WEEK 0 (TODAY) — SECURITY FIRST
 
-**I do this before writing a single line of new code. Exposed keys are an emergency.**
+**I do this before writing a single line of new code. Exposed keys are an emergency, not a task.**
 
 ```bash
-# ══════════════════════════════════════════════════════
-# STEP 1: Read exposed files to see what leaked
-# ══════════════════════════════════════════════════════
+# ═══════════════════════════════════════════════════════════════
+# STEP 1: Check what actually leaked
+# ═══════════════════════════════════════════════════════════════
 cat .env.backup
 cat .env.old
+# If OPERATOR_PRIVATE_KEY or HEDERA_PRIVATE_KEY have real values:
+#   → Go to portal.hedera.com IMMEDIATELY
+#   → Transfer any HBAR balance to a new account first
+#   → Regenerate keys BEFORE deleting (avoid locking myself out)
 
-# If OPERATOR_PRIVATE_KEY or HEDERA_PRIVATE_KEY appear with real values:
-# → Go to portal.hedera.com IMMEDIATELY
-# → Regenerate keys BEFORE deleting (so I don't lose account access)
-# → Transfer any HBAR balance to new account first
+# ═══════════════════════════════════════════════════════════════
+# STEP 2: Remove files from Git history entirely
+# ═══════════════════════════════════════════════════════════════
+pip install git-filter-repo
+git filter-repo --path .env.backup --invert-paths --force
+git filter-repo --path .env.old --invert-paths --force
+git filter-repo --path src/api/v1/telemetry.js.backup --invert-paths --force
+git filter-repo --path src/api/server-fixed.js --invert-paths --force
+git filter-repo --path src/api/server.js.original --invert-paths --force
+git push origin --force --all
+git push origin --force --tags
 
-# ══════════════════════════════════════════════════════
-# STEP 2: Remove from repo + git history
-# ══════════════════════════════════════════════════════
-git rm --cached .env.backup .env.old
-git rm .env.backup .env.old
-
-# Also remove junk backup files:
-git rm src/api/v1/telemetry.js.backup
-git rm src/api/v1/telemetry.js.before_fixes
-git rm src/api/server-fixed.js
-git rm src/api/server.js.original
-
-# ══════════════════════════════════════════════════════
-# STEP 3: Update .gitignore — prevent this happening again
-# ══════════════════════════════════════════════════════
+# ═══════════════════════════════════════════════════════════════
+# STEP 3: Update .gitignore permanently
+# ═══════════════════════════════════════════════════════════════
 cat >> .gitignore << 'EOF'
 .env.backup
 .env.old
@@ -197,42 +247,28 @@ cat >> .gitignore << 'EOF'
 *.backup
 *.before_fixes
 *.original
-certificates/
+certificates/generated/
 EOF
 
-git add .gitignore
-git commit -m "security: remove exposed env files, clean backup junk, update .gitignore"
-git push origin main
-
-# ══════════════════════════════════════════════════════
-# STEP 4: Deep history scan — check if keys were ever committed
-# ══════════════════════════════════════════════════════
-git log --all --full-history --name-status | grep -E "\.env"
-# If any real .env file appears in history → run BFG Repo Cleaner
-# Download: https://rtyley.github.io/bfg-repo-cleaner/
-# java -jar bfg.jar --delete-files .env.backup
-# git reflog expire --expire=now --all && git gc --prune=now --aggressive
-# git push --force
+# ═══════════════════════════════════════════════════════════════
+# STEP 4: Rotate ALL keys in Hedera portal
+# ═══════════════════════════════════════════════════════════════
+# portal.hedera.com → Account → Manage Keys → Generate New
+# Update: Railway env vars, Vercel env vars, local .env
+# Confirm old key can no longer sign transactions
 ```
 
 ---
 
-## WEEK 1 (March 25–31) — COMMIT-REVEAL + CLAIM ATTRIBUTION FOUNDATION
+## 4. WEEK 1 — COMMIT-REVEAL PATTERN IN `workflow.js`
 
-**~55 hours. This week unlocks revenue. Without this, I have a verification system with no way for a buyer to retire credits and receive a certificate.**
-
-### Day 1 — Commit-Reveal Hash Fix in `src/workflow.js`
-
-**Why this matters:** My current system submits one HCS message with the full verified record. A malicious operator could theoretically tamper with sensor data, get verification results, then decide whether to submit or not. The commit-reveal pattern closes this — I hash the raw data and commit it to HCS before running verification. The reveal comes after. This is Vulnerability #1 from my audit.
+**Why this matters — Vulnerability #1:** My current system submits one HCS message with the full verified record. A malicious operator could theoretically see verification results before deciding whether to submit the reading at all. The commit-reveal pattern closes this permanently: I hash the raw sensor data and commit it to HCS *before* running any verification. The reveal comes after all 5 layers complete.
 
 ```javascript
-// FILE: src/workflow.js — ADD at top of file, with other requires:
+// FILE: src/workflow.js — ADD at the top of processVerification()
 const crypto = require('crypto');
 
-// FIND the function that calls submitToHCS (processVerification or similar)
-// BEFORE the existing HCS submit, ADD:
-
-// ── PHASE 1: COMMITMENT ──────────────────────────────────────────
+// ── PHASE 1: COMMITMENT (before ANY verification) ────────────────────
 const commitmentPayload = {
   flowRate:    rawSensorData.flowRate,
   headHeight:  rawSensorData.headHeight,
@@ -255,26 +291,28 @@ const commitTx = await hcsClient.submitMessage(topicId, JSON.stringify({
   committedAt: Date.now()
 }));
 const commitTxId = commitTx.transactionId.toString();
-// ── END COMMITMENT ────────────────────────────────────────────────
+// ── END COMMITMENT ────────────────────────────────────────────────────
 
-// [YOUR EXISTING 5-LAYER VERIFICATION RUNS HERE — DO NOT TOUCH]
+// [5-LAYER VERIFICATION RUNS HERE — UNTOUCHED]
+// physicsScore, temporalScore, envScore, mlScore, deviceScore...
 
-// ── PHASE 2: REVEAL ───────────────────────────────────────────────
+// ── PHASE 2: REVEAL (after all verification completes) ───────────────
 const revealTx = await hcsClient.submitMessage(topicId, JSON.stringify({
-  type:             'REVEAL',
-  version:          '1.0',
-  commitmentHash:   payloadHash,
-  commitmentTxId:   commitTxId,
-  plantId:          rawSensorData.plantId,
-  verifiedAt:       Date.now(),
-  layer1_physics:      physicsScore,
-  layer2_temporal:     temporalScore,
-  layer3_environmental: envScore,
-  layer4_ml:           mlScore,
-  layer5_device:       deviceScore,
-  trustScore:       verifiedRecord.trustScore,
-  trustLevel:       verifiedRecord.trustLevel,
-  energyGenerated_kWh: verifiedRecord.energyGenerated,
+  type:                  'REVEAL',
+  version:               '1.0',
+  commitmentHash:        payloadHash,
+  commitmentTxId:        commitTxId,
+  plantId:               rawSensorData.plantId,
+  verifiedAt:            Date.now(),
+  layer1_physics:        physicsScore,
+  layer2_temporal:       temporalScore,
+  layer3_environmental:  envScore,
+  layer4_ml:             mlScore,
+  layer5_device:         deviceScore,
+  trustScore:            verifiedRecord.trustScore,
+  trustLevel:            verifiedRecord.trustLevel,  // APPROVED/FLAGGED/REJECTED
+  energyGenerated_kWh:   verifiedRecord.energyGenerated,
+  carbonCredits_tCO2:    verifiedRecord.carbonCredits,
   sensor: {
     flowRate:    rawSensorData.flowRate,
     headHeight:  rawSensorData.headHeight,
@@ -282,117 +320,475 @@ const revealTx = await hcsClient.submitMessage(topicId, JSON.stringify({
     efficiency:  rawSensorData.turbineEfficiency
   }
 }));
-// ── END REVEAL ────────────────────────────────────────────────────
+// ── END REVEAL ────────────────────────────────────────────────────────
 
-// Cost: +$0.0002/reading = $1.75/year per plant. Worth it. Closes Vulnerability #1.
+// Cost: +$0.0002/reading = $1.75/year per plant. Closes Vulnerability #1.
 ```
 
-### Day 1-2 — ADWIN Drift Detector in `src/ml/adwin-detector.js`
+---
 
-**Why JavaScript, not Python:** My whole stack is Node.js. Running a Python subprocess for drift detection is fragile, slow, and adds a dependency I cannot easily deploy on Railway. The ADWIN algorithm (Bifet & Gavalda, 2007) is deterministic — I implement it directly in JS.
+## 5. WEEKS 2–4 — W3C VERIFIABLE CREDENTIALS & DID LAYER
+
+**Goal:** Every APPROVED reading becomes a W3C Verifiable Credential signed by my DID — not just a JSON blob. A regulator, auditor, or buyer can verify any credit offline using only the VC + a HashScan link.
+
+### DID Architecture
+
+```
+DID HIERARCHY:
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+ISSUER DID  (one, permanent):
+  did:hedera:testnet:<operator_account_id>
+  → Registered on Hedera via HCS DID document
+  → Signs every VC
+  → Public key in DID document on HCS
+  → This is MY DID as the dMRV system operator
+
+PLANT DID  (one per plant):
+  did:hedera:testnet:<plant_account_id>
+  → Created when plant is registered in system
+  → Is the subject of each generation VC
+  → Later: one DID per sensor device for granularity
+
+DEVICE DID  (one per sensor — Phase 2):
+  did:hedera:testnet:<device_serial_hash>
+  → Used in Layer 5 attestation
+  → Tied to TPM hardware identity
+```
+
+### New File: `src/hedera/vc-generator.js`
 
 ```javascript
-// FILE: src/ml/adwin-detector.js  (NEW FILE)
-// ADWIN: Adaptive Windowing Algorithm for concept drift detection
-// Reference: Bifet & Gavalda (2007) — δ = 0.002 confidence parameter
+// FILE: src/hedera/vc-generator.js  (NEW FILE)
+// W3C Verifiable Credential generator for APPROVED hydropower generation readings
+// DID method: Hedera HIP-29 compatible
 
-class ADWINDriftDetector {
-  constructor(delta = 0.002) {
-    this.delta      = delta;     // confidence parameter — lower = more sensitive
-    this.window     = [];        // current data window
-    this.variance   = 0;
-    this.mean       = 0;
-    this.width      = 0;
-    this.driftCount = 0;
-    this.lastDriftAt = null;
+const { PrivateKey } = require('@hashgraph/sdk');
+
+class VCGenerator {
+  constructor() {
+    this.issuerDid      = process.env.ISSUER_DID;
+    this.issuerPrivKey  = PrivateKey.fromString(process.env.ISSUER_PRIVATE_KEY);
   }
 
   /**
-   * Add a new element to the ADWIN window.
-   * Returns true if drift detected, false otherwise.
-   * @param {number} value  — anomaly score from Isolation Forest (0.0–1.0)
-   * @param {string} plantId — for logging context
+   * Generate a W3C VC for an APPROVED verification reading.
+   * ONLY call this when verificationStatus === 'APPROVED'.
+   * Throws if called on FLAGGED or REJECTED readings — no VC for unverified data.
    */
-  update(value, plantId = 'unknown') {
-    this.window.push(value);
-    this.width++;
-
-    // Recalculate mean and variance (Welford's online algorithm)
-    const n = this.width;
-    const delta_val = value - this.mean;
-    this.mean += delta_val / n;
-    this.variance += delta_val * (value - this.mean);
-
-    // ADWIN cut point test — O(log n) implementation
-    if (this._detectCut()) {
-      this.driftCount++;
-      this.lastDriftAt = new Date().toISOString();
-      // Reset window to second half (post-cut)
-      const cutPoint = Math.floor(this.window.length / 2);
-      this.window     = this.window.slice(cutPoint);
-      this.width      = this.window.length;
-      this._recalcStats();
-      return true;  // DRIFT DETECTED
+  async generateCredential(reading, attestation, hcsTxId) {
+    if (attestation.verificationStatus !== 'APPROVED') {
+      throw new Error(
+        `VCGenerator: Cannot issue VC for status "${attestation.verificationStatus}". ` +
+        `Only APPROVED readings get Verifiable Credentials.`
+      );
     }
-    return false;
-  }
 
-  _detectCut() {
-    if (this.window.length < 20) return false;  // need minimum window
-    const n = this.window.length;
-    const mid = Math.floor(n / 2);
-    const w0 = this.window.slice(0, mid);
-    const w1 = this.window.slice(mid);
-    const mean0 = w0.reduce((a,b) => a+b,0) / w0.length;
-    const mean1 = w1.reduce((a,b) => a+b,0) / w1.length;
-    const epsilon_cut = Math.sqrt(
-      (1 / (2 * w0.length) + 1 / (2 * w1.length)) *
-      Math.log(4 * n / this.delta)
+    const issuanceDate = new Date().toISOString();
+    const credential   = {
+      '@context': [
+        'https://www.w3.org/2018/credentials/v1',
+        'https://w3id.org/security/suites/ed25519-2020/v1',
+        'https://hedera.com/contexts/hydropower-mrv/v1'
+      ],
+      'id':   `urn:hedera:${hcsTxId}`,
+      'type': ['VerifiableCredential', 'HydropowerGenerationCredential'],
+      'issuer': {
+        'id':   this.issuerDid,
+        'name': 'Bikram Biswas Hedera dMRV System'
+      },
+      'issuanceDate': issuanceDate,
+      'credentialSubject': {
+        'id': `did:hedera:testnet:${reading.plantId}`,
+        'plant': {
+          'id':           reading.plantId,
+          'name':         reading.plantName,
+          'location':     reading.plantLocation,
+          'capacity_kW':  reading.ratedCapacity,
+          'methodology':  'ACM0002'
+        },
+        'generation': {
+          'value_kWh':     reading.generatedKwh,
+          'value_MWh':     reading.generatedKwh / 1000,
+          'period_start':  reading.periodStart,
+          'period_end':    reading.periodEnd,
+          'vintage':       new Date(reading.periodStart).getFullYear()
+        },
+        'verification': {
+          'trustScore':    attestation.trustScore,
+          'status':        'APPROVED',
+          'layer1_physics':       attestation.scores.physics,
+          'layer2_temporal':      attestation.scores.temporal,
+          'layer3_environmental': attestation.scores.environmental,
+          'layer4_ml':            attestation.scores.ml,
+          'layer5_device':        attestation.scores.device,
+          'hcs_commitment_tx':    attestation.commitmentTxId,
+          'hcs_reveal_tx':        hcsTxId,
+          'hashscan_url':         `https://hashscan.io/testnet/transaction/${hcsTxId}`
+        },
+        'carbonCredits': {
+          'quantity_tCO2':  attestation.calculations.ER_tCO2,
+          'hrec_tokens':    attestation.calculations.HREC_count,
+          'emission_factor': attestation.calculations.emissionFactor,
+          'standard':       'ACM0002',
+          'registry':       'Hedera HCS + pending Verra VCS'
+        }
+      }
+    };
+
+    // Sign with Hedera Ed25519 key
+    // In production: use jsonld-signatures library for W3C-compliant proof
+    const credentialString = JSON.stringify(credential);
+    const sigBytes = this.issuerPrivKey.sign(Buffer.from(credentialString));
+    credential['proof'] = {
+      'type':               'Ed25519Signature2020',
+      'created':            issuanceDate,
+      'verificationMethod': `${this.issuerDid}#key-1`,
+      'proofPurpose':       'assertionMethod',
+      'proofValue':         Buffer.from(sigBytes).toString('base64')
+    };
+
+    return credential;
+  }
+}
+
+module.exports = { VCGenerator };
+```
+
+### Workflow Integration (`src/workflow.js` addition)
+
+```javascript
+// AFTER the 5-layer verification completes and trust score is APPROVED:
+
+const { VCGenerator } = require('./hedera/vc-generator');
+
+if (verifiedRecord.trustLevel === 'APPROVED') {
+  const vcGen    = new VCGenerator();
+  const vc       = await vcGen.generateCredential(rawSensorData, verifiedRecord, revealTxId);
+
+  // Submit VC as the final HCS payload (replaces raw attestation on HCS)
+  await hcsClient.submitMessage(topicId, JSON.stringify({
+    type:     'VERIFIABLE_CREDENTIAL',
+    version:  '1.0',
+    vc:       vc,
+    mintedAt: Date.now()
+  }));
+
+  // Only mint HREC tokens AFTER VC is anchored on HCS
+  await carbonCreditManager.mintHREC(verifiedRecord.energyGenerated, revealTxId);
+}
+```
+
+---
+
+## 6. WEEKS 5–6 — HTS HREC TOKEN DEPLOYMENT & MINT LOGIC
+
+**Goal:** Every verified MWh becomes a fungible HREC token on Hedera testnet. Token minting is gated by the 5-layer engine — APPROVED only. No token without a verified VC on HCS.
+
+### Token Deployment: `scripts/deploy_hrec_token.js`
+
+```javascript
+// FILE: scripts/deploy_hrec_token.js  (NEW FILE)
+// Run once to create the HREC token. Save the returned tokenId to .env.
+// DO NOT run again — token already exists at 0.0.7964264 on testnet.
+
+const {
+  Client, TokenCreateTransaction, TokenType, TokenSupplyType,
+  AccountId, PrivateKey, Hbar
+} = require('@hashgraph/sdk');
+
+async function deployHRECToken() {
+  const client = Client.forTestnet();
+  client.setOperator(
+    AccountId.fromString(process.env.OPERATOR_ID),
+    PrivateKey.fromString(process.env.OPERATOR_PRIVATE_KEY)
+  );
+
+  const supplyKey  = PrivateKey.generate();
+  const treasuryId = AccountId.fromString(process.env.TREASURY_ACCOUNT_ID);
+
+  const tokenTx = await new TokenCreateTransaction()
+    .setTokenName('Hydropower Renewable Energy Certificate')
+    .setTokenSymbol('HREC')
+    .setTokenType(TokenType.FungibleCommon)
+    .setDecimals(3)              // 1 HREC = 1 MWh = 1,000 token units
+    .setInitialSupply(0)
+    .setTreasuryAccountId(treasuryId)
+    .setSupplyType(TokenSupplyType.Infinite)
+    .setSupplyKey(supplyKey)
+    .setAdminKey(client.operatorPublicKey)
+    .setMaxTransactionFee(new Hbar(30))
+    .execute(client);
+
+  const receipt = await tokenTx.getReceipt(client);
+  const tokenId = receipt.tokenId.toString();
+
+  console.log(`✅ HREC Token deployed: ${tokenId}`);
+  console.log(`   HashScan: https://hashscan.io/testnet/token/${tokenId}`);
+  console.log(`   Supply Key (SAVE THIS): ${supplyKey.toString()}`);
+  console.log(`   Add to .env: HTS_TOKEN_ID=${tokenId}`);
+  console.log(`   Add to .env: HTS_SUPPLY_KEY=${supplyKey.toString()}`);
+
+  return { tokenId, supplyKey: supplyKey.toString() };
+}
+
+deployHRECToken().catch(console.error);
+```
+
+### Mint Logic: `src/carbon-credits/CarbonCreditManager.js`
+
+```javascript
+// FILE: src/carbon-credits/CarbonCreditManager.js
+const {
+  Client, TokenMintTransaction, TokenId,
+  AccountId, PrivateKey
+} = require('@hashgraph/sdk');
+
+class CarbonCreditManager {
+  constructor() {
+    this.client = Client.forTestnet();
+    this.client.setOperator(
+      AccountId.fromString(process.env.OPERATOR_ID),
+      PrivateKey.fromString(process.env.OPERATOR_PRIVATE_KEY)
     );
-    return Math.abs(mean0 - mean1) > epsilon_cut;
+    this.tokenId   = TokenId.fromString(process.env.HTS_TOKEN_ID || '0.0.7964264');
+    this.supplyKey = PrivateKey.fromString(process.env.HTS_SUPPLY_KEY);
   }
 
-  _recalcStats() {
-    if (this.window.length === 0) { this.mean = 0; this.variance = 0; return; }
-    this.mean = this.window.reduce((a,b) => a+b,0) / this.window.length;
-    this.variance = this.window.reduce((acc, v) => acc + Math.pow(v - this.mean, 2), 0);
-  }
+  /**
+   * Mint HREC tokens for a verified generation reading.
+   * @param {number} energyKwh    — verified energy in kWh
+   * @param {string} hcsTxId      — the reveal TX ID (proof link)
+   * @returns {Object}            — mint result with TX ID and HashScan link
+   */
+  async mintHREC(energyKwh, hcsTxId) {
+    const energyMWh    = energyKwh / 1000;
+    const amountToMint = Math.floor(energyMWh * 1000); // 1 HREC = 1 MWh = 1000 units
 
-  getStats() {
+    if (amountToMint <= 0) {
+      throw new Error(`mintHREC: Cannot mint ${amountToMint} units for ${energyKwh} kWh`);
+    }
+
+    const mintTx = await new TokenMintTransaction()
+      .setTokenId(this.tokenId)
+      .setAmount(amountToMint)
+      .freezeWith(this.client)
+      .sign(this.supplyKey);
+
+    const result  = await mintTx.execute(this.client);
+    const receipt = await result.getReceipt(this.client);
+
+    if (receipt.status.toString() !== 'SUCCESS') {
+      throw new Error(`HREC mint failed: ${receipt.status} for ${amountToMint} units`);
+    }
+
+    const txId = result.transactionId.toString();
+    console.log(`✅ HREC minted: ${amountToMint} units (${energyMWh} MWh) | TX: ${txId}`);
+
     return {
-      windowSize:  this.width,
-      mean:        this.mean,
-      driftCount:  this.driftCount,
-      lastDriftAt: this.lastDriftAt,
-      delta:       this.delta
+      txId,
+      amountMinted: amountToMint,
+      energyMWh,
+      hashScanUrl: `https://hashscan.io/testnet/transaction/${txId}`,
+      proofTxId:   hcsTxId
+    };
+  }
+
+  /**
+   * Calculate carbon credits from verified energy generation.
+   * Uses India grid emission factor (CEA 2023: 0.82 tCO2/MWh).
+   */
+  calculateCarbonCredits(energyKwh) {
+    const MWh            = energyKwh / 1000;
+    const emissionFactor = parseFloat(process.env.EMISSION_FACTOR_tCO2_MWh || '0.82');
+    return {
+      HREC_count:    Math.floor(MWh * 1000),   // token units
+      ER_tCO2:       MWh * emissionFactor,       // emission reduction in tCO2
+      emissionFactor,
+      methodology:   'ACM0002',
+      reference:     'CEA India Grid Emission Factor 2023'
     };
   }
 }
 
-module.exports = { ADWINDriftDetector };
+module.exports = { CarbonCreditManager };
 ```
 
-**Why this beats my old KS-test approach:** KS-test is batch — it waits for a full window before detecting drift. ADWIN detects in real time, per reading. In monsoon season when flow rates suddenly triple, ADWIN catches the model drift within 15–20 readings. KS-test would take 100+ readings and miss the entire first week of monsoon.
+---
 
-### Days 2-3 — Four Database Migrations
+## 7. WEEKS 7–8 — ESG CERTIFICATE ENGINE (VC + PDF + QR)
+
+**Goal:** A human-readable ESG certificate backed by cryptographic proof. A buyer gets a one-page PDF. The QR code on that PDF resolves to the HCS transaction that proves the underlying generation was verified by my 5-layer engine.
+
+### New File: `src/certificates/pdf-renderer.js`
+
+```javascript
+// FILE: src/certificates/pdf-renderer.js  (NEW FILE)
+const PDFDocument = require('pdfkit');
+const QRCode      = require('qrcode');
+const path        = require('path');
+const fs          = require('fs');
+
+class PDFCertificateRenderer {
+  constructor() {
+    this.outputDir = path.join(__dirname, '../../certificates/generated/');
+    if (!fs.existsSync(this.outputDir)) {
+      fs.mkdirSync(this.outputDir, { recursive: true });
+    }
+  }
+
+  async generateCertificate(vc, retirement) {
+    const certPath   = path.join(this.outputDir, `HREC-${retirement.id}.pdf`);
+    const hashScanUrl = vc.credentialSubject.verification.hashscan_url;
+
+    // Generate QR code pointing to HashScan TX
+    const qrDataUrl = await QRCode.toDataURL(hashScanUrl, {
+      width: 150, margin: 2, color: { dark: '#1a472a', light: '#ffffff' }
+    });
+    const qrBuffer = Buffer.from(qrDataUrl.split(',')[1], 'base64');
+
+    return new Promise((resolve, reject) => {
+      const doc    = new PDFDocument({ size: 'A4', layout: 'landscape', margin: 40 });
+      const stream = fs.createWriteStream(certPath);
+      doc.pipe(stream);
+
+      // ── HEADER ────────────────────────────────────────────────────
+      doc.rect(0, 0, doc.page.width, 80).fill('#1a472a');
+      doc.fillColor('#ffffff').fontSize(22).font('Helvetica-Bold')
+         .text('HYDROPOWER RENEWABLE ENERGY CERTIFICATE', 40, 25);
+      doc.fontSize(11).font('Helvetica')
+         .text('Verified by Hedera Consensus Service | ACM0002 Methodology', 40, 52);
+
+      // ── CERTIFICATE BODY ──────────────────────────────────────────
+      doc.fillColor('#000000').fontSize(12).font('Helvetica-Bold')
+         .text('CERTIFICATE OF RETIREMENT', 40, 100);
+
+      const cs = vc.credentialSubject;
+      doc.font('Helvetica').fontSize(10);
+
+      const fields = [
+        ['Certificate ID',   retirement.id],
+        ['Issuer',           'Bikram Biswas — Hedera Hydropower dMRV System'],
+        ['Plant Name',       cs.plant.name],
+        ['Plant Location',   cs.plant.location],
+        ['Capacity',         `${cs.plant.capacity_kW} kW`],
+        ['Methodology',      'ACM0002 — Small Hydropower Generation'],
+        ['Energy Generated', `${cs.generation.value_MWh.toFixed(3)} MWh`],
+        ['HREC Units',       `${cs.carbonCredits.hrec_tokens} HREC`],
+        ['CO₂ Avoided',      `${cs.carbonCredits.quantity_tCO2.toFixed(3)} tCO₂`],
+        ['Trust Score',      `${(cs.verification.trustScore * 100).toFixed(1)}%  (APPROVED)`],
+        ['Vintage Year',     cs.generation.vintage.toString()],
+        ['Period',           `${cs.generation.period_start} → ${cs.generation.period_end}`],
+        ['Retired On',       new Date().toISOString().split('T')[0]],
+        ['Retired By',       retirement.beneficiaryName || retirement.buyerName],
+      ];
+
+      let y = 125;
+      fields.forEach(([label, value]) => {
+        doc.font('Helvetica-Bold').text(`${label}:`, 40, y, { width: 160, continued: false });
+        doc.font('Helvetica').text(value,             210, y, { width: 360 });
+        y += 18;
+      });
+
+      // ── BLOCKCHAIN PROOF ──────────────────────────────────────────
+      doc.rect(40, y + 5, 730, 55).stroke('#1a472a');
+      doc.font('Helvetica-Bold').fontSize(9).text('BLOCKCHAIN VERIFICATION', 50, y + 10);
+      doc.font('Helvetica').fontSize(8)
+         .text(`HCS Commitment TX: ${cs.verification.hcs_commitment_tx}`, 50, y + 22)
+         .text(`HCS Reveal TX:     ${cs.verification.hcs_reveal_tx}`,     50, y + 34)
+         .text(`Verify on HashScan: ${hashScanUrl}`,                       50, y + 46);
+
+      // ── QR CODE ───────────────────────────────────────────────────
+      doc.image(qrBuffer, 680, 95, { width: 100, height: 100 });
+      doc.fontSize(7).text('Scan to verify on-chain', 678, 198);
+
+      // ── FOOTER ───────────────────────────────────────────────────
+      doc.rect(0, doc.page.height - 30, doc.page.width, 30).fill('#f0f4f0');
+      doc.fillColor('#555555').fontSize(8)
+         .text(
+           `This certificate is cryptographically anchored on Hedera Consensus Service. ` +
+           `Credential ID: ${vc.id}`,
+           40, doc.page.height - 22
+         );
+
+      doc.end();
+      stream.on('finish', () => resolve({ path: certPath, hashScanUrl }));
+      stream.on('error', reject);
+    });
+  }
+}
+
+module.exports = { PDFCertificateRenderer };
+```
+
+### New File: `src/api/v1/certificates.js`
+
+```javascript
+// FILE: src/api/v1/certificates.js  (NEW FILE)
+const express  = require('express');
+const router   = express.Router();
+const fs       = require('fs');
+const { validateBuyerJWT } = require('../../middleware/buyer-auth');
+const dbCerts  = require('../../db/models/certificates');
+
+// GET /api/v1/certificates/:id  → JSON-LD VC
+router.get('/:id', validateBuyerJWT, async (req, res) => {
+  const cert = await dbCerts.findById(req.params.id);
+  if (!cert) return res.status(404).json({ error: 'CERTIFICATE_NOT_FOUND' });
+  return res.json(cert.vcJson);
+});
+
+// GET /api/v1/certificates/:id/pdf  → PDF download
+router.get('/:id/pdf', validateBuyerJWT, async (req, res) => {
+  const cert = await dbCerts.findById(req.params.id);
+  if (!cert) return res.status(404).json({ error: 'CERTIFICATE_NOT_FOUND' });
+  if (!fs.existsSync(cert.pdfPath)) {
+    return res.status(404).json({ error: 'PDF_NOT_GENERATED_YET' });
+  }
+  res.setHeader('Content-Type', 'application/pdf');
+  res.setHeader('Content-Disposition', `attachment; filename="HREC-${cert.id}.pdf"`);
+  fs.createReadStream(cert.pdfPath).pipe(res);
+});
+
+// GET /api/v1/certificates/:id/verify  → Public verification (no auth)
+router.get('/:id/verify', async (req, res) => {
+  const cert = await dbCerts.findById(req.params.id);
+  if (!cert) return res.status(404).json({ valid: false, error: 'NOT_FOUND' });
+  return res.json({
+    valid:        true,
+    credentialId: cert.credentialId,
+    status:       cert.status,
+    hashScanUrl:  cert.hashscanUrl,
+    issuedTo:     cert.subjectDid,
+    plantId:      cert.plantId,
+    quantity:     cert.quantityHrec,
+    vintage:      new Date(cert.periodStart).getFullYear()
+  });
+});
+
+module.exports = router;
+```
+
+---
+
+## 8. DATABASE MIGRATIONS — All 4 Required Tables
 
 ```sql
 -- FILE: src/db/migrations/001_create_claims_table.sql
 CREATE TABLE IF NOT EXISTS claims (
-    id                  UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    plant_id            VARCHAR(50) NOT NULL,
-    buyer_did           VARCHAR(200) NOT NULL,
-    buyer_account_id    VARCHAR(50),
-    quantity_requested  DECIMAL(18, 6) NOT NULL,
-    quantity_approved   DECIMAL(18, 6),
-    period_start        TIMESTAMP NOT NULL,
-    period_end          TIMESTAMP NOT NULL,
-    status              VARCHAR(30) NOT NULL DEFAULT 'PENDING'
-                          CHECK (status IN (
-                            'PENDING','SUBMITTED_TO_GUARDIAN','GUARDIAN_APPROVED',
-                            'TOKEN_BURNING','CERTIFICATE_GENERATING',
-                            'COMPLETED','REJECTED','CANCELLED','EXPIRED'
-                          )),
+    id                      UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    plant_id                VARCHAR(50) NOT NULL,
+    buyer_did               VARCHAR(200) NOT NULL,
+    buyer_account_id        VARCHAR(50),
+    quantity_requested      DECIMAL(18, 6) NOT NULL,
+    quantity_approved       DECIMAL(18, 6),
+    period_start            TIMESTAMP NOT NULL,
+    period_end              TIMESTAMP NOT NULL,
+    status                  VARCHAR(30) NOT NULL DEFAULT 'PENDING'
+                              CHECK (status IN (
+                                'PENDING','SUBMITTED_TO_GUARDIAN','GUARDIAN_APPROVED',
+                                'TOKEN_BURNING','CERTIFICATE_GENERATING',
+                                'COMPLETED','REJECTED','CANCELLED','EXPIRED'
+                              )),
     guardian_document_id    VARCHAR(200),
     guardian_policy_id      VARCHAR(200),
     guardian_submission_at  TIMESTAMP,
@@ -406,13 +802,11 @@ CREATE TABLE IF NOT EXISTS claims (
     created_at              TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at              TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
-CREATE INDEX idx_claims_plant_id  ON claims(plant_id);
-CREATE INDEX idx_claims_buyer_did ON claims(buyer_did);
-CREATE INDEX idx_claims_status    ON claims(status);
-CREATE INDEX idx_claims_created   ON claims(created_at DESC);
-```
+CREATE INDEX idx_claims_plant_id   ON claims(plant_id);
+CREATE INDEX idx_claims_buyer_did  ON claims(buyer_did);
+CREATE INDEX idx_claims_status     ON claims(status);
+CREATE INDEX idx_claims_created    ON claims(created_at DESC);
 
-```sql
 -- FILE: src/db/migrations/002_create_certificates_table.sql
 CREATE TABLE IF NOT EXISTS certificates (
     id                  UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -445,9 +839,7 @@ CREATE TABLE IF NOT EXISTS certificates (
 CREATE INDEX idx_certs_claim_id    ON certificates(claim_id);
 CREATE INDEX idx_certs_subject_did ON certificates(subject_did);
 CREATE INDEX idx_certs_plant_id    ON certificates(plant_id);
-```
 
-```sql
 -- FILE: src/db/migrations/003_create_buyers_table.sql
 CREATE TABLE IF NOT EXISTS buyers (
     id                  UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -469,30 +861,28 @@ CREATE TABLE IF NOT EXISTS buyers (
     created_at          TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at          TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
-```
 
-```sql
 -- FILE: src/db/migrations/004_create_retirements_table.sql
 CREATE TABLE IF NOT EXISTS retirements (
-    id                  UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    claim_id            UUID NOT NULL REFERENCES claims(id),
-    buyer_id            UUID NOT NULL REFERENCES buyers(id),
-    certificate_id      UUID REFERENCES certificates(id),
-    token_id            VARCHAR(50) NOT NULL,
-    quantity_burned     DECIMAL(18, 6) NOT NULL,
-    burn_tx_id          VARCHAR(200) UNIQUE NOT NULL,
-    burn_tx_timestamp   TIMESTAMP NOT NULL,
-    retirement_reason   VARCHAR(200),
-    beneficiary_name    VARCHAR(200),
-    beneficiary_did     VARCHAR(200),
-    hcs_log_tx_id       VARCHAR(200),
-    registry_submission_status VARCHAR(30) DEFAULT 'NOT_SUBMITTED'
-                          CHECK (registry_submission_status IN (
-                            'NOT_SUBMITTED','SUBMITTED_TO_VERRA','VERRA_CONFIRMED',
-                            'SUBMITTED_TO_GOLD_STANDARD','GS_CONFIRMED','FAILED'
-                          )),
-    metadata            JSONB DEFAULT '{}',
-    created_at          TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    id                          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    claim_id                    UUID NOT NULL REFERENCES claims(id),
+    buyer_id                    UUID NOT NULL REFERENCES buyers(id),
+    certificate_id              UUID REFERENCES certificates(id),
+    token_id                    VARCHAR(50) NOT NULL,
+    quantity_burned             DECIMAL(18, 6) NOT NULL,
+    burn_tx_id                  VARCHAR(200) UNIQUE NOT NULL,
+    burn_tx_timestamp           TIMESTAMP NOT NULL,
+    retirement_reason           VARCHAR(200),
+    beneficiary_name            VARCHAR(200),
+    beneficiary_did             VARCHAR(200),
+    hcs_log_tx_id               VARCHAR(200),
+    registry_submission_status  VARCHAR(30) DEFAULT 'NOT_SUBMITTED'
+                                  CHECK (registry_submission_status IN (
+                                    'NOT_SUBMITTED','SUBMITTED_TO_VERRA','VERRA_CONFIRMED',
+                                    'SUBMITTED_TO_GOLD_STANDARD','GS_CONFIRMED','FAILED'
+                                  )),
+    metadata                    JSONB DEFAULT '{}',
+    created_at                  TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 ```
 
@@ -504,631 +894,57 @@ psql -h localhost -U postgres -d hedera_mrv -f src/db/migrations/002_create_cert
 psql -h localhost -U postgres -d hedera_mrv -f src/db/migrations/003_create_buyers_table.sql
 psql -h localhost -U postgres -d hedera_mrv -f src/db/migrations/004_create_retirements_table.sql
 
-# Verify:
+# Verify all 4 tables exist:
 psql -h localhost -U postgres -d hedera_mrv -c "\dt" | grep -E "claims|certificates|buyers|retirements"
 ```
 
-### Days 3-5 — Core Hedera + Certificate Files (12 new files)
+---
 
-**`src/hedera/token-retirement.js`** — Burns HTS tokens on-chain to prove retirement:
-```javascript
-const { Client, TokenBurnTransaction, TokenId, AccountId, PrivateKey } = require('@hashgraph/sdk');
+## 9. WHAT IS NOT IN ROADMAP 1 (Intentionally)
 
-class TokenRetirementManager {
-  constructor() {
-    this.client = Client.forTestnet();
-    this.client.setOperator(
-      AccountId.fromString(process.env.RETIREMENT_ACCOUNT_ID),
-      PrivateKey.fromString(process.env.RETIREMENT_ACCOUNT_PRIVATE_KEY)
-    );
-    this.tokenId = TokenId.fromString('0.0.7964264');
-  }
+Roadmap 1 is the cryptographic and scientific foundation only. These come in Roadmap 2 and 3:
 
-  async retireTokensByBurn(amount) {
-    const burnTx  = await new TokenBurnTransaction()
-      .setTokenId(this.tokenId)
-      .setAmount(amount)
-      .execute(this.client);
-    const receipt = await burnTx.getReceipt(this.client);
-    if (receipt.status.toString() !== 'SUCCESS') {
-      throw new Error(`Token burn failed: ${receipt.status}`);
-    }
-    const txId = burnTx.transactionId.toString();
-    return {
-      txId,
-      burnedAmount: amount,
-      hashScanUrl: `https://hashscan.io/testnet/transaction/${txId}`,
-      retiredAt:   new Date().toISOString(),
-      method:      'TREASURY_BURN'
-    };
-  }
-
-  async getTokenBalance(accountId) {
-    const { AccountBalanceQuery } = require('@hashgraph/sdk');
-    const balance = await new AccountBalanceQuery()
-      .setAccountId(AccountId.fromString(accountId))
-      .execute(this.client);
-    const tokenBalance = balance.tokens.get(this.tokenId);
-    return tokenBalance ? tokenBalance.toNumber() : 0;
-  }
-}
-module.exports = { TokenRetirementManager };
 ```
-
-**`src/hedera/hcs-audit-logger.js`** — Every critical event logs to HCS immutably:
-```javascript
-const { Client, TopicMessageSubmitTransaction, TopicId, AccountId, PrivateKey } = require('@hashgraph/sdk');
-
-class HCSAuditLogger {
-  constructor() {
-    this.client = Client.forTestnet();
-    this.client.setOperator(
-      AccountId.fromString(process.env.OPERATOR_ID),
-      PrivateKey.fromString(process.env.OPERATOR_PRIVATE_KEY)
-    );
-    this.topicId = TopicId.fromString('0.0.7462776');
-  }
-
-  async _submit(eventObj) {
-    const message = JSON.stringify({ ...eventObj, loggedAt: Date.now() });
-    const tx      = await new TopicMessageSubmitTransaction()
-      .setTopicId(this.topicId)
-      .setMessage(message)
-      .execute(this.client);
-    await tx.getReceipt(this.client);
-    return tx.transactionId.toString();
-  }
-
-  async logClaimInitiation(claimData) {
-    return this._submit({
-      event: 'CLAIM_INITIATED', claimId: claimData.id,
-      plantId: claimData.plantId, buyerDID: claimData.buyerDid,
-      quantity: claimData.quantityRequested
-    });
-  }
-
-  async logTokenRetirement(data) {
-    return this._submit({
-      event: 'TOKEN_RETIRED', claimId: data.claimId,
-      burnTxId: data.burnTxId, quantity: data.quantityBurned
-    });
-  }
-
-  async logCertificateGeneration(cert) {
-    return this._submit({
-      event: 'CERTIFICATE_GENERATED', certId: cert.id,
-      credentialId: cert.credentialId, pdfHash: cert.pdfHashSha256
-    });
-  }
-
-  async logDriftWarning(drift) {
-    return this._submit({
-      event: 'ML_DRIFT_WARNING', plantId: drift.plantId,
-      anomalyRate: drift.anomalyRate, action: 'HUMAN_REVIEW_REQUIRED'
-    });
-  }
-}
-module.exports = { HCSAuditLogger };
-```
-
-### Days 5-7 — API Routes + Wiring
-
-**`src/api/v1/claims.js`** — All 6 endpoints:
-
-```javascript
-const express = require('express');
-const router  = express.Router();
-const { v4: uuidv4 }             = require('uuid');
-const { TokenRetirementManager } = require('../../hedera/token-retirement');
-const { HCSAuditLogger }         = require('../../hedera/hcs-audit-logger');
-const { GuardianClient }         = require('../../hedera/guardian-client');
-const { validateBuyerJWT }       = require('../../middleware/buyer-auth');
-const { validateClaimPayload }   = require('../../middleware/claim-validation');
-const db                         = require('../../db/models/claims');
-
-// POST /api/v1/claims/validate-balance  (Guardian hook — no auth required)
-router.post('/validate-balance', async (req, res) => {
-  const { buyerAccountId, quantity } = req.body;
-  try {
-    const mgr     = new TokenRetirementManager();
-    const balance = await mgr.getTokenBalance(buyerAccountId);
-    const valid   = balance >= parseFloat(quantity);
-    return res.json({ valid, balance, required: parseFloat(quantity),
-      shortfall: valid ? 0 : parseFloat(quantity) - balance });
-  } catch (err) {
-    return res.status(500).json({ valid: false, error: err.message });
-  }
-});
-
-// POST /api/v1/claims/initiate
-router.post('/initiate', validateBuyerJWT, validateClaimPayload, async (req, res) => {
-  const { quantity, plantId, periodStart, periodEnd, buyerDid, buyerAccountId } = req.body;
-  try {
-    const mgr     = new TokenRetirementManager();
-    const balance = await mgr.getTokenBalance(buyerAccountId);
-    if (balance < quantity) {
-      return res.status(400).json({ error: 'INSUFFICIENT_BALANCE', balance, required: quantity });
-    }
-    const claimId = uuidv4();
-    const claim   = await db.create({ id: claimId, plantId, buyerDid, buyerAccountId,
-      quantityRequested: quantity, periodStart: new Date(periodStart),
-      periodEnd: new Date(periodEnd), status: 'PENDING' });
-    const logger   = new HCSAuditLogger();
-    const hcsTxId  = await logger.logClaimInitiation(claim);
-    const guardian = new GuardianClient();
-    const docId    = await guardian.submitRetirementClaim(claim);
-    await db.update(claimId, { status: 'SUBMITTED_TO_GUARDIAN',
-      guardianDocumentId: docId, hcsCommitmentTxId: hcsTxId,
-      guardianSubmissionAt: new Date() });
-    return res.status(201).json({ claimId, status: 'SUBMITTED_TO_GUARDIAN',
-      guardianDocumentId: docId,
-      hashScanAudit: `https://hashscan.io/testnet/transaction/${hcsTxId}`,
-      message: 'Poll GET /api/v1/claims/:claimId for status' });
-  } catch (err) {
-    return res.status(500).json({ error: 'CLAIM_INITIATION_FAILED', details: err.message });
-  }
-});
-
-// GET /api/v1/claims/:claimId
-router.get('/:claimId', validateBuyerJWT, async (req, res) => {
-  const claim = await db.findById(req.params.claimId);
-  if (!claim) return res.status(404).json({ error: 'CLAIM_NOT_FOUND' });
-  if (claim.status === 'SUBMITTED_TO_GUARDIAN' && claim.guardianDocumentId) {
-    const g      = new GuardianClient();
-    const status = await g.checkClaimStatus(claim.guardianDocumentId);
-    if (status === 'APPROVED') {
-      await db.update(claim.id, { status: 'GUARDIAN_APPROVED', guardianApprovalAt: new Date() });
-      claim.status = 'GUARDIAN_APPROVED';
-    }
-  }
-  return res.json(claim);
-});
-
-// GET /api/v1/claims/:claimId/certificate
-router.get('/:claimId/certificate', validateBuyerJWT, async (req, res) => {
-  const claim = await db.findById(req.params.claimId);
-  if (!claim || claim.status !== 'COMPLETED')
-    return res.status(400).json({ error: 'CERTIFICATE_NOT_READY', status: claim?.status });
-  const cert = await require('../../db/models/certificates').findByClaimId(claim.id);
-  return res.json(cert);
-});
-
-// GET /api/v1/claims/:claimId/certificate/pdf
-router.get('/:claimId/certificate/pdf', validateBuyerJWT, async (req, res) => {
-  const claim = await db.findById(req.params.claimId);
-  if (!claim || claim.status !== 'COMPLETED')
-    return res.status(404).json({ error: 'CERTIFICATE_NOT_AVAILABLE' });
-  const cert = await require('../../db/models/certificates').findByClaimId(claim.id);
-  res.setHeader('Content-Type', 'application/pdf');
-  res.setHeader('Content-Disposition', `attachment; filename="HREC-${claim.id}.pdf"`);
-  require('fs').createReadStream(cert.pdfPath).pipe(res);
-});
-
-// POST /api/v1/claims/:claimId/cancel
-router.post('/:claimId/cancel', validateBuyerJWT, async (req, res) => {
-  const claim = await db.findById(req.params.claimId);
-  if (!claim) return res.status(404).json({ error: 'CLAIM_NOT_FOUND' });
-  if (!['PENDING', 'SUBMITTED_TO_GUARDIAN'].includes(claim.status))
-    return res.status(400).json({ error: 'CANNOT_CANCEL', status: claim.status });
-  await db.update(claim.id, { status: 'CANCELLED' });
-  return res.json({ claimId: claim.id, status: 'CANCELLED' });
-});
-
-module.exports = router;
-```
-
-**Wire into `src/api/server.js`** — find the telemetry router block, add after it:
-```javascript
-// ADD after existing route registrations in server.js:
-app.use('/api/v1/claims',       require('./v1/claims'));
-app.use('/api/v1/buyer',        require('./v1/buyer'));
-app.use('/api/v1/certificates', require('./v1/certificates'));
+NOT IN ROADMAP 1:
+  ❌ Claims API (src/api/v1/claims.js)        → Roadmap 2, Weeks 9–14
+  ❌ Token retirement flow                    → Roadmap 2, Weeks 9–14
+  ❌ Guardian policy integration              → Roadmap 2, Weeks 15–18
+  ❌ ADWIN drift detection (JS)               → Roadmap 2, Weeks 19–22
+  ❌ Verifier staking (off-chain + Solidity)  → Roadmap 3, Months 13–18
+  ❌ ZKP privacy layer (Circom + snarkjs)     → Roadmap 3, Months 16–22
+  ❌ Multi-methodology router                 → Roadmap 3, Months 18–28
+  ❌ Enterprise SDK                           → Roadmap 3, Months 20–30
+  ❌ ISO 27001 / ISO 14064-2 accreditation   → Roadmap 3, Months 17–22
+  ❌ Verra VCS formal registration            → Roadmap 3, Month 31–35
+  ❌ India CCTS registration                  → Roadmap 3, Month 13–15
 ```
 
 ---
 
-## WEEK 2 (April 1–7) — GUARDIAN POLICY + END-TO-END TEST
+## 10. ROADMAP 1 EXIT CRITERIA
 
-### Guardian Setup — Step by Step
-
-```
-URL: https://guardian-ui.hedera.com
-
-STEP 1: Create Standard Registry account
-  → Role: Standard Registry (not User, not Auditor)
-  → Enter your testnet Operator ID from .env
-  → Enter testnet private key
-  → Guardian generates a DID → SAVE IT → this becomes ISSUER_DID in .env
-
-STEP 2: Associate HREC token
-  → Dashboard → Token Management → Associate Token
-  → Token ID: 0.0.7964264
-  → Confirm (~$0.05 HBAR)
-
-STEP 3: Create Policy
-  → Policies → New Policy
-  → Name:        HREC-Retirement-ESG-v1
-  → Tag:         HREC_RETIREMENT
-  → Description: ACM0002 hydropower HREC retirement and ESG certificate issuance
-  → Version:     1.0.0
-
-STEP 4: Add Policy Blocks (in exact order):
-  1. InterfaceContainerBlock     → container for all roles
-  2. requestVCDocumentBlock      → buyer submits retirement request
-  3. sendToGuardianBlock         → calls POST /api/v1/claims/validate-balance
-  4. approveMintDocumentBlock    → 3-of-5 verifier multi-sig approval
-  5. mintDocumentBlock           → token burn + certificate VC issuance
-
-STEP 5: Publish → copy policyId UUID immediately
-  → Add to Railway env: GUARDIAN_POLICY_ID=<uuid>
-  → Add to local .env: GUARDIAN_POLICY_ID=<uuid>
-```
-
-### End-to-End Test Sequence (all 9 steps must pass)
-
-```bash
-# A: Generate buyer JWT
-node -e "
-  const jwt = require('jsonwebtoken');
-  const t = jwt.sign(
-    { buyerId: 'test-001', buyerDid: 'did:hedera:testnet:test', role: 'BUYER', tier: 'STANDARD' },
-    process.env.JWT_SECRET, { expiresIn: '24h' }
-  );
-  console.log('BUYER_TOKEN=' + t);
-"
-export BUYER_TOKEN="<paste token>"
-
-# B: Initiate claim
-curl -X POST http://localhost:3000/api/v1/claims/initiate \
-  -H "Authorization: Bearer $BUYER_TOKEN" \
-  -H "Content-Type: application/json" \
-  -d '{"quantity":10,"plantId":"plant-001","periodStart":"2026-02-01T00:00:00Z",
-       "periodEnd":"2026-02-28T23:59:59Z","buyerDid":"did:hedera:testnet:test",
-       "buyerAccountId":"0.0.XXXXX"}'
-# Expected: claimId + status SUBMITTED_TO_GUARDIAN + hashScanAudit URL
-
-# C: Poll status → D: Approve in Guardian UI (3-of-5 sigs)
-# E: Poll again → GUARDIAN_APPROVED → F: Check HashScan burn
-# G: Check HCS topic for TOKEN_RETIRED message
-# H: GET certificate JSON → I: GET certificate PDF
-# All 9 must pass before Week 3
-
-echo "HashScan audit: https://hashscan.io/testnet/topic/0.0.7462776"
-echo "HashScan token: https://hashscan.io/testnet/token/0.0.7964264"
-```
-
----
-
-## WEEK 3 (April 8–14) — FIRST REAL PILOT PLANTS
-
-### Pilot Outreach Email (Send to 10 contacts simultaneously)
+By the end of Week 8, all of these must be true — not "planned", not "in progress":
 
 ```
-Subject: Free blockchain carbon credit verification for your hydro plant
-         (90 days, no cost, no IoT sensors needed)
-
-Dear [Name],
-
-I have built a physics-based MRV system for hydropower carbon credits
-on the Hedera blockchain. Traditional MRV audits cost ₹12–40 lakh/year.
-Mine costs ₹8,000–25,000/year.
-
-WHAT I NEED FROM YOU: 3 months of generation records (kWh), your
-plant capacity (MW), and head height (from your commissioning report).
-
-WHAT YOU RECEIVE: Your generation verified on Hedera, an ESG certificate
-PDF, and a blockchain transaction as permanent audit proof. Setup: 2 hours.
-
-Live system: hydropower-mrv-19feb26.vercel.app
-GitHub: github.com/BikramBiswas786/Hedera-hydropower-dMRV-with-5-layer-verification-
-
-Open to a 30-minute demo this week?
-
-Bikram Biswas
+EXIT CHECKLIST:
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+□ Git history is clean — .env.backup and .env.old purged
+□ All Hedera operator keys rotated — old keys invalidated
+□ GitHub Advanced Security enabled + secret scanning active
+□ Commit-reveal pattern live in workflow.js (both HCS TXs)
+□ vc-generator.js creates W3C VCs for APPROVED readings only
+□ ISSUER_DID registered on Hedera testnet HCS
+□ One PLANT_DID per pilot plant registered
+□ HREC token on testnet — TokenCreateTransaction TX on HashScan
+□ CarbonCreditManager.js mints tokens from verified energy readings
+□ pdf-renderer.js generates A4 landscape ESG certificate PDF
+□ QR code on PDF resolves to correct HashScan TX URL
+□ GET /api/v1/certificates/:id returns JSON-LD VC
+□ GET /api/v1/certificates/:id/pdf returns PDF binary
+□ All 4 database migrations applied and verified
+□ At least 5 real end-to-end test readings: sensor → verify → mint → VC → PDF
+□ Test results documented: ≥3 APPROVED, ≥1 FLAGGED, ≥1 REJECTED
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ```
 
-### Pilot Data Form
-
-When a plant agrees, collect within 48 hours:
-
-```
-PLANT IDENTITY: name, operator, state, district, river, GPS (optional)
-TECHNICAL:      capacity (MW), turbine type, efficiency (%), head (m)
-HYDROLOGY:      design head (m), annual average flow (m³/s), monsoon range
-GENERATION:     monthly kWh for last 6 months + grid hours per month
-CARBON STATUS:  existing Verra cert? current carbon revenue?
-CONTACT:        name, email, WhatsApp, best time to call
-```
-
-### Loading Pilot Data
-
-```bash
-# Register plant
-curl -X POST http://localhost:3000/api/v1/plants \
-  -d '{"plant_id":"pilot-001","name":"Plant Name","capacity_mw":5.0,
-       "head_meters":65.0,"turbine_efficiency":0.85}'
-
-# Monthly kWh → average kW: e.g., 1,200,000 kWh ÷ 672 hours = 1,786 kW
-# Expected flow from P = ρgQHη: Q = 1,786,000 / (998.2 × 9.81 × 65 × 0.85) = 3.30 m³/s
-
-curl -X POST http://localhost:3000/api/v1/telemetry \
-  -d '{"plantId":"pilot-001","flowRate":3.30,"headHeight":65.0,
-       "powerOutput":1786,"turbineEfficiency":0.85,
-       "dataSource":"HISTORICAL_RECORDS"}'
-
-# Expected: trustScore > 0.90 → APPROVED → mint HREC tokens
-```
-
-### First Revenue Target
-
-```
-3 pilot plants × ₹5,000 MRV fee (one-time) = ₹15,000 by Week 4
-Target: first paid subscription by Month 2 (₹8,300/month = $100/month Basic tier)
-```
-
----
-
-## WEEK 4 (April 15–21) — MAINNET DEPLOYMENT
-
-### Pre-Deployment Checklist
-
-```bash
-# No secrets in code:
-git log --all --full-history --name-status | grep -E "\.env|private_key|secret"
-
-# No hardcoded Hedera IDs:
-grep -r "0\.0\.[0-9]" src/ --include="*.js" | grep -v "process.env"
-
-# All tests green on testnet:
-HEDERA_NETWORK=testnet npm test
-# Must show 262+ passing, >85% coverage
-
-# End-to-end claim flow completed:
-# All 9 steps from Week 2 passed on testnet ← non-negotiable
-```
-
-### Mainnet Account Setup
-
-```bash
-# Go to portal.hedera.com → Create 3 mainnet accounts:
-# 1. OPERATOR     (fund with 200+ HBAR — sufficient for ~1 year of operations)
-# 2. RETIREMENT   (receives burned tokens — no spend key shared with anyone)
-# 3. ISSUER       (linked to Guardian DID)
-
-# Create mainnet HCS topic:
-node scripts/create-mainnet-topic.js
-# → Output: MAINNET_HCS_TOPIC_ID=0.0.XXXXXX → add to Railway env vars
-
-# Create mainnet HREC token (1 billion supply, 6 decimals):
-node scripts/create-mainnet-token.js
-# → Output: MAINNET_TOKEN_ID=0.0.XXXXXX → add to Railway env vars
-
-# Update Guardian to use mainnet:
-# Guardian → Settings → Network → Switch to Mainnet
-# Re-associate mainnet HREC token in Guardian token management
-
-# Railway deploy:
-railway up
-# Verify: https://your-app.railway.app/health
-# Expected: { "status": "healthy", "network": "mainnet", "version": "1.7.0" }
-```
-
----
-
-## MONTHS 2–3 — SHADOW MODE + CAD TRUST
-
-### Shadow Mode: Verra Comparison (Month 2–3)
-
-**What this is:** I run my dMRV calculations in parallel with traditional Verra methodology calculations on the same real plant data. I compare results. If my system produces generation numbers within ±5% of Verra's methodology, I have hard proof that my system is technically equivalent.
-
-```javascript
-// FILE: src/shadow-mode/verra-comparator.js  (NEW)
-class VerraShadowComparator {
-  constructor() {
-    // Verra ACM0002 grid emission factor for India (CEA 2023)
-    this.INDIA_GRID_EF = 0.82;  // tCO2e/MWh
-
-    // Verra baseline energy calculation (simplified ACM0002)
-    // BEy = EGy × EFgrid
-    // EGy = electricity generated (MWh/year)
-    // EFgrid = grid emission factor
-  }
-
-  calculateVerraBaseline(energyMWh) {
-    return {
-      baselineEmissions: energyMWh * this.INDIA_GRID_EF,
-      projectEmissions:  0,  // hydropower has near-zero direct emissions
-      emissionReduction: energyMWh * this.INDIA_GRID_EF,
-      methodology:       'ACM0002',
-      emissionFactor:    this.INDIA_GRID_EF,
-      unit:              'tCO2e'
-    };
-  }
-
-  compareWithDMRV(dmrvEnergyMWh, verraEnergyMWh) {
-    const deviation = Math.abs(dmrvEnergyMWh - verraEnergyMWh) / verraEnergyMWh;
-    return {
-      dmrvEnergy:    dmrvEnergyMWh,
-      verraEnergy:   verraEnergyMWh,
-      deviation:     deviation,
-      deviationPct:  (deviation * 100).toFixed(2) + '%',
-      equivalent:    deviation <= 0.05,  // within 5% = equivalent
-      status:        deviation <= 0.05 ? 'EQUIVALENT' : 'DIVERGENT'
-    };
-  }
-}
-module.exports = { VerraShadowComparator };
-```
-
-### CAD Trust — Double-Counting Prevention (Month 3)
-
-**Why this is critical:** Without double-counting prevention, the same megawatt-hour of generation could theoretically be claimed by two different buyers. This is the single most important trust feature for enterprise buyers and regulators.
-
-```javascript
-// FILE: src/hedera/cad-trust.js  (NEW)
-// CAD = Claim Attribution and De-duplication
-// Each MWh of verified generation gets one and only one claim key.
-// The claim key is stored on HCS. If the same period is claimed twice,
-// the second claim is rejected immediately.
-
-class CADTrust {
-  constructor(hcsLogger) {
-    this.hcsLogger = hcsLogger;
-    // In-memory cache of active claim keys (keyed by plant+period hash)
-    // In production this would be a Redis set for distributed safety
-    this.activeClaimKeys = new Set();
-  }
-
-  /**
-   * Generate a unique claim key for a plant + time period.
-   * This key is deterministic — same plant + period always produces same key.
-   * @returns {string} SHA-256 hash of plantId + periodStart + periodEnd
-   */
-  generateClaimKey(plantId, periodStart, periodEnd) {
-    const crypto = require('crypto');
-    return crypto
-      .createHash('sha256')
-      .update(`${plantId}:${periodStart}:${periodEnd}`)
-      .digest('hex');
-  }
-
-  /**
-   * Attempt to register a claim. Returns false if already claimed.
-   * Logs the claim registration to HCS for immutable audit trail.
-   */
-  async registerClaim(plantId, periodStart, periodEnd, claimId, buyerDid) {
-    const claimKey = this.generateClaimKey(plantId, periodStart, periodEnd);
-
-    if (this.activeClaimKeys.has(claimKey)) {
-      return {
-        success: false,
-        reason:  'DOUBLE_SPEND_DETECTED',
-        claimKey,
-        message: `Period ${periodStart}–${periodEnd} for plant ${plantId} already has an active claim`
-      };
-    }
-
-    this.activeClaimKeys.add(claimKey);
-    await this.hcsLogger._submit({
-      event:    'CAD_CLAIM_KEY_REGISTERED',
-      claimKey, claimId, plantId,
-      periodStart, periodEnd, buyerDid,
-      registeredAt: Date.now()
-    });
-
-    return { success: true, claimKey };
-  }
-
-  async releaseClaim(plantId, periodStart, periodEnd) {
-    const claimKey = this.generateClaimKey(plantId, periodStart, periodEnd);
-    this.activeClaimKeys.delete(claimKey);
-  }
-}
-module.exports = { CADTrust };
-```
-
----
-
-## MONTHS 4–6 — PRICING, ONBOARDING, AND FIRST REVENUE TARGETS
-
-### 3-Tier Pricing Model (Launch Month 4)
-
-| Tier | Monthly Price | Annual Price | Features |
-|---|---|---|---|
-| **Basic** | $100/mo | $1,200/yr | Single sensor, standard ML, manual flag review, PDF certificate |
-| **Standard** | $300/mo | $3,600/yr | Multi-sensor redundancy, ADWIN drift detection, auto-approval queue |
-| **Premium** | $500/mo | $6,000/yr | ZKP privacy proofs, multi-sig, physical audit report, CAD Trust |
-
-**India pricing (₹):**
-- Basic: ₹8,300/month
-- Standard: ₹25,000/month
-- Premium: ₹41,500/month
-
-This is still 10–50× cheaper than traditional annual audit cost of ₹12–40 lakh/year.
-
-### Revenue Milestones
-
-```
-Month 1: ₹15,000  — 3 pilot MRV setup fees
-Month 2: ₹25,000  — first paid subscription + 1 verification fee
-Month 3: ₹50,000  — 5 plants on Basic tier @ ₹8,300 + 2 retirements
-Month 4: ₹75,000  — 8 plants across tiers + 5 HREC retirements × $0.50 fee
-Month 5: ₹100,000 — 12 plants + first Standard tier customer
-Month 6: ₹83,000/month recurring → $83,000 ARR milestone
-```
-
-### Month 6 Infrastructure State
-
-```
-✅ 10–20 active pilot plants on Hedera mainnet
-✅ Claim Attribution Layer live (all 18 files deployed)
-✅ Guardian policy handling real retirements
-✅ CAD Trust preventing double-counting
-✅ Shadow mode comparison vs Verra (±5% or better)
-✅ ADWIN drift detection live
-✅ 3-tier pricing collecting real revenue
-✅ First ESG certificates delivered to real buyers
-✅ $83K ARR baseline → ready for Roadmap 2
-```
-
----
-
-## ENVIRONMENT VARIABLES — COMPLETE LIST
-
-Add all of these to `.env.example` and Railway environment:
-
-```bash
-# === EXISTING (already in .env.example) ===
-OPERATOR_ID=0.0.XXXXX
-OPERATOR_PRIVATE_KEY=302e...
-JWT_SECRET=
-DB_URL=postgresql://...
-REDIS_URL=redis://...
-
-# === NEW — ADD FOR CLAIM ATTRIBUTION LAYER ===
-RETIREMENT_ACCOUNT_ID=0.0.XXXXX       # new account, fund from portal.hedera.com
-RETIREMENT_ACCOUNT_PRIVATE_KEY=302e... # keep this in Railway only, never in code
-ISSUER_DID=did:hedera:testnet:XXXXX   # from Guardian registry account setup
-CERTIFICATE_SIGNING_KEY=              # RSA-2048: openssl genrsa -out key.pem 2048
-CERTIFICATE_DIR=./certificates        # local PDF output directory
-GUARDIAN_API_URL=https://guardian-ui.hedera.com/api
-GUARDIAN_USERNAME=
-GUARDIAN_PASSWORD=
-GUARDIAN_POLICY_ID=                   # filled after Week 2 policy creation
-MAINNET_OPERATOR_ID=                  # filled after Week 4 mainnet setup
-MAINNET_OPERATOR_KEY=                 # filled after Week 4 mainnet setup
-MAINNET_HCS_TOPIC_ID=                 # filled after Week 4 topic creation
-MAINNET_TOKEN_ID=                     # filled after Week 4 token creation
-```
-
----
-
-## TEST TARGETS — NON-NEGOTIABLE
-
-```
-After Week 1: npm test → 262+ passing, >85% coverage
-After Week 2: End-to-end claim flow steps A–I all passing
-After Week 4: All tests green on mainnet, /health shows network: mainnet
-After Month 3: Shadow mode showing ≤5% deviation from Verra baseline
-After Month 6: $83K ARR milestone, 10+ plants active, zero double-spend incidents
-```
-
----
-
-## GIT COMMIT CONVENTION
-
-All commits from this point follow this format:
-```
-<type>(scope): <what changed>
-
-Types: feat | fix | security | refactor | test | docs | chore
-Scope: roadmap | api | hedera | ml | db | certs | middleware
-
-Examples:
-  security: remove exposed .env.backup files
-  feat(hedera): add TokenRetirementManager with HTS burn
-  feat(ml): add ADWIN drift detector in JS (replaces Python river)
-  feat(db): add 4 claim attribution migrations
-  feat(api): add claims, buyer, certificates routes
-  fix(workflow): add commit-reveal hash before HCS submission
-```
+**When Roadmap 1 is done, I have a cryptographic foundation no auditor can dispute. Roadmap 2 builds the value chain on top of it.**
