@@ -132,25 +132,9 @@ git commit -m "security: remove exposed env files, update .gitignore"
 git push origin main
 ```
 
-** 
-  
-MINIMUM INFO TO COLLECT FOR EACH PLANT:
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-□ Plant name and location (district, state, river)
-□ Installed capacity (MW) — must be 1–15 MW for Phase 1
-□ Annual generation last 3 years (MWh/year)
-□ Average monthly generation (kWh/month)
-□ River name + approximate flow rate (m³/s)
-□ Water head (meters) — from turbine specs
-□ Current carbon certification status (none = ideal target)
-□ Key contact name + email
-□ Decision-maker name + position
-```
+ WEEK 1 — March 24–30
+Build the Claim Attribution Layer
 
-***
-
-## ⚙️ WEEK 1 — March 24–30
-### Build the Claim Attribution Layer
 ### ~55 hours total | This is the only thing that unlocks revenue
 
 ***
