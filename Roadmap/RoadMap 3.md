@@ -1,7 +1,10 @@
 # 🚀 ROADMAP 3 — TOKENISATION, GOVERNANCE & DEPLOYMENT
 ## Hedera Hydropower dMRV | Month 13 → Month 36
-**Author: Bikram Biswas | Updated: March 24, 2026 | Version: V4.0 — FINAL MERGED**
+**Author: Bikram Biswas | Updated: March 24, 2026 | Version: V4.1 — FIXES APPLIED**
 **GitHub: [BikramBiswas786/Hedera-hydropower-dMRV-with-5-layer-verification-](https://github.com/BikramBiswas786/Hedera-hydropower-dMRV-with-5-layer-verification-)**
+
+> **⚠️ MAINNET IDs:** Testnet HCS topic: `0.0.7462776` | Testnet HTS token: `0.0.7964264`
+> Mainnet equivalents must be recorded separately once deployed. Every reference to HCS/HTS below that uses a live mainnet ID must be updated in `.env.production` before production use. Do not use testnet IDs in mainnet transactions.
 
 ---
 
@@ -14,16 +17,17 @@ Roadmap 3 moves from "working protocol" to "governed, tokenised, multi-methodolo
 - ✅ CAD Trust double-counting prevention live
 - ✅ 6 months of Verra shadow mode data in hand
 - ✅ HCS topic live — 350,000+ immutable records
-- ✅ HTS token 0.0.7964264 — HREC mint/burn confirmed
+- ✅ HTS token 0.0.7964264 — HREC mint/burn confirmed on **testnet** (mainnet token ID set separately in `.env.production`)
 - ✅ Guardian policy with 3-of-5 multi-sig active
-- ✅ ADWIN JS drift detection running in production
+- ✅ ADWIN JS drift detection running in production (full Bifet & Gavalda, 2007 implementation shipped in Roadmap 2 Month 6 — see §5 note)
 - ✅ TPM/HSM hardware attestation on pilot plants
 - ✅ Full 5-layer verification engine on mainnet
 - ✅ W3C Verifiable Credentials generated + signed by issuer DID
+- ✅ `src/did/did-manager.js` — DID registration module built in Roadmap 1 Week 6; used by enterprise fleet SDK in §7.1
 - ✅ Claim Attribution Layer: 18 files, 4 DB tables, 262+ tests passing
 - ✅ ESG certificates (PDF + JSON-LD VC + QR → HashScan) end-to-end
 - ❌ No ISO accreditation — blocks compliance market entry
-- ❌ No on-chain Solidity contracts — governance is still off-chain JS
+- ❌ No on-chain Solidity contracts — governance is still off-chain JS (`VerifierStaking.sol` is designed in §3.4; testnet deployment is Month 15, mainnet Month 17 after external audit)
 - ❌ No ZKP layer — institutional buyers cannot verify privately
 - ❌ No methodology router — locked to hydropower only
 - ❌ Solo developer — single point of failure
@@ -36,7 +40,7 @@ Roadmap 3 moves from "working protocol" to "governed, tokenised, multi-methodolo
 
 | Phase | Window | Primary Goal | Key Deliverable |
 |---|---|---|---|
-| **2A — Governance** | M13–18 | On-chain verifier staking + ISO docs | VerifierStaking.sol on HSCS |
+| **2A — Governance** | M13–18 | On-chain verifier staking + ISO docs | VerifierStaking.sol on HSCS testnet (M15) → mainnet (M17) |
 | **2B — Privacy** | M16–22 | ZKP proof layer + Verra accreditation | zkp-proof-generator.js live |
 | **3A — Expansion** | M18–28 | Methodology router + enterprise SDK | Solar + Wind engines live |
 | **3B — Mainnet** | M20–30 | Full mainnet deployment + first enterprise deal | HRECMinter.sol on HashScan |
@@ -50,13 +54,15 @@ Roadmap 3 moves from "working protocol" to "governed, tokenised, multi-methodolo
 
 My existing `src/hedera/verifier-staking.js` is off-chain JavaScript — the staking logic runs on my Railway server, which means I can override it. That is not trustless governance. For Verra pre-approval and enterprise contracts, the verification reward/slash system must be enforced by a smart contract that I cannot unilaterally modify.
 
-This is the transition: **off-chain governance (now) → Solidity contracts on HSCS (Month 15).**
+This is the transition: **off-chain governance (now) → Solidity contracts on HSCS (Month 15 testnet → Month 17 mainnet after external audit).**
 
 ### 3.2 Off-Chain Staking Logic — Production Implementation
 
 ```javascript
 // FILE: src/hedera/verifier-staking.js — PRODUCTION VERSION
-// Bridges to VerifierStaking.sol once contract is deployed on HSCS.
+// This is the off-chain bridge used until VerifierStaking.sol is deployed
+// on HSCS mainnet (Month 17). After that, this module emits calls to the
+// contract instead of handling state directly.
 
 const {
   Client, TransferTransaction, AccountBalanceQuery,
@@ -217,7 +223,7 @@ CREATE TABLE IF NOT EXISTS verifier_stakes (
     total_verifications   INTEGER DEFAULT 0,
     accurate_verifications INTEGER DEFAULT 0,
     accuracy_rate         DECIMAL(5, 4),
-    contract_address      VARCHAR(200),    -- populated after HSCS deployment
+    contract_address      VARCHAR(200),    -- populated after HSCS mainnet deployment (Month 17)
     staked_at             TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     last_slashed_at       TIMESTAMP,
     last_rewarded_at      TIMESTAMP,
@@ -228,7 +234,9 @@ CREATE INDEX idx_vs_verifier_id ON verifier_stakes(verifier_id);
 CREATE INDEX idx_vs_status      ON verifier_stakes(status);
 ```
 
-### 3.4 Solidity Contracts — Design & Deployment (Month 15–17)
+### 3.4 Solidity Contracts — Design & Deployment Schedule
+
+> **STATUS NOTE:** All three contracts below are **designs** as of Month 13. They are NOT yet deployed. Schedule: write + unit test Month 13–14 → HSCS testnet Month 15 → external security audit Month 16 → HSCS mainnet Month 17 (only after audit returns zero critical findings). Do not claim any contract is live until the HashScan mainnet contract address is recorded in `.env.production`.
 
 Three contracts replace off-chain JS governance. Design Month 13 → testnet Month 15 → external audit Month 16 → mainnet Month 17.
 
@@ -240,7 +248,7 @@ pragma solidity ^0.8.19;
 
 // FILE: contracts/VerifierStaking.sol
 // On-chain verifier staking for the Hedera Hydropower dMRV protocol.
-// Deployed on HSCS (Hedera Smart Contract Service).
+// Target deployment: HSCS testnet Month 15, mainnet Month 17 (post-audit).
 // Author: Bikram Biswas | March 2026
 
 contract VerifierStaking {
@@ -337,6 +345,7 @@ pragma solidity ^0.8.19;
 // Multi-sig HREC token minting gate on HSCS.
 // Enforces: 3-of-5 authorized signers before any mint.
 // The HTS mint call happens off-chain after contract emits MintExecutable event.
+// Target deployment: HSCS testnet Month 15, mainnet Month 17 (post-audit).
 
 contract HRECMinter {
     address public owner;
@@ -410,6 +419,7 @@ pragma solidity ^0.8.19;
 
 // FILE: contracts/PlantRegistry.sol
 // On-chain registry of verified hydropower plants.
+// Target deployment: HSCS testnet Month 15, mainnet Month 17 (post-audit).
 
 contract PlantRegistry {
     address public owner;
@@ -505,9 +515,10 @@ npx hardhat test test/PlantRegistry.test.js
 # Submit to: Code4rena, Sherlock, or Hats Finance
 # Minimum scope: VerifierStaking.sol slash function (highest risk)
 
-# Step 6: Deploy to HSCS mainnet (Month 17, after audit clean)
+# Step 6: Deploy to HSCS mainnet (Month 17, ONLY after audit returns zero critical findings)
 npx hardhat run scripts/deploy_contracts.js --network hederaMainnet
 # Verify at: https://hashscan.io/mainnet/contract/<address>
+# Record all 3 contract addresses in .env.production immediately after deployment
 ```
 
 ---
@@ -758,15 +769,19 @@ module.exports = router;
 
 ## 5. MONTHS 13–18 — ADAPTIVE ML PIPELINE (ADWIN — FULL PRODUCTION)
 
-The current drift detector uses a rolling window with fixed threshold — a Phase 1 approximation. For mainnet, I replace it with the full ADWIN algorithm (Bifet & Gavalda, 2007), natively in Node.js with no Python subprocess in the hot path.
+> **ADWIN TIMING NOTE:** Roadmap 1 Week 7 built a placeholder drift detector (`src/ml/adwin-detector.js`) using a fixed-threshold rolling window — adequate for early testnet validation. Roadmap 2 Month 6 shipped the **full production ADWIN** (Bifet & Gavalda, 2007) as a complete rewrite of that same file. By the time Roadmap 3 begins at Month 13, the full ADWIN implementation is already live in production. The code in §5.1 below is the **canonical reference copy** — it matches exactly what was deployed in Roadmap 2 Month 6. No further rewrite is required in Roadmap 3; this section documents the live implementation for audit and review purposes.
 
-### 5.1 ADWIN in JavaScript — Full Implementation
+Reference: Bifet, A. & Gavalda, R. (2007). "Learning from Time-Changing Data with Adaptive Windowing." *Proceedings of the 2007 SIAM International Conference on Data Mining*, pp. 443–448.
+
+### 5.1 ADWIN in JavaScript — Canonical Production Implementation
 
 ```javascript
 // FILE: src/ml/adwin-detector.js
 // ADWIN: Adaptive Windowing for streaming drift detection
 // Reference: Bifet & Gavalda (2007)
 // δ = 0.002 → 99.8% confidence before declaring drift
+// STATUS: Live in production since Roadmap 2 Month 6.
+// This is a reference copy — do not redeploy unless retraining is triggered.
 
 class ADWINDetector {
   constructor(delta = 0.002, maxBuckets = 5) {
@@ -1115,6 +1130,8 @@ module.exports = { WindEngine };
 
 ### 7.1 Enterprise SDK: `src/api/v2/enterprise-sdk.js`
 
+> **DIDManager note:** `src/did/did-manager.js` was built in Roadmap 1 Week 6 and is used here for automated DID registration during fleet deployment. If the module path has changed, update the require path accordingly. Do not redeploy the DID module from scratch — it is already live.
+
 ```javascript
 // FILE: src/api/v2/enterprise-sdk.js
 // White-label enterprise API — one call deploys dMRV for an entire fleet.
@@ -1141,10 +1158,12 @@ router.post('/deploy-fleet', enterpriseAuth, async (req, res) => {
          plantConfig.capacityKW, plantConfig.methodology, organizationId]
       );
 
+      // DIDManager built in Roadmap 1 Week 6 — already live, no redeploy needed
       const { DIDManager } = require('../../did/did-manager');
       const did = await new DIDManager().registerBuyerDID({ name: plantConfig.name });
       await htsService.associateToken(did.accountId, process.env.MAINNET_HTS_TOKEN_ID);
 
+      // Only call PlantRegistry.sol if contract is deployed (Month 17+)
       if (process.env.PLANT_REGISTRY_CONTRACT_ADDRESS) {
         await contractService.registerPlant(plantId, did.did, plantConfig.methodology,
           plantConfig.capacityKW, plantConfig.hcsTopicId);
@@ -1205,11 +1224,11 @@ MAINNET READINESS — ALL MUST BE TRUE BEFORE "LIVE" CLAIM
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 Infrastructure:
 □ HCS topic active on mainnet — already done ✅
-□ HTS token 0.0.7964264 active on mainnet — already done ✅
+□ HTS token 0.0.7964264 active on testnet (mainnet token ID in .env.production)
 □ PlantRegistry.sol  deployed → hashscan.io/mainnet/contract/<addr>
 □ HRECMinter.sol     deployed → hashscan.io/mainnet/contract/<addr>
 □ VerifierStaking.sol deployed → hashscan.io/mainnet/contract/<addr>
-□ Contract addresses in .env.production
+□ All 3 contract addresses recorded in .env.production
 
 Security:
 □ External contract audit complete (zero critical findings)
@@ -1397,11 +1416,11 @@ Roadmap 3 is complete when every item below is proven with code, HashScan links,
 | Component | Done When |
 |---|---|
 | VerifierStakingManager.js | Tests pass, slash events logged to HCS |
-| VerifierStaking.sol | Deployed to HSCS testnet, Hardhat tests >90% coverage |
-| HRECMinter.sol | Minted for 1 real verified reading via contract |
+| VerifierStaking.sol | Deployed to HSCS testnet (M15), Hardhat tests >90% coverage |
+| HRECMinter.sol | Deployed to HSCS mainnet (M17), minted for 1 real reading via contract |
 | PlantRegistry.sol | 1+ real plants registered on-chain with HashScan link |
 | ZKP circuit | Proof generated + verified for 1 real sample reading |
-| ADWINDetector | Running on live stream, drift events visible on HCS |
+| ADWINDetector | Running on live stream since Roadmap 2 M6, drift events visible on HCS |
 | Methodology router | ACM0002 + AMS-I.D (solar) + AMS-I.F (wind) working end-to-end |
 | Seasonal ML models | 4 season-specific IsolationForest models trained + deployed |
 | Enterprise fleet SDK | 5+ plants deployed via `/api/v2/enterprise/deploy-fleet` |
@@ -1419,9 +1438,9 @@ Roadmap 3 is complete when every item below is proven with code, HashScan links,
 |---|---|---|---|
 | **13** | verifier-staking.js + DB migration | Off-chain governance bridge | Verra follow-up |
 | **14** | VerifierStaking.sol written + tests | Hardhat + HSCS testnet config | ISO 27001 docs start |
-| **15** | HRECMinter.sol + PlantRegistry.sol | 3 contracts on HSCS testnet | ISO 27001 risk register |
+| **15** | HRECMinter.sol + PlantRegistry.sol | 3 contracts on HSCS **testnet** | ISO 27001 risk register |
 | **16** | zkp-proof-generator.js + circuit | circuits/hydropower_verify.circom compiled | ISO 27001 incident response |
-| **17** | ZKP API endpoints live | 3 contracts on HSCS mainnet (post-audit) | ISO 27001 docs complete |
+| **17** | ZKP API endpoints live | 3 contracts on HSCS **mainnet** (post external audit, zero criticals) | ISO 27001 docs complete |
 | **18** | methodology-router.js skeleton | Scale simulation test v1 | ISO 27001 external audit submitted |
 | **19** | solar-engine.js (AMS-I.D) | Solar engine on testnet | — |
 | **20** | wind-engine.js (AMS-I.F) | Wind engine on testnet | ISO 14064-2 docs start |
@@ -1441,4 +1460,4 @@ Roadmap 3 is complete when every item below is proven with code, HashScan links,
 
 *This is a technical and regulatory execution plan — not a business deck. Every code block is something I am building and can demonstrate. Nothing here is a promise about revenue, investors, or regulatory outcomes. Those depend on work that comes after the tech is solid.*
 
-*Author: Bikram Biswas | Repo: [BikramBiswas786/Hedera-hydropower-dMRV-with-5-layer-verification-](https://github.com/BikramBiswas786/Hedera-hydropower-dMRV-with-5-layer-verification-) | Version: V4.0 FINAL | March 24, 2026*
+*Author: Bikram Biswas | Repo: [BikramBiswas786/Hedera-hydropower-dMRV-with-5-layer-verification-](https://github.com/BikramBiswas786/Hedera-hydropower-dMRV-with-5-layer-verification-) | Version: V4.1 — FIXES APPLIED | March 24, 2026*
