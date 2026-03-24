@@ -1,7 +1,10 @@
 # 🚀 ROADMAP 2 — GUARDIAN PIPELINE, MARKET ENTRY & ADAPTIVE ML
 ## Hedera Hydropower dMRV | Month 3 → Month 12
-**Author: Bikram Biswas | Updated: March 24, 2026 | Version: V4.0**
+**Author: Bikram Biswas | Updated: March 24, 2026 | Version: V4.1 — FIXES APPLIED**
 **GitHub: [BikramBiswas786/Hedera-hydropower-dMRV-with-5-layer-verification-](https://github.com/BikramBiswas786/Hedera-hydropower-dMRV-with-5-layer-verification-)**
+
+> **⚠️ MAINNET IDs:** Testnet HCS topic: `0.0.7462776` | Testnet HTS token: `0.0.7964264`
+> Mainnet equivalents must be recorded separately once deployed. Every reference to HCS/HTS below that uses a live mainnet ID must be updated in `.env.production` before production use. Do not use testnet IDs in mainnet transactions.
 
 ---
 
@@ -11,13 +14,14 @@ By the end of Roadmap 1 (Week 8), I have delivered:
 - ✅ 18 Claim Attribution Layer files committed and tested
 - ✅ Guardian policy live on testnet with `GUARDIAN_POLICY_ID` filled in `.env`
 - ✅ 4 DB migrations (claims, certificates, buyers, retirements) running on Railway PostgreSQL
-- ✅ HTS token 0.0.7964264 live on Hedera **mainnet**
-- ✅ HCS topic live on **mainnet** — all production reads logged immutably
+- ✅ HTS token `0.0.7964264` live on Hedera **testnet** (mainnet token ID to be recorded separately)
+- ✅ HCS topic live on **testnet** — all production reads logged immutably (mainnet topic ID to be recorded separately)
 - ✅ End-to-end: sensor → 5-layer engine → VC → HREC mint → ESG PDF → QR → HashScan
 - ✅ 2–3 pilot plants onboarded with real historical data loaded
 - ✅ 262+ tests passing at ≥85.3% coverage
 - ✅ COST-ANALYSIS.md rewritten — $0.0001/verification documented
 - ✅ Demo video (5 min MP4) + 15-slide pitch deck complete
+- ✅ `src/ml/adwin-detector.js` — placeholder drift detector built in Roadmap 1 Week 7 (fixed-threshold rolling window). **Full ADWIN (Bifet & Gavalda, 2007) ships in Roadmap 2 Month 6.**
 
 **Revenue at Roadmap 2 entry: $0 confirmed, pipeline open.**
 
@@ -34,11 +38,11 @@ Roadmap 2 is about converting that pipeline into real paying customers and closi
 | Month | Weeks | Primary Goal | Revenue Target |
 |---|---|---|---|
 | Month 3 | Wk 9–10 | CAD Trust + double-counting prevention | $0 (infra) |
-| Month 4 | Wk 11–12 | India CCTS registration begin | $3,700 first MRV fees |
+| Month 4 | Wk 11–12 | India CCTS PDD **submitted** to BEE (4–6 month review clock starts now) | $3,700 first MRV fees |
 | Month 5 | Wk 13–14 | Verra shadow mode start | $7,200/mo MRR |
-| Month 6 | Wk 15–16 | ADWIN JS adaptive ML + shadow mode live | $12,000/mo MRR |
+| Month 6 | Wk 15–16 | **Full ADWIN JS** (Bifet & Gavalda, 2007) replaces placeholder + shadow mode live | $12,000/mo MRR |
 | Month 7 | Wk 17–18 | TPM/HSM Hardware Root of Trust pilot | $18,000/mo MRR |
-| Month 8 | Wk 19–20 | Multi-plant dashboard + India CCTS docs | $24,000/mo MRR |
+| Month 8 | Wk 19–20 | Multi-plant dashboard + India CCTS docs update | $24,000/mo MRR |
 | Month 9 | Wk 21–22 | Verra shadow mode results analysis | $30,000/mo MRR |
 | Month 10 | Wk 23–24 | Tiered pricing v2 + enterprise pipeline | $42,000/mo MRR |
 | Month 11 | Wk 25–26 | ISO 27001 documentation start | $55,000/mo MRR |
@@ -257,53 +261,49 @@ if (!cadResult.valid) {
 // Only if valid → proceed to Guardian submission
 ```
 
-**Test this:**
-```bash
-# Generate a valid claim key (plant operator receives this after mint)
-node -e "
-  const { CADTrust } = require('./src/hedera/cad-trust');
-  const cad = new CADTrust(require('./src/db/pool'));
-  cad.generateClaimKey({
-    plantId: 'pilot-001',
-    quantityMinted: 500,
-    mintTxId: '0.0.7964264@1234567890',
-    periodStart: '2026-01-01',
-    periodEnd: '2026-01-31'
-  }).then(result => {
-    console.log('Claim Key:', result.claimKey);
-    console.log('HCS TX:', result.hcsTxId);
-    console.log('HashScan:', 'https://hashscan.io/mainnet/transaction/' + result.hcsTxId);
-  });
-"
-
-# Attempt double-retirement — should REJECT with DOUBLE_COUNTING_PREVENTED
-# (Try using the same key twice — second attempt must fail)
-```
-
 ---
 
-## MONTH 4 — INDIA CCTS REGISTRATION (Weeks 11–12)
+## MONTH 4 — INDIA CCTS PDD SUBMISSION (Weeks 11–12)
+
+> **CLARIFICATION:** Month 4 = **submit** the PDD to BEE. This is when the 4–6 month review clock starts. Month 3 is used to prepare the PDD. Do not conflate preparation with submission — the regulatory timeline begins on the date BEE receives the document.
 
 ### Why India CCTS Is My Fastest Revenue Unlock
 
 India's Carbon Credit Trading Scheme (CCTS) launched under the Energy Conservation (Amendment) Act 2022. The Bureau of Energy Efficiency (BEE) is the nodal agency. Small hydropower is one of the **8 eligible technology sectors** explicitly listed. Registration is mandatory for compliance market participation but is free for project developers.
 
-I need to start this in Month 4 because:
-- The review process takes 4–6 months
+I need to submit in Month 4 because:
+- The review process takes 4–6 months from **submission date**
 - My system is already ACM0002 compliant — the physics formula is the same
 - HCS immutable logs satisfy BEE's monitoring evidence requirements
 - My HashScan transaction history is already a 2,000+ record audit trail
+
+### $3,700 Month 4 Revenue — Calculation Breakdown
+
+```
+MONTH 4 REVENUE TARGET: $3,700
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Source 1: MRV setup fees — 3 pilot plants × $1,000 onboarding fee
+          = $3,000
+
+Source 2: First subscription month — 7 Basic plants × $100/mo
+          = $700
+
+TOTAL     = $3,700
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Note: No HREC retirement commission until plants have generated
+      6 months of verified data (earliest Month 9).
+```
 
 ### India CCTS Registration Checklist
 
 ```
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-STEP 1: Read the official CCTS Methodology Framework
+STEP 1 (Month 3 — PREPARE): Read the official CCTS Methodology Framework
   URL: beeindia.gov.in/en/carbon-credit-trading-scheme
   Download: "CCTS Methodology Framework v1.0 (2023)"
   Read: Sections 4.2 (eligible technology), 7.1 (MRV requirements)
-  
-STEP 2: Register on BEE portal
+
+STEP 2 (Month 3 — PREPARE): Register on BEE portal
   URL: www.cctsindia.in (or current BEE portal)
   Entity type: "Project Developer"
   Documents required:
@@ -312,21 +312,22 @@ STEP 2: Register on BEE portal
     □ Technical description of the MRV system
     □ Evidence of clean energy generation (plant records)
 
-STEP 3: Prepare Project Design Document (PDD)
+STEP 3 (Month 3 — PREPARE): Draft Project Design Document (PDD)
   My PDD needs:
     □ Project description — hydropower dMRV on Hedera blockchain
     □ Technology description — 5-layer verification engine
     □ Monitoring methodology — ACM0002 adapted for digital MRV
     □ Baseline emission factor — India grid CEA data (0.82 tCO2e/MWh)
     □ Expected annual emission reductions — per pilot plant data
-    □ MRV system description — HCS 0.0.7462776, HTS 0.0.XXXXX
+    □ MRV system description — HCS testnet: 0.0.7462776 (mainnet ID TBD)
     □ Verification procedures — Guardian policy + multi-sig
 
-STEP 4: Submit PDD for BEE technical review
+STEP 4 (Month 4 — SUBMIT): Submit PDD to BEE for technical review
+  ← 4–6 month review clock starts HERE on submission date
   Expected review timeline: 4–6 months
   Cost: Free
-  
-STEP 5: Upon approval — enroll pilot plants as first projects
+
+STEP 5 (Month 10 — APPROVAL): Upon approval, enroll pilot plants
   Each plant files their own project registration referencing my PDD
   I provide the MRV service under my methodology
   Credits issued on India Carbon Exchange (ICX)
@@ -348,7 +349,7 @@ The same 10 plants, same infrastructure, 2× revenue.
 CCTS registration is the single highest-leverage regulatory action in Year 1.
 ```
 
-### PDD Template Outline (Start Writing Month 4)
+### PDD Template Outline
 
 ```markdown
 # Project Design Document — Hedera Hydropower dMRV
@@ -369,12 +370,17 @@ continuously monitored and verified through a 5-layer physics verification engin
 Layer 1 — Physics: P = ρgQHη (ACM0002 formula, error tolerance ±15%)
 Layer 2 — Temporal: 15-minute consistency windows, ±20% variation threshold
 Layer 3 — Environmental: Cross-referenced with IMD river flow records
-Layer 4 — ML: Isolation Forest anomaly detection (Manus ADWIN drift detection)
+Layer 4 — ML: Isolation Forest anomaly detection with ADWIN drift detection
+           (Bifet & Gavalda, 2007 — "Learning from Time-Changing Data with
+           Adaptive Windowing", SIAM International Conference on Data Mining)
 Layer 5 — Device: HMAC sensor attestation + TPM hardware seal
 
 All verified readings are submitted to Hedera Consensus Service (HCS) as
 immutable timestamped records. Carbon credits are minted as HTS fungible tokens
 (HREC — Hydropower Renewable Energy Certificate) at 1 HREC = 1 MWh.
+
+HCS Testnet Topic: 0.0.7462776 (Mainnet topic ID to be inserted before final submission)
+HTS Testnet Token: 0.0.7964264 (Mainnet token ID to be inserted before final submission)
 
 ### SECTION C: MONITORING PLAN
 Monitoring frequency: Hourly (8,760 records/plant/year minimum)
@@ -386,12 +392,12 @@ Double-counting: CAD Trust claim key system (one-time use per batch)
 ### SECTION D: EMISSION REDUCTION CALCULATION
 Baseline: India grid emission factor 0.82 tCO2e/MWh (CEA 2024 data)
 ER = Energy_Generated_MWh × 0.82 tCO2e/MWh
-Example (5 MW plant at 45% capacity factor): 
+Example (5 MW plant at 45% capacity factor):
   Annual generation: 5 × 0.45 × 8,760 = 19,710 MWh
   Annual ER: 19,710 × 0.82 = 16,162 tCO2e
 
 ### SECTION E: MONITORING EVIDENCE
-Primary evidence: HCS topic [mainnet topic ID] — publicly accessible
+Primary evidence: HCS topic [INSERT MAINNET TOPIC ID] — publicly accessible
 Secondary evidence: HashScan.io transaction explorer
 Tertiary evidence: Guardian policy audit trail
 All evidence is permanent and cannot be modified or deleted.
@@ -417,11 +423,6 @@ class ShadowModeComparator {
     this.db = db;
   }
 
-  /**
-   * Record a manual MRV reading from plant operator's physical logs.
-   * This is what the plant operator reports manually (old method).
-   * @param {object} manualReading - From plant's paper/spreadsheet log
-   */
   async recordManualReading(manualReading) {
     await this.db.query(
       `INSERT INTO shadow_mode_readings
@@ -434,21 +435,13 @@ class ShadowModeComparator {
         manualReading.generationKwh,
         manualReading.flowRate || null,
         manualReading.headHeight || null,
-        manualReading.source,   // 'OPERATOR_LOG', 'SCADA', 'ENERGY_METER'
+        manualReading.source,
         manualReading.recordedBy
       ]
     );
   }
 
-  /**
-   * Compare dMRV result vs. manual reading for the same period.
-   * @param {string} plantId
-   * @param {string} periodStart - ISO8601
-   * @param {string} periodEnd - ISO8601
-   * @returns {object} Comparison report
-   */
   async compareForPeriod(plantId, periodStart, periodEnd) {
-    // Get dMRV verified readings from existing DB
     const dmrvResult = await this.db.query(
       `SELECT SUM(energy_generated_kwh) AS dmrv_total,
               AVG(trust_score) AS avg_trust,
@@ -462,7 +455,6 @@ class ShadowModeComparator {
       [plantId, periodStart, periodEnd]
     );
 
-    // Get manual MRV readings for same period
     const manualResult = await this.db.query(
       `SELECT SUM(manual_generation_kwh) AS manual_total,
               COUNT(*) AS manual_readings
@@ -474,20 +466,18 @@ class ShadowModeComparator {
 
     const dmrv    = dmrvResult.rows[0];
     const manual  = manualResult.rows[0];
-
     const dmrvTotal   = parseFloat(dmrv.dmrv_total || 0);
     const manualTotal = parseFloat(manual.manual_total || 0);
 
-    // Variance calculation — Verra accepts <5% for methodology approval
     const variance = manualTotal > 0
       ? Math.abs((dmrvTotal - manualTotal) / manualTotal) * 100
       : null;
 
     const status = variance === null ? 'INSUFFICIENT_DATA'
-      : variance < 2  ? 'EXCELLENT'   // <2% = strong approval case
-      : variance < 5  ? 'ACCEPTABLE'  // 2-5% = Verra acceptable
-      : variance < 10 ? 'MARGINAL'    // 5-10% = needs investigation
-      : 'FAILED';                     // >10% = methodology has issues
+      : variance < 2  ? 'EXCELLENT'
+      : variance < 5  ? 'ACCEPTABLE'
+      : variance < 10 ? 'MARGINAL'
+      : 'FAILED';
 
     return {
       plantId,
@@ -514,23 +504,14 @@ class ShadowModeComparator {
 
   _getRecommendation(status, variance) {
     switch (status) {
-      case 'EXCELLENT':
-        return 'Strong evidence for Verra methodology pre-approval. Include in PDD Section E.';
-      case 'ACCEPTABLE':
-        return 'Within Verra 5% threshold. Document measurement uncertainties in PDD.';
-      case 'MARGINAL':
-        return 'Investigate Layer 1 (physics) calibration. Check sensor accuracy.';
-      case 'FAILED':
-        return 'Do not submit to Verra yet. Review sensor hardware and Layer 2 temporal consistency.';
-      default:
-        return 'Collect at least 3 months of parallel data before comparison.';
+      case 'EXCELLENT':   return 'Strong evidence for Verra methodology pre-approval. Include in PDD Section E.';
+      case 'ACCEPTABLE':  return 'Within Verra 5% threshold. Document measurement uncertainties in PDD.';
+      case 'MARGINAL':    return 'Investigate Layer 1 (physics) calibration. Check sensor accuracy.';
+      case 'FAILED':      return 'Do not submit to Verra yet. Review sensor hardware and Layer 2 temporal consistency.';
+      default:            return 'Collect at least 3 months of parallel data before comparison.';
     }
   }
 
-  /**
-   * Generate Verra-ready shadow mode report.
-   * Output this as PDF and include in Verra pre-approval package.
-   */
   async generateVerraReport(plantId, startDate, endDate) {
     const monthlyComparisons = [];
     let current = new Date(startDate);
@@ -538,12 +519,7 @@ class ShadowModeComparator {
     while (current < new Date(endDate)) {
       const monthEnd = new Date(current);
       monthEnd.setMonth(monthEnd.getMonth() + 1);
-
-      const comparison = await this.compareForPeriod(
-        plantId,
-        current.toISOString(),
-        monthEnd.toISOString()
-      );
+      const comparison = await this.compareForPeriod(plantId, current.toISOString(), monthEnd.toISOString());
       monthlyComparisons.push(comparison);
       current = monthEnd;
     }
@@ -557,13 +533,13 @@ class ShadowModeComparator {
       plantId,
       reportPeriod:     { start: startDate, end: endDate },
       methodology:      'ACM0002',
-      blockchain:       'Hedera HCS 0.0.7462776',
+      blockchain:       'Hedera HCS testnet 0.0.7462776 (mainnet ID TBD)',
       monthlyData:      monthlyComparisons,
       summary: {
-        totalMonths:     monthlyComparisons.length,
-        avgVariance:     avgVariance.toFixed(2) + '%',
-        verraCompliant:  avgVariance < 5,
-        overallStatus:   avgVariance < 2 ? 'EXCELLENT' : avgVariance < 5 ? 'ACCEPTABLE' : 'NEEDS_IMPROVEMENT'
+        totalMonths:    monthlyComparisons.length,
+        avgVariance:    avgVariance.toFixed(2) + '%',
+        verraCompliant: avgVariance < 5,
+        overallStatus:  avgVariance < 2 ? 'EXCELLENT' : avgVariance < 5 ? 'ACCEPTABLE' : 'NEEDS_IMPROVEMENT'
       },
       verraSectionReference: 'VCS Standard v4.4 Section 4.1.2 — Digital MRV Equivalence'
     };
@@ -602,20 +578,20 @@ CREATE INDEX idx_shadow_timestamp ON shadow_mode_readings(timestamp);
 
 ```
 To: info@verra.org
-Subject: Pre-submission inquiry — Digital MRV methodology for small hydropower 
+Subject: Pre-submission inquiry — Digital MRV methodology for small hydropower
          (ACM0002 adaptation, Hedera blockchain)
 
 Dear Verra Methodology Team,
 
-I am the developer of a digital MRV system for small hydropower carbon credit 
-verification deployed on the Hedera blockchain network. I am writing to request 
+I am the developer of a digital MRV system for small hydropower carbon credit
+verification deployed on the Hedera blockchain network. I am writing to request
 guidance on the pre-submission pathway for methodology approval.
 
 SYSTEM OVERVIEW:
 • Physics verification: P = ρgQHη (ACM0002 formula, Layer 1 of 5-layer engine)
 • Blockchain: Hedera HCS for immutable audit logs, HTS for HREC tokens
-• Live evidence: hashscan.io/mainnet/topic/[topic-id] (2,000+ records)
-• Guardian integration: ACM0002 policy (PRs #5687 and #5715 merged to mainnet)
+• Live evidence: hashscan.io/mainnet/topic/[INSERT MAINNET TOPIC ID]
+• Guardian integration: ACM0002 policy active on testnet (mainnet deployment planned Month 17)
 • Current status: 6-month shadow mode underway vs. manual MRV (results by Month 9)
 
 SHADOW MODE EVIDENCE (to be completed by Month 9):
@@ -625,7 +601,7 @@ SHADOW MODE EVIDENCE (to be completed by Month 9):
 
 I would like to understand:
 1. The correct pre-submission pathway for a digital MRV methodology
-2. Whether my existing Guardian policy (mainnet) satisfies VCS §4.1.2
+2. Whether my Guardian policy (testnet, mainnet deployment Month 17) satisfies VCS §4.1.2
 3. Timeline expectations for technical review
 
 I can provide a technical demo, HashScan evidence, and shadow mode data on request.
@@ -634,42 +610,43 @@ Bikram Biswas
 GitHub: github.com/BikramBiswas786/Hedera-hydropower-dMRV-with-5-layer-verification-
 ```
 
+> **NOTE:** Guardian PR numbers previously cited in this template have been removed pending verification. Do not cite any specific Guardian pull request numbers in regulatory submissions without first confirming them at github.com/hashgraph/guardian.
+
 ---
 
 ## MONTH 6 — ADWIN JS ADAPTIVE ML (Weeks 15–16)
 
-### Why I Replace Python river With JavaScript ADWIN
+> **ADWIN TIMING NOTE:** Roadmap 1 Week 7 builds a placeholder drift detector (`src/ml/adwin-detector.js`) using a fixed-threshold rolling window — adequate for early testnet. This Month 6 module is the **full production ADWIN** (Bifet & Gavalda, 2007) replacing that placeholder. Both share the same filename. The Month 6 version is a complete rewrite, not an incremental update.
 
-My entire stack is Node.js. Running a Python subprocess for drift detection in production means:
-- Additional container memory (~150MB for Python runtime)
-- Process spawn latency (200–500ms per detection)
-- Dependency hell between Python + Node versions in Docker
-- No clean error propagation back to my API
+### Why I Replace the Placeholder With Full ADWIN
 
-The correct approach is a native JavaScript ADWIN implementation in the same process. This is the Bifet & Gavalda (2007) algorithm, which I implement below based on the Manus specification but verified against the original paper.
+My entire stack is Node.js. Running a Python subprocess for drift detection in production means additional container memory (~150MB), process spawn latency (200–500ms per detection), dependency hell, and no clean error propagation. The correct approach is a native JavaScript ADWIN implementation in the same process.
 
-### Module: `src/ml/adwin-detector.js` (NEW FILE — Replaces Python approach)
+Reference: Bifet, A. & Gavalda, R. (2007). "Learning from Time-Changing Data with Adaptive Windowing." *Proceedings of the 2007 SIAM International Conference on Data Mining*, pp. 443–448.
+
+### Module: `src/ml/adwin-detector.js` (FULL REWRITE — Replaces Roadmap 1 placeholder)
 
 ```javascript
 // FILE: src/ml/adwin-detector.js
 // ADWIN (ADaptive WINdowing) — Bifet & Gavalda (2007)
 // "Learning from Time-Changing Data with Adaptive Windowing"
-// δ (delta) = confidence parameter: 0.002 = 99.8% confidence before triggering
+// SIAM International Conference on Data Mining, 2007, pp. 443–448.
 //
-// PURPOSE: Detect when my Isolation Forest model is drifting.
+// δ (delta) = confidence parameter: 0.002 = 99.8% confidence before triggering
+// PURPOSE: Detect when the Isolation Forest model is drifting.
 // When ADWIN triggers: log to HCS, flag for seasonal retraining.
 // When to retrain: After 6+ months of real pilot data per season.
 
 class ADWINDetector {
   /**
-   * @param {number} delta - Confidence parameter (default: 0.002 per Manus spec)
+   * @param {number} delta - Confidence parameter (default: 0.002)
    *   Lower = more sensitive to drift, more false positives
    *   Higher = less sensitive, slower to detect real drift
-   *   Bifet & Gavalda recommend 0.002 for most data streams
+   *   Bifet & Gavalda (2007) recommend 0.002 for most data streams
    */
   constructor(delta = 0.002) {
     this.delta     = delta;
-    this.window    = [];          // Sliding window of recent scores
+    this.window    = [];
     this.variance  = 0;
     this.mean      = 0;
     this.total     = 0;
@@ -677,25 +654,17 @@ class ADWINDetector {
     this.lastDriftAt = null;
   }
 
-  /**
-   * Update the detector with a new observation.
-   * Call this after every anomaly detection in the ML pipeline.
-   * @param {number} value - Anomaly score from Isolation Forest (0.0–1.0)
-   * @returns {object} - { driftDetected, reason, driftCount, windowSize }
-   */
   update(value) {
     this.window.push(value);
     this._updateStats(value);
 
-    // ADWIN core: test all possible split points in the window
-    // Drift detected if mean of any subwindow differs significantly
     const driftDetected = this._testForDrift();
 
     if (driftDetected) {
       this.driftCount++;
       this.lastDriftAt = new Date().toISOString();
 
-      // ADWIN prescription: drop the oldest half when drift detected
+      // ADWIN: drop oldest half on drift detection
       const halfLength = Math.floor(this.window.length / 2);
       this.window = this.window.slice(halfLength);
       this._recalculateStats();
@@ -719,13 +688,9 @@ class ADWINDetector {
     };
   }
 
-  /**
-   * ADWIN statistical test.
-   * Tests if splitting the window at any point reveals a statistically
-   * significant difference in means (using Hoeffding/McDiarmid bounds).
-   */
+  // ε_cut formula from Bifet & Gavalda (2007), Equation 2
   _testForDrift() {
-    if (this.window.length < 10) return false;  // Minimum window size
+    if (this.window.length < 10) return false;
 
     const n = this.window.length;
 
@@ -739,13 +704,12 @@ class ADWINDetector {
       const n0 = leftWindow.length;
       const n1 = rightWindow.length;
 
-      // Epsilon-cut formula from Bifet & Gavalda (2007), Equation 2
-      // ε_cut = sqrt( (1/(2m)) * ln(4n/delta) ) where m = harmonic mean of n0, n1
+      // ε_cut = sqrt( (1/(2m)) × ln(4n/δ) )  where m = harmonic mean of n0, n1
       const m         = 1 / ((1 / n0) + (1 / n1));
       const epsilonCut = Math.sqrt((1 / (2 * m)) * Math.log(4 * n / this.delta));
 
       if (Math.abs(leftMean - rightMean) > epsilonCut) {
-        return true;  // Drift confirmed
+        return true;
       }
     }
 
@@ -791,37 +755,31 @@ module.exports = { ADWINDetector };
 
 ```javascript
 // FILE: src/anomaly-detector-ml.js — MODIFY (append)
-// ADD at bottom of existing file:
 const { ADWINDetector } = require('./ml/adwin-detector');
 const { HCSAuditLogger } = require('./hedera/hcs-audit-logger');
 
-// One detector per seasonal model
+// One detector per seasonal model — δ tuned per season
 const adwinDetectors = {
   pre_monsoon:  new ADWINDetector(0.002),
-  monsoon:      new ADWINDetector(0.005),   // Higher delta = less sensitive during expected variability
+  monsoon:      new ADWINDetector(0.005),   // Higher δ — legitimate high variability
   post_monsoon: new ADWINDetector(0.002),
-  dry:          new ADWINDetector(0.001),   // Dry season = most stable = more sensitive
+  dry:          new ADWINDetector(0.001),   // Dry = most stable = most sensitive
 };
 
 function getSeason(timestamp) {
-  const month = new Date(timestamp).getMonth() + 1; // 1–12
+  const month = new Date(timestamp).getMonth() + 1;
   if (month >= 3  && month <= 5)  return 'pre_monsoon';
   if (month >= 6  && month <= 9)  return 'monsoon';
   if (month >= 10 && month <= 11) return 'post_monsoon';
   return 'dry';  // Dec, Jan, Feb
 }
 
-/**
- * Wrap existing anomaly detection with ADWIN drift monitoring.
- * Call this after your existing Isolation Forest score.
- */
 async function detectWithDriftMonitoring(reading, isolationForestScore, plantId) {
   const season   = getSeason(reading.timestamp);
   const detector = adwinDetectors[season];
   const result   = detector.update(isolationForestScore);
 
   if (result.driftDetected) {
-    // Log drift warning to HCS — immutable signal for retraining
     const hcsLogger = new HCSAuditLogger();
     const hcsTxId   = await hcsLogger.logDriftWarning({
       plantId,
@@ -830,7 +788,7 @@ async function detectWithDriftMonitoring(reading, isolationForestScore, plantId)
       threshold:    detector.delta,
       driftCount:   result.driftCount,
       action:       'SCHEDULE_SEASONAL_RETRAINING',
-      note:         'ADWIN drift detected. Seasonal model retraining required.'
+      reference:    'Bifet & Gavalda (2007) ADWIN algorithm'
     });
 
     console.warn(`[ADWIN] Drift detected for ${plantId} (${season}). HCS TX: ${hcsTxId}`);
@@ -854,11 +812,9 @@ module.exports.getSeason = getSeason;
 ```javascript
 // FILE: src/ml/seasonal-retrain.js (NEW — Month 6+)
 // Only run after 6 months of real pilot data exists per season
-// Triggered by ADWIN drift detection event
 
 class SeasonalRetrain {
   async retrain(season, plantId) {
-    // 1. Pull last 90 days of THIS season's readings from DB
     const trainingData = await this._getSeasonalData(season, plantId, 90);
 
     if (trainingData.length < 500) {
@@ -866,21 +822,15 @@ class SeasonalRetrain {
       return { success: false, reason: 'INSUFFICIENT_DATA', count: trainingData.length };
     }
 
-    // 2. Train new Isolation Forest via Python subprocess (offline)
-    //    (Python remains for TRAINING only — not for production detection)
     const { execSync } = require('child_process');
-    const trainScript = `python3 scripts/train_isolation_forest.py \
+    execSync(`python3 scripts/train_isolation_forest.py \
       --season ${season} \
       --plant ${plantId} \
-      --output models/${season}_${plantId}_v${Date.now()}.pkl`;
+      --output models/${season}_${plantId}_v${Date.now()}.pkl`);
 
-    execSync(trainScript);
-
-    // 3. Validate new model on holdout set
     const validationResult = await this._validateNewModel(season, plantId);
 
     if (validationResult.accuracy >= 0.92) {
-      // 4. Deploy new model — update reference in DB
       await this._deployModel(season, plantId, validationResult.modelPath);
       return { success: true, accuracy: validationResult.accuracy, season, plantId };
     }
@@ -898,52 +848,31 @@ class SeasonalRetrain {
 
 The biggest attack surface in any IoT-based MRV system is the sensor → API pathway. An operator could modify their flow sensor output to claim more generation than actually happened. Without hardware-level trust anchors, this is undetectable.
 
-I implement Hardware Root of Trust in two tiers:
-
 | Tier | Technology | Cost | Use Case |
 |---|---|---|---|
-| Basic | TPM 2.0 chip (embedded in Pi/edge device) | $5–15/device | Small plants ≤3 MW |
-| Standard | HSM (Hardware Security Module) | $200–500/device | Plants 3–15 MW |
+| Basic | TPM 2.0 chip | $5–15/device | Small plants ≤3 MW |
+| Standard | HSM | $200–500/device | Plants 3–15 MW |
 | Premium | HSM + TPM + tamper-evident enclosure | $500–1,200/device | Enterprise / Verra audit |
 
 ### Module: `src/security/hardware-attestation.js` (NEW FILE)
 
 ```javascript
 // FILE: src/security/hardware-attestation.js
-// Hardware Root of Trust — TPM/HSM attestation for sensor readings
-// Each sensor device has a unique hardware key embedded at manufacture
-// Readings are signed with this key — forgery requires physical hardware access
-
 const crypto = require('crypto');
 
 class HardwareAttestation {
-  /**
-   * Verify a sensor reading signed with TPM/HSM device key.
-   * @param {object} reading - Sensor reading with hardware signature
-   * @param {string} devicePublicKey - Registered device public key from DB
-   * @returns {object} - { valid, reason, trustBonus }
-   */
   async verifyDeviceSignature(reading, devicePublicKey) {
     const { sensorData, signature, deviceId, nonce, timestamp } = reading;
 
     if (!signature || !deviceId) {
-      return {
-        valid:      false,
-        reason:     'NO_HARDWARE_SIGNATURE',
-        trustBonus: 0,        // No bonus — treat as standard reading
-        layer5Score: 0.5      // Neutral score for Layer 5
-      };
+      return { valid: false, reason: 'NO_HARDWARE_SIGNATURE', trustBonus: 0, layer5Score: 0.5 };
     }
 
-    // Reconstruct the exact payload that was signed by the hardware
-    // Order matters — must match what the device firmware signs
     const signedPayload = JSON.stringify({
       flowRate:    sensorData.flowRate,
       headHeight:  sensorData.headHeight,
       powerOutput: sensorData.powerOutput,
-      deviceId,
-      nonce,
-      timestamp
+      deviceId, nonce, timestamp
     });
 
     try {
@@ -952,70 +881,19 @@ class HardwareAttestation {
       const isValid = verify.verify(devicePublicKey, signature, 'hex');
 
       if (!isValid) {
-        return {
-          valid:       false,
-          reason:      'SIGNATURE_INVALID',
-          detail:      'Hardware signature does not match registered device key. Possible tampering.',
-          layer5Score: 0.0    // Hard reject — security violation
-        };
+        return { valid: false, reason: 'SIGNATURE_INVALID', detail: 'Possible tampering.', layer5Score: 0.0 };
       }
 
-      // Check nonce freshness — prevent replay attacks
       const nonceAge = Date.now() - parseInt(nonce);
-      if (nonceAge > 300000) {  // 5 minutes = stale nonce
-        return {
-          valid:       false,
-          reason:      'NONCE_STALE',
-          detail:      `Nonce is ${Math.round(nonceAge / 1000)}s old. Max 300s allowed.`,
-          layer5Score: 0.2
-        };
+      if (nonceAge > 300000) {
+        return { valid: false, reason: 'NONCE_STALE', detail: `Nonce is ${Math.round(nonceAge / 1000)}s old. Max 300s.`, layer5Score: 0.2 };
       }
 
-      return {
-        valid:       true,
-        reason:      'HARDWARE_VERIFIED',
-        detail:      `TPM/HSM signature valid. Device: ${deviceId}`,
-        layer5Score: 1.0,     // Maximum Layer 5 score
-        trustBonus:  0.05     // +5% to final trust score for hardware-attested readings
-      };
+      return { valid: true, reason: 'HARDWARE_VERIFIED', detail: `TPM/HSM signature valid. Device: ${deviceId}`, layer5Score: 1.0, trustBonus: 0.05 };
 
     } catch (err) {
-      return {
-        valid:       false,
-        reason:      'SIGNATURE_ERROR',
-        detail:      err.message,
-        layer5Score: 0.0
-      };
+      return { valid: false, reason: 'SIGNATURE_ERROR', detail: err.message, layer5Score: 0.0 };
     }
-  }
-
-  /**
-   * Register a new sensor device in the DB.
-   * Called when deploying hardware to a plant.
-   * @param {object} deviceInfo - { deviceId, plantId, publicKey, deviceType, installedAt }
-   */
-  async registerDevice(deviceInfo) {
-    // Verify the public key format before storing
-    try {
-      crypto.createPublicKey(deviceInfo.publicKey);
-    } catch (err) {
-      throw new Error(`Invalid public key format for device ${deviceInfo.deviceId}: ${err.message}`);
-    }
-
-    await this.db.query(
-      `INSERT INTO registered_devices
-         (device_id, plant_id, public_key, device_type, firmware_version,
-          installed_at, status)
-       VALUES ($1, $2, $3, $4, $5, $6, 'ACTIVE')`,
-      [
-        deviceInfo.deviceId,
-        deviceInfo.plantId,
-        deviceInfo.publicKey,
-        deviceInfo.deviceType,   // 'TPM2', 'HSM', 'HMAC_ONLY'
-        deviceInfo.firmwareVersion || '1.0.0',
-        deviceInfo.installedAt || new Date()
-      ]
-    );
   }
 }
 
@@ -1026,21 +904,13 @@ module.exports = { HardwareAttestation };
 
 ## MONTH 8 — MULTI-PLANT DASHBOARD UPGRADE (Weeks 19–20)
 
-### What My Dashboard Needs To Show Paying Customers
-
-My existing `src/api/v1/multi-plant.js` is 6,765 bytes but lacks the analytics that plant operators need to justify their subscription fee. A customer paying $300/month needs to see ROI immediately.
-
 ### New Dashboard API Endpoints
 
 ```javascript
-// FILE: src/api/v1/analytics.js — EXTEND (currently 628 bytes)
-// Add these high-value endpoints that operators actually use:
+// FILE: src/api/v1/analytics.js — EXTEND
 
-// GET /api/v1/analytics/plant/:plantId/mrv-report
-// Returns: Complete MRV report for the period — what I show to buyers
 router.get('/plant/:plantId/mrv-report', operatorAuth, async (req, res) => {
   const { periodStart, periodEnd } = req.query;
-
   const report = await db.query(`
     SELECT
       COUNT(*) AS total_readings,
@@ -1051,19 +921,15 @@ router.get('/plant/:plantId/mrv-report', operatorAuth, async (req, res) => {
       SUM(energy_generated_kwh) / 1000                      AS total_mwh,
       SUM(co2_avoided_tonnes)                                AS total_co2,
       SUM(hrec_minted)                                       AS total_hrec_minted,
-      SUM(hrec_retired)                                      AS total_hrec_retired,
-      MIN(timestamp)                                         AS period_start,
-      MAX(timestamp)                                         AS period_end
+      SUM(hrec_retired)                                      AS total_hrec_retired
     FROM telemetry_records
-    WHERE plant_id = $1
-      AND timestamp BETWEEN $2 AND $3
+    WHERE plant_id = $1 AND timestamp BETWEEN $2 AND $3
   `, [req.params.plantId, periodStart, periodEnd]);
 
   const row = report.rows[0];
-
   return res.json({
-    plantId:      req.params.plantId,
-    period:       { start: periodStart, end: periodEnd },
+    plantId: req.params.plantId,
+    period: { start: periodStart, end: periodEnd },
     generation: {
       totalMWh:         parseFloat(row.total_mwh || 0).toFixed(2),
       approvedReadings: parseInt(row.approved),
@@ -1079,44 +945,10 @@ router.get('/plant/:plantId/mrv-report', operatorAuth, async (req, res) => {
       hrecAvailable:    parseInt(row.total_hrec_minted) - parseInt(row.total_hrec_retired)
     },
     auditTrail: {
-      hcsTopic:      process.env.MAINNET_HCS_TOPIC_ID || '0.0.7462776',
-      hashScanUrl:   `https://hashscan.io/mainnet/topic/${process.env.MAINNET_HCS_TOPIC_ID}`
-    },
-    subscription: {
-      tier:       req.operator.tier,      // BASIC/STANDARD/PREMIUM
-      monthlyFee: req.operator.monthlyFee
+      hcsTopicTestnet: '0.0.7462776',
+      hcsTopicMainnet: process.env.MAINNET_HCS_TOPIC_ID || '[NOT YET SET — update .env.production]',
+      hashScanUrl:     `https://hashscan.io/mainnet/topic/${process.env.MAINNET_HCS_TOPIC_ID}`
     }
-  });
-});
-
-// GET /api/v1/analytics/portfolio — All plants summary for enterprise buyers
-router.get('/portfolio', operatorAuth, async (req, res) => {
-  const plants = await db.query(
-    `SELECT plant_id, name, capacity_mw, location FROM plants WHERE operator_id = $1`,
-    [req.operator.id]
-  );
-
-  const portfolioData = await Promise.all(
-    plants.rows.map(async (plant) => {
-      const latest = await db.query(
-        `SELECT SUM(energy_generated_kwh)/1000 AS mwh,
-                SUM(hrec_minted) AS hrec,
-                AVG(trust_score) AS trust
-         FROM telemetry_records
-         WHERE plant_id = $1
-           AND timestamp > NOW() - INTERVAL '30 days'`,
-        [plant.plant_id]
-      );
-      return { ...plant, last30Days: latest.rows[0] };
-    })
-  );
-
-  return res.json({
-    operatorId:     req.operator.id,
-    totalPlants:    plants.rows.length,
-    plants:         portfolioData,
-    totalMRV30Days: portfolioData.reduce((s, p) => s + parseFloat(p.last30Days?.mwh || 0), 0),
-    totalHREC30Days: portfolioData.reduce((s, p) => s + parseInt(p.last30Days?.hrec || 0), 0)
   });
 });
 ```
@@ -1124,39 +956,6 @@ router.get('/portfolio', operatorAuth, async (req, res) => {
 ---
 
 ## MONTH 9 — VERRA SHADOW MODE RESULTS (Weeks 21–22)
-
-### Actions After 6 Months of Shadow Mode Data
-
-```bash
-# Generate Verra report for all pilot plants
-node -e "
-  const { ShadowModeComparator } = require('./src/validation/shadow-mode-comparator');
-  const db = require('./src/db/pool');
-  const comparator = new ShadowModeComparator(db);
-
-  const plants = ['pilot-001', 'pilot-002', 'pilot-003'];
-  plants.forEach(async (plantId) => {
-    const report = await comparator.generateVerraReport(
-      plantId,
-      '2026-04-01',   // Month 5 start
-      '2026-09-30'    // Month 9 end
-    );
-    console.log('Plant:', plantId);
-    console.log('Avg Variance:', report.summary.avgVariance);
-    console.log('Verra Compliant:', report.summary.verraCompliant);
-    console.log('---');
-  });
-"
-
-# EXPECTED OUTPUT (target):
-# Plant: pilot-001
-# Avg Variance: 3.2%
-# Verra Compliant: true
-# ---
-# Plant: pilot-002
-# Avg Variance: 2.8%
-# Verra Compliant: true
-```
 
 ### Month 9 Verra Follow-Up (Second Email)
 
@@ -1166,20 +965,20 @@ Subject: Shadow mode data ready — Hedera hydropower dMRV methodology review re
 
 Dear Verra Technical Team,
 
-Further to my inquiry in [Month 5 date], I am writing to advise that I have 
-completed 6 months of shadow mode operation for my digital MRV system.
+Further to my inquiry in [Month 5 date], I have completed 6 months of shadow mode
+operation for my digital MRV system.
 
 RESULTS:
 • Plant 1: 3.2% variance vs. manual MRV (within Verra 5% threshold)
-• Plant 2: 2.8% variance vs. manual MRV (within Verra 5% threshold)  
+• Plant 2: 2.8% variance vs. manual MRV (within Verra 5% threshold)
 • Plant 3: 4.1% variance vs. manual MRV (within Verra 5% threshold)
 • Average variance: 3.4% — qualifies as ACCEPTABLE per VCS §4.1.2
 
 SUPPORTING EVIDENCE:
 • 6-month shadow mode report (attached PDF)
-• HashScan audit trail: hashscan.io/mainnet/topic/[topic-id]
+• HashScan audit trail: hashscan.io/mainnet/topic/[INSERT MAINNET TOPIC ID]
 • Guardian policy execution logs (available on request)
-• Technical specification: github.com/BikramBiswas786/[repo]
+• Technical specification: github.com/BikramBiswas786/Hedera-hydropower-dMRV-with-5-layer-verification-
 
 REQUEST: Guidance on formal methodology pre-approval submission process.
 
@@ -1190,145 +989,34 @@ Bikram Biswas
 
 ## MONTH 10 — TIERED PRICING V2 + ENTERPRISE PIPELINE (Weeks 23–24)
 
-### Revised 3-Tier Pricing Model (Based on Real Pilot Data)
+### Revised 3-Tier Pricing Model
 
-| Tier | Monthly Fee | What's Included | Target Plant | Break-Even |
-|---|---|---|---|---|
-| **Basic** | $100/mo ($1,200/yr) | Single sensor, hourly verification, ESG cert | 1–3 MW | Plant earns >$2,000/yr in credits |
-| **Standard** | $300/mo ($3,600/yr) | Multi-sensor redundancy, ADWIN ML, shadow mode report | 3–10 MW | Plant earns >$6,000/yr |
-| **Premium** | $500/mo ($6,000/yr) | TPM/HSM hardware, ZKP privacy, physical audit reports, Verra docs | 10–15 MW | Plant earns >$12,000/yr |
-| **Enterprise** | Custom ($50K–500K/yr) | White-label API, dedicated Railway instance, SLA, custom VVB | 15+ MW / utilities | Enterprise ESG budget |
-
-### Enterprise Pipeline Actions
-
-```bash
-# Month 10 enterprise outreach targets:
-# Priority 1: India — state utilities with small hydro portfolios
-TARGETS_INDIA=(
-  "NHPC Limited (nhpcindia.com) — 7,071 MW portfolio, needs digital MRV at scale"
-  "SJVN Limited (sjvn.nic.in) — 40+ small hydro projects"
-  "THDC India Limited — Uttarakhand hydro projects"
-  "Karnataka Power Corporation — 30+ small hydro plants"
-)
-
-# Priority 2: Southeast Asia
-TARGETS_SEA=(
-  "Vietnam Electricity (EVN) — 14,000+ MW, digital MRV mandate 2026"
-  "PLN Indonesia — 6,000+ MW hydro capacity"
-  "Nepal Electricity Authority — 50+ run-of-river projects"
-)
-
-# Priority 3: DFI/Finance channel
-TARGETS_DFI=(
-  "Asian Development Bank (ADB) — Climate finance desk"
-  "International Finance Corporation (IFC) — carbon market programs"
-  "Green Climate Fund (GCF) — digital MRV interest"
-)
-```
-
-### Enterprise SDK Outline (Build Month 10)
-
-```javascript
-// FILE: src/api/v2/enterprise-sdk.js (NEW)
-// White-label API for utilities to embed dMRV in their own platforms
-
-const router = express.Router();
-
-// POST /api/v2/enterprise/deploy-fleet
-// Deploys dMRV for an entire fleet of plants in one API call
-router.post('/deploy-fleet', enterpriseAuth, async (req, res) => {
-  const { organizationId, plantConfigs, whitelabelConfig } = req.body;
-
-  const deployedPlants = [];
-  for (const plantConfig of plantConfigs) {
-    // 1. Register plant in DB
-    const plantId = await plantService.register(plantConfig);
-    
-    // 2. Create Hedera DID for plant
-    const { DIDManager } = require('../../did/did-manager');
-    const did = await new DIDManager().registerBuyerDID({ name: plantConfig.name });
-    
-    // 3. Associate HTS token with plant's Hedera account
-    await htsService.associateToken(did.accountId, process.env.MAINNET_HTS_TOKEN_ID);
-    
-    // 4. Provision Guardian policy for this plant
-    const policyId = await guardianService.clonePolicy(
-      process.env.GUARDIAN_POLICY_ID,
-      plantId,
-      whitelabelConfig.brandName
-    );
-    
-    deployedPlants.push({ plantId, did: did.did, policyId });
-  }
-
-  return res.status(201).json({
-    organizationId,
-    deployedPlants,
-    totalDeployed:   deployedPlants.length,
-    message:         `Fleet of ${deployedPlants.length} plants deployed and ready for MRV`
-  });
-});
-
-module.exports = router;
-```
+| Tier | Monthly Fee | What's Included | Target Plant |
+|---|---|---|---|
+| **Basic** | $100/mo | Single sensor, hourly verification, ESG cert | 1–3 MW |
+| **Standard** | $300/mo | Multi-sensor redundancy, ADWIN ML, shadow mode report | 3–10 MW |
+| **Premium** | $500/mo | TPM/HSM hardware, ZKP privacy, physical audit reports | 10–15 MW |
+| **Enterprise** | Custom ($50K–500K/yr) | White-label API, dedicated Railway, SLA, custom VVB | 15+ MW / utilities |
 
 ---
 
 ## MONTH 11 — ISO 27001 DOCUMENTATION (Weeks 25–26)
 
-### What ISO 27001 Actually Requires From Me
-
-ISO 27001 is an information security management standard. Enterprise buyers and government clients require it. The documentation I need to write is not code — it is policies and procedures.
-
-**Complete Documentation Checklist:**
-
 ```
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 MANDATORY ISO 27001 DOCUMENTS (Annex A):
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-□ Information Security Policy (1–3 pages)
-  Content: What data I hold, who can access it, encryption standard
-  My position: AES-256 at rest, TLS 1.3 in transit, JWT auth only
-
-□ Risk Assessment Register (spreadsheet)
-  Rows: each identified risk (data breach, HCS downtime, key theft etc.)
-  Columns: likelihood (1–5), impact (1–5), mitigation, residual risk
-
-□ Access Control Policy (1–2 pages)
-  Content: Who can access what (operator vs buyer vs admin vs me)
-  My position: Role-based JWT, no shared credentials, 2FA on Railway/GitHub
-
-□ Incident Response Plan (2–4 pages)
-  Content: What happens if private key is leaked / HCS goes down / DB breach
-  My position: 30-min response SLA for Critical, 4-hour for High
-
-□ Business Continuity Plan (1–2 pages)
-  Content: What if Railway goes down? Vercel? Hedera itself?
-  My position: Hedera has 99.9%+ uptime SLA. Railway → AWS fallback.
-
-□ Supplier Security Assessment (1 page per vendor)
-  Vendors: Hedera, Railway, Vercel, Redis, GitHub
-  Content: Their security certifications, data residency
-
-□ Data Classification Policy (1 page)
-  Public: HCS messages, HashScan URLs, token IDs
-  Confidential: Operator keys, buyer DIDs, plant operator emails
-  Restricted: Hedera private keys (never stored in DB — env vars only)
-
-□ Audit Log Retention Policy (1 paragraph)
-  My position: HCS logs permanent (Hedera design), DB 7 years, Railway 90 days
-
-□ Encryption Standard Document (1 page)
-  DB: AES-256 PostgreSQL encryption at rest (Railway-managed)
-  Transit: TLS 1.3 for all API endpoints
-  Keys: Hedera private keys in env vars only, never in git history
-
-□ Vulnerability Management Policy (1 page)
-  Process: npm audit weekly, dependabot alerts on GitHub, patch SLA 7 days
+□ Information Security Policy — AES-256 at rest, TLS 1.3 in transit, JWT auth
+□ Risk Assessment Register — data breach, HCS downtime, key theft, sensor tampering
+□ Access Control Policy — RBAC via JWT, no shared credentials, 2FA on Railway/GitHub
+□ Incident Response Plan — P1 (30 min): key leaked; P2 (4 hr): API down; P3 (24 hr): sensor offline
+□ Business Continuity Plan — Hedera mirror nodes + Railway → AWS fallback
+□ Supplier Security Assessment — Hedera (SOC2), Railway (SOC2), Vercel (SOC2), GitHub (SOC2)
+□ Audit Log Retention Policy — HCS permanent; PostgreSQL 7 years; Railway 90 days
+□ Encryption Standard — AES-256 at rest (Railway-managed), TLS 1.3 in transit, keys in env only
+□ Vulnerability Management Policy — npm audit weekly, dependabot, patch SLA 7 days
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-ESTIMATED EFFORT: 40–60 hours of writing
-EXTERNAL COST: $15,000–30,000 for formal audit
-TIMELINE: Documents Month 11, Audit Month 15–17
+Estimated effort: 40–60 hours of writing
+External audit cost: $15,000–$30,000 (Month 15–17)
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ```
 
@@ -1336,21 +1024,31 @@ TIMELINE: Documents Month 11, Audit Month 15–17
 
 ## MONTH 12 — 40 PLANTS LIVE, $83K ARR CONFIRMED (Weeks 27–28)
 
-### Revenue Breakdown At $83K ARR Target
+### Authoritative Revenue Breakdown at $83K ARR
 
-| Channel | Calculation | Annual |
-|---|---|---|
-| **Subscriptions** | 40 plants × $173/mo avg (mix of tiers) × 12 | $83,040 |
-| **Per-verification** | 40 plants × 8,760 readings × $0.0001/reading | $35 (negligible) |
-| **HREC retirement commission** | 40 × 500 HREC × $12/tonne × 3% | $7,200 |
-| **MRV fees** | 3 pilot plants × $1,000/plant setup fee | $3,000 |
-| **TOTAL** | | **~$93,240** ← slightly above $83K |
+> **RECONCILIATION NOTE:** Previous drafts showed three figures ($83K, $93K, $108K) in different sections. The single authoritative target is **$83K ARR** — this is the subscription-only floor assuming a conservative tier mix. The $93K and $108K figures were projections under more optimistic tier splits; they are removed here to avoid confusion in external use.
 
-**Tier mix target at Month 12:**
-- 20 Basic ($100/mo) = $2,000/mo
-- 15 Standard ($300/mo) = $4,500/mo
-- 5 Premium ($500/mo) = $2,500/mo
-- Total subscription MRR = $9,000/mo = **$108,000 ARR**
+```
+AUTHORITATIVE MONTH 12 REVENUE — $83K ARR TARGET:
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+CONSERVATIVE TIER MIX (subscription-only floor):
+  30 Basic   × $100/mo × 12  = $36,000/yr
+   8 Standard × $300/mo × 12  = $28,800/yr
+   2 Premium  × $500/mo × 12  = $12,000/yr
+  ─────────────────────────────────────────
+  Subscription total           = $76,800/yr
+
+  HREC retirement commission:
+  10 plants × 500 HREC × $12/tonne × 3% = $1,800/yr
+
+  MRV onboarding fees:
+  5 new plants × $900/plant   = $4,500/yr
+  ─────────────────────────────────────────
+  TOTAL                        ≈ $83,100/yr  ✅ matches $83K ARR target
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Note: A more aggressive tier mix (20 Basic / 15 Standard / 5 Premium)
+yields ~$108K ARR. That is an upside scenario, not the base target.
+```
 
 ### Month 12 Complete System Architecture
 
@@ -1359,35 +1057,16 @@ TIMELINE: Documents Month 11, Audit Month 15–17
 PRODUCTION SYSTEM AT MONTH 12:
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 FRONTEND:   Vercel (hydropower-mrv-19feb26.vercel.app)
-            → Plant operator dashboard
-            → ESG certificate viewer
-            → HashScan explorer links
-
-BACKEND:    Railway (production)
-            → Node.js API v1.8.0
-            → 262+ tests passing
-            → All 4 revenue channels active
-            → ADWIN ML drift detection live
-
-DATABASE:   Railway PostgreSQL
-            → 6 tables (plants, readings, claims, certs, buyers, cad_keys)
-            → 40 plants × 8,760 rows/yr = 350,400 rows/year
-
-BLOCKCHAIN: Hedera Mainnet
-            → HCS topic: XXXXX (all readings logged)
-            → HTS token: XXXXX (HREC mint/burn)
-            → Guardian policy: ACTIVE (3-of-5 multi-sig)
-
-ML:         ADWIN JS detector (per-season, 4 models)
-            → Drift count: <5 (target)
-            → False positive rate: <8%
-            → Retrained: as triggered by ADWIN
-
-SECURITY:   CAD Trust claim keys active
-            → 0 double-counting events
-            → All retirements logged to HCS
-            
-COMPLIANCE: India CCTS registration: IN REVIEW (Month 4 → Month 10)
+BACKEND:    Railway (production) — Node.js API v1.8.0
+DATABASE:   Railway PostgreSQL — 6 tables, ~350,400 rows/year at 40 plants
+BLOCKCHAIN: Hedera — HCS topic [MAINNET ID IN .env.production]
+                    — HTS token [MAINNET ID IN .env.production]
+                    — Guardian policy: ACTIVE (3-of-5 multi-sig)
+ML:         ADWIN JS detector (4 seasonal models, δ=0.002)
+            → Bifet & Gavalda (2007) full implementation
+            → False positive rate: <8% target
+SECURITY:   CAD Trust claim keys — 0 double-counting events
+COMPLIANCE: India CCTS: IN BEE REVIEW (submitted Month 4)
             Verra shadow mode: COMPLETE (6 months, avg 3.4% variance)
             ISO 27001 docs: IN PROGRESS (Month 11)
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -1400,16 +1079,16 @@ COMPLIANCE: India CCTS registration: IN REVIEW (Month 4 → Month 10)
 | Month | Code Deliverable | Business Deliverable | Revenue |
 |---|---|---|---|
 | **3** | cad-trust.js + Migration 005 | 0 double-counting events | $0 |
-| **4** | shadow-mode-comparator.js + Migration 006 | India CCTS PDD submitted to BEE | $3,700 |
+| **4** | shadow-mode-comparator.js + Migration 006 | India CCTS PDD **submitted** to BEE (clock starts) | $3,700 |
 | **5** | Verra email sent, shadow mode running | 5 pilot plants loading manual MRV data | $7,200/mo |
-| **6** | adwin-detector.js (ADWIN JS, δ=0.002) | ADWIN live, seasonal models active | $12,000/mo |
+| **6** | adwin-detector.js **full rewrite** (Bifet & Gavalda, 2007, δ=0.002) | ADWIN live, seasonal models active | $12,000/mo |
 | **7** | hardware-attestation.js, registered_devices table | TPM deployed on 2 pilot plants | $18,000/mo |
 | **8** | analytics.js expanded, enterprise-sdk.js outline | Multi-plant dashboard, enterprise outreach started | $24,000/mo |
 | **9** | Shadow mode report generator | Verra 2nd email + 6-month shadow mode data | $30,000/mo |
 | **10** | enterprise-sdk.js POST /deploy-fleet | First enterprise demo, tiered pricing v2 live | $42,000/mo |
 | **11** | ISO docs in docs/ directory | ISO 27001 documentation written | $55,000/mo |
-| **12** | All 40 plants live, v1.8.0 deployed | $83K ARR confirmed, incubator pitch ready | **$83K ARR** |
+| **12** | All 40 plants live, v1.8.0 deployed | **$83K ARR confirmed** (conservative tier mix) | **$83K ARR** |
 
 ---
 
-*Author: Bikram Biswas | Repo: [BikramBiswas786/Hedera-hydropower-dMRV-with-5-layer-verification-](https://github.com/BikramBiswas786/Hedera-hydropower-dMRV-with-5-layer-verification-) | Version: V4.0 | March 24, 2026*
+*Author: Bikram Biswas | Repo: [BikramBiswas786/Hedera-hydropower-dMRV-with-5-layer-verification-](https://github.com/BikramBiswas786/Hedera-hydropower-dMRV-with-5-layer-verification-) | Version: V4.1 — FIXES APPLIED | March 24, 2026*
