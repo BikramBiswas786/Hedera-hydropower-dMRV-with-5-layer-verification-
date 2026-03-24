@@ -1,6 +1,19 @@
 # ROADMAP 1 — PROTOCOL FOUNDATION & CORE ENGINE
 ## Hedera Hydropower dMRV | Weeks 1–8 Technical Implementation
-### Author: Bikram Biswas | Date: March 24, 2026 | Version: V3.0
+### Author: Bikram Biswas | Date: March 24, 2026 | Version: V3.1
+
+---
+
+## AUDIT FIX LOG (V3.0 → V3.1)
+
+> Applied March 24, 2026 based on cross-roadmap consistency audit.
+
+| # | Severity | Fix Applied |
+|---|---|---|
+| 1 | 🔴 HIGH | Test count corrected — baseline is 237; 262+ is the Week 8 exit target after roadmap test additions |
+| 2 | 🔴 HIGH | ADWIN timing contradiction resolved — Week 7 builds a **placeholder** KS-test replacement only; full Bifet & Gavalda (2007) ADWIN production rewrite ships in **Roadmap 2 Month 6** |
+| 3 | 🟡 MED | `src/did/did-manager.js` dependency explicitly assigned to Week 2 (must be built before `vc-generator.js`) |
+| 4 | 🟢 LOW | All ADWIN references in this document use correct Bifet & Gavalda (2007) citation — no "Manus" references present |
 
 ---
 
@@ -41,7 +54,8 @@ I audited my own repository line by line before writing this. I will not plan ba
 | HTS Token `0.0.7964264` | — | ✅ LIVE | HREC token on Hedera testnet |
 | 2,000+ HCS messages | — | ✅ LIVE | Immutable audit trail |
 
-**Test coverage:** 237 tests, 85.3% overall coverage, 100% on critical verification paths.
+**Test coverage:** 237 tests at 85.3% overall coverage, 100% on critical verification paths.
+> ⚠️ **AUDIT NOTE (ERROR 1 FIX):** The baseline is **237 tests**. The **262+ tests** figure cited in Roadmap 2 as the Month 1 handoff state reflects tests written *during* Weeks 1–8 as part of this roadmap's deliverables (primarily Week 7 ML tests and Week 8 integration tests). It is not a contradiction — it is the exit target. The Week-by-Week schedule in §10 explicitly lists test additions for Weeks 7 and 8.
 
 **Total source files:** 61 files, ~2,935 lines of core logic.
 
@@ -69,8 +83,21 @@ scripts/deploy_hrec_token.js           ❌ — HREC token deployment script
 src/carbon-credits/CarbonCreditManager.js ❌ — Mint logic wired to verified MWh
 src/certificates/pdf-renderer.js       ❌ — PDF certificate with QR → HashScan
 src/certificates/certificate-generator.js ❌ — VC + PDF orchestrator
-src/ml/adwin-detector.js               ❌ — Real-time ADWIN drift detection (JS)
 src/did/did-manager.js                 ❌ — DID creation and resolution
+                                            → DEPENDENCY NOTE: must be built in Week 2
+                                              BEFORE vc-generator.js (Week 2/3) can work.
+                                              did-manager.js wraps @hashgraph/did-sdk-js
+                                              and is required by VCGenerator constructor.
+src/ml/adwin-detector.js               ❌ — Week 7 PLACEHOLDER drift detector only
+                                            → TIMING NOTE (AUDIT FIX): This Week 7 build
+                                              is a JS KS-test replacement (rolling window).
+                                              The full Bifet & Gavalda (2007) ADWIN
+                                              production implementation ships in
+                                              Roadmap 2 Month 6. The src/anomaly-detector-ml.js
+                                              file (2,342 bytes, already live) is MODIFIED
+                                              (not replaced) in Week 7 to append the
+                                              placeholder drift class. Full replacement
+                                              happens in Roadmap 2.
 4 database migrations                  ❌ — claims, certificates, buyers, retirements
 ```
 
@@ -186,6 +213,12 @@ SENSOR READING ARRIVES
 │    DriftDetector class, rolling window 100 readings       │
 │    Drift threshold: >15% anomaly rate → DRIFT_DETECTED    │
 │    Action: HCS warning + human review queue               │
+│                                                           │
+│  ⚠️ ADWIN TIMING NOTE: Week 7 replaces the DriftDetector  │
+│  with a JS KS-test placeholder only. Full ADWIN           │
+│  (Bifet & Gavalda, 2007 — δ=0.002) production rewrite     │
+│  ships in Roadmap 2 Month 6. See §8 for the Week 7        │
+│  placeholder code and Roadmap 2 §5 for the full build.    │
 │                                                           │
 │  Known simulation results:                                │
 │    Normal reading:   Trust 0.923 → APPROVED ✅            │
@@ -387,6 +420,8 @@ git push origin main
 
 **Goal: Every approved reading becomes a W3C Verifiable Credential — signed by my DID, not just a JSON blob stored on HCS. A regulator can verify it offline with zero internet access.**
 
+> ⚠️ **DEPENDENCY NOTE (AUDIT FIX — WARNING 5):** `src/did/did-manager.js` MUST be built at the **start of Week 2** before `vc-generator.js` can be created. The `VCGenerator` constructor requires a resolved Hedera DID to set `this.issuerDid`. The `did-manager.js` module wraps `@hashgraph/did-sdk-js` and handles DID creation, resolution, and key management. Build order: `did-manager.js` → `vc-generator.js` → `workflow.js` integration.
+
 ### DID Architecture
 
 ```
@@ -403,10 +438,57 @@ DEVICE_DID per sensor: did:hedera:testnet:<sensorId>
 
 DID method: Hedera-native (HIP-29 compatible). I use `@hashgraph/did-sdk-js` for resolution.
 
+### New Module: `src/did/did-manager.js` (Week 2 — Build First)
+
+```javascript
+// FILE: src/did/did-manager.js  (NEW — build BEFORE vc-generator.js)
+// Week 2 Day 1 priority. VCGenerator depends on this module.
+const { Client, PrivateKey, AccountId } = require('@hashgraph/sdk');
+// Note: @hashgraph/did-sdk-js must be installed: npm install @hashgraph/did-sdk-js
+
+class DIDManager {
+  constructor() {
+    this.client = Client.forTestnet();
+    this.client.setOperator(
+      AccountId.fromString(process.env.OPERATOR_ID),
+      PrivateKey.fromString(process.env.OPERATOR_PRIVATE_KEY)
+    );
+  }
+
+  /**
+   * Register a new DID on Hedera testnet.
+   * @param {string} label — human label for logging (e.g. 'issuer', 'plant-001')
+   * @returns {object} { did, privateKey, publicKey }
+   */
+  async registerDID(label) {
+    const privateKey = PrivateKey.generate();
+    const publicKey  = privateKey.publicKey;
+    // DID document is anchored to HCS — format: did:hedera:testnet:<publicKeyHex>
+    const did = `did:hedera:testnet:${publicKey.toStringRaw()}`;
+    // In production: use @hashgraph/did-sdk-js HederaDid.register() for full HIP-29 compliance
+    console.log(`✅ DID registered [${label}]: ${did}`);
+    return { did, privateKey: privateKey.toStringRaw(), publicKey: publicKey.toStringRaw() };
+  }
+
+  /**
+   * Resolve a DID to its public key (for offline VC verification).
+   * @param {string} did
+   * @returns {string} publicKeyRaw
+   */
+  resolveDID(did) {
+    // did:hedera:testnet:<publicKeyHex> — key is embedded in the DID itself
+    const parts = did.split(':');
+    return parts[parts.length - 1];
+  }
+}
+
+module.exports = { DIDManager };
+```
+
 ### New Module: `src/hedera/vc-generator.js`
 
 ```javascript
-// FILE: src/hedera/vc-generator.js  (NEW)
+// FILE: src/hedera/vc-generator.js  (NEW — requires did-manager.js to be built first)
 const { PrivateKey } = require('@hashgraph/sdk');
 
 class VCGenerator {
@@ -651,21 +733,25 @@ module.exports = { CarbonCreditManager };
 
 **Goal: Produce a human-readable ESG certificate backed by cryptographic proof. One page. Buyer can scan the QR code with their phone and land on the HashScan transaction.**
 
-### ADWIN Drift Detector: `src/ml/adwin-detector.js`
+### ADWIN Placeholder Drift Detector: `src/ml/adwin-detector.js` (Week 7)
 
-Before I build the certificate engine, I replace the naive drift detector with a production ADWIN implementation. **Reason: I need the ML layer to be production-stable before Week 9 when real buyers start retiring credits.**
-
-ADWIN (Adaptive Windowing, Bifet & Gavalda 2007) detects distribution shifts in real time on streaming data. My current KS-test requires a full batch window — it misses gradual drift. ADWIN detects per reading.
+> ⚠️ **IMPORTANT — ADWIN TIMING (AUDIT FIX — ERRORS 2 & 4):**
+> 
+> What is built here in **Week 7** is a **placeholder** that replaces the existing `DriftDetector` class (rolling window, 100 readings). It is implemented as a KS-test approximation in JS.
+> 
+> The **full production ADWIN implementation** (Bifet & Gavalda, 2007 — δ=0.002 confidence parameter, adaptive windowing) ships in **Roadmap 2 Month 6**. That is the canonical reference implementation. This file will be overwritten entirely at that point.
+> 
+> The existing `src/anomaly-detector-ml.js` (2,342 bytes, live) is **modified** (appended) in Week 7 — not replaced. The `ADWINDriftDetector` class is appended as a new export. Full replacement of the ML detection pipeline happens in Roadmap 2.
 
 ```javascript
-// FILE: src/ml/adwin-detector.js  (NEW)
-// ADWIN: Adaptive Windowing Algorithm for concept drift detection
-// Reference: Bifet & Gavalda (2007) — δ = 0.002 confidence parameter
-// Language: JavaScript (Node.js native — no Python subprocess required)
+// FILE: src/ml/adwin-detector.js  (NEW — Week 7 PLACEHOLDER)
+// STATUS: Placeholder KS-test approximation. 
+// Full production ADWIN (Bifet & Gavalda, 2007) ships in Roadmap 2 Month 6.
+// This file will be replaced entirely at that point.
 
 class ADWINDriftDetector {
   constructor(delta = 0.002) {
-    this.delta       = delta;    // confidence parameter — lower = more sensitive
+    this.delta       = delta;    // reserved for Roadmap 2 full implementation
     this.window      = [];       // current sliding data window
     this.variance    = 0;
     this.mean        = 0;
@@ -675,7 +761,9 @@ class ADWINDriftDetector {
   }
 
   /**
-   * Add a new anomaly score to the ADWIN window.
+   * Add a new anomaly score to the detector window.
+   * Placeholder: uses rolling window KS-test approximation.
+   * Full ADWIN adaptive windowing replaces this in Roadmap 2 Month 6.
    * @param {number} value   — anomaly score from Isolation Forest (0.0–1.0)
    * @param {string} plantId — logging context
    * @returns {boolean}       — true if drift detected
@@ -684,66 +772,33 @@ class ADWINDriftDetector {
     this.window.push(value);
     this.width++;
 
-    // Welford's online mean and variance
-    const n = this.width;
-    const delta_val = value - this.mean;
-    this.mean     += delta_val / n;
-    this.variance += delta_val * (value - this.mean);
+    // Keep rolling window at 100 readings (placeholder behavior)
+    if (this.window.length > 100) this.window.shift();
 
-    // ADWIN cut-point test
-    if (this._detectCut()) {
+    // Simple KS-test approximation: flag if anomaly rate > 15% in window
+    const anomalyRate = this.window.filter(v => v < 0).length / this.window.length;
+    if (anomalyRate > 0.15 && this.window.length >= 20) {
       this.driftCount++;
       this.lastDriftAt = new Date().toISOString();
-      // Keep only the second half of the window (post-drift)
-      const cutPoint   = Math.floor(this.window.length / 2);
-      this.window      = this.window.slice(cutPoint);
-      this.width       = this.window.length;
-      this._recalcStats();
-      return true;  // DRIFT DETECTED — caller should trigger retraining
+      return true; // DRIFT DETECTED — caller should trigger retraining
     }
     return false;
-  }
-
-  _detectCut() {
-    if (this.window.length < 20) return false;  // minimum window size
-    const n   = this.window.length;
-    const mid = Math.floor(n / 2);
-    const w0  = this.window.slice(0, mid);
-    const w1  = this.window.slice(mid);
-
-    const mean0 = w0.reduce((a, b) => a + b, 0) / w0.length;
-    const mean1 = w1.reduce((a, b) => a + b, 0) / w1.length;
-
-    const epsilon_cut = Math.sqrt(
-      (1 / (2 * w0.length) + 1 / (2 * w1.length)) *
-      Math.log(4 * n / this.delta)
-    );
-
-    return Math.abs(mean0 - mean1) > epsilon_cut;
-  }
-
-  _recalcStats() {
-    if (this.window.length === 0) { this.mean = 0; this.variance = 0; return; }
-    this.mean     = this.window.reduce((a, b) => a + b, 0) / this.window.length;
-    this.variance = this.window.reduce((acc, v) => acc + Math.pow(v - this.mean, 2), 0);
   }
 
   getStats() {
     return {
       windowSize:  this.width,
-      mean:        parseFloat(this.mean.toFixed(4)),
+      mean:        this.window.length ? this.window.reduce((a,b)=>a+b,0)/this.window.length : 0,
       driftCount:  this.driftCount,
       lastDriftAt: this.lastDriftAt,
       delta:       this.delta,
-      currentVariance: parseFloat((this.variance / Math.max(this.width - 1, 1)).toFixed(4))
+      note:        'PLACEHOLDER — full ADWIN (Bifet & Gavalda 2007) ships Roadmap 2 Month 6'
     };
   }
 }
 
 module.exports = { ADWINDriftDetector };
 ```
-
-**Why JS, not Python:** My entire stack is Node.js. Running a Python subprocess for drift detection adds a cold-start latency of 300–800ms per reading on Railway, breaks when Python isn't installed, and creates a deployment dependency I cannot easily containerize. The ADWIN algorithm is deterministic math — it runs identically in JS.
 
 ### PDF Certificate Renderer: `src/certificates/pdf-renderer.js`
 
@@ -1028,16 +1083,20 @@ psql -h localhost -U postgres -d hedera_mrv -c "\dt" | grep -E "buyers|claims|ce
 
 ## 10. WEEK-BY-WEEK EXECUTION SCHEDULE
 
-| Week | Days | Primary Deliverable | Files Created / Modified |
-|---|---|---|---|
-| **Week 0** | Now | Security emergency: purge secrets, rotate keys | `.gitignore`, force push |
-| **Week 1** | Mar 25–31 | Commit-reveal in workflow.js + all 4 DB migrations | `workflow.js`, 4 × `migrations/*.sql` |
-| **Weeks 2–3** | Apr 1–14 | DID manager + VC generator + workflow integration | `vc-generator.js`, `did-manager.js`, `workflow.js` |
-| **Week 4** | Apr 15–21 | VC verification endpoint + HCS audit logger | `certificates.js` (GET /:id/verify), `hcs-audit-logger.js` |
-| **Week 5** | Apr 22–28 | HREC token deployment script + CarbonCreditManager | `deploy_hrec_token.js`, `CarbonCreditManager.js` |
-| **Week 6** | Apr 29–May 5 | Mint pipeline wired end-to-end + HashScan proof | Integration, test suite |
-| **Week 7** | May 6–12 | ADWIN drift detector + PDF renderer | `adwin-detector.js`, `pdf-renderer.js` |
-| **Week 8** | May 13–19 | Certificate generator + full end-to-end test | `certificate-generator.js`, integration test |
+| Week | Days | Primary Deliverable | Files Created / Modified | Tests Added |
+|---|---|---|---|---|
+| **Week 0** | Now | Security emergency: purge secrets, rotate keys | `.gitignore`, force push | 0 |
+| **Week 1** | Mar 25–31 | Commit-reveal in workflow.js + all 4 DB migrations | `workflow.js`, 4 × `migrations/*.sql` | +5 (commit-reveal) |
+| **Week 2** | Apr 1–7 | **`did-manager.js` FIRST** (DID dependency), then `vc-generator.js` skeleton | `did-manager.js` ← build first; `vc-generator.js` | +8 (DID + VC unit tests) |
+| **Week 3** | Apr 8–14 | VC workflow integration + `hcs-audit-logger.js` | `workflow.js`, `hcs-audit-logger.js` | +7 (integration) |
+| **Week 4** | Apr 15–21 | VC verification endpoint + HCS audit logger | `certificates.js` (GET /:id/verify) | +4 (verify endpoint) |
+| **Week 5** | Apr 22–28 | HREC token deployment script + CarbonCreditManager | `deploy_hrec_token.js`, `CarbonCreditManager.js` | +6 (mint logic) |
+| **Week 6** | Apr 29–May 5 | Mint pipeline wired end-to-end + HashScan proof | Integration, test suite | +5 (end-to-end) |
+| **Week 7** | May 6–12 | ADWIN **placeholder** drift detector + PDF renderer | `adwin-detector.js` (placeholder), `pdf-renderer.js` | +8 (ML + PDF) |
+| **Week 8** | May 13–19 | Certificate generator + full end-to-end test | `certificate-generator.js`, integration test | +7 (E2E pipeline) |
+| | | | **Week 8 Exit Total:** | **262+ tests** |
+
+> **ADWIN NOTE:** Week 7 creates `src/ml/adwin-detector.js` as a KS-test placeholder. Full ADWIN (Bifet & Gavalda, 2007) production implementation ships in **Roadmap 2 Month 6**.
 
 ---
 
@@ -1051,7 +1110,8 @@ PROTOCOL GUARANTEES:
 □ Clean Git history — auditor can clone repo, no secrets in history
 □ All 5-layer thresholds documented in this file (done ↑)
 □ Commit-reveal pattern live on testnet (HCS TXs show COMMITMENT + REVEAL pairs)
-□ ADWIN drift detector running in production pipeline (JS, δ=0.002)
+□ ADWIN placeholder drift detector running in pipeline (JS, KS-test approx)
+□ Full ADWIN production rewrite is Roadmap 2 Month 6 scope — NOT this roadmap
 
 CRYPTOGRAPHIC GUARANTEES:
 □ W3C VC generated for every APPROVED reading
@@ -1072,12 +1132,17 @@ HUMAN-READABLE CERTIFICATES:
 DATABASE:
 □ All 4 migrations run cleanly on local Postgres
 □ All 4 migrations run cleanly on Railway production Postgres
+
+TEST COVERAGE:
+□ 262+ tests passing (up from 237 baseline)
+□ Coverage maintained at ≥85.3% overall
+□ 100% coverage on critical verification paths preserved
 ```
 
 **This is the cryptographic and scientific foundation. Roadmap 2 builds on top of it.**
 
 ---
 
-*Author: Bikram Biswas | Hedera Hydropower dMRV | Version 3.0 | March 24, 2026*
+*Author: Bikram Biswas | Hedera Hydropower dMRV | Version 3.1 | March 24, 2026*
 *Repository: https://github.com/BikramBiswas786/Hedera-hydropower-dMRV-with-5-layer-verification-*
 *HCS Audit Topic: 0.0.7462776 | HREC Token: 0.0.7964264*
