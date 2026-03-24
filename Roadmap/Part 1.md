@@ -1,6 +1,6 @@
 # ROADMAP 1 — PROTOCOL FOUNDATION & CORE ENGINE
 ## Hedera Hydropower dMRV | Weeks 1–8 Technical Implementation
-### Author: Bikram Biswas | Date: March 24, 2026 | Version: V4.1 (Merged)
+### Author: Bikram Biswas | Date: March 24, 2026 | Version: V4.1
 
 ---
 
