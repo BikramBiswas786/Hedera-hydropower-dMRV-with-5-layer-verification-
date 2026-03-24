@@ -1,6 +1,6 @@
 # 🚀 ROADMAP 3 — TOKENISATION, GOVERNANCE & DEPLOYMENT
 ## Hedera Hydropower dMRV | Month 13 → Month 36
-**Author: Bikram Biswas | Updated: March 24, 2026 | Version: V4.1 — FIXES APPLIED**
+**Author: Bikram Biswas | Updated: March 25, 2026 | Version: V4.2 — MERGED**
 **GitHub: [BikramBiswas786/Hedera-hydropower-dMRV-with-5-layer-verification-](https://github.com/BikramBiswas786/Hedera-hydropower-dMRV-with-5-layer-verification-)**
 
 > **⚠️ MAINNET IDs:** Testnet HCS topic: `0.0.7462776` | Testnet HTS token: `0.0.7964264`
@@ -1460,4 +1460,4 @@ Roadmap 3 is complete when every item below is proven with code, HashScan links,
 
 *This is a technical and regulatory execution plan — not a business deck. Every code block is something I am building and can demonstrate. Nothing here is a promise about revenue, investors, or regulatory outcomes. Those depend on work that comes after the tech is solid.*
 
-*Author: Bikram Biswas | Repo: [BikramBiswas786/Hedera-hydropower-dMRV-with-5-layer-verification-](https://github.com/BikramBiswas786/Hedera-hydropower-dMRV-with-5-layer-verification-) | Version: V4.1 — FIXES APPLIED | March 24, 2026*
+*Author: Bikram Biswas | Repo: [BikramBiswas786/Hedera-hydropower-dMRV-with-5-layer-verification-](https://github.com/BikramBiswas786/Hedera-hydropower-dMRV-with-5-layer-verification-) | Version: **V4.2 — MERGED** | March 25, 2026*
