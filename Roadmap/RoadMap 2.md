@@ -1,31 +1,12 @@
 # 🚀 ROADMAP 2 — GUARDIAN PIPELINE, MARKET ENTRY & ADAPTIVE ML
 ## Hedera Hydropower dMRV | Month 3 → Month 12
-**Author: Bikram Biswas | Updated: March 24, 2026 | Version: V4.3 — MERGED (paste.txt + DOCX exhaustive edition)**
+**Author: Bikram Biswas | Updated: March 24, 2026 | Version: V4.3 — MERGED 
 **GitHub: [BikramBiswas786/Hedera-hydropower-dMRV-with-5-layer-verification-](https://github.com/BikramBiswas786/Hedera-hydropower-dMRV-with-5-layer-verification-)**
 
 > **⚠️ MAINNET IDs:** Testnet HCS topic: `0.0.7462776` | Testnet HTS token: `0.0.7964264`
 > Mainnet equivalents must be recorded separately once deployed. Every reference to HCS/HTS below that uses a live mainnet ID **must be updated in `.env.production` before production use.** Do not use testnet IDs in mainnet transactions.
 
----
 
-## V4.3 MERGE LOG — What Changed From V4.2
-
-| # | Source | Fix Applied |
-|---|---|---|
-| 1 | DOCX | **Guardian Pipeline section added** — full `guardian-policy.yaml` + `guardian-integrator.js` with `submitToGuardian()` + `getApprovalStatus()` + **3-of-3 multi-sig threshold for credits >1,000 HREC** |
-| 2 | DOCX | **Migration 008** added — `adwin_drift_log` table (logs per-feature ADWIN drift events) |
-| 3 | DOCX | **Per-feature ADWIN** — `_featureHistories` map in `MLAnomalyDetectorWithADWIN` monitors all 7 features individually (more rigorous than score-only) |
-| 4 | DOCX | **`CADTrust` constructor pattern** updated to `constructor(db, hcsLogger)` — dependency-injected (more testable) |
-| 5 | DOCX | **ADWIN mathematical appendix** added — Theorem 1 formal proof + ADWIN vs KS-Test comparison table + 4 formal citations |
-| 6 | DOCX | **`tpm-signer.js`** — real `tpm2-tss` npm bindings (`TPM2_Sign`, `TPM2_VerifySignature`) |
-| 7 | DOCX | **`hsm-manager.js`** — full `pkcs11js` PKCS#11 interface with session management (`C_Initialize`, `C_OpenSession`, `C_Sign`) |
-| 8 | paste.txt | **Months 9–12 full detail** preserved — shadow mode results, tiered pricing v2, ISO 27001 checklist, $83K ARR reconciliation |
-| 9 | paste.txt | **⚠️ Mainnet ID warnings** throughout at every HCS/HTS reference |
-| 10 | paste.txt | **Seasonal ADWIN** — 4 separate `ADWINDetector` instances per season with different δ values (`monsoon=0.005`, `dry=0.001`) |
-| 11 | paste.txt | **$83K ARR reconciliation note** (FIX #2) — documents $83K vs $93,240 vs $108K discrepancy from prior drafts |
-| 12 | paste.txt | **`ShadowModeComparator`** path corrected to `src/validation/shadow-mode-comparator.js` (variance %, not only Pearson) |
-
----
 
 ## WHERE I AM ENTERING ROADMAP 2
 
@@ -52,7 +33,7 @@ Roadmap 2 closes four open gaps:
 
 ---
 
-## 📊 ROADMAP 2 MASTER TIMELINE
+##  ROADMAP 2 MASTER TIMELINE
 
 | Month | Weeks | Primary Goal | Revenue Target |
 |---|---|---|---|
