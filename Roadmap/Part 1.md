@@ -278,14 +278,23 @@ SENSOR READING ARRIVES
 │      HMAC invalid                      → 0.00 (reject)    │
 │      Replay detected                   → 0.00 (reject)    │
 │                                                           │
-│  PHASE 2 — Month 4+ (Verifier Attestation + DID Signing): │
-│    Human domain expert review of flagged readings         │
+│  PHASE 2 — Month 4+ (Verifier Attestation + DID Signing):
+   "Phase 2 is human verifier + DID signing for
+    credits >1,000 HREC"                                    │    
+│
+     Human domain expert review of flagged readings         │
 │    Cryptographic signature by issuer DID (Ed25519)        │
 │    verifier-attestation.js extended with real DID signing │
 │    TPM/HSM chip at each physical sensor site (hardware)   │
 │    Keys generated in hardware — never exportable          │
-│    Every sensor gets unique DID: did:hedera:testnet:...   │
-│                                                           │
+│    Every sensor gets unique DID: did:hedera:testnet:...
+│
+  PHASE 2 ACTIVATION TRIGGERS (either condition):
+     1. trust score < 0.80 (automated flagging)
+     2. mint quantity > 1,000 HREC (high-value manual review)
+     → Any single mint > 1,000 HREC requires human DID sign
+        regardless of trust score
+                                                            │
 │    Verifier workflow:                                     │
 │      reading trust score < 0.8 → flagged for human review │
 │      verifier approves → sign with DID → mint HREC        │
