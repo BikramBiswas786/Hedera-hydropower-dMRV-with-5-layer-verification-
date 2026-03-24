@@ -251,19 +251,19 @@ SENSOR READING ARRIVES
 │    Drift threshold: >15% anomaly rate → DRIFT_DETECTED    │
 │    Action: HCS warning + human review queue               │
 │                                                           │
-│  ⚠️ ADWIN TIMING NOTE: Week 7 KS-test is placeholder.    │
-│  Full ADWIN (Bifet & Gavalda, 2007 — δ=0.002) ships in   │
+│  ⚠️ ADWIN TIMING NOTE: Week 7 KS-test is placeholder.     │
+│  Full ADWIN (Bifet & Gavalda, 2007 — δ=0.002) ships in    │
 │  Roadmap 2 Month 6.                                       │
 │                                                           │
 │  Known simulation results:                                │
 │    Normal reading:   Trust 0.923 → APPROVED ✅            │
-│    Anomalous read:   Trust 0.595 → FLAGGED ⚠️            │
+│    Anomalous read:   Trust 0.595 → FLAGGED ⚠️             │
 │    Physics violate:  Trust 0.00  → REJECTED ❌            │
 └─────────────────────┬─────────────────────────────────────┘
                       │
                       ▼
 ┌───────────────────────────────────────────────────────────┐
-│  LAYER 5: ATTESTATION (TWO-PHASE — V4.1 FIX 9)           │
+│  LAYER 5: ATTESTATION (TWO-PHASE — V4.1 FIX 9)            │
 │  Weight: 10% of trust score                               │
 │                                                           │
 │  PHASE 1 — NOW (Software HMAC Device Attestation):        │
@@ -278,23 +278,20 @@ SENSOR READING ARRIVES
 │      HMAC invalid                      → 0.00 (reject)    │
 │      Replay detected                   → 0.00 (reject)    │
 │                                                           │
-│  PHASE 2 — Month 4+ (Verifier Attestation + DID Signing):
-   "Phase 2 is human verifier + DID signing for
-    credits >1,000 HREC"                                    │    
-│
-     Human domain expert review of flagged readings         │
+│  PHASE 2 — Month 4+ (Verifier Attestation + DID Signing): │
+│   "Phase 2 is human verifier + DID signing for            │
+│   credits >1,000 HREC"                                    │    
+│                                                           │
+│     Human domain expert review of flagged readings        │
 │    Cryptographic signature by issuer DID (Ed25519)        │
 │    verifier-attestation.js extended with real DID signing │
 │    TPM/HSM chip at each physical sensor site (hardware)   │
 │    Keys generated in hardware — never exportable          │
-│    Every sensor gets unique DID: did:hedera:testnet:...
-│
-  PHASE 2 ACTIVATION TRIGGERS (either condition):
-     1. trust score < 0.80 (automated flagging)
-     2. mint quantity > 1,000 HREC (high-value manual review)
-     → Any single mint > 1,000 HREC requires human DID sign
-        regardless of trust score
-                                                            │
+│    Every sensor gets unique DID: did:hedera:testnet:...   │
+│                                                           │
+│  PHASE 2 — Month 4+ (Verifier Attestation + DID Signing): │
+│   "Phase 2 is human verifier + DID signing for← no leading│
+│    credits >1,000 HREC"                                   │
 │    Verifier workflow:                                     │
 │      reading trust score < 0.8 → flagged for human review │
 │      verifier approves → sign with DID → mint HREC        │
