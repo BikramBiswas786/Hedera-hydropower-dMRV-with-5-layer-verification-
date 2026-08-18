@@ -25,3 +25,4 @@ token_standard: fungible
 sector: energy
 sdg_alignment: [7, 13]
 roles: ["Project Participant", "VVB", "Standard Registry"]
+
