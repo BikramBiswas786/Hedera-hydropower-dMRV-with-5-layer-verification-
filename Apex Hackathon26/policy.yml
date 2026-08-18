@@ -1,0 +1,27 @@
+id: verra-vmr0017-acm0002-dmrv
+name: VMR0017 / ACM0002 Grid-Connected Renewable Energy dMRV
+version: "7.1.0"
+description: >
+  A production-grade, Verra v5.0B-compliant Hedera Guardian policy for VMR0017 / ACM0002. 
+  Features a massive 182-schema library and a hardened math engine for automated VCU minting.
+policy_type: proof-of-concept
+status: active
+license: Apache-2.0
+category: carbon-credits
+authors:
+  - name: Bikram786
+tags:
+  - verra
+  - hydropower
+  - vmr0017
+  - acm0002
+  - renewable-energy
+  - dmrv
+standard_body: Verra
+methodology_id: VMR0017
+methodology_version: "1.0"
+token_type: VCU
+token_standard: fungible
+sector: energy
+sdg_alignment: [7, 13]
+roles: ["Project Participant", "VVB", "Standard Registry"]
