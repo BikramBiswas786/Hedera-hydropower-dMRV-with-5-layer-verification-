@@ -18,9 +18,7 @@ Our system achieves the **"Advanced System"** standard, providing a massive 182-
 | **`policy.policy`** | The hardened Guardian policy binary (v7.1.0) with 182 authentic schemas and zero ID mismatches. |
 | **`policy.yml`** | Official policy manifest for the Guardian Methodology Library. |
 | **`docs/VMR0017_ACM0002_Massive_Mapping.xlsx`** | Institutional-grade **1.92 MB Excel mapping** with 685 sheets and 4,000+ rows. |
-| **`docs/Digital_Methodology_Handbook.md`** | Comprehensive technical manual for the VMR0017 / ACM0002 implementation. |
-| **`simulation/Populated_Monitoring_Report.json`** | "Perfect Fill" test vector for real-world project validation (Dak Drinh benchmark). |
-| **`reports/Star_Mark_Conformance_Report.md`** | Technical audit of the star-marking and read-only decoupling logic. |
+
 
 ---
 
