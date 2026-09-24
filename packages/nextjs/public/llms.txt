@@ -9,7 +9,8 @@
 > and on retirement burns them and mints an HTS NFT certificate.
 
 Everything below is relative to this site's origin. Read-only access needs no credentials. The server never holds a
-buyer's key: purchases are returned as unsigned transactions.
+buyer's key: purchases are returned as unsigned transactions. The REST API is described in OpenAPI 3.1 at
+`/api/openapi.json` (request schemas generated from the validators; operationId = the MCP tool's name).
 
 ## MCP (recommended for agents)
 

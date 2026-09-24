@@ -541,7 +541,9 @@ list_open_listings → prepare_purchase { listingId, amountKg, beneficiary } →
 ```
 
 The server never sees the agent's key. Every tool has a REST twin, listed in
-[`/llms.txt`](packages/nextjs/public/llms.txt). For coding agents working *on* the template, [`AGENTS.md`](AGENTS.md)
+[`/llms.txt`](packages/nextjs/public/llms.txt) and described in **OpenAPI 3.1** at `/api/openapi.json`: request bodies
+are generated from the zod schemas that validate them, each twin's `operationId` is its tool's name, and a test fails
+if a route or tool is added without the other. For coding agents working *on* the template, [`AGENTS.md`](AGENTS.md)
 has the conventions and invariants.
 
 ## Testing
