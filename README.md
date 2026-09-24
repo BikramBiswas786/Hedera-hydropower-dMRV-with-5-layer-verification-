@@ -21,6 +21,26 @@ npm create scaffold-hbar@latest --template BikramBiswas786/Hedera-hydropower-dMR
 | Stack | Next.js 15 · Hardhat · Yarn workspaces · Node ≥ 20.18.3 |
 | Agent surface | MCP server at `/api/mcp` (13 public tools, 1 authenticated write tool, a methodology resource), JSON API under `/api`, [`/llms.txt`](packages/nextjs/public/llms.txt), [`AGENTS.md`](AGENTS.md), [Hedera Harness](#testing) recipe |
 
+### Live on Hedera testnet
+
+Deployed with `yarn deploy --network hederaTestnet` and attested with `yarn mrv:attest`; the addresses are in
+[`deployedContracts.ts`](packages/nextjs/contracts/deployedContracts.ts), so a fresh scaffold reads this deployment.
+
+| What | Hashscan |
+| --- | --- |
+| `HydroCreditRegistry` | [0x7Da5C616…6D888993](https://hashscan.io/testnet/contract/0x7Da5C616f478c4111cF9173102298b2B6D888993) |
+| `ResilientHbarUsdFeed` (Chainlink + Supra) | [0x5A07AE62…6b897A591](https://hashscan.io/testnet/contract/0x5A07AE6219509948fBdab08cc65ccd1b6897A591) |
+| HTS credit token 0.0.10704144, created by the contract | [creation](https://hashscan.io/testnet/transaction/0xd1103d9b18908074f400905c2001d83257c52002f4ece5869c1f713f49ac4d1b) · [token](https://hashscan.io/testnet/token/0.0.10704144) |
+| HTS NFT certificate collection 0.0.10704145 | [creation](https://hashscan.io/testnet/transaction/0xa32ec2e0cc51eb8e60ec7be45e087eebde1b7ecedb5283861ad15c3ef605362a) · [token](https://hashscan.io/testnet/token/0.0.10704145) |
+| Plant registrations (design, TOOL07 grid factor, design hash) | [HYDRO-DEMO-01](https://hashscan.io/testnet/transaction/0xae2f7932755027bc002ff3953b47f1112fc9e5e1b5f2c9ef96d114b56dd30e08) · [HYDRO-DEMO-02](https://hashscan.io/testnet/transaction/0xaaeef0a7e37d591aa45edca15ef58dfababd5c6f3e9f4a9abb4e6a538c23515d) |
+| HCS audit topic | [0.0.10704510](https://hashscan.io/testnet/topic/0.0.10704510) |
+| Attestation #0 — HYDRO-DEMO-01, `healthy`: BE 5.338351 t, PE 0, ER 5.338351 t → **5.338 t minted** | [contract call](https://hashscan.io/testnet/transaction/0x41ef3017f34984128746bf46f41d0f72c86093b41b6920ff6d78b3286cdd0fb5) · [HCS readings](https://hashscan.io/testnet/topic/0.0.10704510/message/1) · [HCS report](https://hashscan.io/testnet/topic/0.0.10704510/message/4) |
+| Attestation #1 — HYDRO-DEMO-02, `diesel-backup`: BE 97.323162 t, PE_HP 16.512338 t, PE_FF 0.239577 t, ER 80.571247 t → **80.571 t minted** | [contract call](https://hashscan.io/testnet/transaction/0x1ca5192d2b157dd8b6cedd249187d24e1de13a3421b08cc3591e8f1536016ad2) · [HCS readings](https://hashscan.io/testnet/topic/0.0.10704510/message/9) · [HCS report](https://hashscan.io/testnet/topic/0.0.10704510/message/12) |
+
+Messages 5–8 on the topic come from one run whose contract call the JSON-RPC relay refused (a gas-price bug since
+fixed in `server/attest.ts`). No attestation points to them, and the audit only follows reports an attestation
+references.
+
 ---
 
 ## Contents
