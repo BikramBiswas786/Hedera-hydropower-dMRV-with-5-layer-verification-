@@ -2,16 +2,12 @@
  * Command-line access to the same pipeline the app, REST API and MCP tools use.
  *
  *   yarn mrv:create-topic          create the HCS audit topic (prints HCS_TOPIC_ID)
- *   yarn mrv:attest [scenario]     verify sample telemetry, anchor it on HCS and attest on-chain
+ *   yarn mrv:attest [scenario] [plantId]
+ *                                  verify sample monitoring data, anchor it on HCS and attest on-chain
  */
 import { existsSync } from "fs";
-import {
-  DEMO_PLANT,
-  SCENARIO_NAMES,
-  type ScenarioName,
-  generateScenario,
-  lastWholeHour,
-} from "~~/services/mrv/scenarios";
+import { DEMO_PLANTS, findDemoPlant } from "~~/services/mrv/demo";
+import { SCENARIO_NAMES, type ScenarioName, generateScenario, lastWholeHour } from "~~/services/mrv/scenarios";
 
 // Server modules read env at import time, so load .env.local first and import them dynamically below.
 if (existsSync(".env.local")) process.loadEnvFile(".env.local");
@@ -29,26 +25,29 @@ async function createTopic() {
 }
 
 /** Starts where the last attestation ended so repeated runs never overlap on-chain. */
-async function attest(scenario: ScenarioName) {
+async function attest(scenario: ScenarioName, plantId: string) {
   const { attestReadings } = await import("~~/services/mrv/server/attest");
   const { getPlant } = await import("~~/services/mrv/server/registry");
   const { plantIdToBytes32 } = await import("~~/services/mrv/views");
 
-  const plant = await getPlant(plantIdToBytes32(DEMO_PLANT.plantId));
-  if (!plant) throw new Error(`${DEMO_PLANT.plantId} is not registered. Run \`yarn deploy\` first.`);
+  const profile = findDemoPlant(plantId);
+  if (!profile) throw new Error(`Unknown plant. Use one of: ${DEMO_PLANTS.map(p => p.plantId).join(", ")}`);
+  const plant = await getPlant(plantIdToBytes32(plantId));
+  if (!plant) throw new Error(`${plantId} is not registered. Run \`yarn deploy\` first.`);
 
   const end = lastWholeHour();
   const available = Math.floor((end.getTime() / 1_000 - plant.lastPeriodEnd) / HOUR_S);
   // With no unattested hours left an APPROVED batch will be refused as overlapping; other decisions still print.
   const hours = available >= 1 ? Math.min(MAX_HOURS, available) : MAX_HOURS;
 
-  const readings = generateScenario(scenario, { end, hours });
-  const outcome = await attestReadings({ readings });
-  console.log(`Decision: ${outcome.report.decision} (trust ${outcome.report.trustScoreBps / 100}%)`);
-  console.log(outcome.report.reasoning);
+  const outcome = await attestReadings(generateScenario(scenario, { end, hours, plant: profile }));
+  const { report } = outcome;
+  console.log(`Decision: ${report.decision} (${report.methodology}, ${report.completenessBps / 100}% coverage)`);
+  console.log(report.reasoning);
+  for (const step of report.equations) console.log(`  ${step.symbol.padEnd(12)} ${step.value} ${step.unit}`);
   if (outcome.status !== "attested") return;
 
-  console.log(`Attestation #${outcome.attestationId} minted ${outcome.unitsMinted} kWh of RECs`);
+  console.log(`Attestation #${outcome.attestationId} minted ${outcome.unitsMinted / 1_000} t CO2e of credits`);
   console.log(`Contract call: ${outcome.transaction.url ?? outcome.transaction.hash}`);
   if (outcome.hcs) {
     console.log(`HCS readings:  ${outcome.hcs.dataUrl}`);
@@ -57,15 +56,15 @@ async function attest(scenario: ScenarioName) {
 }
 
 async function main() {
-  const [command, arg] = process.argv.slice(2);
+  const [command, arg, plantArg] = process.argv.slice(2);
   if (command === "create-topic") return createTopic();
   if (command === "attest") {
     const scenario = (arg ?? "healthy") as ScenarioName;
     if (!SCENARIO_NAMES.includes(scenario))
       throw new Error(`Unknown scenario. Use one of: ${SCENARIO_NAMES.join(", ")}`);
-    return attest(scenario);
+    return attest(scenario, plantArg ?? DEMO_PLANTS[0].plantId);
   }
-  console.log("Usage: mrv.ts create-topic | attest [scenario]");
+  console.log("Usage: mrv.ts create-topic | attest [scenario] [plantId]");
   process.exitCode = 1;
 }
 

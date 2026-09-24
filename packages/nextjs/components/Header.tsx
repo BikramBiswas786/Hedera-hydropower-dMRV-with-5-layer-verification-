@@ -5,6 +5,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
+  AcademicCapIcon,
   Bars3Icon,
   BeakerIcon,
   BugAntIcon,
@@ -24,6 +25,11 @@ export const menuLinks: HeaderMenuLink[] = [
   {
     label: "Home",
     href: "/",
+  },
+  {
+    label: "Methodology",
+    href: "/methodology",
+    icon: <AcademicCapIcon className="h-4 w-4" />,
   },
   {
     label: "Verify",

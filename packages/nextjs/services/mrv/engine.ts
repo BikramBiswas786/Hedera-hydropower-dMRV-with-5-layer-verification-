@@ -1,247 +1,154 @@
-import type { PlantProfile, Reading } from "./schema";
+import { MethodologyError } from "./methodology/errors";
+import { METHODOLOGIES, powerDensity } from "./methodology/project";
+import {
+  EMPTY_LEDGER,
+  type PlantLedger,
+  type Quantification,
+  creditingPeriodViolation,
+  quantifyPeriod,
+} from "./methodology/quantify";
+import type { LedgerJson, Metering, PlantProfile, Reading } from "./schema";
 
-export const ENGINE_VERSION = "hydro-dmrv-engine@1.0.0";
+/**
+ * Verifies one monitoring period of a registered hydro plant and quantifies its emission reductions.
+ *
+ *   1. Applicability    — the registered design satisfies ACM0002 / AMS-I.D; the period lies inside the crediting
+ *                          period and within one crediting year.
+ *   2. Data QA/QC       — no replayed or overlapping intervals; completeness; main/check meter reconciliation;
+ *                          delayed-calibration deduction. Every adjustment goes the conservative way.
+ *   3. Physics          — generation within nameplate and within the hydraulic potential ρ·g·Q·H·η_max; export
+ *                          never above generation. Failing intervals are excluded, i.e. credited as zero.
+ *   4. Quantification   — EG_PJ, BE, PE (TOOL03 fuel, reservoir), LE and ER in exact integers, the same numbers
+ *                          the contract recomputes on-chain (`methodology/quantify.ts`).
+ *   5. Safeguards       — water quality; reported for review, never changes the quantity.
+ *
+ * Pure and deterministic (no I/O, no clock), so anyone can re-run it on the readings published to HCS.
+ */
 
-const WATER_DENSITY_KG_M3 = 1_000;
-const GRAVITY_M_S2 = 9.81;
-const TIMESTAMP_TOLERANCE_MS = 60_000;
+export const ENGINE_VERSION = "hydro-dmrv-engine@2.0.0";
+
+/** P (kW) = ρ·g·Q·H·η / 1000 with ρ = 1000 kg/m³ and g = 9.81 m/s². */
+const KW_PER_M4_S = 9.81;
 const MIN_SAMPLE_FOR_STATISTICS = 6;
 const MODIFIED_Z_OUTLIER = 3.5;
-const MODIFIED_Z_SUSPICIOUS = 2.5;
-/** Share of intervals that may fail the physics check before the whole batch is treated as unsupported. */
-const MAX_PHYSICS_FAILURE_SHARE = 0.2;
 
-/** Default grid emission factor (tCO2/MWh) for the informational ACM0002 estimate. Override per grid. */
-export const DEFAULT_GRID_EMISSION_FACTOR = 0.82;
-
-export const LAYER_WEIGHTS = {
-  physics: 0.3,
-  temporal: 0.25,
-  environmental: 0.2,
-  statistical: 0.15,
-  device: 0.1,
+export const DECISION_RULES = {
+  /** Share of the period covered by accepted intervals below which a human must review the batch. */
+  minCompletenessBps: 9_000,
+  /** Share of intervals excluded by physics above which the batch is treated as systematic over-reporting. */
+  maxExcludedShare: 0.2,
 } as const;
 
-export const DECISION_THRESHOLDS = { approve: 0.9, review: 0.5 } as const;
+/**
+ * Assumed when no metering record is supplied: class 0.5 meters whose calibration cannot be shown, so the
+ * delayed-calibration deduction applies to every interval. Supply real metering data to avoid it.
+ */
+export const DEFAULT_METERING: Metering = {
+  mainMeterAccuracyPct: 0.5,
+  checkMeterAccuracyPct: 1,
+  calibrationValidUntil: "1970-01-01T00:00:00Z",
+  flowUncertaintyPct: 5,
+};
 
-export type LayerName = keyof typeof LAYER_WEIGHTS;
-export type LayerStatus = "PASS" | "WARN" | "FAIL";
+export const STAGES = {
+  applicability: "Applicability & crediting period",
+  integrity: "Monitoring data QA/QC",
+  physics: "Physical cross-checks",
+  quantification: "Emission reductions (BE − PE − LE)",
+  safeguards: "Environmental safeguards",
+} as const;
+
+export type Stage = keyof typeof STAGES;
+export type Severity = "info" | "review" | "reject";
 export type Decision = "APPROVED" | "FLAGGED" | "REJECTED";
 
 export type Issue = {
-  layer: LayerName;
-  /** Index into the submitted readings, or `null` for batch-level issues. */
+  stage: Stage;
+  /** Index into the submitted readings, or `null` for period-level issues. */
   reading: number | null;
-  severity: "warn" | "fail";
+  severity: Severity;
   message: string;
 };
 
-export type LayerResult = {
-  layer: LayerName;
-  score: number;
-  weight: number;
-  status: LayerStatus;
+export type StageResult = {
+  stage: Stage;
+  title: string;
+  status: "PASS" | "REVIEW" | "FAIL";
   summary: string;
+};
+
+export type EquationStep = { symbol: string; expression: string; value: number; unit: string };
+
+export type Emissions = {
+  creditingYear: number;
+  egProjectWh: number;
+  baselineG: number;
+  reservoirG: number;
+  fossilFuelG: number;
+  projectG: number;
+  leakageG: number;
+  reductionG: number;
+  unitsMinted: number;
 };
 
 export type VerificationReport = {
   engine: string;
   plantId: string;
+  methodology: string;
   periodStart: number;
   periodEnd: number;
   readingCount: number;
-  energyWh: number;
-  trustScore: number;
-  trustScoreBps: number;
   decision: Decision;
   reasoning: string;
-  layers: LayerResult[];
+  completenessBps: number;
+  excludedIntervals: number[];
+  stages: StageResult[];
   issues: Issue[];
-  /** Integrity failures that force REJECTED regardless of the weighted score. */
-  hardFailures: string[];
-  carbon: { gridEmissionFactor: number; emissionReductionTco2: number };
-};
-
-type LayerOutcome = { scores: number[]; issues: Issue[]; summary: string };
-
-const round = (value: number, digits = 4) => Number(value.toFixed(digits));
-const mean = (values: number[]) => (values.length ? values.reduce((a, b) => a + b, 0) / values.length : 1);
-const hoursOf = (r: Reading) => r.intervalMinutes / 60;
-const efficiencyOf = (r: Reading, plant: PlantProfile) => r.efficiency ?? plant.efficiency;
-
-/** Hydraulic energy available in the interval: E = ρ·g·Q·H·η·t (kWh). */
-export function expectedEnergyKwh(reading: Reading, plant: PlantProfile): number {
-  const powerKw =
-    (WATER_DENSITY_KG_M3 * GRAVITY_M_S2 * reading.flowRateM3s * reading.headM * efficiencyOf(reading, plant)) / 1_000;
-  return powerKw * hoursOf(reading);
-}
-
-function statusOf(score: number): LayerStatus {
-  if (score < 0.5) return "FAIL";
-  if (score < 0.85) return "WARN";
-  return "PASS";
-}
-
-/** Layer 1 — metered energy must match what the measured flow and head can physically produce. */
-function physicsLayer(readings: Reading[], plant: PlantProfile, hardFailures: string[]): LayerOutcome {
-  const issues: Issue[] = [];
-  const scores = readings.map((r, i) => {
-    const expected = expectedEnergyKwh(r, plant);
-    if (expected === 0) {
-      if (r.energyKwh === 0) return 1;
-      issues.push({
-        layer: "physics",
-        reading: i,
-        severity: "fail",
-        message: "Energy reported with zero flow or head",
-      });
-      return 0;
-    }
-    const deviation = Math.abs(r.energyKwh - expected) / expected;
-    const score =
-      deviation < 0.05
-        ? 1
-        : deviation < 0.1
-          ? 0.95
-          : deviation < 0.15
-            ? 0.85
-            : deviation < 0.2
-              ? 0.7
-              : deviation < 0.3
-                ? 0.5
-                : 0;
-    if (score < 0.85) {
-      issues.push({
-        layer: "physics",
-        reading: i,
-        severity: score === 0 ? "fail" : "warn",
-        message: `Metered ${round(r.energyKwh, 1)} kWh vs ${round(expected, 1)} kWh hydraulic (${round(deviation * 100, 1)}% deviation)`,
-      });
-    }
-    return score;
-  });
-  const failing = scores.filter(s => s === 0).length;
-  if (failing / readings.length > MAX_PHYSICS_FAILURE_SHARE) {
-    hardFailures.push(`${failing}/${readings.length} intervals report more energy than the water can produce`);
-  }
-  return {
-    scores,
-    issues,
-    summary: `${readings.length - failing}/${readings.length} intervals within 30% of ρ·g·Q·H·η`,
+  monitored: {
+    /** Main-meter export as read, before any QA/QC adjustment. */
+    exportWh: number;
+    importWh: number;
+    /** EG_facility after QA/QC; what the contract receives. */
+    netWh: number;
+    /** TEG, capped at nameplate per interval. */
+    grossWh: number;
+    fuelG: number;
+    leakageG: number;
+    /** Export not credited, by reason (Wh). */
+    deductions: { excludedWh: number; checkMeterWh: number; calibrationWh: number; aboveGenerationWh: number };
   };
-}
-
-function changeScore(change: number, bands: [number, number][], floor: number): number {
-  for (const [limit, score] of bands) if (change < limit) return score;
-  return floor;
-}
-
-/** Layer 2 — timestamps must be contiguous (no replays or gaps) and values must not jump implausibly. */
-function temporalLayer(readings: Reading[], hardFailures: string[]): LayerOutcome {
-  const issues: Issue[] = [];
-  const scores = readings.map((r, i) => {
-    if (i === 0) return 1;
-    const prev = readings[i - 1];
-    const elapsedMs = Date.parse(r.timestamp) - Date.parse(prev.timestamp);
-    if (elapsedMs <= 0) {
-      issues.push({
-        layer: "temporal",
-        reading: i,
-        severity: "fail",
-        message: "Duplicate or out-of-order timestamp (possible replay)",
-      });
-      return 0;
-    }
-
-    let score = 1;
-    if (Math.abs(elapsedMs - r.intervalMinutes * 60_000) > TIMESTAMP_TOLERANCE_MS) {
-      issues.push({
-        layer: "temporal",
-        reading: i,
-        severity: "warn",
-        message: `Gap of ${round(elapsedMs / 60_000, 1)} min between intervals`,
-      });
-      score *= 0.8;
-    }
-    const rel = (a: number, b: number) => Math.abs(a - b) / (b || 1);
-    score *= changeScore(
-      rel(r.energyKwh, prev.energyKwh),
-      [
-        [0.1, 1],
-        [0.2, 0.95],
-        [0.3, 0.85],
-        [0.5, 0.7],
-      ],
-      0.3,
-    );
-    score *= changeScore(
-      rel(r.flowRateM3s, prev.flowRateM3s),
-      [
-        [0.15, 1],
-        [0.3, 0.95],
-        [0.5, 0.8],
-      ],
-      0.5,
-    );
-    score *= changeScore(
-      rel(r.headM, prev.headM),
-      [
-        [0.05, 1],
-        [0.1, 0.95],
-        [0.2, 0.8],
-      ],
-      0.5,
-    );
-    if (score < 0.85 && score > 0) {
-      issues.push({ layer: "temporal", reading: i, severity: "warn", message: "Abrupt change from previous interval" });
-    }
-    return score;
-  });
-
-  if (issues.some(issue => issue.severity === "fail")) {
-    hardFailures.push("Duplicate or out-of-order timestamps: the batch could double count energy");
-  }
-  return { scores, issues, summary: `${issues.length} continuity issue(s) across ${readings.length} intervals` };
-}
-
-type Band = { ideal: [number, number]; acceptable: [number, number]; questionable: [number, number] };
-
-const ENVIRONMENTAL_BANDS: Record<"ph" | "turbidityNtu" | "temperatureC", Band> = {
-  ph: { ideal: [6.5, 8.5], acceptable: [6, 9], questionable: [5.5, 9.5] },
-  turbidityNtu: { ideal: [0, 50], acceptable: [0, 100], questionable: [0, 200] },
-  temperatureC: { ideal: [0, 30], acceptable: [-5, 35], questionable: [-10, 40] },
+  parameters: {
+    efGridGPerMwh: number;
+    reservoirGPerMwh: number;
+    fuelCoefGPerTonne: number;
+    baselineWh: number;
+    baselineEndsAt: number;
+  };
+  /** Null when the period cannot be quantified (outside the crediting period, ineligible design). */
+  emissions: Emissions | null;
+  ledger: { before: LedgerJson; after: LedgerJson | null };
+  equations: EquationStep[];
 };
 
-const within = (value: number, [min, max]: [number, number]) => value >= min && value <= max;
+export const toLedger = (json: LedgerJson): PlantLedger => ({
+  attestations: json.attestations,
+  balanceG: BigInt(json.balanceG),
+  creditingYear: json.creditingYear,
+  yearNetWh: BigInt(json.yearNetWh),
+});
 
-/** Layer 3 — water quality must be plausible for a river; implausible values point at faulty or fake sensors. */
-function environmentalLayer(readings: Reading[]): LayerOutcome {
-  const issues: Issue[] = [];
-  const scores = readings.map((r, i) => {
-    let score = 1;
-    for (const key of Object.keys(ENVIRONMENTAL_BANDS) as (keyof typeof ENVIRONMENTAL_BANDS)[]) {
-      const value = r[key];
-      if (value === undefined) continue;
-      const band = ENVIRONMENTAL_BANDS[key];
-      if (within(value, band.ideal)) continue;
-      const factor = within(value, band.acceptable) ? 0.95 : within(value, band.questionable) ? 0.8 : 0.3;
-      score *= factor;
-      if (factor < 0.95) {
-        issues.push({
-          layer: "environmental",
-          reading: i,
-          severity: factor < 0.5 ? "fail" : "warn",
-          message: `${key} = ${value} outside expected range`,
-        });
-      }
-    }
-    return score;
-  });
-  const measured = readings.filter(
-    r => r.ph !== undefined || r.turbidityNtu !== undefined || r.temperatureC !== undefined,
-  ).length;
-  return { scores, issues, summary: `${measured}/${readings.length} intervals carried water-quality data` };
-}
+export const toLedgerJson = (ledger: PlantLedger): LedgerJson => ({
+  attestations: ledger.attestations,
+  balanceG: Number(ledger.balanceG),
+  creditingYear: ledger.creditingYear,
+  yearNetWh: Number(ledger.yearNetWh),
+});
+
+/** kWh → Wh (or kg → g) with directed rounding; `toFixed(3)` strips float noise (0.1 + 0.2) first. */
+const milliFloor = (value: number) => Math.floor(Number((value * 1_000).toFixed(3)));
+const milliCeil = (value: number) => Math.ceil(Number((value * 1_000).toFixed(3)));
+const pct = (value: number, digits = 1) => `${(value * 100).toFixed(digits)}%`;
+const fmt = (value: number, digits = 1) => Number(value.toFixed(digits)).toLocaleString("en-US");
 
 function median(values: number[]): number {
   const sorted = [...values].sort((a, b) => a - b);
@@ -249,150 +156,399 @@ function median(values: number[]): number {
   return sorted.length % 2 ? sorted[mid] : (sorted[mid - 1] + sorted[mid]) / 2;
 }
 
-/**
- * Layer 4 — robust outlier detection on the metered / hydraulic energy ratio of each interval.
- * Uses the modified z-score (Iglewicz & Hoaglin): 0.6745·(x − median) / MAD, which a few bad points cannot skew.
- */
-function statisticalLayer(readings: Reading[], plant: PlantProfile): LayerOutcome {
-  const ratios = readings.map(r => {
-    const expected = expectedEnergyKwh(r, plant);
-    return expected > 0 ? r.energyKwh / expected : 0;
-  });
-  if (readings.length < MIN_SAMPLE_FOR_STATISTICS) {
-    return {
-      scores: ratios.map(() => 1),
-      issues: [],
-      summary: `Skipped: needs ≥${MIN_SAMPLE_FOR_STATISTICS} intervals`,
-    };
-  }
+type Interval = {
+  index: number;
+  startMs: number;
+  endMs: number;
+  minutes: number;
+  excluded: boolean;
+  /** Export after QA/QC, import after QA/QC, TEG capped at nameplate (kWh). */
+  exportKwh: number;
+  importKwh: number;
+  generationKwh: number;
+  impliedEfficiency: number | null;
+};
 
-  const med = median(ratios);
-  const mad = median(ratios.map(x => Math.abs(x - med)));
-  const issues: Issue[] = [];
-  const scores = ratios.map((x, i) => {
-    const z = mad === 0 ? (x === med ? 0 : Infinity) : (0.6745 * (x - med)) / mad;
-    const magnitude = Math.abs(z);
-    if (magnitude < MODIFIED_Z_SUSPICIOUS) return 1;
-    const outlier = magnitude >= MODIFIED_Z_OUTLIER;
-    issues.push({
-      layer: "statistical",
-      reading: i,
-      severity: outlier ? "fail" : "warn",
-      message: `Metered/hydraulic ratio ${round(x * 100, 1)}% is an ${outlier ? "outlier" : "unusual value"} (modified z = ${Number.isFinite(z) ? round(z, 2) : "∞"})`,
-    });
-    return outlier ? 0.2 : 0.7;
-  });
-  return {
-    scores,
-    issues,
-    summary: `Median metered/hydraulic ratio ${round(med * 100, 1)}%, ${issues.length} outlier(s)`,
-  };
-}
+const SAFEGUARD_BANDS = {
+  ph: { range: [6, 9], label: "pH" },
+  turbidityNtu: { range: [0, 100], label: "Turbidity (NTU)" },
+  temperatureC: { range: [0, 35], label: "Water temperature (°C)" },
+} as const;
 
-/** Layer 5 — readings must fit the registered equipment envelope. */
-function deviceLayer(readings: Reading[], plant: PlantProfile, hardFailures: string[]): LayerOutcome {
-  const issues: Issue[] = [];
-  let exceedsCapacity = false;
-  const scores = readings.map((r, i) => {
-    let score = 1;
-    const fail = (message: string, factor: number) => {
-      score *= factor;
-      issues.push({ layer: "device", reading: i, severity: factor <= 0.5 ? "fail" : "warn", message });
-    };
-    if (r.energyKwh > plant.capacityKw * hoursOf(r)) {
-      exceedsCapacity = true;
-      fail(`Energy exceeds ${plant.capacityKw} kW nameplate capacity for the interval`, 0.5);
-    }
-    if (r.flowRateM3s > plant.maxFlowM3s) fail(`Flow ${r.flowRateM3s} m³/s above design maximum`, 0.5);
-    if (r.headM > plant.maxHeadM) fail(`Head ${r.headM} m above design maximum`, 0.5);
-    const efficiency = efficiencyOf(r, plant);
-    if (efficiency < plant.minEfficiency || efficiency > plant.maxEfficiency) {
-      fail(`Declared efficiency ${round(efficiency * 100, 1)}% outside equipment range`, 0.7);
-    }
-    return score;
-  });
-  if (exceedsCapacity) hardFailures.push("Metered energy exceeds nameplate capacity");
-  return {
-    scores,
-    issues,
-    summary: `${readings.length - new Set(issues.map(x => x.reading)).size}/${readings.length} intervals inside the equipment envelope`,
-  };
-}
-
-function decide(
-  trustScore: number,
-  hardFailures: string[],
-  issues: Issue[],
-): { decision: Decision; reasoning: string } {
-  const pct = `${round(trustScore * 100, 1)}%`;
-  if (hardFailures.length) return { decision: "REJECTED", reasoning: `Integrity failure: ${hardFailures.join("; ")}` };
-  const failedIntervals = new Set(issues.filter(i => i.severity === "fail").map(i => i.reading)).size;
-  if (trustScore >= DECISION_THRESHOLDS.approve) {
-    // A high average must not launder individual bad intervals into issued certificates.
-    return failedIntervals
-      ? {
-          decision: "FLAGGED",
-          reasoning: `High confidence (${pct}) but ${failedIntervals} interval(s) failed a check; requires manual review`,
-        }
-      : { decision: "APPROVED", reasoning: `High confidence (${pct}); eligible for issuance` };
-  }
-  if (trustScore >= DECISION_THRESHOLDS.review)
-    return { decision: "FLAGGED", reasoning: `Medium confidence (${pct}); requires manual review` };
-  return { decision: "REJECTED", reasoning: `Low confidence (${pct}); multiple checks failed` };
-}
-
-/**
- * Runs the five verification layers over a batch of interval readings and produces the report that is anchored
- * on HCS. Pure and deterministic: the same input always yields the same report, so anyone can re-run it.
- */
 export function verifyReadings(
   readings: Reading[],
   plant: PlantProfile,
-  gridEmissionFactor = DEFAULT_GRID_EMISSION_FACTOR,
+  metering: Metering = DEFAULT_METERING,
+  ledgerJson: LedgerJson = toLedgerJson(EMPTY_LEDGER),
 ): VerificationReport {
   if (readings.length === 0) throw new Error("At least one reading is required");
 
-  const hardFailures: string[] = [];
-  const outcomes: Record<LayerName, LayerOutcome> = {
-    physics: physicsLayer(readings, plant, hardFailures),
-    temporal: temporalLayer(readings, hardFailures),
-    environmental: environmentalLayer(readings),
-    statistical: statisticalLayer(readings, plant),
-    device: deviceLayer(readings, plant, hardFailures),
-  };
+  const { design, hydraulics } = plant;
+  const issues: Issue[] = [];
+  const add = (stage: Stage, severity: Severity, message: string, reading: number | null = null) =>
+    issues.push({ stage, reading, severity, message });
 
-  const layers = (Object.keys(LAYER_WEIGHTS) as LayerName[]).map(layer => {
-    const score = round(mean(outcomes[layer].scores));
-    return { layer, score, weight: LAYER_WEIGHTS[layer], status: statusOf(score), summary: outcomes[layer].summary };
+  // ── 2. Monitoring data QA/QC: timeline ────────────────────────────────────
+  const spans = readings.map((r, index) => {
+    const endMs = Date.parse(r.timestamp);
+    return { index, endMs, startMs: endMs - r.intervalMinutes * 60_000 };
   });
-  const trustScore = round(layers.reduce((sum, l) => sum + l.score * l.weight, 0));
-  const issues = Object.values(outcomes).flatMap(o => o.issues);
-  const { decision, reasoning } = decide(trustScore, hardFailures, issues);
+  let gapMinutes = 0;
+  for (let i = 1; i < spans.length; i++) {
+    const previous = spans[i - 1];
+    const current = spans[i];
+    if (current.endMs <= previous.endMs) {
+      add("integrity", "reject", "Duplicate or out-of-order timestamp: the interval would be counted twice", i);
+    } else if (current.startMs < previous.endMs) {
+      add("integrity", "reject", "Interval overlaps the previous one: energy would be counted twice", i);
+    } else if (current.startMs > previous.endMs) {
+      const minutes = (current.startMs - previous.endMs) / 60_000;
+      gapMinutes += minutes;
+      add("integrity", "info", `Data gap of ${fmt(minutes, 0)} min before this interval: credited as zero`, i);
+    }
+  }
+  const periodStartMs = Math.min(...spans.map(s => s.startMs));
+  const periodEndMs = Math.max(...spans.map(s => s.endMs));
+  const periodStart = Math.floor(periodStartMs / 1_000);
+  const periodEnd = Math.floor(periodEndMs / 1_000);
 
-  const timestamps = readings.map(r => Date.parse(r.timestamp));
-  const periodEndMs = Math.max(...timestamps);
-  const firstIndex = timestamps.indexOf(Math.min(...timestamps));
-  const periodStartMs = timestamps[firstIndex] - readings[firstIndex].intervalMinutes * 60_000;
-  const energyWh = Math.round(readings.reduce((sum, r) => sum + r.energyKwh, 0) * 1_000);
+  // ── 2 + 3. Per interval: physics, meter reconciliation, calibration ──────
+  const mpe = metering.mainMeterAccuracyPct / 100;
+  const checkMpe = metering.checkMeterAccuracyPct / 100;
+  const calibrationValidUntilMs = Date.parse(metering.calibrationValidUntil);
+  const deductions = { excluded: 0, checkMeter: 0, calibration: 0, aboveGeneration: 0 };
+  let rawExportKwh = 0;
+  let checkMeterDiscrepancies = 0;
+  let calibrationIntervals = 0;
+
+  const intervals: Interval[] = readings.map((r, i) => {
+    const hours = r.intervalMinutes / 60;
+    const nameplateKwh = design.capacityKw * hours;
+    const hydraulicKwh = KW_PER_M4_S * r.flowRateM3s * r.headM * hydraulics.maxEfficiency * hours;
+    const generation = r.generationKwh;
+    const importRaw = r.importKwh ?? 0;
+    rawExportKwh += r.exportKwh;
+
+    const exclusions: string[] = [];
+    if (generation > nameplateKwh * (1 + mpe)) {
+      exclusions.push(`generation ${fmt(generation)} kWh exceeds nameplate ${fmt(nameplateKwh)} kWh`);
+    }
+    if (generation > hydraulicKwh * (1 + metering.flowUncertaintyPct / 100)) {
+      exclusions.push(
+        `generation ${fmt(generation)} kWh exceeds the hydraulic potential ρ·g·Q·H·η_max = ${fmt(hydraulicKwh)} kWh`,
+      );
+    }
+    if (r.exportKwh > generation * (1 + mpe) + 0.001) {
+      exclusions.push(`export ${fmt(r.exportKwh)} kWh exceeds generation ${fmt(generation)} kWh`);
+    }
+    if (r.flowRateM3s > hydraulics.maxFlowM3s || r.headM > hydraulics.maxHeadM * 1.05) {
+      add("physics", "review", "Flow or head above the turbine design envelope: check the sensors", i);
+    }
+
+    let exportKwh = r.exportKwh;
+    let importKwh = importRaw;
+    if (r.checkExportKwh !== undefined) {
+      const tolerance = (mpe + checkMpe) * Math.max(r.exportKwh, r.checkExportKwh) + 0.001;
+      if (Math.abs(r.exportKwh - r.checkExportKwh) > tolerance) {
+        checkMeterDiscrepancies++;
+        if (r.checkExportKwh < exportKwh) {
+          deductions.checkMeter += exportKwh - r.checkExportKwh;
+          exportKwh = r.checkExportKwh;
+        }
+      }
+    }
+    if (Date.parse(r.timestamp) > calibrationValidUntilMs) {
+      calibrationIntervals++;
+      deductions.calibration += exportKwh * mpe;
+      exportKwh *= 1 - mpe;
+      importKwh *= 1 + mpe;
+    }
+
+    const cappedGeneration = Math.min(generation, nameplateKwh);
+    if (exportKwh > cappedGeneration) {
+      deductions.aboveGeneration += exportKwh - cappedGeneration;
+      exportKwh = cappedGeneration;
+    }
+
+    const excluded = exclusions.length > 0;
+    if (excluded) {
+      add("physics", "review", `Excluded (credited as zero): ${exclusions.join("; ")}`, i);
+      deductions.excluded += exportKwh;
+      exportKwh = 0;
+    }
+
+    const hydraulicAtUnitEfficiency = KW_PER_M4_S * r.flowRateM3s * r.headM * hours;
+    return {
+      index: i,
+      startMs: spans[i].startMs,
+      endMs: spans[i].endMs,
+      minutes: r.intervalMinutes,
+      excluded,
+      exportKwh,
+      importKwh,
+      generationKwh: cappedGeneration,
+      impliedEfficiency: hydraulicAtUnitEfficiency > 0 ? generation / hydraulicAtUnitEfficiency : null,
+    };
+  });
+
+  if (checkMeterDiscrepancies) {
+    add(
+      "integrity",
+      "review",
+      `Main and check meters disagree beyond their combined accuracy in ${checkMeterDiscrepancies} interval(s); the lower reading was used`,
+    );
+  }
+  if (calibrationIntervals) {
+    add(
+      "integrity",
+      "info",
+      `Main meter calibration expired: export reduced and import increased by its ±${metering.mainMeterAccuracyPct}% maximum permissible error in ${calibrationIntervals} interval(s)`,
+    );
+  }
+
+  const excludedIntervals = intervals.filter(i => i.excluded).map(i => i.index);
+  if (excludedIntervals.length / intervals.length > DECISION_RULES.maxExcludedShare) {
+    add(
+      "physics",
+      "reject",
+      `${excludedIntervals.length}/${intervals.length} intervals report energy the plant cannot physically produce: systematic over-reporting`,
+    );
+  }
+
+  // Robust outlier test on water-to-wire efficiency (modified z-score, Iglewicz & Hoaglin).
+  const efficiencies = intervals.filter(i => !i.excluded && i.impliedEfficiency !== null && i.generationKwh > 0);
+  if (efficiencies.length >= MIN_SAMPLE_FOR_STATISTICS) {
+    const values = efficiencies.map(i => i.impliedEfficiency as number);
+    const med = median(values);
+    const mad = median(values.map(v => Math.abs(v - med)));
+    for (const interval of efficiencies) {
+      const value = interval.impliedEfficiency as number;
+      const z = mad === 0 ? (value === med ? 0 : Infinity) : (0.6745 * (value - med)) / mad;
+      if (Math.abs(z) >= MODIFIED_Z_OUTLIER) {
+        add(
+          "physics",
+          "review",
+          `Water-to-wire efficiency ${pct(value)} is an outlier against the period median ${pct(med)} (modified z = ${Number.isFinite(z) ? z.toFixed(1) : "∞"})`,
+          interval.index,
+        );
+      } else if (value < hydraulics.minEfficiency) {
+        add(
+          "physics",
+          "info",
+          `Efficiency ${pct(value)} below the design minimum: check the flow meter`,
+          interval.index,
+        );
+      }
+    }
+  }
+
+  const periodMinutes = (periodEndMs - periodStartMs) / 60_000;
+  const acceptedMinutes = intervals.filter(i => !i.excluded).reduce((s, i) => s + i.minutes, 0);
+  const completenessBps = Math.min(10_000, Math.floor((acceptedMinutes / periodMinutes) * 10_000));
+  if (completenessBps < DECISION_RULES.minCompletenessBps) {
+    add(
+      "integrity",
+      "review",
+      `Only ${(completenessBps / 100).toFixed(1)}% of the period has accepted data (minimum ${DECISION_RULES.minCompletenessBps / 100}%)`,
+    );
+  }
+
+  // ── 5. Safeguards ─────────────────────────────────────────────────────────
+  for (const key of Object.keys(SAFEGUARD_BANDS) as (keyof typeof SAFEGUARD_BANDS)[]) {
+    const { range, label } = SAFEGUARD_BANDS[key];
+    const values = readings.map(r => r[key]).filter((v): v is number => v !== undefined);
+    const outside = values.filter(v => v < range[0] || v > range[1]);
+    if (outside.length) {
+      add(
+        "safeguards",
+        "review",
+        `${label} outside ${range[0]}–${range[1]} in ${outside.length} interval(s) (${Math.min(...outside)}–${Math.max(...outside)}): environmental review, quantity unchanged`,
+      );
+    }
+  }
+
+  // ── Aggregate monitored quantities (conservative rounding) ───────────────
+  const sum = (pick: (i: Interval) => number) => intervals.reduce((s, i) => s + pick(i), 0);
+  const maxEnergyWh = Math.floor((design.capacityKw * (periodEnd - periodStart) * 1_000) / 3_600);
+  const netWh = milliFloor(sum(i => i.exportKwh - i.importKwh));
+  const grossWh = Math.min(milliCeil(sum(i => i.generationKwh)), maxEnergyWh);
+  const fuelG = milliCeil(readings.reduce((s, r) => s + (r.fuelKg ?? 0), 0));
+  const leakageG = 0;
+
+  // ── 1. Applicability ──────────────────────────────────────────────────────
+  const pd = powerDensity(design);
+  if (!pd.eligible) add("applicability", "reject", pd.basis);
+  const periodViolation = creditingPeriodViolation(design, periodStart, periodEnd);
+  if (periodViolation) add("applicability", "reject", periodViolation);
+  if (fuelG > 0 && design.fuelCoefGPerTonne === 0) {
+    add("applicability", "reject", "Fossil fuel was burnt on site but no fuel is registered for TOOL03");
+  }
+
+  // ── 4. Quantification ─────────────────────────────────────────────────────
+  const ledgerBefore = toLedger(ledgerJson);
+  let quantification: Quantification | null = null;
+  if (!issues.some(i => i.stage === "applicability" && i.severity === "reject")) {
+    try {
+      quantification = quantifyPeriod(design, ledgerBefore, {
+        periodStart,
+        periodEnd,
+        netWh: BigInt(netWh),
+        grossWh: BigInt(grossWh),
+        fuelG: BigInt(fuelG),
+        leakageG: BigInt(leakageG),
+      });
+    } catch (error) {
+      if (!(error instanceof MethodologyError)) throw error;
+      add("applicability", "reject", error.message);
+    }
+  }
+  const emissions: Emissions | null = quantification && {
+    creditingYear: quantification.creditingYear,
+    egProjectWh: Number(quantification.egProjectWh),
+    baselineG: Number(quantification.baselineG),
+    reservoirG: Number(quantification.reservoirG),
+    fossilFuelG: Number(quantification.fossilFuelG),
+    projectG: Number(quantification.reservoirG + quantification.fossilFuelG),
+    leakageG: Number(quantification.leakageG),
+    reductionG: Number(quantification.reductionG),
+    unitsMinted: Number(quantification.unitsMinted),
+  };
+  if (emissions && emissions.reductionG <= 0) {
+    add(
+      "quantification",
+      "info",
+      emissions.egProjectWh <= 0
+        ? "No generation above the baseline in this period: nothing to credit"
+        : "Project emissions exceed baseline emissions: the deficit is carried forward",
+    );
+  }
+
+  const summaries: Record<Stage, string> = {
+    applicability: `${METHODOLOGIES[plant.methodology].id}; ${pd.basis}; crediting year ${(emissions?.creditingYear ?? 0) + 1}`,
+    integrity: `${(completenessBps / 100).toFixed(1)}% of the period covered, ${fmt(gapMinutes, 0)} min of gaps, ${checkMeterDiscrepancies} meter discrepancies`,
+    physics: `${intervals.length - excludedIntervals.length}/${intervals.length} intervals within nameplate and ρ·g·Q·H·η_max`,
+    quantification: emissions
+      ? `ER = ${fmt(emissions.reductionG / 1e6, 3)} t CO2e from ${fmt(emissions.egProjectWh / 1e6, 3)} MWh EG_PJ`
+      : "Not quantified",
+    safeguards: "Water quality is monitored for review only; it never changes the credited quantity",
+  };
+  const stages = (Object.keys(STAGES) as Stage[]).map(stage => stageResult(stage, issues, summaries[stage]));
+  const { decision, reasoning } = decide(issues, completenessBps);
+  const reservoirGPerMwh = pd.peHpGPerMwh;
 
   return {
     engine: ENGINE_VERSION,
     plantId: plant.plantId,
-    periodStart: Math.floor(periodStartMs / 1_000),
-    periodEnd: Math.floor(periodEndMs / 1_000),
+    methodology: `${METHODOLOGIES[plant.methodology].id} v${METHODOLOGIES[plant.methodology].version}`,
+    periodStart,
+    periodEnd,
     readingCount: readings.length,
-    energyWh,
-    trustScore,
-    trustScoreBps: Math.round(trustScore * 10_000),
     decision,
     reasoning,
-    layers,
+    completenessBps,
+    excludedIntervals,
+    stages,
     issues,
-    hardFailures,
-    carbon: {
-      gridEmissionFactor,
-      // ACM0002 for run-of-river: ER = EG × EF_grid (project and leakage emissions ≈ 0).
-      emissionReductionTco2: round((energyWh / 1_000_000) * gridEmissionFactor, 6),
+    monitored: {
+      exportWh: Math.round(rawExportKwh * 1_000),
+      importWh: Math.round(sum(i => i.importKwh) * 1_000),
+      netWh,
+      grossWh,
+      fuelG,
+      leakageG,
+      deductions: {
+        excludedWh: Math.round(deductions.excluded * 1_000),
+        checkMeterWh: Math.round(deductions.checkMeter * 1_000),
+        calibrationWh: Math.round(deductions.calibration * 1_000),
+        aboveGenerationWh: Math.round(deductions.aboveGeneration * 1_000),
+      },
     },
+    parameters: {
+      efGridGPerMwh: design.efGridGPerMwh,
+      reservoirGPerMwh,
+      fuelCoefGPerTonne: design.fuelCoefGPerTonne,
+      baselineWh: design.baselineWh,
+      baselineEndsAt: design.baselineEndsAt,
+    },
+    emissions,
+    ledger: { before: ledgerJson, after: quantification && toLedgerJson(quantification.ledger) },
+    equations: equationsFor(plant, netWh, grossWh, fuelG, emissions, reservoirGPerMwh),
   };
+}
+
+function stageResult(stage: Stage, issues: Issue[], summary: string): StageResult {
+  const own = issues.filter(i => i.stage === stage);
+  const status = own.some(i => i.severity === "reject")
+    ? "FAIL"
+    : own.some(i => i.severity === "review")
+      ? "REVIEW"
+      : "PASS";
+  return { stage, title: STAGES[stage], status, summary };
+}
+
+function decide(issues: Issue[], completenessBps: number): { decision: Decision; reasoning: string } {
+  const rejects = issues.filter(i => i.severity === "reject");
+  if (rejects.length) {
+    return { decision: "REJECTED", reasoning: [...new Set(rejects.map(i => i.message))].join("; ") };
+  }
+  const reviews = issues.filter(i => i.severity === "review");
+  if (reviews.length) {
+    const stages = [...new Set(reviews.map(i => STAGES[i.stage]))].join(", ");
+    return {
+      decision: "FLAGGED",
+      reasoning: `${reviews.length} finding(s) need a verifier's review (${stages}); quantities already exclude unsupported data`,
+    };
+  }
+  return {
+    decision: "APPROVED",
+    reasoning: `All checks passed with ${(completenessBps / 100).toFixed(1)}% data coverage; eligible for issuance`,
+  };
+}
+
+function equationsFor(
+  plant: PlantProfile,
+  netWh: number,
+  grossWh: number,
+  fuelG: number,
+  emissions: Emissions | null,
+  reservoirGPerMwh: number,
+): EquationStep[] {
+  const { design } = plant;
+  const steps: EquationStep[] = [
+    { symbol: "EG_facility", expression: "Σ (export − import) after QA/QC", value: netWh / 1e6, unit: "MWh" },
+    { symbol: "TEG", expression: "Σ gross generation", value: grossWh / 1e6, unit: "MWh" },
+    {
+      symbol: "EF_grid,CM",
+      expression: "TOOL07: w_OM × EF_OM + w_BM × EF_BM",
+      value: design.efGridGPerMwh / 1e6,
+      unit: "t CO2/MWh",
+    },
+  ];
+  if (!emissions) return steps;
+  steps.push(
+    {
+      symbol: "EG_PJ",
+      expression:
+        design.projectType === 0 ? "EG_facility" : "EG_facility − (EG_historical + σ) over the crediting year",
+      value: emissions.egProjectWh / 1e6,
+      unit: "MWh",
+    },
+    { symbol: "BE", expression: "EG_PJ × EF_grid,CM", value: emissions.baselineG / 1e6, unit: "t CO2e" },
+    {
+      symbol: "PE_HP",
+      expression: reservoirGPerMwh ? "EF_Res (90 kg/MWh) × TEG" : "0 (no reservoir emissions: PD > 10 or no new area)",
+      value: emissions.reservoirG / 1e6,
+      unit: "t CO2e",
+    },
+    {
+      symbol: "PE_FF",
+      expression: `FC (${fmt(fuelG / 1e6, 3)} t) × COEF (${fmt(design.fuelCoefGPerTonne / 1e6, 4)} t CO2/t), TOOL03`,
+      value: emissions.fossilFuelG / 1e6,
+      unit: "t CO2e",
+    },
+    { symbol: "PE", expression: "PE_FF + PE_HP", value: emissions.projectG / 1e6, unit: "t CO2e" },
+    { symbol: "LE", expression: "0 (leakage not applicable)", value: emissions.leakageG / 1e6, unit: "t CO2e" },
+    { symbol: "ER", expression: "BE − PE − LE", value: emissions.reductionG / 1e6, unit: "t CO2e" },
+  );
+  return steps;
 }

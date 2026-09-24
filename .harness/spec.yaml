@@ -2,10 +2,12 @@ schemaVersion: 2
 
 name: hydro-dmrv
 description: >-
-  Scaffold-HBAR template for digital MRV of run-of-river hydropower. A 5-layer verifier scores metered
-  telemetry, approved reports are anchored on HCS, the HydroREC contract mints HTS RECs, and a Chainlink
-  HBAR/USD feed with a Supra fallback settles USD-priced sales in HBAR; retirements mint HTS NFT certificates.
-  Raw readings are on HCS so verdicts can be reproduced. MCP tools and REST endpoints expose it all to agents.
+  Scaffold-HBAR template for carbon-credit dMRV of grid-connected hydropower under CDM AMS-I.D / ACM0002 with
+  TOOL07 (grid emission factor) and TOOL03 (fossil fuel). A 5-stage engine verifies monitoring data and quantifies
+  ER = BE - PE - LE; readings and reports are anchored on HCS; the HydroCreditRegistry contract recomputes the
+  emission reductions from the registered design and mints HTS credits (1 token = 1 t CO2e); a Chainlink HBAR/USD
+  feed with a Supra fallback settles USD-priced sales in HBAR; retirements mint HTS NFT certificates. MCP tools and
+  REST endpoints expose it all to agents.
 
 agent: claude
 

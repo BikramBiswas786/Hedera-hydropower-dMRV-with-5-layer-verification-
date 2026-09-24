@@ -11,7 +11,7 @@ import {
   useTransactor,
 } from "~~/hooks/scaffold-hbar";
 import { evmToEntityId, hashscan } from "~~/services/mrv/network";
-import { type RawRetirement, formatMwh, toRetirementView } from "~~/services/mrv/views";
+import { type RawRetirement, formatTonnes, toRetirementView } from "~~/services/mrv/views";
 
 /** HIP-719: HTS tokens, NFTs included, expose `associate()` at their EVM address. */
 const HRC719_ABI = [
@@ -21,20 +21,23 @@ const HRC719_ABI = [
 export const CertificateView = ({ retirementId }: { retirementId: bigint }) => {
   const { targetNetwork } = useTargetNetwork();
   const { address } = useAccount();
-  const { data: deployment, isLoading } = useDeployedContractInfo({ contractName: "HydroREC" });
-  const { data: count } = useScaffoldReadContract({ contractName: "HydroREC", functionName: "retirementCount" });
+  const { data: deployment, isLoading } = useDeployedContractInfo({ contractName: "HydroCreditRegistry" });
+  const { data: count } = useScaffoldReadContract({
+    contractName: "HydroCreditRegistry",
+    functionName: "retirementCount",
+  });
   const exists = count !== undefined && retirementId < count;
   const { data: raw } = useScaffoldReadContract({
-    contractName: "HydroREC",
+    contractName: "HydroCreditRegistry",
     functionName: "getRetirement",
     args: [retirementId],
     query: { enabled: exists },
   });
   const { data: certificateToken } = useScaffoldReadContract({
-    contractName: "HydroREC",
+    contractName: "HydroCreditRegistry",
     functionName: "certificateToken",
   });
-  const { writeContractAsync, isMining } = useScaffoldWriteContract({ contractName: "HydroREC" });
+  const { writeContractAsync, isMining } = useScaffoldWriteContract({ contractName: "HydroCreditRegistry" });
   const { writeContractAsync: writeToken } = useWriteContract();
   const transact = useTransactor();
 
@@ -63,9 +66,9 @@ export const CertificateView = ({ retirementId }: { retirementId: bigint }) => {
         </header>
 
         <p className="m-0 text-lg">This certifies that</p>
-        <p className="m-0 text-5xl font-bold text-primary">{formatMwh(retirement.units)} MWh</p>
+        <p className="m-0 text-5xl font-bold text-primary">{formatTonnes(retirement.units)} t CO₂e</p>
         <p className="m-0 text-lg">
-          of verified run-of-river hydropower generation was permanently retired
+          of verified emission reductions from grid-connected hydropower were permanently retired
           {retirement.beneficiary && (
             <>
               {" "}
@@ -75,9 +78,9 @@ export const CertificateView = ({ retirementId }: { retirementId: bigint }) => {
           on {date.toISOString().slice(0, 10)}.
         </p>
         <p className="m-0 text-sm text-base-content/70">
-          The corresponding HREC tokens were burned on the Hedera Token Service. The generation behind them was verified
-          by the 5-layer engine, anchored on the Hedera Consensus Service, and can be re-verified from public data on
-          the Audit page.
+          The corresponding credit tokens were burned on the Hedera Token Service. Each was issued by the registry
+          contract from ER = BE − PE − LE under CDM AMS-I.D / ACM0002, from monitoring data anchored on the Hedera
+          Consensus Service, and can be reproduced from public data on the Audit page.
         </p>
 
         <dl className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-left text-sm m-0">

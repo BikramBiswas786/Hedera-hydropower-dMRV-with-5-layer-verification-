@@ -3,7 +3,10 @@ import { prepareAnchors } from "~~/services/mrv/pipeline";
 import { verifyRequestSchema } from "~~/services/mrv/schema";
 import { parseJsonBody, toErrorResponse } from "~~/services/mrv/server/http";
 
-/** Runs the 5-layer verification and builds both HCS messages without writing anything. No credentials needed. */
+/**
+ * Verifies and quantifies a monitoring period (AMS-I.D / ACM0002) and builds both HCS messages without writing
+ * anything. No credentials needed.
+ */
 export async function POST(request: Request) {
   try {
     const { report, data, preview } = prepareAnchors(await parseJsonBody(request, verifyRequestSchema));

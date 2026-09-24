@@ -6,7 +6,7 @@ import { GenericContractsDeclaration } from "~~/utils/scaffold-hbar/contract";
 
 const deployedContracts = {
   31337: {
-    HydroREC: {
+    HydroCreditRegistry: {
       address: "0xDc64a140Aa3E981100a9becA4E685f962f0cF6C9",
       abi: [
         {
@@ -28,7 +28,7 @@ const deployedContracts = {
             },
             {
               internalType: "uint16",
-              name: "minTrustScoreBps_",
+              name: "minCompletenessBps_",
               type: "uint16",
             },
             {
@@ -67,6 +67,22 @@ const deployedContracts = {
           type: "error",
         },
         {
+          inputs: [
+            {
+              internalType: "uint16",
+              name: "completenessBps",
+              type: "uint16",
+            },
+            {
+              internalType: "uint16",
+              name: "minCompletenessBps",
+              type: "uint16",
+            },
+          ],
+          name: "CompletenessTooLow",
+          type: "error",
+        },
+        {
           inputs: [],
           name: "EmptyReportHash",
           type: "error",
@@ -75,7 +91,7 @@ const deployedContracts = {
           inputs: [
             {
               internalType: "uint64",
-              name: "energyWh",
+              name: "grossEnergyWh",
               type: "uint64",
             },
             {
@@ -85,6 +101,22 @@ const deployedContracts = {
             },
           ],
           name: "EnergyExceedsCapacity",
+          type: "error",
+        },
+        {
+          inputs: [],
+          name: "FuelNotRegistered",
+          type: "error",
+        },
+        {
+          inputs: [
+            {
+              internalType: "uint32",
+              name: "efGridGPerMwh",
+              type: "uint32",
+            },
+          ],
+          name: "GridEmissionFactorOutOfRange",
           type: "error",
         },
         {
@@ -165,6 +197,44 @@ const deployedContracts = {
         {
           inputs: [
             {
+              internalType: "enum HydroCreditRegistry.ProjectType",
+              name: "projectType",
+              type: "uint8",
+            },
+          ],
+          name: "InvalidBaseline",
+          type: "error",
+        },
+        {
+          inputs: [
+            {
+              internalType: "uint16",
+              name: "value",
+              type: "uint16",
+            },
+          ],
+          name: "InvalidCompleteness",
+          type: "error",
+        },
+        {
+          inputs: [
+            {
+              internalType: "uint64",
+              name: "creditingStart",
+              type: "uint64",
+            },
+            {
+              internalType: "uint64",
+              name: "creditingEnd",
+              type: "uint64",
+            },
+          ],
+          name: "InvalidCreditingPeriod",
+          type: "error",
+        },
+        {
+          inputs: [
+            {
               internalType: "uint256",
               name: "listingId",
               type: "uint256",
@@ -212,19 +282,24 @@ const deployedContracts = {
           type: "error",
         },
         {
-          inputs: [
-            {
-              internalType: "uint16",
-              name: "value",
-              type: "uint16",
-            },
-          ],
-          name: "InvalidTrustScore",
+          inputs: [],
+          name: "NativeTransferFailed",
           type: "error",
         },
         {
-          inputs: [],
-          name: "NativeTransferFailed",
+          inputs: [
+            {
+              internalType: "int64",
+              name: "netEnergyWh",
+              type: "int64",
+            },
+            {
+              internalType: "uint64",
+              name: "grossEnergyWh",
+              type: "uint64",
+            },
+          ],
+          name: "NetExceedsGross",
           type: "error",
         },
         {
@@ -269,6 +344,38 @@ const deployedContracts = {
             },
             {
               internalType: "uint64",
+              name: "periodEnd",
+              type: "uint64",
+            },
+          ],
+          name: "OutsideCreditingPeriod",
+          type: "error",
+        },
+        {
+          inputs: [
+            {
+              internalType: "uint64",
+              name: "periodStart",
+              type: "uint64",
+            },
+            {
+              internalType: "uint64",
+              name: "periodEnd",
+              type: "uint64",
+            },
+          ],
+          name: "PeriodCrossesCreditingYear",
+          type: "error",
+        },
+        {
+          inputs: [
+            {
+              internalType: "uint64",
+              name: "periodStart",
+              type: "uint64",
+            },
+            {
+              internalType: "uint64",
               name: "lastPeriodEnd",
               type: "uint64",
             },
@@ -299,8 +406,56 @@ const deployedContracts = {
           type: "error",
         },
         {
+          inputs: [
+            {
+              internalType: "uint256",
+              name: "addedCapacityW",
+              type: "uint256",
+            },
+            {
+              internalType: "uint256",
+              name: "addedAreaM2",
+              type: "uint256",
+            },
+          ],
+          name: "PowerDensityTooLow",
+          type: "error",
+        },
+        {
           inputs: [],
           name: "ReentrancyGuardReentrantCall",
+          type: "error",
+        },
+        {
+          inputs: [
+            {
+              internalType: "uint64",
+              name: "reservoirAreaM2",
+              type: "uint64",
+            },
+            {
+              internalType: "uint64",
+              name: "baselineReservoirAreaM2",
+              type: "uint64",
+            },
+          ],
+          name: "ReservoirBelowBaseline",
+          type: "error",
+        },
+        {
+          inputs: [
+            {
+              internalType: "uint32",
+              name: "expected",
+              type: "uint32",
+            },
+            {
+              internalType: "uint32",
+              name: "provided",
+              type: "uint32",
+            },
+          ],
+          name: "StaleLedger",
           type: "error",
         },
         {
@@ -330,22 +485,6 @@ const deployedContracts = {
           type: "error",
         },
         {
-          inputs: [
-            {
-              internalType: "uint16",
-              name: "trustScoreBps",
-              type: "uint16",
-            },
-            {
-              internalType: "uint16",
-              name: "minTrustScoreBps",
-              type: "uint16",
-            },
-          ],
-          name: "TrustScoreTooLow",
-          type: "error",
-        },
-        {
           inputs: [],
           name: "ZeroAddress",
           type: "error",
@@ -372,21 +511,21 @@ const deployedContracts = {
             },
             {
               indexed: false,
-              internalType: "uint64",
-              name: "energyWh",
-              type: "uint64",
+              internalType: "int256",
+              name: "projectEnergyWh",
+              type: "int256",
             },
             {
               indexed: false,
-              internalType: "uint64",
+              internalType: "int256",
+              name: "reductionG",
+              type: "int256",
+            },
+            {
+              indexed: false,
+              internalType: "uint256",
               name: "unitsMinted",
-              type: "uint64",
-            },
-            {
-              indexed: false,
-              internalType: "uint16",
-              name: "trustScoreBps",
-              type: "uint16",
+              type: "uint256",
             },
             {
               indexed: false,
@@ -478,6 +617,56 @@ const deployedContracts = {
           inputs: [
             {
               indexed: true,
+              internalType: "address",
+              name: "token",
+              type: "address",
+            },
+          ],
+          name: "CreditTokenCreated",
+          type: "event",
+        },
+        {
+          anonymous: false,
+          inputs: [
+            {
+              indexed: true,
+              internalType: "bytes32",
+              name: "plantId",
+              type: "bytes32",
+            },
+            {
+              indexed: false,
+              internalType: "uint32",
+              name: "efGridGPerMwh",
+              type: "uint32",
+            },
+            {
+              indexed: false,
+              internalType: "uint64",
+              name: "creditingStart",
+              type: "uint64",
+            },
+            {
+              indexed: false,
+              internalType: "uint64",
+              name: "creditingEnd",
+              type: "uint64",
+            },
+            {
+              indexed: false,
+              internalType: "bytes32",
+              name: "designHash",
+              type: "bytes32",
+            },
+          ],
+          name: "CreditingPeriodRenewed",
+          type: "event",
+        },
+        {
+          anonymous: false,
+          inputs: [
+            {
+              indexed: true,
               internalType: "uint256",
               name: "listingId",
               type: "uint256",
@@ -516,7 +705,7 @@ const deployedContracts = {
             {
               indexed: false,
               internalType: "uint64",
-              name: "priceUsdCentsPerMwh",
+              name: "priceUsdCentsPerTonne",
               type: "uint64",
             },
           ],
@@ -542,11 +731,11 @@ const deployedContracts = {
             {
               indexed: false,
               internalType: "uint16",
-              name: "minTrustScoreBps",
+              name: "minCompletenessBps",
               type: "uint16",
             },
           ],
-          name: "MinTrustScoreChanged",
+          name: "MinCompletenessChanged",
           type: "event",
         },
         {
@@ -575,6 +764,24 @@ const deployedContracts = {
               internalType: "uint32",
               name: "capacityKw",
               type: "uint32",
+            },
+            {
+              indexed: false,
+              internalType: "uint32",
+              name: "efGridGPerMwh",
+              type: "uint32",
+            },
+            {
+              indexed: false,
+              internalType: "uint32",
+              name: "reservoirGPerMwh",
+              type: "uint32",
+            },
+            {
+              indexed: false,
+              internalType: "bytes32",
+              name: "designHash",
+              type: "bytes32",
             },
           ],
           name: "PlantRegistered",
@@ -647,19 +854,6 @@ const deployedContracts = {
             },
           ],
           name: "Purchased",
-          type: "event",
-        },
-        {
-          anonymous: false,
-          inputs: [
-            {
-              indexed: true,
-              internalType: "address",
-              name: "token",
-              type: "address",
-            },
-          ],
-          name: "RecTokenCreated",
           type: "event",
         },
         {
@@ -789,12 +983,51 @@ const deployedContracts = {
         },
         {
           inputs: [],
+          name: "CREDITING_YEAR",
+          outputs: [
+            {
+              internalType: "uint256",
+              name: "",
+              type: "uint256",
+            },
+          ],
+          stateMutability: "view",
+          type: "function",
+        },
+        {
+          inputs: [],
+          name: "CREDIT_DECIMALS",
+          outputs: [
+            {
+              internalType: "int32",
+              name: "",
+              type: "int32",
+            },
+          ],
+          stateMutability: "view",
+          type: "function",
+        },
+        {
+          inputs: [],
           name: "DEFAULT_ADMIN_ROLE",
           outputs: [
             {
               internalType: "bytes32",
               name: "",
               type: "bytes32",
+            },
+          ],
+          stateMutability: "view",
+          type: "function",
+        },
+        {
+          inputs: [],
+          name: "G_PER_UNIT",
+          outputs: [
+            {
+              internalType: "uint256",
+              name: "",
+              type: "uint256",
             },
           ],
           stateMutability: "view",
@@ -841,6 +1074,45 @@ const deployedContracts = {
         },
         {
           inputs: [],
+          name: "MAX_CREDITING_YEARS",
+          outputs: [
+            {
+              internalType: "uint256",
+              name: "",
+              type: "uint256",
+            },
+          ],
+          stateMutability: "view",
+          type: "function",
+        },
+        {
+          inputs: [],
+          name: "MAX_GRID_EF_G_PER_MWH",
+          outputs: [
+            {
+              internalType: "uint32",
+              name: "",
+              type: "uint32",
+            },
+          ],
+          stateMutability: "view",
+          type: "function",
+        },
+        {
+          inputs: [],
+          name: "MIN_POWER_DENSITY",
+          outputs: [
+            {
+              internalType: "uint256",
+              name: "",
+              type: "uint256",
+            },
+          ],
+          stateMutability: "view",
+          type: "function",
+        },
+        {
+          inputs: [],
           name: "NATIVE_UNITS_PER_HBAR",
           outputs: [
             {
@@ -854,12 +1126,38 @@ const deployedContracts = {
         },
         {
           inputs: [],
-          name: "REC_DECIMALS",
+          name: "RESERVOIR_EF_G_PER_MWH",
           outputs: [
             {
-              internalType: "int32",
+              internalType: "uint32",
               name: "",
-              type: "int32",
+              type: "uint32",
+            },
+          ],
+          stateMutability: "view",
+          type: "function",
+        },
+        {
+          inputs: [],
+          name: "RESERVOIR_EMISSIONS_POWER_DENSITY",
+          outputs: [
+            {
+              internalType: "uint256",
+              name: "",
+              type: "uint256",
+            },
+          ],
+          stateMutability: "view",
+          type: "function",
+        },
+        {
+          inputs: [],
+          name: "UNITS_PER_CREDIT",
+          outputs: [
+            {
+              internalType: "uint256",
+              name: "",
+              type: "uint256",
             },
           ],
           stateMutability: "view",
@@ -873,19 +1171,6 @@ const deployedContracts = {
               internalType: "bytes32",
               name: "",
               type: "bytes32",
-            },
-          ],
-          stateMutability: "view",
-          type: "function",
-        },
-        {
-          inputs: [],
-          name: "WH_PER_UNIT",
-          outputs: [
-            {
-              internalType: "uint256",
-              name: "",
-              type: "uint256",
             },
           ],
           stateMutability: "view",
@@ -1011,13 +1296,31 @@ const deployedContracts = {
         {
           inputs: [
             {
+              internalType: "string",
+              name: "name",
+              type: "string",
+            },
+            {
+              internalType: "string",
+              name: "symbol",
+              type: "string",
+            },
+          ],
+          name: "createCreditToken",
+          outputs: [],
+          stateMutability: "payable",
+          type: "function",
+        },
+        {
+          inputs: [
+            {
               internalType: "uint64",
               name: "units",
               type: "uint64",
             },
             {
               internalType: "uint64",
-              name: "priceUsdCentsPerMwh",
+              name: "priceUsdCentsPerTonne",
               type: "uint64",
             },
           ],
@@ -1033,21 +1336,16 @@ const deployedContracts = {
           type: "function",
         },
         {
-          inputs: [
+          inputs: [],
+          name: "creditToken",
+          outputs: [
             {
-              internalType: "string",
-              name: "name",
-              type: "string",
-            },
-            {
-              internalType: "string",
-              name: "symbol",
-              type: "string",
+              internalType: "address",
+              name: "",
+              type: "address",
             },
           ],
-          name: "createRecToken",
-          outputs: [],
-          stateMutability: "payable",
+          stateMutability: "view",
           type: "function",
         },
         {
@@ -1097,9 +1395,49 @@ const deployedContracts = {
                   type: "uint64",
                 },
                 {
+                  internalType: "int64",
+                  name: "netEnergyWh",
+                  type: "int64",
+                },
+                {
                   internalType: "uint64",
-                  name: "energyWh",
+                  name: "grossEnergyWh",
                   type: "uint64",
+                },
+                {
+                  internalType: "uint64",
+                  name: "fuelG",
+                  type: "uint64",
+                },
+                {
+                  internalType: "int64",
+                  name: "projectEnergyWh",
+                  type: "int64",
+                },
+                {
+                  internalType: "int64",
+                  name: "baselineG",
+                  type: "int64",
+                },
+                {
+                  internalType: "uint64",
+                  name: "reservoirG",
+                  type: "uint64",
+                },
+                {
+                  internalType: "uint64",
+                  name: "fossilFuelG",
+                  type: "uint64",
+                },
+                {
+                  internalType: "uint64",
+                  name: "leakageG",
+                  type: "uint64",
+                },
+                {
+                  internalType: "int64",
+                  name: "reductionG",
+                  type: "int64",
                 },
                 {
                   internalType: "uint64",
@@ -1108,7 +1446,7 @@ const deployedContracts = {
                 },
                 {
                   internalType: "uint16",
-                  name: "trustScoreBps",
+                  name: "completenessBps",
                   type: "uint16",
                 },
                 {
@@ -1137,7 +1475,7 @@ const deployedContracts = {
                   type: "uint64",
                 },
               ],
-              internalType: "struct HydroREC.Attestation",
+              internalType: "struct HydroCreditRegistry.Attestation",
               name: "",
               type: "tuple",
             },
@@ -1178,9 +1516,49 @@ const deployedContracts = {
                   type: "uint64",
                 },
                 {
+                  internalType: "int64",
+                  name: "netEnergyWh",
+                  type: "int64",
+                },
+                {
                   internalType: "uint64",
-                  name: "energyWh",
+                  name: "grossEnergyWh",
                   type: "uint64",
+                },
+                {
+                  internalType: "uint64",
+                  name: "fuelG",
+                  type: "uint64",
+                },
+                {
+                  internalType: "int64",
+                  name: "projectEnergyWh",
+                  type: "int64",
+                },
+                {
+                  internalType: "int64",
+                  name: "baselineG",
+                  type: "int64",
+                },
+                {
+                  internalType: "uint64",
+                  name: "reservoirG",
+                  type: "uint64",
+                },
+                {
+                  internalType: "uint64",
+                  name: "fossilFuelG",
+                  type: "uint64",
+                },
+                {
+                  internalType: "uint64",
+                  name: "leakageG",
+                  type: "uint64",
+                },
+                {
+                  internalType: "int64",
+                  name: "reductionG",
+                  type: "int64",
                 },
                 {
                   internalType: "uint64",
@@ -1189,7 +1567,7 @@ const deployedContracts = {
                 },
                 {
                   internalType: "uint16",
-                  name: "trustScoreBps",
+                  name: "completenessBps",
                   type: "uint16",
                 },
                 {
@@ -1218,7 +1596,7 @@ const deployedContracts = {
                   type: "uint64",
                 },
               ],
-              internalType: "struct HydroREC.Attestation[]",
+              internalType: "struct HydroCreditRegistry.Attestation[]",
               name: "page",
               type: "tuple[]",
             },
@@ -1255,7 +1633,7 @@ const deployedContracts = {
                 },
                 {
                   internalType: "uint64",
-                  name: "priceUsdCentsPerMwh",
+                  name: "priceUsdCentsPerTonne",
                   type: "uint64",
                 },
                 {
@@ -1264,7 +1642,7 @@ const deployedContracts = {
                   type: "bool",
                 },
               ],
-              internalType: "struct HydroREC.Listing[]",
+              internalType: "struct HydroCreditRegistry.Listing[]",
               name: "page",
               type: "tuple[]",
             },
@@ -1295,14 +1673,101 @@ const deployedContracts = {
                   type: "address",
                 },
                 {
-                  internalType: "uint32",
-                  name: "capacityKw",
-                  type: "uint32",
-                },
-                {
                   internalType: "bool",
                   name: "active",
                   type: "bool",
+                },
+                {
+                  components: [
+                    {
+                      internalType: "enum HydroCreditRegistry.ProjectType",
+                      name: "projectType",
+                      type: "uint8",
+                    },
+                    {
+                      internalType: "uint32",
+                      name: "capacityKw",
+                      type: "uint32",
+                    },
+                    {
+                      internalType: "uint32",
+                      name: "baselineCapacityKw",
+                      type: "uint32",
+                    },
+                    {
+                      internalType: "uint64",
+                      name: "reservoirAreaM2",
+                      type: "uint64",
+                    },
+                    {
+                      internalType: "uint64",
+                      name: "baselineReservoirAreaM2",
+                      type: "uint64",
+                    },
+                    {
+                      internalType: "uint32",
+                      name: "efGridGPerMwh",
+                      type: "uint32",
+                    },
+                    {
+                      internalType: "uint32",
+                      name: "fuelCoefGPerTonne",
+                      type: "uint32",
+                    },
+                    {
+                      internalType: "uint64",
+                      name: "baselineWh",
+                      type: "uint64",
+                    },
+                    {
+                      internalType: "uint64",
+                      name: "baselineEndsAt",
+                      type: "uint64",
+                    },
+                    {
+                      internalType: "uint64",
+                      name: "creditingStart",
+                      type: "uint64",
+                    },
+                    {
+                      internalType: "uint64",
+                      name: "creditingEnd",
+                      type: "uint64",
+                    },
+                    {
+                      internalType: "bytes32",
+                      name: "designHash",
+                      type: "bytes32",
+                    },
+                  ],
+                  internalType: "struct HydroCreditRegistry.PlantDesign",
+                  name: "design",
+                  type: "tuple",
+                },
+                {
+                  internalType: "uint32",
+                  name: "reservoirGPerMwh",
+                  type: "uint32",
+                },
+                {
+                  internalType: "uint32",
+                  name: "attestations",
+                  type: "uint32",
+                },
+                {
+                  internalType: "uint32",
+                  name: "creditingYear",
+                  type: "uint32",
+                },
+                {
+                  internalType: "int128",
+                  name: "yearNetWh",
+                  type: "int128",
+                },
+                {
+                  internalType: "int128",
+                  name: "balanceG",
+                  type: "int128",
                 },
                 {
                   internalType: "uint64",
@@ -1310,17 +1775,17 @@ const deployedContracts = {
                   type: "uint64",
                 },
                 {
-                  internalType: "uint64",
-                  name: "carryWh",
-                  type: "uint64",
+                  internalType: "int128",
+                  name: "totalNetWh",
+                  type: "int128",
                 },
                 {
                   internalType: "uint128",
-                  name: "certifiedWh",
+                  name: "issuedUnits",
                   type: "uint128",
                 },
               ],
-              internalType: "struct HydroREC.Plant",
+              internalType: "struct HydroCreditRegistry.Plant",
               name: "",
               type: "tuple",
             },
@@ -1384,7 +1849,7 @@ const deployedContracts = {
                   type: "bool",
                 },
               ],
-              internalType: "struct HydroREC.Retirement",
+              internalType: "struct HydroCreditRegistry.Retirement",
               name: "",
               type: "tuple",
             },
@@ -1440,7 +1905,7 @@ const deployedContracts = {
                   type: "bool",
                 },
               ],
-              internalType: "struct HydroREC.Retirement[]",
+              internalType: "struct HydroCreditRegistry.Retirement[]",
               name: "page",
               type: "tuple[]",
             },
@@ -1537,7 +2002,7 @@ const deployedContracts = {
         },
         {
           inputs: [],
-          name: "minTrustScoreBps",
+          name: "minCompletenessBps",
           outputs: [
             {
               internalType: "uint16",
@@ -1570,6 +2035,139 @@ const deployedContracts = {
         {
           inputs: [
             {
+              internalType: "bytes32",
+              name: "plantId",
+              type: "bytes32",
+            },
+            {
+              components: [
+                {
+                  internalType: "bytes32",
+                  name: "plantId",
+                  type: "bytes32",
+                },
+                {
+                  internalType: "uint32",
+                  name: "plantSequence",
+                  type: "uint32",
+                },
+                {
+                  internalType: "uint64",
+                  name: "periodStart",
+                  type: "uint64",
+                },
+                {
+                  internalType: "uint64",
+                  name: "periodEnd",
+                  type: "uint64",
+                },
+                {
+                  internalType: "int64",
+                  name: "netEnergyWh",
+                  type: "int64",
+                },
+                {
+                  internalType: "uint64",
+                  name: "grossEnergyWh",
+                  type: "uint64",
+                },
+                {
+                  internalType: "uint64",
+                  name: "fuelG",
+                  type: "uint64",
+                },
+                {
+                  internalType: "uint64",
+                  name: "leakageG",
+                  type: "uint64",
+                },
+                {
+                  internalType: "uint16",
+                  name: "completenessBps",
+                  type: "uint16",
+                },
+                {
+                  internalType: "bytes32",
+                  name: "reportHash",
+                  type: "bytes32",
+                },
+                {
+                  internalType: "uint64",
+                  name: "hcsTopicNum",
+                  type: "uint64",
+                },
+                {
+                  internalType: "uint64",
+                  name: "hcsSequence",
+                  type: "uint64",
+                },
+              ],
+              internalType: "struct HydroCreditRegistry.AttestationInput",
+              name: "input",
+              type: "tuple",
+            },
+          ],
+          name: "quantify",
+          outputs: [
+            {
+              components: [
+                {
+                  internalType: "uint32",
+                  name: "creditingYear",
+                  type: "uint32",
+                },
+                {
+                  internalType: "int256",
+                  name: "yearNetWh",
+                  type: "int256",
+                },
+                {
+                  internalType: "int256",
+                  name: "projectEnergyWh",
+                  type: "int256",
+                },
+                {
+                  internalType: "int256",
+                  name: "baselineG",
+                  type: "int256",
+                },
+                {
+                  internalType: "uint256",
+                  name: "reservoirG",
+                  type: "uint256",
+                },
+                {
+                  internalType: "uint256",
+                  name: "fossilFuelG",
+                  type: "uint256",
+                },
+                {
+                  internalType: "int256",
+                  name: "reductionG",
+                  type: "int256",
+                },
+                {
+                  internalType: "uint256",
+                  name: "units",
+                  type: "uint256",
+                },
+                {
+                  internalType: "int256",
+                  name: "balanceG",
+                  type: "int256",
+                },
+              ],
+              internalType: "struct HydroCreditRegistry.Quantification",
+              name: "q",
+              type: "tuple",
+            },
+          ],
+          stateMutability: "view",
+          type: "function",
+        },
+        {
+          inputs: [
+            {
               internalType: "uint256",
               name: "listingId",
               type: "uint256",
@@ -1586,19 +2184,6 @@ const deployedContracts = {
               internalType: "uint256",
               name: "nativeCost",
               type: "uint256",
-            },
-          ],
-          stateMutability: "view",
-          type: "function",
-        },
-        {
-          inputs: [],
-          name: "recToken",
-          outputs: [
-            {
-              internalType: "address",
-              name: "",
-              type: "address",
             },
           ],
           stateMutability: "view",
@@ -1622,12 +2207,107 @@ const deployedContracts = {
               type: "address",
             },
             {
-              internalType: "uint32",
-              name: "capacityKw",
-              type: "uint32",
+              components: [
+                {
+                  internalType: "enum HydroCreditRegistry.ProjectType",
+                  name: "projectType",
+                  type: "uint8",
+                },
+                {
+                  internalType: "uint32",
+                  name: "capacityKw",
+                  type: "uint32",
+                },
+                {
+                  internalType: "uint32",
+                  name: "baselineCapacityKw",
+                  type: "uint32",
+                },
+                {
+                  internalType: "uint64",
+                  name: "reservoirAreaM2",
+                  type: "uint64",
+                },
+                {
+                  internalType: "uint64",
+                  name: "baselineReservoirAreaM2",
+                  type: "uint64",
+                },
+                {
+                  internalType: "uint32",
+                  name: "efGridGPerMwh",
+                  type: "uint32",
+                },
+                {
+                  internalType: "uint32",
+                  name: "fuelCoefGPerTonne",
+                  type: "uint32",
+                },
+                {
+                  internalType: "uint64",
+                  name: "baselineWh",
+                  type: "uint64",
+                },
+                {
+                  internalType: "uint64",
+                  name: "baselineEndsAt",
+                  type: "uint64",
+                },
+                {
+                  internalType: "uint64",
+                  name: "creditingStart",
+                  type: "uint64",
+                },
+                {
+                  internalType: "uint64",
+                  name: "creditingEnd",
+                  type: "uint64",
+                },
+                {
+                  internalType: "bytes32",
+                  name: "designHash",
+                  type: "bytes32",
+                },
+              ],
+              internalType: "struct HydroCreditRegistry.PlantDesign",
+              name: "design",
+              type: "tuple",
             },
           ],
           name: "registerPlant",
+          outputs: [],
+          stateMutability: "nonpayable",
+          type: "function",
+        },
+        {
+          inputs: [
+            {
+              internalType: "bytes32",
+              name: "plantId",
+              type: "bytes32",
+            },
+            {
+              internalType: "uint32",
+              name: "efGridGPerMwh",
+              type: "uint32",
+            },
+            {
+              internalType: "uint64",
+              name: "creditingStart",
+              type: "uint64",
+            },
+            {
+              internalType: "uint64",
+              name: "creditingEnd",
+              type: "uint64",
+            },
+            {
+              internalType: "bytes32",
+              name: "designHash",
+              type: "bytes32",
+            },
+          ],
+          name: "renewCreditingPeriod",
           outputs: [],
           stateMutability: "nonpayable",
           type: "function",
@@ -1722,11 +2402,11 @@ const deployedContracts = {
           inputs: [
             {
               internalType: "uint16",
-              name: "minTrustScoreBps_",
+              name: "minCompletenessBps_",
               type: "uint16",
             },
           ],
-          name: "setMinTrustScore",
+          name: "setMinCompleteness",
           outputs: [],
           stateMutability: "nonpayable",
           type: "function",
@@ -1759,6 +2439,11 @@ const deployedContracts = {
                   type: "bytes32",
                 },
                 {
+                  internalType: "uint32",
+                  name: "plantSequence",
+                  type: "uint32",
+                },
+                {
                   internalType: "uint64",
                   name: "periodStart",
                   type: "uint64",
@@ -1769,13 +2454,28 @@ const deployedContracts = {
                   type: "uint64",
                 },
                 {
+                  internalType: "int64",
+                  name: "netEnergyWh",
+                  type: "int64",
+                },
+                {
                   internalType: "uint64",
-                  name: "energyWh",
+                  name: "grossEnergyWh",
+                  type: "uint64",
+                },
+                {
+                  internalType: "uint64",
+                  name: "fuelG",
+                  type: "uint64",
+                },
+                {
+                  internalType: "uint64",
+                  name: "leakageG",
                   type: "uint64",
                 },
                 {
                   internalType: "uint16",
-                  name: "trustScoreBps",
+                  name: "completenessBps",
                   type: "uint16",
                 },
                 {
@@ -1794,7 +2494,7 @@ const deployedContracts = {
                   type: "uint64",
                 },
               ],
-              internalType: "struct HydroREC.AttestationInput",
+              internalType: "struct HydroCreditRegistry.AttestationInput",
               name: "input",
               type: "tuple",
             },
@@ -1844,7 +2544,7 @@ const deployedContracts = {
         },
         {
           inputs: [],
-          name: "totalCertifiedWh",
+          name: "totalIssuedUnits",
           outputs: [
             {
               internalType: "uint256",
@@ -1885,7 +2585,7 @@ const deployedContracts = {
           inputs: [
             {
               internalType: "uint64",
-              name: "priceUsdCentsPerMwh",
+              name: "priceUsdCentsPerTonne",
               type: "uint64",
             },
             {
@@ -1894,7 +2594,7 @@ const deployedContracts = {
               type: "uint64",
             },
           ],
-          name: "usdCentsPerMwhToNative",
+          name: "usdCentsPerTonneToNative",
           outputs: [
             {
               internalType: "uint256",

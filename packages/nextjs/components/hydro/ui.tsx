@@ -28,11 +28,6 @@ export const ExternalLink = ({ href, children }: { href: string; children: React
   </a>
 );
 
-export const ScoreBar = ({ score }: { score: number }) => {
-  const tone = score >= 0.85 ? "progress-success" : score >= 0.5 ? "progress-warning" : "progress-error";
-  return <progress className={`progress ${tone} w-full`} value={Math.round(score * 100)} max={100} />;
-};
-
 export const PageHeader = ({ title, children }: { title: string; children: ReactNode }) => (
   <div className="max-w-3xl">
     <h1 className="text-3xl font-bold">{title}</h1>
@@ -43,7 +38,7 @@ export const PageHeader = ({ title, children }: { title: string; children: React
 export const NotDeployedNotice = ({ networkName }: { networkName: string }) => (
   <div role="alert" className="alert alert-info">
     <div>
-      <p className="font-semibold m-0">HydroREC is not deployed on {networkName} yet.</p>
+      <p className="font-semibold m-0">HydroCreditRegistry is not deployed on {networkName} yet.</p>
       <p className="m-0 text-sm">
         Deploy it with <code>yarn deploy --network hederaTestnet</code>, or follow the README to run it on a local
         chain. The{" "}

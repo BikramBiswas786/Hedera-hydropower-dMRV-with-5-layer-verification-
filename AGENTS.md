@@ -5,10 +5,11 @@ Briefing for coding agents working on this repository (Claude Code, Cursor, Code
 see the "For AI agents" section of `README.md`.
 
 This is **Hydro dMRV**, a Scaffold-HBAR template: Next.js App Router frontend and API in `packages/nextjs`, Hardhat
-contracts in `packages/hardhat`, Yarn 3 workspaces. It verifies hydropower telemetry, anchors reports on HCS, mints
-HTS RECs through the `HydroREC` contract, prices them through `ResilientHbarUsdFeed` (Chainlink with a Supra
-fallback), and mints an HTS NFT certificate for every retirement. Raw readings are on HCS too, so anyone can reproduce
-a verdict.
+contracts in `packages/hardhat`, Yarn 3 workspaces. It quantifies emission reductions of grid-connected hydropower
+under CDM AMS-I.D / ACM0002 (TOOL07 grid factor, TOOL03 fuel), anchors readings and reports on HCS, and issues HTS
+carbon credits through `HydroCreditRegistry`, which recomputes ER = BE − PE − LE on-chain from the plant's registered
+design. Credits are priced through `ResilientHbarUsdFeed` (Chainlink with a Supra fallback), and every retirement
+mints an HTS NFT certificate. Raw readings are on HCS too, so anyone can reproduce every figure.
 
 ## Commands
 
@@ -25,7 +26,7 @@ yarn deploy --network localhost   # or hederaTestnet / hederaMainnet
 yarn start                        # next dev on :3000
 
 yarn mrv:create-topic             # create the HCS audit topic
-yarn mrv:attest [scenario]        # verify → HCS → submitAttestation from the CLI
+yarn mrv:attest [scenario] [plant] # verify → HCS → submitAttestation from the CLI
 yarn hardhat:test:fork            # contract tests against Hedera's HTS emulation
 ```
 
@@ -35,27 +36,38 @@ yarn hardhat:test:fork            # contract tests against Hedera's HTS emulatio
 
 | Concern | Path |
 | --- | --- |
-| Registry contract | `packages/hardhat/contracts/HydroREC.sol` |
+| Registry contract (on-chain quantification) | `packages/hardhat/contracts/HydroCreditRegistry.sol` |
 | Oracle aggregator | `packages/hardhat/contracts/ResilientHbarUsdFeed.sol` |
 | HTS calls (always go through this) | `packages/hardhat/contracts/lib/HederaTokenLib.sol` |
 | Local test doubles | `packages/hardhat/contracts/mocks/` (HTS mock at `0x167` incl. NFTs, Chainlink and Supra mocks) |
-| Deploy + idempotent setup | `packages/hardhat/deploy/00_*.ts`, `01_*.ts` |
+| Deploy + idempotent setup | `packages/hardhat/deploy/00_*.ts`, `01_*.ts`; demo plant integers in `utils/demoPlants.ts` |
 | Per-network feeds, units, staleness | `packages/hardhat/utils/hydroNetworkConfig.ts` |
-| Verification engine (pure) | `packages/nextjs/services/mrv/engine.ts`, `schema.ts`, `scenarios.ts` |
+| Methodology (pure): TOOL07, TOOL03, design assessment, integer quantification | `packages/nextjs/services/mrv/methodology/` |
+| Verification engine (pure): 5 stages, QA/QC, report | `packages/nextjs/services/mrv/engine.ts`, `schema.ts` |
+| Demo grid, designs, plants, scenarios | `packages/nextjs/services/mrv/demo.ts`, `scenarios.ts` |
+| Shared quantification test vectors (contract + TS) | `packages/hardhat/test/fixtures/quantificationVectors.ts` |
 | HCS data + report messages | `packages/nextjs/services/mrv/report.ts`, built together by `pipeline.ts` |
 | Mirror-node reads, audit, reproduction | `packages/nextjs/services/mrv/mirror.ts`, `audit.ts` |
-| Unit conversions (kWh, cents, tinybar/weibar) | `packages/nextjs/services/mrv/pricing.ts` |
+| Unit conversions (t ↔ kg units, cents, tinybar/weibar) | `packages/nextjs/services/mrv/pricing.ts` |
 | Server-only code (keys, HCS, writes, unsigned purchases) | `packages/nextjs/services/mrv/server/` |
 | REST routes / MCP route | `packages/nextjs/app/api/**/route.ts` |
-| Pages | `packages/nextjs/app/{verify,market,audit,certificate/[id]}/` with client components in `_components/` |
+| Pages | `packages/nextjs/app/{methodology,verify,market,audit,certificate/[id]}/` with client components in `_components/` |
 | Generated ABIs + addresses | `packages/nextjs/contracts/deployedContracts.ts` (never edit by hand) |
 
 ## Invariants — keep these true
 
-- **Units.** 1 token = 1 MWh; the HTS token has 3 decimals, so one base unit is 1 kWh. Attestations carry `energyWh`;
-  `units = (energyWh + carryWh) / 1000`. Listing prices are **US cents per MWh**.
+- **Units.** 1 token = 1 t CO2e; the HTS token has 3 decimals, so one base unit is 1 kg CO2e. Energy is in Wh,
+  emissions in g CO2e, the grid EF in g CO2/MWh, fuel in g, the TOOL03 COEF in g CO2 per tonne of fuel. Listing
+  prices are **US cents per tonne**.
+- **One quantification, two implementations.** `services/mrv/methodology/quantify.ts` and
+  `HydroCreditRegistry.quantify` must produce identical integers: BE rounds down (toward −∞), PE_HP and PE_FF round
+  up, credits = ⌊(balance + ER) / 1000⌋ with the remainder or deficit carried. Change one, change the other, and
+  extend `test/fixtures/quantificationVectors.ts`, which both test suites assert.
+- **Conservative by default.** Every QA/QC adjustment and every rounding goes toward fewer credits: gaps count as
+  zero, the lower of main and check meter, MPE deductions after calibration expiry, IPCC lower bounds for the
+  baseline (TOOL07) and upper bounds for project emissions (TOOL03). Do not add a path that credits more.
 - **HBAR units.** `msg.value` inside the EVM is tinybar (1e8) on Hedera but wei (1e18) on a local chain.
-  `HydroREC.NATIVE_UNITS_PER_HBAR` records which. `quote()` returns that unit; the UI converts with
+  `HydroCreditRegistry.NATIVE_UNITS_PER_HBAR` records which. `quote()` returns that unit; the UI converts with
   `quoteToTxValue` in `services/mrv/pricing.ts`. Never hardcode 1e8 or 1e18 elsewhere.
 - **HTS never reverts.** It returns a response code (`SUCCESS = 22`). Every HTS call must go through
   `HederaTokenLib`, which reverts with `HtsCallFailed(selector, code)`. The one deliberate exception is certificate
@@ -63,17 +75,24 @@ yarn hardhat:test:fork            # contract tests against Hedera's HTS emulatio
 - **Prices come from two providers.** `ResilientHbarUsdFeed` reverts when fresh Chainlink and Supra answers disagree
   beyond `MAX_DEVIATION_BPS`, and uses whichever is fresh when only one is. Keep `readSources()` non-reverting; the UI,
   REST overview and MCP read it to explain paused markets.
-- **Treasury accounting.** `recToken.balanceOf(HydroREC) == Σ custodyBalanceOf + Σ active listing units`. There is
+- **Treasury accounting.** `creditToken.balanceOf(registry) == Σ custodyBalanceOf + Σ active listing units`. There is
   a test for it; extend it when you add a flow that moves units.
-- **The engine is pure and deterministic.** No I/O, no `Date.now()`, no randomness in `engine.ts`. It runs in the
-  browser, API, MCP and tests. Scenario generation takes an explicit `end` date in tests.
-- **Two HCS messages per attestation, in order.** The data message (readings + plant profile, up to 20 chunks) is
-  published first; the report (one chunk, ≤ 1024 bytes) commits to it with `data: { hash, sequence }`. Both limits are
+- **The engine is pure and deterministic.** No I/O, no `Date.now()`, no randomness in `engine.ts` or
+  `methodology/`. It runs in the browser, API, MCP and tests. Scenario generation takes an explicit `end` date in
+  tests.
+- **The chain is authoritative for the design and ledger.** `attestReadings` refuses a plant profile whose design
+  differs from `getPlant`, quantifies against the on-chain ledger, and checks the contract's `quantify` agrees before
+  publishing. `plantSequence` guards against stale reports (`StaleLedger`).
+- **Demo registrations are generated.** `packages/hardhat/utils/demoPlants.ts` holds the engine's output for the demo
+  designs; `services/mrv/demo.test.ts` fails if they drift. Regenerate, never hand-edit.
+- **Two HCS messages per attestation, in order.** The data message (readings, plant, metering, ledger; up to 20
+  chunks) is published first; the report (one chunk, ≤ 1024 bytes) commits to it with `data: { hash, sequence }`. Both limits are
   enforced in `report.ts` and tested.
 - **`reportHash` = sha256 of the exact report bytes.** `reproduceAttestation` checks report vs chain, data vs report
   and an engine re-run vs report. If you change either message shape, bump its schema string and update `audit.ts`.
-- **On-chain rules mirror the engine's hard failures.** Capacity ceiling, non-overlapping periods and minimum trust
-  are enforced in `submitAttestation`. Changing a threshold in one place means reviewing the other.
+- **On-chain rules mirror the engine's hard failures.** Power density at registration, crediting period and year,
+  non-overlapping periods, nameplate ceiling, net ≤ gross, minimum completeness and registered fuel are enforced by
+  the contract. Changing a threshold in one place means reviewing the other.
 - **Secrets stay server-side.** Anything reading `HEDERA_OPERATOR_KEY`, `VERIFIER_PRIVATE_KEY` or `MRV_API_KEY`
   lives under `services/mrv/server/` and is imported only by route handlers and `scripts/`. Client components may
   import server *types* only (`import type`).
@@ -90,28 +109,31 @@ Use the Scaffold-HBAR hooks in `packages/nextjs/hooks/scaffold-hbar` with the na
 
 ```typescript
 const { data: custody } = useScaffoldReadContract({
-  contractName: "HydroREC",
+  contractName: "HydroCreditRegistry",
   functionName: "custodyBalanceOf",
   args: [address],
 });
 
-const { writeContractAsync } = useScaffoldWriteContract({ contractName: "HydroREC" });
+const { writeContractAsync } = useScaffoldWriteContract({ contractName: "HydroCreditRegistry" });
 await writeContractAsync({ functionName: "buyAndRetire", args: [listingId, units, beneficiary], value });
 ```
 
-Contract types are generated for the **first** network in `scaffold.config.ts` `targetNetworks`. Until HydroREC is
+Contract types are generated for the **first** network in `scaffold.config.ts` `targetNetworks`. Until the registry is
 deployed there, hook results are loosely typed; annotate arrays with the `Raw*` types from `services/mrv/views.ts`
 (as `AuditTrail.tsx` does) so code compiles in both states. Convert raw structs with the `to*View` helpers rather
 than reading struct fields ad hoc.
 
 Server code reads the chain with viem through `services/mrv/server/registry.ts`, which resolves the ABI with
-`getHydroRecDeployment()` and works whichever network is deployed.
+`getRegistryDeployment()` and works whichever network is deployed.
 
 ## Adding things
 
-- **A verification rule**: add it to the relevant layer in `engine.ts`, emit an `Issue` with a clear message, add
-  or adjust a scenario in `scenarios.ts`, and cover it in `engine.test.ts`. Update the table in `README.md` and the
-  methodology text in `services/mrv/server/mcp.ts`.
+- **A QA/QC rule**: add it to the relevant stage in `engine.ts` with a severity (`reject`, `review`, `info`), make any
+  quantity adjustment conservative, add or adjust a scenario in `scenarios.ts`, and cover it in `engine.test.ts`.
+  Update the README table and `services/mrv/methodology/document.ts` (the MCP methodology resource).
+- **A methodology equation or parameter**: cite the tool or methodology section in a comment, implement it in
+  `methodology/` with a hand-checkable test, mirror it in the contract if it changes issued quantities, and add a
+  vector to `quantificationVectors.ts`. Bump `ENGINE_VERSION` and the report schema if the report changes.
 - **A contract function**: custom errors over strings, events for every state change, `nonReentrant` on anything
   that moves value, and tests for the happy path and each revert. Run `yarn deploy` to regenerate ABIs.
 - **An API route or MCP tool**: validate input with zod (`schema.ts`, or a schema next to the server function),

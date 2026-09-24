@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { ExternalLink } from "~~/components/hydro/ui";
 import type { Decision } from "~~/services/mrv/engine";
-import type { Reading } from "~~/services/mrv/schema";
+import type { VerifyRequest } from "~~/services/mrv/schema";
 import type { AttestOutcome } from "~~/services/mrv/server/attest";
 
 type State =
@@ -16,7 +16,7 @@ type State =
  * Operators publish through the server because the verifier key must never reach the browser.
  * The API key is kept in memory only.
  */
-export const PublishPanel = ({ readings, decision }: { readings: Reading[]; decision: Decision }) => {
+export const PublishPanel = ({ request, decision }: { request: VerifyRequest; decision: Decision }) => {
   const [apiKey, setApiKey] = useState("");
   const [state, setState] = useState<State>({ kind: "idle" });
 
@@ -26,7 +26,8 @@ export const PublishPanel = ({ readings, decision }: { readings: Reading[]; deci
       const response = await fetch("/api/mrv/attest", {
         method: "POST",
         headers: { "content-type": "application/json", authorization: `Bearer ${apiKey}` },
-        body: JSON.stringify({ readings }),
+        // The server quantifies against the on-chain ledger itself, so a stale browser copy cannot matter.
+        body: JSON.stringify({ ...request, ledger: undefined }),
       });
       const body = await response.json();
       setState(response.ok ? { kind: "done", outcome: body } : { kind: "error", message: body.error });
@@ -39,8 +40,8 @@ export const PublishPanel = ({ readings, decision }: { readings: Reading[]; deci
     return (
       <div role="note" className="alert">
         <span>
-          This batch is <strong>{decision}</strong>, so it cannot be anchored or minted. Fix the data or route it to
-          manual review.
+          This period is <strong>{decision}</strong>, so it cannot be anchored or credited. Fix the data or route it to
+          a verifier&apos;s review.
         </span>
       </div>
     );
@@ -50,8 +51,8 @@ export const PublishPanel = ({ readings, decision }: { readings: Reading[]; deci
     <div className="flex flex-col gap-3 border-t border-base-300 pt-4">
       <h3 className="font-semibold m-0">Publish & mint (operator)</h3>
       <p className="text-sm text-base-content/70 m-0">
-        Publishes the readings and report to HCS, then calls <code>submitAttestation</code>. Requires the server&apos;s{" "}
-        <code>MRV_API_KEY</code>.
+        Publishes the readings and report to HCS, then calls <code>submitAttestation</code>, which recomputes the
+        emission reductions on-chain. Requires the server&apos;s <code>MRV_API_KEY</code>.
       </p>
       <div className="flex flex-wrap gap-2">
         <input
@@ -75,7 +76,8 @@ export const PublishPanel = ({ readings, decision }: { readings: Reading[]; deci
       {state.kind === "done" && state.outcome.status === "attested" && (
         <div role="status" className="alert alert-success text-sm flex flex-col items-start gap-1">
           <span>
-            Attestation #{state.outcome.attestationId} minted {state.outcome.unitsMinted.toLocaleString()} kWh of RECs.
+            Attestation #{state.outcome.attestationId} minted {(state.outcome.unitsMinted / 1_000).toLocaleString()} t
+            CO₂e of credits.
           </span>
           {state.outcome.hcs && (
             <>

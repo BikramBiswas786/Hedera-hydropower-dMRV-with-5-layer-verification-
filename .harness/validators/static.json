@@ -19,9 +19,9 @@
       "AGENTS.md",
       "LICENCE",
       "template.json",
-      "packages/hardhat/contracts/HydroREC.sol",
+      "packages/hardhat/contracts/HydroCreditRegistry.sol",
       "packages/hardhat/contracts/lib/HederaTokenLib.sol",
-      "packages/hardhat/test/HydroREC.test.ts",
+      "packages/hardhat/test/HydroCreditRegistry.test.ts",
       "packages/nextjs/services/mrv/engine.ts",
       "packages/nextjs/services/mrv/engine.test.ts",
       "packages/nextjs/app/api/mcp/route.ts",
@@ -35,7 +35,11 @@
       "packages/nextjs/app/certificate/[id]/page.tsx",
       "packages/nextjs/public/llms.txt",
       "packages/nextjs/.env.example",
-      "packages/hardhat/.env.example"
+      "packages/hardhat/.env.example",
+      "packages/nextjs/services/mrv/methodology/tool07.ts",
+      "packages/nextjs/services/mrv/methodology/quantify.ts",
+      "packages/hardhat/test/fixtures/quantificationVectors.ts",
+      "packages/nextjs/app/methodology/page.tsx"
     ],
     "forbidden": [
       ".env",
@@ -54,7 +58,9 @@
         "yarn mrv:attest",
         "/api/mcp",
         "reproduce_attestation",
-        "Supra"
+        "Supra",
+        "ER = BE − PE − LE",
+        "TOOL07"
       ]
     },
     {
@@ -62,16 +68,20 @@
       "contains": [
         "yarn test",
         "NATIVE_UNITS_PER_HBAR",
-        "1 token = 1 MWh"
+        "1 token = 1 t CO2e",
+        "quantify.ts"
       ]
     },
     {
-      "file": "packages/hardhat/contracts/HydroREC.sol",
+      "file": "packages/hardhat/contracts/HydroCreditRegistry.sol",
       "contains": [
         "AggregatorV3Interface",
         "HederaTokenLib.mint",
         "HederaTokenLib.burn",
-        "HederaTokenLib.mintNft"
+        "HederaTokenLib.mintNft",
+        "PowerDensityTooLow",
+        "RESERVOIR_EF_G_PER_MWH",
+        "StaleLedger"
       ]
     },
     {

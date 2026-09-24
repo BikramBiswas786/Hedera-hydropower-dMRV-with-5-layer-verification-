@@ -11,14 +11,17 @@ import { type RawListing, toListingView } from "~~/services/mrv/views";
 export const Marketplace = () => {
   const { targetNetwork } = useTargetNetwork();
   const { address } = useAccount();
-  const { data: deployment, isLoading } = useDeployedContractInfo({ contractName: "HydroREC" });
+  const { data: deployment, isLoading } = useDeployedContractInfo({ contractName: "HydroCreditRegistry" });
   const { data: nativeUnitsPerHbar } = useScaffoldReadContract({
-    contractName: "HydroREC",
+    contractName: "HydroCreditRegistry",
     functionName: "NATIVE_UNITS_PER_HBAR",
   });
-  const { data: listingCount } = useScaffoldReadContract({ contractName: "HydroREC", functionName: "listingCount" });
+  const { data: listingCount } = useScaffoldReadContract({
+    contractName: "HydroCreditRegistry",
+    functionName: "listingCount",
+  });
   const { data: listings } = useScaffoldReadContract({
-    contractName: "HydroREC",
+    contractName: "HydroCreditRegistry",
     functionName: "getListings",
     args: [0n, listingCount ?? 0n],
   });
@@ -38,7 +41,7 @@ export const Marketplace = () => {
         <h2 className="font-semibold text-lg m-0">Open listings ({open.length})</h2>
         {open.length === 0 && (
           <p className="m-0 text-base-content/60">
-            No open listings. Plant operators receive RECs when an attestation is minted and can list them from their
+            No open listings. Plant operators receive credits when an attestation is minted and can list them from their
             account panel.
           </p>
         )}

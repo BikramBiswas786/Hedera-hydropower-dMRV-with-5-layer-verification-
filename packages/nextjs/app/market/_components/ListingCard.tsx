@@ -3,25 +3,25 @@
 import { useState } from "react";
 import { HederaAddress } from "~~/components/scaffold-hbar";
 import { useScaffoldReadContract, useScaffoldWriteContract, useTargetNetwork } from "~~/hooks/scaffold-hbar";
-import { formatHbar, mwhToUnits, quoteToTxValue } from "~~/services/mrv/pricing";
-import { type ListingView, formatMwh, formatUsdCents } from "~~/services/mrv/views";
+import { formatHbar, quoteToTxValue, tonnesToUnits } from "~~/services/mrv/pricing";
+import { type ListingView, formatTonnes, formatUsdCents } from "~~/services/mrv/views";
 
 type Props = { listing: ListingView; isOwn: boolean; nativeUnitsPerHbar: bigint };
 
 export const ListingCard = ({ listing, isOwn, nativeUnitsPerHbar }: Props) => {
   const { targetNetwork } = useTargetNetwork();
-  const [amount, setAmount] = useState(formatMwh(listing.unitsAvailable).replace(/,/g, ""));
+  const [amount, setAmount] = useState(formatTonnes(listing.unitsAvailable).replace(/,/g, ""));
   const [beneficiary, setBeneficiary] = useState("");
-  const units = mwhToUnits(amount);
+  const units = tonnesToUnits(amount);
   const tooMuch = units !== null && units > BigInt(listing.unitsAvailable);
 
   const { data: quote, error: quoteError } = useScaffoldReadContract({
-    contractName: "HydroREC",
+    contractName: "HydroCreditRegistry",
     functionName: "quote",
     args: [BigInt(listing.id), units ?? 0n],
     query: { enabled: units !== null && !tooMuch },
   });
-  const { writeContractAsync, isMining } = useScaffoldWriteContract({ contractName: "HydroREC" });
+  const { writeContractAsync, isMining } = useScaffoldWriteContract({ contractName: "HydroCreditRegistry" });
 
   const canBuy = units !== null && !tooMuch && quote !== undefined && !isMining;
   const buy = async (retire: boolean) => {
@@ -39,8 +39,8 @@ export const ListingCard = ({ listing, isOwn, nativeUnitsPerHbar }: Props) => {
       <div className="flex justify-between items-start">
         <div>
           <p className="m-0 text-xs text-base-content/60">Listing #{listing.id}</p>
-          <p className="m-0 text-xl font-bold">{formatMwh(listing.unitsAvailable)} MWh</p>
-          <p className="m-0 text-sm">{formatUsdCents(listing.priceUsdCentsPerMwh)} / MWh</p>
+          <p className="m-0 text-xl font-bold">{formatTonnes(listing.unitsAvailable)} t CO₂e</p>
+          <p className="m-0 text-sm">{formatUsdCents(listing.priceUsdCentsPerTonne)} / t</p>
         </div>
         <HederaAddress address={listing.seller} chain={targetNetwork} />
       </div>
@@ -62,9 +62,9 @@ export const ListingCard = ({ listing, isOwn, nativeUnitsPerHbar }: Props) => {
               value={amount}
               onChange={event => setAmount(event.target.value)}
               inputMode="decimal"
-              aria-label={`Amount in MWh for listing ${listing.id}`}
+              aria-label={`Amount in tonnes for listing ${listing.id}`}
             />
-            <span>MWh</span>
+            <span>t CO₂e</span>
           </label>
           <p className="m-0 text-sm text-base-content/70 min-h-5">
             {tooMuch && "More than available"}

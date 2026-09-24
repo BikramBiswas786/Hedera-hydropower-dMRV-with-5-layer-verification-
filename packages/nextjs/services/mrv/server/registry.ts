@@ -1,4 +1,4 @@
-import { HYDRO_CHAIN_ID, getDeployment, getHydroRecDeployment } from "../network";
+import { HYDRO_CHAIN_ID, getDeployment, getRegistryDeployment } from "../network";
 import {
   type AttestationView,
   type ListingView,
@@ -35,12 +35,15 @@ const HARDHAT_NETWORK_NAME: Partial<Record<number, string>> = {
 export class RegistryNotDeployedError extends ApiError {
   constructor() {
     const network = HARDHAT_NETWORK_NAME[HYDRO_CHAIN_ID] ?? "<network>";
-    super(`HydroREC is not deployed on chain ${HYDRO_CHAIN_ID}. Run \`yarn deploy --network ${network}\` first.`, 503);
+    super(
+      `HydroCreditRegistry is not deployed on chain ${HYDRO_CHAIN_ID}. Run \`yarn deploy --network ${network}\` first.`,
+      503,
+    );
   }
 }
 
 export function requireDeployment() {
-  const deployment = getHydroRecDeployment();
+  const deployment = getRegistryDeployment();
   if (!deployment) throw new RegistryNotDeployedError();
   return { address: deployment.address, abi: deployment.abi, client };
 }
@@ -82,13 +85,14 @@ export async function getOracleStatus(): Promise<OracleStatus | null> {
 export type RegistryOverview = {
   chainId: number;
   address: Address;
-  recToken: Address;
-  totalCertifiedWh: number;
-  totalRetiredKwh: number;
+  creditToken: Address;
+  /** Credits minted and retired, in kg CO2e (1 token = 1 t). */
+  totalIssuedKg: number;
+  totalRetiredKg: number;
   attestationCount: number;
   listingCount: number;
   retirementCount: number;
-  minTrustScoreBps: number;
+  minCompletenessBps: number;
   oracle: OracleStatus | null;
   plants: PlantView[];
 };
@@ -97,16 +101,17 @@ export async function getRegistryOverview(): Promise<RegistryOverview> {
   const { address, abi } = requireDeployment();
   const read = { address, abi } as const;
 
-  const [recToken, certified, retired, attestations, listings, retirements, minTrust, plantIds] = await Promise.all([
-    client.readContract({ ...read, functionName: "recToken" }),
-    client.readContract({ ...read, functionName: "totalCertifiedWh" }),
-    client.readContract({ ...read, functionName: "totalRetiredUnits" }),
-    client.readContract({ ...read, functionName: "attestationCount" }),
-    client.readContract({ ...read, functionName: "listingCount" }),
-    client.readContract({ ...read, functionName: "retirementCount" }),
-    client.readContract({ ...read, functionName: "minTrustScoreBps" }),
-    client.readContract({ ...read, functionName: "getPlantIds" }),
-  ]);
+  const [creditToken, issued, retired, attestations, listings, retirements, minCompleteness, plantIds] =
+    await Promise.all([
+      client.readContract({ ...read, functionName: "creditToken" }),
+      client.readContract({ ...read, functionName: "totalIssuedUnits" }),
+      client.readContract({ ...read, functionName: "totalRetiredUnits" }),
+      client.readContract({ ...read, functionName: "attestationCount" }),
+      client.readContract({ ...read, functionName: "listingCount" }),
+      client.readContract({ ...read, functionName: "retirementCount" }),
+      client.readContract({ ...read, functionName: "minCompletenessBps" }),
+      client.readContract({ ...read, functionName: "getPlantIds" }),
+    ]);
 
   const [plants, oracle] = await Promise.all([
     Promise.all(
@@ -121,13 +126,13 @@ export async function getRegistryOverview(): Promise<RegistryOverview> {
   return {
     chainId: HYDRO_CHAIN_ID,
     address,
-    recToken,
-    totalCertifiedWh: Number(certified),
-    totalRetiredKwh: Number(retired),
+    creditToken,
+    totalIssuedKg: Number(issued),
+    totalRetiredKg: Number(retired),
     attestationCount: Number(attestations),
     listingCount: Number(listings),
     retirementCount: Number(retirements),
-    minTrustScoreBps: minTrust,
+    minCompletenessBps: minCompleteness,
     oracle,
     plants,
   };

@@ -1,30 +1,23 @@
 import { ENGINE_VERSION, type VerificationReport, verifyReadings } from "./engine";
+import type { RegisteredDesign } from "./methodology/project";
 import { fetchChunkedMessage, fetchTopicMessage } from "./mirror";
 import { hashscan } from "./network";
-import {
-  type HcsReportMessage,
-  REPORT_SCHEMA,
-  base64ToBytes,
-  decodeMessage,
-  layersInBps,
-  parseDataMessage,
-} from "./report";
+import { type HcsReportMessage, REPORT_SCHEMA, base64ToBytes, decodeMessage, parseDataMessage } from "./report";
 import type { AttestationView } from "./views";
 import type { Hex } from "viem";
 
 export type AuditCheck = {
   field: string;
-  expected: string | number;
-  actual: string | number | undefined;
+  expected: string | number | null;
+  actual: string | number | null | undefined;
   ok: boolean;
 };
 
-const check = (field: string, expected: string | number, actual: string | number | undefined): AuditCheck => ({
-  field,
-  expected,
-  actual,
-  ok: expected === actual,
-});
+const check = (
+  field: string,
+  expected: string | number | null,
+  actual: string | number | null | undefined,
+): AuditCheck => ({ field, expected, actual, ok: expected === actual });
 
 export type AuditResult =
   | { status: "no-anchor"; attestationId: number }
@@ -44,8 +37,8 @@ export type AuditResult =
 
 /**
  * Proves the attestation's evidence was not altered: fetches the HCS report from the public mirror node, hashes
- * it, and checks the hash and the report's fields against what the contract recorded.
- * Needs no credentials, so it runs the same in a browser, an API route or an AI agent.
+ * it, and checks the hash and every monitored input and computed emission figure against what the contract
+ * recorded. Needs no credentials, so it runs the same in a browser, an API route or an AI agent.
  */
 export async function auditAttestation(
   attestation: AttestationView,
@@ -70,14 +63,24 @@ export async function auditAttestation(
     report = null;
   }
 
+  const e = report?.emissions;
   const checks = [
     check("reportHash", attestation.reportHash, hash),
+    check("decision", "APPROVED", report?.decision),
     check("plantId", attestation.plantId, report?.plantId),
     check("periodStart", attestation.periodStart, report?.periodStart),
     check("periodEnd", attestation.periodEnd, report?.periodEnd),
-    check("energyWh", attestation.energyWh, report?.energyWh),
-    check("trustScoreBps", attestation.trustScoreBps, report?.trustScoreBps),
-    check("decision", "APPROVED", report?.decision),
+    check("completenessBps", attestation.completenessBps, report?.completenessBps),
+    check("EG_facility (netWh)", attestation.netEnergyWh, report?.monitored.netWh),
+    check("TEG (grossWh)", attestation.grossEnergyWh, report?.monitored.grossWh),
+    check("FC (fuelG)", attestation.fuelG, report?.monitored.fuelG),
+    check("LE (leakageG)", attestation.leakageG, report?.monitored.leakageG),
+    check("EG_PJ (Wh)", attestation.projectEnergyWh, e?.egProjectWh),
+    check("BE (g)", attestation.baselineG, e?.baselineG),
+    check("PE_HP (g)", attestation.reservoirG, e?.reservoirG),
+    check("PE_FF (g)", attestation.fossilFuelG, e?.fossilFuelG),
+    check("ER (g)", attestation.reductionG, e?.reductionG),
+    check("credits (kg)", attestation.unitsMinted, e?.unitsMinted),
   ];
 
   return {
@@ -107,13 +110,15 @@ export type ReproductionResult =
     };
 
 /**
- * Re-derives the verdict from public data alone: audits the report, fetches the raw readings it commits to from
- * HCS (reassembling chunks), checks their hash, re-runs the deterministic engine and compares every published
- * figure. A verifier cannot approve bad data without this failing.
+ * Re-derives the credits from public data alone: audits the report, fetches the raw readings it commits to from
+ * HCS (reassembling chunks), checks their hash, re-runs the deterministic engine on them and compares every
+ * figure. When the plant's registered design is supplied it also checks the data message used the on-chain
+ * parameters (grid EF, fuel coefficient, baseline, crediting period), so a verifier cannot swap them.
  */
 export async function reproduceAttestation(
   attestation: AttestationView,
   fetchImpl: typeof fetch = fetch,
+  registered?: RegisteredDesign,
 ): Promise<ReproductionResult> {
   const audit = await auditAttestation(attestation, fetchImpl);
   if (audit.status !== "verified" && audit.status !== "mismatch") return { status: "not-auditable", audit };
@@ -140,18 +145,34 @@ export async function reproduceAttestation(
     return { status: "no-data", audit, reason: `Published readings are malformed: ${(error as Error).message}` };
   }
 
-  const recomputed = verifyReadings(parsed.readings, parsed.plant, parsed.gridEmissionFactor);
-  const layers = layersInBps(recomputed);
+  const recomputed = verifyReadings(parsed.readings, parsed.plant, parsed.metering, parsed.ledger);
+  const r = recomputed.emissions;
+  const e = report.emissions;
+  const designChecks = registered
+    ? (Object.keys(registered) as (keyof RegisteredDesign)[]).map(key =>
+        check(`registered.${key}`, registered[key], parsed.plant.design[key]),
+      )
+    : [];
   const checks = [
     dataHashCheck,
     check("plantId", report.plantId, recomputed.plantId),
+    check("plantSequence", report.plantSequence, parsed.ledger.attestations),
     check("decision", report.decision, recomputed.decision),
-    check("trustScoreBps", report.trustScoreBps, recomputed.trustScoreBps),
-    check("energyWh", report.energyWh, recomputed.energyWh),
+    check("completenessBps", report.completenessBps, recomputed.completenessBps),
     check("periodStart", report.periodStart, recomputed.periodStart),
     check("periodEnd", report.periodEnd, recomputed.periodEnd),
     check("readings", report.readings, recomputed.readingCount),
-    ...Object.entries(report.layersBps).map(([layer, bps]) => check(`layers.${layer}`, bps, layers[layer])),
+    check("EG_facility (netWh)", report.monitored.netWh, recomputed.monitored.netWh),
+    check("TEG (grossWh)", report.monitored.grossWh, recomputed.monitored.grossWh),
+    check("FC (fuelG)", report.monitored.fuelG, recomputed.monitored.fuelG),
+    check("EG_PJ (Wh)", e?.egProjectWh ?? null, r?.egProjectWh ?? null),
+    check("BE (g)", e?.baselineG ?? null, r?.baselineG ?? null),
+    check("PE_HP (g)", e?.reservoirG ?? null, r?.reservoirG ?? null),
+    check("PE_FF (g)", e?.fossilFuelG ?? null, r?.fossilFuelG ?? null),
+    check("ER (g)", e?.reductionG ?? null, r?.reductionG ?? null),
+    check("credits (kg)", e?.unitsMinted ?? null, r?.unitsMinted ?? null),
+    check("EF_grid,CM (g/MWh)", report.parameters.efGridGPerMwh, recomputed.parameters.efGridGPerMwh),
+    ...designChecks,
   ];
 
   return {

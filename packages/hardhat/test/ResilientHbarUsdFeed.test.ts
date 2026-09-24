@@ -89,40 +89,31 @@ describe("ResilientHbarUsdFeed", function () {
     expect(primary.fresh || fallback.fresh).to.equal(false);
   });
 
-  it("settles HydroREC purchases through the fallback during a Chainlink outage", async function () {
+  it("settles HydroCreditRegistry purchases through the fallback during a Chainlink outage", async function () {
     const { chainlink, supra, feed } = await loadFixture(feedFixture);
     const [admin, operator, buyer] = await ethers.getSigners();
     const { ensureHts } = await import("./helpers/hts");
+    const { attestationInput, plantDesign } = await import("./helpers/registry");
     await ensureHts();
 
-    const registry = await ethers.deployContract("HydroREC", [
+    const registry = await ethers.deployContract("HydroCreditRegistry", [
       admin.address,
       await feed.getAddress(),
       10n ** 18n,
       9_000,
       HOUR,
     ]);
-    await registry.createRecToken("Hydro REC", "HREC");
+    await registry.createCreditToken("Hydro dMRV Carbon Credit", "HYCC");
     const plantId = ethers.encodeBytes32String("PLANT");
-    await registry.registerPlant(plantId, "Plant", operator.address, 500);
-    const now = BigInt(await time.latest());
-    await registry.submitAttestation({
-      plantId,
-      periodStart: now - BigInt(HOUR),
-      periodEnd: now,
-      energyWh: 400_000n,
-      trustScoreBps: 9_500,
-      reportHash: ethers.id("report"),
-      hcsTopicNum: 0n,
-      hcsSequence: 0n,
-    });
+    await registry.registerPlant(plantId, "Plant", operator.address, await plantDesign());
+    await registry.submitAttestation(await attestationInput(plantId, { netEnergyWh: 400_000n }));
     await registry.connect(operator).createListing(400, 1_250);
 
     await chainlink.setUpdatedAt(0);
     await supra.setPrice(SUPRA_HBAR_USDT, 25n * 10n ** 16n, 18, BigInt(await time.latest()) * 1_000n);
 
     const cost = await registry.quote(0, 400);
-    expect(cost).to.equal(20n * 10n ** 18n); // $5.00 at the Supra price of $0.25
+    expect(cost).to.equal(20n * 10n ** 18n); // 400 kg at $12.50/t = $5.00 at the Supra price of $0.25
     await expect(registry.connect(buyer).buyAndRetire(0, 400, "outage-proof", { value: cost })).to.emit(
       registry,
       "Retired",

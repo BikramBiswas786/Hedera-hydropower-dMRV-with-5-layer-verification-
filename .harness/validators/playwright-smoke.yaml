@@ -10,6 +10,8 @@ defaults:
 routes:
   - name: home
     path: /
+  - name: methodology
+    path: /methodology
   - name: verify
     path: /verify
   - name: market

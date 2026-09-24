@@ -7,7 +7,7 @@
     { "name": "install", "command": "yarn install", "timeoutMs": 600000, "purpose": "Install workspace dependencies." },
     { "name": "lint", "command": "yarn lint --max-warnings=0", "timeoutMs": 300000, "purpose": "ESLint for Next.js and Hardhat." },
     { "name": "hardhat-test", "command": "yarn hardhat:test", "timeoutMs": 300000, "purpose": "Contract tests against the local HTS mock." },
-    { "name": "next-test", "command": "yarn next:test", "timeoutMs": 180000, "purpose": "Verification engine, audit and pricing unit tests." },
+    { "name": "next-test", "command": "yarn next:test", "timeoutMs": 180000, "purpose": "Methodology (TOOL07, TOOL03, quantification vectors), engine, HCS messages, audit and pricing unit tests." },
     { "name": "build", "command": "yarn next:build", "timeoutMs": 600000, "purpose": "Production build including type checks." }
   ]
 }
