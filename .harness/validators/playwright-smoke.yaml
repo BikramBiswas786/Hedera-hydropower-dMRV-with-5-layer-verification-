@@ -1,0 +1,25 @@
+name: hydro-dmrv-smoke
+server:
+  command: yarn start
+  url: http://localhost:3000
+  timeoutMs: 180000
+defaults:
+  timeoutMs: 60000
+  # Wallet and RPC connectors log network errors in sandboxes without internet; crashes are caught below.
+  failOnConsoleError: false
+routes:
+  - name: home
+    path: /
+  - name: verify
+    path: /verify
+  - name: market
+    path: /market
+  - name: audit
+    path: /audit
+  - name: debug
+    path: /debug
+forbidden:
+  visibleText:
+    - Application error
+    - Unhandled Runtime Error
+    - Internal Server Error

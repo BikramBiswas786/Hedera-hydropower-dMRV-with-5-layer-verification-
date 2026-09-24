@@ -1,0 +1,34 @@
+{
+  "name": "hydro-dmrv-static",
+  "description": "Structural invariants of the Hydro dMRV template.",
+  "jsonAssertions": [
+    { "file": "package.json", "path": "packageManager", "equals": "yarn@3.2.3" },
+    { "file": "template.json", "path": "name", "equals": "hydro-dmrv" }
+  ],
+  "fileAssertions": {
+    "required": [
+      "README.md",
+      "AGENTS.md",
+      "LICENCE",
+      "template.json",
+      "packages/hardhat/contracts/HydroREC.sol",
+      "packages/hardhat/contracts/lib/HederaTokenLib.sol",
+      "packages/hardhat/test/HydroREC.test.ts",
+      "packages/nextjs/services/mrv/engine.ts",
+      "packages/nextjs/services/mrv/engine.test.ts",
+      "packages/nextjs/app/api/mcp/route.ts",
+      "packages/nextjs/app/verify/page.tsx",
+      "packages/nextjs/app/market/page.tsx",
+      "packages/nextjs/app/audit/page.tsx",
+      "packages/nextjs/public/llms.txt",
+      "packages/nextjs/.env.example",
+      "packages/hardhat/.env.example"
+    ],
+    "forbidden": [".env", "packages/nextjs/.env", "packages/nextjs/.env.local", "packages/hardhat/.env", "packages/foundry"]
+  },
+  "textAssertions": [
+    { "file": "README.md", "contains": ["yarn install", "yarn deploy --network hederaTestnet", "yarn mrv:attest", "/api/mcp"] },
+    { "file": "AGENTS.md", "contains": ["yarn test", "NATIVE_UNITS_PER_HBAR", "1 token = 1 MWh"] },
+    { "file": "packages/hardhat/contracts/HydroREC.sol", "contains": ["AggregatorV3Interface", "HederaTokenLib.mint", "HederaTokenLib.burn"] }
+  ]
+}

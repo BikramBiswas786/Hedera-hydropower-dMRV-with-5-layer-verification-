@@ -1,9 +1,0 @@
-# ML Dependencies for Training and Inference
-
-scikit-learn==1.4.0
-numpy==1.26.3
-python-dateutil==2.8.2
-
-# Optional: For future deep learning
-# tensorflow==2.15.0
-# torch==2.1.2

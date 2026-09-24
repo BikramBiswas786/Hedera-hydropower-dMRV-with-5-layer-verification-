@@ -1,0 +1,64 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  checks:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20.18.3
+          cache: yarn
+
+      - run: yarn install --immutable
+      - run: yarn lint --max-warnings=0
+      - run: yarn next:check-types
+      - run: yarn hardhat:check-types
+      - run: yarn hardhat:test
+      - run: yarn next:test
+      - run: yarn next:build
+
+  # Proves the eligibility gate: the template scaffolds through the real CLI and the result installs, lints and builds.
+  scaffold:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          path: template
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20.18.3
+
+      - name: Configure git for the CLI's initial commit
+        run: |
+          git config --global user.name "ci"
+          git config --global user.email "ci@example.com"
+
+      - name: Scaffold from this checkout
+        env:
+          CREATE_SCAFFOLD_HBAR_TEMPLATE_DIR: ${{ github.workspace }}/template
+        run: >
+          npx --yes create-scaffold-hbar@latest scaffolded --yes --skip-install --skip-hedera-skills
+          --template ${{ github.repository }} --solidity-framework hardhat --frontend nextjs-app
+
+      - name: Install, lint, test and build the scaffolded project
+        working-directory: scaffolded
+        run: |
+          corepack enable
+          yarn install
+          yarn lint --max-warnings=0
+          yarn test
+          yarn next:build
+
+      - name: No template manifest or secrets left behind
+        working-directory: scaffolded
+        run: |
+          test ! -f template.json
+          test ! -f .env && test ! -f packages/nextjs/.env.local && test ! -f packages/hardhat/.env

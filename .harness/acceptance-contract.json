@@ -1,0 +1,65 @@
+{
+  "name": "hydro-dmrv",
+  "assertions": [
+    {
+      "id": "C1",
+      "journey": "verify",
+      "route": "/verify",
+      "severity": "critical",
+      "statement": "The healthy sample scenario is APPROVED with a trust score of at least 90% and every layer passing.",
+      "howToVerify": "Open /verify. The 'healthy' scenario is selected by default. Check the decision badge reads APPROVED, the radial score is >= 90%, and all five layer rows show a score of at least 85.",
+      "walletRequired": false,
+      "verifiableWithoutCredentials": true
+    },
+    {
+      "id": "C2",
+      "journey": "verify",
+      "route": "/verify",
+      "severity": "critical",
+      "statement": "Tampered data is not approved: 'inflated' and 'replay' are REJECTED, 'spikes' and 'polluted' are FLAGGED.",
+      "howToVerify": "On /verify click each scenario button in turn and read the decision badge after each click.",
+      "walletRequired": false,
+      "verifiableWithoutCredentials": true
+    },
+    {
+      "id": "C3",
+      "journey": "verify",
+      "route": "/verify",
+      "severity": "major",
+      "statement": "Editing the readings JSON re-runs verification and shows validation errors for malformed input.",
+      "howToVerify": "On /verify replace the textarea content with '[]' and confirm an error is shown instead of a report; restore a scenario and confirm the report returns.",
+      "walletRequired": false,
+      "verifiableWithoutCredentials": true
+    },
+    {
+      "id": "C4",
+      "journey": "verify",
+      "route": "/verify",
+      "severity": "major",
+      "statement": "An APPROVED report shows the exact HCS message and its reportHash, and publishing requires an operator API key.",
+      "howToVerify": "With 'healthy' selected, find the '3. HCS anchor' card: it shows JSON with schema 'hydro-dmrv/report@1', a 0x-prefixed reportHash, and an 'Anchor & attest' button that stays disabled until a key is typed.",
+      "walletRequired": false,
+      "verifiableWithoutCredentials": true
+    },
+    {
+      "id": "C5",
+      "journey": "agents",
+      "route": "/",
+      "severity": "major",
+      "statement": "The home page explains the flow and how agents connect over MCP, and /llms.txt describes the API.",
+      "howToVerify": "Open /: a 'How it works' section lists Meter, Verify, Anchor, Issue, Settle; a 'Built for AI agents' section shows a /api/mcp URL. Open /llms.txt and confirm it lists the MCP tools.",
+      "walletRequired": false,
+      "verifiableWithoutCredentials": true
+    },
+    {
+      "id": "C6",
+      "journey": "market",
+      "route": "/market",
+      "severity": "major",
+      "statement": "Without a deployment the market and audit pages explain how to deploy instead of crashing; with one they show the Chainlink HBAR/USD price and listings.",
+      "howToVerify": "Open /market and /audit. Either an info alert says HydroREC is not deployed and names the deploy command, or the HBAR / USD (Chainlink) card and an 'Open listings' heading are visible.",
+      "walletRequired": false,
+      "verifiableWithoutCredentials": true
+    }
+  ]
+}

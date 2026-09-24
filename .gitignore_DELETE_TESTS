@@ -1,4 +1,0 @@
-# This file lists test files to delete
-tests/e2e/hedera-on-chain-ml.test.js
-tests/unit/ml-fraud-detector.test.js
-tests/integration/hedera-ml-integration.test.js
