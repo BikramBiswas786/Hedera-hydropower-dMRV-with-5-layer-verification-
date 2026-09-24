@@ -1,15 +1,15 @@
-import { formatHbar, mwhToUnits, quoteToTxValue, usdToCents } from "./pricing";
+import { formatHbar, quoteToTxValue, tonnesToUnits, usdToCents } from "./pricing";
 import { describe, expect, it } from "vitest";
 
 describe("market input parsing", () => {
-  it("converts MWh to kWh units without floating point", () => {
-    expect(mwhToUnits("1")).toBe(1_000n);
-    expect(mwhToUnits("0.401")).toBe(401n);
-    expect(mwhToUnits("12.5")).toBe(12_500n);
+  it("converts tonnes to kg units without floating point", () => {
+    expect(tonnesToUnits("1")).toBe(1_000n);
+    expect(tonnesToUnits("0.401")).toBe(401n);
+    expect(tonnesToUnits("12.5")).toBe(12_500n);
   });
 
-  it("rejects zero, negatives, and sub-kWh precision", () => {
-    for (const bad of ["0", "-1", "1.0001", "abc", ""]) expect(mwhToUnits(bad)).toBeNull();
+  it("rejects zero, negatives, and sub-kg precision", () => {
+    for (const bad of ["0", "-1", "1.0001", "abc", ""]) expect(tonnesToUnits(bad)).toBeNull();
   });
 
   it("converts USD to cents", () => {

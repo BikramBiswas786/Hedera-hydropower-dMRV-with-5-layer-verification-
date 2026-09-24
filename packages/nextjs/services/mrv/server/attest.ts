@@ -1,4 +1,6 @@
+import { DEMO_PLANT } from "../demo";
 import type { VerificationReport } from "../engine";
+import type { RegisteredDesign } from "../methodology/project";
 import { hashscan, isLiveHederaChain } from "../network";
 import { prepareAnchors } from "../pipeline";
 import { buildHcsMessage } from "../report";
@@ -33,31 +35,38 @@ export type AttestOutcome =
       transaction: { hash: string; url: string | null };
     } & Anchors);
 
+function designMismatches(profile: RegisteredDesign, onChain: RegisteredDesign): string[] {
+  return (Object.keys(onChain) as (keyof RegisteredDesign)[])
+    .filter(key => profile[key] !== onChain[key])
+    .map(key => `${key}: profile ${profile[key]}, on-chain ${onChain[key]}`);
+}
+
 /**
- * Verify → publish raw readings to HCS → publish the report (pointing at them) → attest on-chain. Only APPROVED
- * batches are published; everything else is returned with its report so an operator or agent can see why.
+ * Verify → publish raw readings to HCS → publish the report (pointing at them) → attest on-chain. The period is
+ * quantified against the plant's registered design and current on-chain ledger, and the contract's own `quantify`
+ * must agree with the engine before anything is written. Only APPROVED batches are published; everything else is
+ * returned with its report so an operator or agent can see why.
  */
 export async function attestReadings(request: VerifyRequest): Promise<AttestOutcome> {
-  const { plant, report, data, preview } = prepareAnchors(request);
+  const { address, abi, client } = requireDeployment();
+  const profile = request.plant ?? DEMO_PLANT;
+  const plantId = plantIdToBytes32(profile.plantId);
+  const registered = await getPlant(plantId);
+  if (!registered) throw new ApiError(`Plant ${profile.plantId} is not registered on-chain`, 409);
+  const mismatches = designMismatches(profile.design, registered.design);
+  if (mismatches.length) {
+    throw new ApiError(`Plant profile differs from the registered design: ${mismatches.join("; ")}`, 409);
+  }
+
+  const { report, data, preview } = prepareAnchors({ ...request, plant: profile, ledger: registered.ledger });
   const anchors = (message: string, reportHash: string): Anchors => ({
     hcsMessage: message,
     reportHash,
     dataHash: data.dataHash,
     dataChunks: data.chunks,
   });
-  if (report.decision !== "APPROVED") {
+  if (report.decision !== "APPROVED" || !report.emissions) {
     return { status: "not-eligible", report, ...anchors(preview.message, preview.reportHash) };
-  }
-
-  const { address, abi, client } = requireDeployment();
-  const plantId = plantIdToBytes32(plant.plantId);
-  const registered = await getPlant(plantId);
-  if (!registered) throw new ApiError(`Plant ${plant.plantId} is not registered on-chain`, 409);
-  if (registered.capacityKw !== plant.capacityKw) {
-    throw new ApiError(
-      `Plant profile capacity ${plant.capacityKw} kW differs from the on-chain registration (${registered.capacityKw} kW)`,
-      409,
-    );
   }
 
   const operator = readOperatorConfig();
@@ -70,16 +79,21 @@ export async function attestReadings(request: VerifyRequest): Promise<AttestOutc
   const account = privateKeyToAccount(verifierKey);
   const input = {
     plantId,
+    plantSequence: registered.ledger.attestations,
     periodStart: BigInt(report.periodStart),
     periodEnd: BigInt(report.periodEnd),
-    energyWh: BigInt(report.energyWh),
-    trustScoreBps: report.trustScoreBps,
+    netEnergyWh: BigInt(report.monitored.netWh),
+    grossEnergyWh: BigInt(report.monitored.grossWh),
+    fuelG: BigInt(report.monitored.fuelG),
+    leakageG: BigInt(report.monitored.leakageG),
+    completenessBps: report.completenessBps,
     reportHash: preview.reportHash,
     hcsTopicNum: 0n,
     hcsSequence: 0n,
   };
 
-  // Dry-run first so role, period, capacity and trust errors surface before anything is written to HCS.
+  // Dry-run first so role, period, capacity and completeness errors surface before anything reaches HCS, and
+  // make sure the contract computes exactly the credits the report will state.
   try {
     // `pending`: a local node's latest block can predate the period end; Hedera treats it as `latest`.
     await client.simulateContract({
@@ -92,6 +106,16 @@ export async function attestReadings(request: VerifyRequest): Promise<AttestOutc
     });
   } catch (error) {
     throw new ApiError(`The registry would reject this attestation: ${revertReason(error)}`, 409);
+  }
+  const onChain = await client.readContract({ address, abi, functionName: "quantify", args: [plantId, input] });
+  if (
+    onChain.reductionG !== BigInt(report.emissions.reductionG) ||
+    onChain.units !== BigInt(report.emissions.unitsMinted)
+  ) {
+    throw new ApiError(
+      `Engine and contract disagree (ER ${report.emissions.reductionG} g vs ${onChain.reductionG} g); nothing was published`,
+      500,
+    );
   }
 
   // Data first: the report must carry the data message's sequence number, which only consensus assigns.
@@ -114,7 +138,7 @@ export async function attestReadings(request: VerifyRequest): Promise<AttestOutc
       },
     ],
     // HTS system-contract calls are under-estimated by eth_estimateGas on some relays.
-    gas: 800_000n,
+    gas: 1_000_000n,
   });
   const receipt = await client.waitForTransactionReceipt({ hash });
   if (receipt.status !== "success") throw new ApiError(`Attestation transaction ${hash} reverted`, 502);

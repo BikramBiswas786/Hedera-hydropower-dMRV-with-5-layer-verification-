@@ -36,6 +36,8 @@ const config: HardhatUserConfig = {
             enabled: true,
             runs: 200,
           },
+          // The IR pipeline keeps HydroCreditRegistry (on-chain methodology + market) under the 24 KB code limit.
+          viaIR: true,
         },
       },
     ],

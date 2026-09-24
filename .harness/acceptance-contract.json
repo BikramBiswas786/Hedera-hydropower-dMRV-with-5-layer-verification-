@@ -6,8 +6,8 @@
       "journey": "verify",
       "route": "/verify",
       "severity": "critical",
-      "statement": "The healthy sample scenario is APPROVED with a trust score of at least 90% and every layer passing.",
-      "howToVerify": "Open /verify. The 'healthy' scenario is selected by default. Check the decision badge reads APPROVED, the radial score is >= 90%, and all five layer rows show a score of at least 85.",
+      "statement": "The healthy sample scenario is APPROVED with all five stages passing and a positive ER = BE − PE − LE.",
+      "howToVerify": "Open /verify. The 'healthy' scenario is selected by default. Check the decision badge reads APPROVED, the five stage rows (Applicability, Monitoring data QA/QC, Physical cross-checks, Emission reductions, Environmental safeguards) all show PASS, and the 'ER = BE − PE − LE' figure is above 0 t CO₂e.",
       "walletRequired": false,
       "verifiableWithoutCredentials": true
     },
@@ -16,8 +16,8 @@
       "journey": "verify",
       "route": "/verify",
       "severity": "critical",
-      "statement": "Tampered data is not approved: 'inflated' and 'replay' are REJECTED, 'spikes' and 'polluted' are FLAGGED.",
-      "howToVerify": "On /verify click each scenario button in turn and read the decision badge after each click.",
+      "statement": "Tampered data is never approved: 'inflated' and 'replay' are REJECTED; 'spikes', 'meter-drift', 'data-gaps' and 'polluted' are FLAGGED; 'diesel-backup' shows a non-zero PE.",
+      "howToVerify": "On /verify click each scenario button in turn and read the decision badge after each click; for 'diesel-backup' the PE figure is above 0.",
       "walletRequired": false,
       "verifiableWithoutCredentials": true
     },
@@ -26,8 +26,8 @@
       "journey": "verify",
       "route": "/verify",
       "severity": "major",
-      "statement": "Editing the readings JSON re-runs verification and shows validation errors for malformed input.",
-      "howToVerify": "On /verify replace the textarea content with '[]' and confirm an error is shown instead of a report; restore a scenario and confirm the report returns.",
+      "statement": "Editing the request JSON re-runs verification and shows validation errors for malformed input.",
+      "howToVerify": "On /verify replace the textarea content with '{}' and confirm an error is shown instead of a report; pick a scenario again and confirm the report returns.",
       "walletRequired": false,
       "verifiableWithoutCredentials": true
     },
@@ -36,8 +36,8 @@
       "journey": "verify",
       "route": "/verify",
       "severity": "major",
-      "statement": "An APPROVED report shows the exact HCS message and its reportHash, and publishing requires an operator API key.",
-      "howToVerify": "With 'healthy' selected, find the '3. HCS anchor' card: it shows JSON with schema 'hydro-dmrv/report@1', a 0x-prefixed reportHash, and an 'Anchor & attest' button that stays disabled until a key is typed.",
+      "statement": "An APPROVED report shows the exact HCS message with its monitored inputs and emission figures, and publishing requires an operator API key.",
+      "howToVerify": "With 'healthy' selected, find the '3. HCS anchors' card: it shows JSON with schema 'hydro-dmrv/report@3' containing 'monitored' and 'emissions', a 0x-prefixed reportHash, and an 'Anchor & attest' button that stays disabled until a key is typed.",
       "walletRequired": false,
       "verifiableWithoutCredentials": true
     },
@@ -47,7 +47,7 @@
       "route": "/",
       "severity": "major",
       "statement": "The home page explains the flow and how agents connect over MCP, and /llms.txt describes the API.",
-      "howToVerify": "Open /: a 'How it works' section lists Meter, Verify, Anchor, Issue, Settle; a 'Built for AI agents' section shows a /api/mcp URL. Open /llms.txt and confirm it lists the MCP tools.",
+      "howToVerify": "Open /: a 'How it works' section lists Register, Monitor, Verify, Anchor, Issue & settle; a 'Built for AI agents' section shows a /api/mcp URL. Open /llms.txt and confirm it lists the MCP tools.",
       "walletRequired": false,
       "verifiableWithoutCredentials": true
     },
@@ -57,7 +57,7 @@
       "route": "/market",
       "severity": "major",
       "statement": "Without a deployment the market and audit pages explain how to deploy instead of crashing; with one, the market shows the settlement price with both oracle sources (Chainlink primary, Supra fallback) and which one is pricing.",
-      "howToVerify": "Open /market and /audit. Either an info alert says HydroREC is not deployed and names the deploy command, or the 'HBAR / USD settlement price' card lists 'Chainlink (primary)' and 'Supra (fallback)' rows with one marked 'pricing', and an 'Open listings' heading is visible.",
+      "howToVerify": "Open /market and /audit. Either an info alert says HydroCreditRegistry is not deployed and names the deploy command, or the 'HBAR / USD settlement price' card lists 'Chainlink (primary)' and 'Supra (fallback)' rows with one marked 'pricing', and an 'Open listings' heading is visible.",
       "walletRequired": false,
       "verifiableWithoutCredentials": true
     },
@@ -66,7 +66,7 @@
       "journey": "certificate",
       "route": "/certificate/0",
       "severity": "major",
-      "statement": "The certificate route renders without crashing: a not-deployed notice, a 'does not exist' message, or a Retirement Certificate with amount, beneficiary and NFT details.",
+      "statement": "The certificate route renders without crashing: a not-deployed notice, a 'does not exist' message, or a Retirement Certificate with the amount in t CO₂e, beneficiary and NFT details.",
       "howToVerify": "Open /certificate/0 and /certificate/abc. The first shows one of the three states; the second returns the 404 page.",
       "walletRequired": false,
       "verifiableWithoutCredentials": true
@@ -77,7 +77,17 @@
       "route": "/llms.txt",
       "severity": "major",
       "statement": "Agents can discover the reproduction and purchase tools.",
-      "howToVerify": "Open /llms.txt and confirm it names reproduce_attestation and prepare_purchase and states that purchases are returned unsigned.",
+      "howToVerify": "Open /llms.txt and confirm it names reproduce_attestation, assess_project and prepare_purchase and states that purchases are returned unsigned.",
+      "walletRequired": false,
+      "verifiableWithoutCredentials": true
+    },
+    {
+      "id": "C9",
+      "journey": "methodology",
+      "route": "/methodology",
+      "severity": "major",
+      "statement": "The methodology page shows the equations, the TOOL07 calculation on the demo grid and each demo plant's registered design.",
+      "howToVerify": "Open /methodology: an 'Emission reductions' card shows ER_y = BE_y − PE_y − LE_y; a TOOL07 table lists power units with EF_EL values; each demo plant card shows EF_grid,OM, EF_grid,BM, weights and EF_grid,CM.",
       "walletRequired": false,
       "verifiableWithoutCredentials": true
     }

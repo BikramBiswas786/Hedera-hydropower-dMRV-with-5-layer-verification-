@@ -5,29 +5,29 @@ import type { NextPage } from "next";
 
 const STEPS = [
   {
-    title: "Meter",
-    service: "Plant SCADA",
-    body: "Hourly flow, head, energy and water-quality readings from the plant's data logger.",
+    title: "Register",
+    service: "TOOL07 + Solidity",
+    body: "The validated design is registered on-chain: grid emission factor (TOOL07), reservoir power density, baseline and crediting period.",
+  },
+  {
+    title: "Monitor",
+    service: "Plant data logger",
+    body: "Gross generation, export and import at the grid meter, check meter, flow, head, fuel burnt and water quality.",
   },
   {
     title: "Verify",
-    service: "5-layer engine",
-    body: "Physics, temporal, environmental, statistical and device checks produce a trust score and a decision.",
+    service: "5-stage engine",
+    body: "Applicability, QA/QC with conservative deductions, physics cross-checks, then ER = BE − PE − LE per AMS-I.D / ACM0002.",
   },
   {
     title: "Anchor",
     service: "HCS",
-    body: "Raw readings and the report are published to a Consensus Service topic, so anyone can re-run the verification.",
+    body: "Raw readings and the report are published to a Consensus Service topic, so anyone can re-run the quantification.",
   },
   {
-    title: "Issue",
-    service: "HTS + Solidity",
-    body: "HydroREC re-checks capacity, period overlap and trust, then mints HTS RECs: 1 token = 1 MWh.",
-  },
-  {
-    title: "Settle",
-    service: "Chainlink + Supra",
-    body: "RECs are priced in USD and paid in HBAR at a cross-checked oracle rate. Retiring burns them and mints an NFT certificate.",
+    title: "Issue & settle",
+    service: "HTS + oracles",
+    body: "The contract recomputes the emission reductions and mints HTS credits (1 token = 1 t CO₂e), priced in USD and paid in HBAR.",
   },
 ];
 
@@ -38,15 +38,19 @@ const Home: NextPage = () => (
         <span className="uppercase tracking-widest text-sm text-white/70">Scaffold-HBAR template</span>
         <h1 className="text-4xl md:text-5xl font-bold m-0 leading-tight">Hydro dMRV</h1>
         <p className="text-lg text-white/85 m-0 max-w-2xl">
-          Digital measurement, reporting and verification for run-of-river hydropower. Turn metered generation into
-          renewable energy certificates that anyone can audit, trade and retire on Hedera.
+          Digital measurement, reporting and verification for grid-connected hydropower under the CDM methodologies
+          AMS-I.D and ACM0002. Metered generation becomes carbon credits whose every gram (baseline, project emissions,
+          leakage) is recomputed on-chain and reproducible from public data on Hedera.
         </p>
         <div className="flex flex-wrap gap-3 mt-2">
           <Link href="/verify" className="btn bg-white text-hedera-indigo border-none hover:bg-white/90">
             Try the verifier
           </Link>
           <Link href="/market" className="btn btn-outline text-white border-white hover:bg-white/10">
-            REC market
+            Credit market
+          </Link>
+          <Link href="/methodology" className="btn btn-outline text-white border-white hover:bg-white/10">
+            Methodology
           </Link>
           <Link href="/audit" className="btn btn-outline text-white border-white hover:bg-white/10">
             Audit trail

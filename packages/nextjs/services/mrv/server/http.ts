@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { MethodologyError } from "../methodology/errors";
 import { ApiError } from "./errors";
 import { z } from "zod";
 
@@ -22,6 +23,8 @@ export async function parseJsonBody<T extends z.ZodType>(request: Request, schem
 
 export function toErrorResponse(error: unknown): NextResponse {
   if (error instanceof ApiError) return NextResponse.json({ error: error.message }, { status: error.httpStatus });
+  if (error instanceof MethodologyError) return NextResponse.json({ error: error.message }, { status: 400 });
+  if (error instanceof z.ZodError) return NextResponse.json({ error: z.prettifyError(error) }, { status: 400 });
   console.error("[mrv api]", error);
   return NextResponse.json({ error: "Internal error" }, { status: 500 });
 }

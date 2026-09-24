@@ -37,7 +37,8 @@ const TINYBAR_PER_HBAR = 10n ** 8n;
 const WEI_PER_ETH = 10n ** 18n;
 const DAY_PLUS_GRACE = 25 * 60 * 60;
 
-export const MIN_TRUST_SCORE_BPS = 9_000;
+/** Share of a monitoring period that must be covered by accepted data (the engine flags anything lower). */
+export const MIN_COMPLETENESS_BPS = 9_000;
 export const LOCAL_MOCK_HBAR_USD = 25_000_000n; // $0.25, 8 decimals
 export const LOCAL_SUPRA_PAIR_ID = 75;
 

@@ -4,9 +4,11 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 
 const ENDPOINTS = [
-  ["POST", "/api/mrv/verify", "5-layer verification of readings (no credentials)"],
-  ["GET", "/api/mrv/scenarios/{name}", "Deterministic sample telemetry"],
-  ["GET", "/api/registry", "On-chain totals, plants, oracle price"],
+  ["POST", "/api/mrv/verify", "Verify + quantify ER = BE − PE − LE (no credentials)"],
+  ["POST", "/api/methodology/assess", "AMS-I.D / ACM0002 design check, TOOL07 CM, registration integers"],
+  ["POST", "/api/methodology/grid-emission-factor", "TOOL07 combined margin from per-unit grid data"],
+  ["GET", "/api/mrv/scenarios/{name}", "Deterministic sample monitoring data"],
+  ["GET", "/api/registry", "On-chain totals, plants and ledgers, oracle price"],
   ["GET", "/api/registry/attestations/{id}/reproduce", "Re-run the engine on readings published to HCS"],
   ["POST", "/api/market/prepare-purchase", "Unsigned buy / buy-and-retire tx for your own wallet"],
   ["POST", "/api/mrv/attest", "Verify → HCS → mint (Bearer MRV_API_KEY)"],
@@ -21,8 +23,9 @@ export const AgentAccess = () => {
       <div>
         <h2 className="text-2xl font-bold m-0">Built for AI agents</h2>
         <p className="text-base-content/70 mb-0">
-          Every capability of this app is exposed as an MCP server and a JSON API, so agents can generate telemetry,
-          verify it, audit issuances and read the market without scraping UI. Read-only tools need no credentials.
+          Every capability of this app is exposed as an MCP server and a JSON API, so agents can assess a project
+          design, compute a grid emission factor, verify monitoring data, reproduce issuances and buy credits without
+          scraping UI. Read-only tools need no credentials.
         </p>
       </div>
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">

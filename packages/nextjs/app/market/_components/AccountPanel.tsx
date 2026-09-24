@@ -4,8 +4,8 @@ import { useState } from "react";
 import type { Address } from "viem";
 import { useWriteContract } from "wagmi";
 import { useScaffoldReadContract, useScaffoldWriteContract, useTransactor } from "~~/hooks/scaffold-hbar";
-import { formatHbar, mwhToUnits, usdToCents } from "~~/services/mrv/pricing";
-import { formatMwh } from "~~/services/mrv/views";
+import { formatHbar, tonnesToUnits, usdToCents } from "~~/services/mrv/pricing";
+import { formatTonnes } from "~~/services/mrv/views";
 
 /** HIP-719: HTS tokens expose `associate()` at their EVM address so an EOA can opt in to holding them. */
 const HRC719_ABI = [
@@ -17,23 +17,26 @@ type Action = "sell" | "retire" | "withdraw";
 export const AccountPanel = ({ address, nativeUnitsPerHbar }: { address?: Address; nativeUnitsPerHbar: bigint }) => {
   const [action, setAction] = useState<Action>("sell");
   const [amount, setAmount] = useState("");
-  const [price, setPrice] = useState("12.50");
+  const [price, setPrice] = useState("15.00");
   const [beneficiary, setBeneficiary] = useState("");
 
   const { data: custody } = useScaffoldReadContract({
-    contractName: "HydroREC",
+    contractName: "HydroCreditRegistry",
     functionName: "custodyBalanceOf",
     args: [address],
     query: { enabled: Boolean(address) },
   });
   const { data: proceeds } = useScaffoldReadContract({
-    contractName: "HydroREC",
+    contractName: "HydroCreditRegistry",
     functionName: "proceedsOf",
     args: [address],
     query: { enabled: Boolean(address) },
   });
-  const { data: recToken } = useScaffoldReadContract({ contractName: "HydroREC", functionName: "recToken" });
-  const { writeContractAsync, isMining } = useScaffoldWriteContract({ contractName: "HydroREC" });
+  const { data: creditToken } = useScaffoldReadContract({
+    contractName: "HydroCreditRegistry",
+    functionName: "creditToken",
+  });
+  const { writeContractAsync, isMining } = useScaffoldWriteContract({ contractName: "HydroCreditRegistry" });
   const { writeContractAsync: writeToken } = useWriteContract();
   const transact = useTransactor();
 
@@ -41,12 +44,12 @@ export const AccountPanel = ({ address, nativeUnitsPerHbar }: { address?: Addres
     return (
       <div className="bg-base-100 border border-base-300 rounded-2xl p-5">
         <h2 className="font-semibold text-lg mt-0">Your registry account</h2>
-        <p className="m-0 text-base-content/60">Connect a wallet to see your RECs and sale proceeds.</p>
+        <p className="m-0 text-base-content/60">Connect a wallet to see your credits and sale proceeds.</p>
       </div>
     );
   }
 
-  const units = mwhToUnits(amount);
+  const units = tonnesToUnits(amount);
   const cents = usdToCents(price);
   const exceeds = units !== null && custody !== undefined && units > custody;
   const ready = units !== null && !exceeds && !isMining && (action !== "sell" || cents !== null);
@@ -67,8 +70,8 @@ export const AccountPanel = ({ address, nativeUnitsPerHbar }: { address?: Addres
     <div className="bg-base-100 border border-base-300 rounded-2xl p-5 flex flex-col gap-3">
       <h2 className="font-semibold text-lg m-0">Your registry account</h2>
       <div className="flex justify-between text-sm">
-        <span>RECs in custody</span>
-        <span className="font-bold">{custody === undefined ? "…" : `${formatMwh(custody)} MWh`}</span>
+        <span>Credits in custody</span>
+        <span className="font-bold">{custody === undefined ? "…" : `${formatTonnes(custody)} t CO₂e`}</span>
       </div>
       <div className="flex justify-between items-center text-sm">
         <span>Sale proceeds</span>
@@ -111,7 +114,7 @@ export const AccountPanel = ({ address, nativeUnitsPerHbar }: { address?: Addres
           inputMode="decimal"
           onChange={event => setAmount(event.target.value)}
         />
-        <span>MWh</span>
+        <span>t CO₂e</span>
       </label>
 
       {action === "sell" && (
@@ -123,7 +126,7 @@ export const AccountPanel = ({ address, nativeUnitsPerHbar }: { address?: Addres
             inputMode="decimal"
             onChange={event => setPrice(event.target.value)}
           />
-          <span>USD/MWh</span>
+          <span>USD/t</span>
         </label>
       )}
       {action === "retire" && (
@@ -140,19 +143,20 @@ export const AccountPanel = ({ address, nativeUnitsPerHbar }: { address?: Addres
           HTS tokens need an association before your wallet can hold them.{" "}
           <button
             className="link link-primary"
-            disabled={!recToken}
+            disabled={!creditToken}
             onClick={() =>
-              recToken && transact(() => writeToken({ address: recToken, abi: HRC719_ABI, functionName: "associate" }))
+              creditToken &&
+              transact(() => writeToken({ address: creditToken, abi: HRC719_ABI, functionName: "associate" }))
             }
           >
-            Associate HREC
+            Associate the credit token
           </button>{" "}
           once, then withdraw.
         </p>
       )}
 
       <button className="btn btn-primary btn-sm" disabled={!ready} onClick={submit}>
-        {action === "sell" ? "Create listing" : action === "retire" ? "Retire RECs" : "Withdraw to wallet"}
+        {action === "sell" ? "Create listing" : action === "retire" ? "Retire credits" : "Withdraw to wallet"}
       </button>
     </div>
   );

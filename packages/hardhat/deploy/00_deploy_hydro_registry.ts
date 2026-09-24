@@ -6,7 +6,7 @@ import {
   LOCAL_MOCK_HBAR_USD,
   LOCAL_SUPRA_PAIR_ID,
   MAX_ORACLE_DEVIATION_BPS,
-  MIN_TRUST_SCORE_BPS,
+  MIN_COMPLETENESS_BPS,
   type OracleSources,
   getHydroNetworkConfig,
   hashscanContract,
@@ -48,7 +48,7 @@ async function deployLocalOracles(hre: HardhatRuntimeEnvironment, deployer: stri
   return { chainlink: chainlink.address, supra: supra.address, supraPairId: LOCAL_SUPRA_PAIR_ID };
 }
 
-const deployHydroRec: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
+const deployHydroRegistry: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   const { deployer } = await hre.getNamedAccounts();
   const { deploy } = hre.deployments;
   const config = getHydroNetworkConfig(hre);
@@ -65,18 +65,18 @@ const deployHydroRec: DeployFunction = async function (hre: HardhatRuntimeEnviro
     gasPrice,
   });
 
-  const registry = await deploy("HydroREC", {
+  const registry = await deploy("HydroCreditRegistry", {
     from: deployer,
-    args: [deployer, feed.address, config.nativeUnitsPerHbar, MIN_TRUST_SCORE_BPS, config.maxPriceAgeSeconds],
+    args: [deployer, feed.address, config.nativeUnitsPerHbar, MIN_COMPLETENESS_BPS, config.maxPriceAgeSeconds],
     log: true,
     autoMine: true,
-    gasLimit: 5_000_000,
+    gasLimit: 6_000_000,
     gasPrice,
   });
 
   console.log(`ResilientHbarUsdFeed: ${hashscanContract(config, feed.address)}`);
-  console.log(`HydroREC: ${hashscanContract(config, registry.address)}`);
+  console.log(`HydroCreditRegistry: ${hashscanContract(config, registry.address)}`);
 };
 
-deployHydroRec.tags = ["HydroREC"];
-export default deployHydroRec;
+deployHydroRegistry.tags = ["HydroCreditRegistry"];
+export default deployHydroRegistry;

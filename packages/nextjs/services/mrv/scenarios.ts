@@ -1,22 +1,20 @@
-import type { PlantProfile, Reading } from "./schema";
-
-/** Matches the plant registered on-chain by `packages/hardhat/deploy/01_setup_hydro_rec.ts`. */
-export const DEMO_PLANT: PlantProfile = {
-  plantId: "HYDRO-DEMO-01",
-  capacityKw: 500,
-  maxFlowM3s: 2,
-  maxHeadM: 60,
-  efficiency: 0.85,
-  minEfficiency: 0.7,
-  maxEfficiency: 0.95,
-};
+import { DEMO_METERING, DEMO_PLANT } from "./demo";
+import type { Metering, PlantProfile, Reading } from "./schema";
 
 export const SCENARIOS = {
-  healthy: "24 h of normal run-of-river operation. Should be APPROVED.",
+  healthy: "24 h of normal operation with main and check meters in agreement. Should be APPROVED.",
+  "diesel-backup":
+    "A 3-hour grid outage: the plant stops exporting and a diesel generator runs the auxiliaries, adding PE_FF via TOOL03. Should be APPROVED.",
+  "calibration-overdue":
+    "The main meter's calibration expired: export is reduced and import increased by its maximum permissible error. Should be APPROVED with the deduction.",
+  "meter-drift":
+    "The main meter reads 1.5% above the check meter in the afternoon; the lower reading is used. Should be FLAGGED.",
+  "data-gaps": "Four hours of missing data, credited as zero. Should be FLAGGED (under 90% coverage).",
+  spikes:
+    "Three intervals report more energy than the water can produce; they are credited as zero. Should be FLAGGED.",
+  polluted: "Water-quality sensors report acidic, very turbid water. Quantity unchanged, FLAGGED for review.",
   inflated: "Meter tampering: every interval reports 35% more energy than the water can produce. Should be REJECTED.",
   replay: "Four intervals re-submitted with the same timestamps to double count energy. Should be REJECTED.",
-  spikes: "Three isolated energy spikes, e.g. a faulty meter. Should be FLAGGED for review.",
-  polluted: "Water-quality sensors report acidic, very turbid water. Should be FLAGGED for review.",
 } as const;
 
 export type ScenarioName = keyof typeof SCENARIOS;
@@ -41,47 +39,109 @@ export function lastWholeHour(now = Date.now()): Date {
   return new Date(Math.floor(now / 3_600_000) * 3_600_000);
 }
 
-export type GenerateOptions = { end?: Date; hours?: number; seed?: number };
+/** Typical operating point of each demo plant: turbine flow, net head and the plant's true efficiency. */
+const OPERATING_POINT: Record<string, { flow: number; head: number; efficiency: number }> = {
+  "HYDRO-DEMO-01": { flow: 1.1, head: 40, efficiency: 0.85 },
+  "HYDRO-DEMO-02": { flow: 12, head: 85, efficiency: 0.88 },
+};
+/** Station service: the share of gross generation consumed on site before the grid meter. */
+const AUXILIARY_SHARE = 0.015;
+
+export type GenerateOptions = { end?: Date; hours?: number; seed?: number; plant?: PlantProfile };
+export type ScenarioRequest = { plant: PlantProfile; metering: Metering; readings: Reading[] };
 
 /**
- * Generates hourly readings for the demo plant. Flow follows a gentle diurnal curve with ±1% sensor noise and
- * metered energy tracks ρ·g·Q·H·η within ±2%, which is what a healthy run-of-river plant looks like.
+ * Generates hourly monitoring data for a demo plant. Flow follows a gentle diurnal curve with ±1% sensor noise;
+ * gross generation is ρ·g·Q·H·η at the plant's true efficiency; the main meter exports it net of station service
+ * and the check meter agrees within ±0.1%.
  */
-export function generateScenario(scenario: ScenarioName, options: GenerateOptions = {}): Reading[] {
+export function generateScenario(scenario: ScenarioName, options: GenerateOptions = {}): ScenarioRequest {
+  const plant = options.plant ?? DEMO_PLANT;
+  const point = OPERATING_POINT[plant.plantId] ?? OPERATING_POINT[DEMO_PLANT.plantId];
   const hours = options.hours ?? 24;
   const end = (options.end ?? lastWholeHour()).getTime();
   const random = prng(options.seed ?? 7);
   const noise = (pct: number) => 1 + (random() * 2 - 1) * pct;
 
-  const readings: Reading[] = Array.from({ length: hours }, (_, i) => {
+  let readings: Reading[] = Array.from({ length: hours }, (_, i) => {
     const timestamp = new Date(end - (hours - 1 - i) * 3_600_000);
     const diurnal = 1 + 0.05 * Math.sin((2 * Math.PI * timestamp.getUTCHours()) / 24);
-    const flowRateM3s = round(1.1 * diurnal * noise(0.01), 4);
-    const headM = round(40 * noise(0.005), 3);
-    const hydraulicKwh = (1_000 * 9.81 * flowRateM3s * headM * DEMO_PLANT.efficiency) / 1_000;
+    const flowRateM3s = round(point.flow * diurnal * noise(0.01), 4);
+    const headM = round(point.head * noise(0.005), 3);
+    const generationKwh = round(9.81 * flowRateM3s * headM * point.efficiency * noise(0.01), 3);
+    const exportKwh = round(generationKwh * (1 - AUXILIARY_SHARE), 3);
     return {
       timestamp: timestamp.toISOString(),
       intervalMinutes: 60,
+      generationKwh,
+      exportKwh,
+      importKwh: 0,
+      checkExportKwh: round(exportKwh * noise(0.001), 3),
       flowRateM3s,
       headM,
-      energyKwh: round(hydraulicKwh * noise(0.02), 3),
-      efficiency: DEMO_PLANT.efficiency,
+      fuelKg: 0,
       ph: round(7.2 * noise(0.02), 2),
       turbidityNtu: round(12 * noise(0.2), 1),
       temperatureC: round(14 * noise(0.05), 1),
     };
   });
+  let metering = DEMO_METERING;
 
   switch (scenario) {
     case "healthy":
-      return readings;
-    case "inflated":
-      return readings.map(r => ({ ...r, energyKwh: round(r.energyKwh * 1.35, 3) }));
-    case "replay":
-      return [...readings.slice(0, 14), ...readings.slice(10, 14), ...readings.slice(14)];
+      break;
+    case "diesel-backup":
+      // Grid outage: no export, the plant trips, auxiliaries run on a diesel generator (~25 kg/h).
+      readings = readings.map((r, i) =>
+        i >= 8 && i < 11
+          ? {
+              ...r,
+              generationKwh: 0,
+              exportKwh: 0,
+              checkExportKwh: 0,
+              flowRateM3s: 0,
+              fuelKg: round(25 * noise(0.05), 2),
+            }
+          : r,
+      );
+      break;
+    case "calibration-overdue":
+      metering = { ...metering, calibrationValidUntil: new Date(end - 30 * 86_400_000).toISOString() };
+      break;
+    case "meter-drift":
+      readings = readings.map((r, i) =>
+        i >= 12 && i < 18 ? { ...r, exportKwh: round((r.checkExportKwh ?? r.exportKwh) * 1.015, 3) } : r,
+      );
+      break;
+    case "data-gaps":
+      readings = readings.filter((_, i) => i < 6 || i >= 10);
+      break;
     case "spikes":
-      return readings.map((r, i) => ([5, 12, 19].includes(i) ? { ...r, energyKwh: round(r.energyKwh * 1.22, 3) } : r));
+      readings = readings.map((r, i) =>
+        [5, 12, 19].includes(i)
+          ? {
+              ...r,
+              generationKwh: round(r.generationKwh * 1.22, 3),
+              exportKwh: round(r.exportKwh * 1.22, 3),
+              checkExportKwh: round((r.checkExportKwh ?? r.exportKwh) * 1.22, 3),
+            }
+          : r,
+      );
+      break;
     case "polluted":
-      return readings.map(r => ({ ...r, ph: 5.3, turbidityNtu: 240 }));
+      readings = readings.map(r => ({ ...r, ph: 5.3, turbidityNtu: 240 }));
+      break;
+    case "inflated":
+      readings = readings.map(r => ({
+        ...r,
+        generationKwh: round(r.generationKwh * 1.35, 3),
+        exportKwh: round(r.exportKwh * 1.35, 3),
+        checkExportKwh: round((r.checkExportKwh ?? r.exportKwh) * 1.35, 3),
+      }));
+      break;
+    case "replay":
+      readings = [...readings.slice(0, 14), ...readings.slice(10, 14), ...readings.slice(14)];
+      break;
   }
+  return { plant, metering, readings };
 }

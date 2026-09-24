@@ -1,15 +1,15 @@
 const WEIBAR_PER_HBAR = 10n ** 18n;
 const SLIPPAGE_BPS = 100n;
 
-/** Parses a user-entered MWh amount into REC base units (kWh). Returns null for invalid or non-positive input. */
-export function mwhToUnits(input: string): bigint | null {
+/** Parses a user-entered amount in t CO2e into credit base units (kg). Returns null for invalid or non-positive input. */
+export function tonnesToUnits(input: string): bigint | null {
   if (!/^\d+(\.\d{1,3})?$/.test(input.trim())) return null;
   const [whole, fraction = ""] = input.trim().split(".");
   const units = BigInt(whole) * 1_000n + BigInt(fraction.padEnd(3, "0"));
   return units > 0n ? units : null;
 }
 
-/** Parses a USD price per MWh into cents. */
+/** Parses a USD price per tonne into cents. */
 export function usdToCents(input: string): bigint | null {
   if (!/^\d+(\.\d{1,2})?$/.test(input.trim())) return null;
   const [whole, fraction = ""] = input.trim().split(".");

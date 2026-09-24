@@ -12,9 +12,10 @@ const AuditPage: NextPage = () => (
   <div className="flex flex-col gap-6 px-5 py-8 max-w-6xl w-full mx-auto">
     <PageHeader title="Audit trail">
       <p className="mt-2">
-        Every issuance is backed by a report on the Hedera Consensus Service. <strong>Audit</strong> fetches that
-        message from the public mirror node in your browser, hashes it, and checks it against what the contract
-        recorded. No trust in this server is required.
+        Every issuance is backed by raw monitoring data and a report on the Hedera Consensus Service.{" "}
+        <strong>Check evidence</strong> fetches both from the public mirror node in your browser, hashes them, confirms
+        the data was quantified with the plant&apos;s registered design, re-runs the engine and compares EG_PJ, BE, PE,
+        LE, ER and the credits minted with what the contract recorded. No trust in this server is required.
       </p>
     </PageHeader>
     <AuditTrail />

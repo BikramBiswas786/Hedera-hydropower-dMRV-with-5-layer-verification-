@@ -5,7 +5,7 @@ import { getMetadata } from "~~/utils/scaffold-hbar/getMetadata";
 
 export const metadata = getMetadata({
   title: "Retirement certificate",
-  description: "Proof that hydropower RECs were permanently retired on Hedera",
+  description: "Proof that hydropower carbon credits were permanently retired on Hedera",
 });
 
 const CertificatePage: NextPage<{ params: Promise<{ id: string }> }> = async ({ params }) => {

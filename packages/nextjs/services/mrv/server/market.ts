@@ -1,6 +1,6 @@
 import { hashscan, isLiveHederaChain } from "../network";
 import { formatHbar, quoteToTxValue } from "../pricing";
-import { type RetirementView, toRetirementView } from "../views";
+import { type RetirementView, formatTonnes, toRetirementView } from "../views";
 import { ApiError, revertReason } from "./errors";
 import { requireDeployment } from "./registry";
 import { type Address, type Hex, encodeFunctionData, zeroAddress } from "viem";
@@ -8,7 +8,8 @@ import { z } from "zod";
 
 export const preparePurchaseSchema = z.object({
   listingId: z.number().int().min(0),
-  amountKwh: z.number().int().positive(),
+  /** Credits in kg CO2e (token base units; 1 000 = 1 t). */
+  amountKg: z.number().int().positive(),
   retire: z.boolean().default(true),
   beneficiary: z.string().max(128).default(""),
 });
@@ -30,9 +31,9 @@ export type PreparedPurchase = {
  * buyer's key. The quote is read at the current oracle price; resubmit if it is minutes old.
  */
 export async function preparePurchase(input: z.input<typeof preparePurchaseSchema>): Promise<PreparedPurchase> {
-  const { listingId, amountKwh, retire, beneficiary } = preparePurchaseSchema.parse(input);
+  const { listingId, amountKg, retire, beneficiary } = preparePurchaseSchema.parse(input);
   const { address, abi, client } = requireDeployment();
-  const units = BigInt(amountKwh);
+  const units = BigInt(amountKg);
 
   let quote: bigint;
   try {
@@ -55,7 +56,7 @@ export async function preparePurchase(input: z.input<typeof preparePurchaseSchem
     valueHbar: formatHbar(value, 10n ** 18n),
     exactCostHbar,
     functionName: retire ? "buyAndRetire" : "buy",
-    summary: `${retire ? "Buy and retire" : "Buy"} ${amountKwh} kWh from listing #${listingId} for ${exactCostHbar} HBAR`,
+    summary: `${retire ? "Buy and retire" : "Buy"} ${formatTonnes(units)} t CO2e from listing #${listingId} for ${exactCostHbar} HBAR`,
   };
 }
 

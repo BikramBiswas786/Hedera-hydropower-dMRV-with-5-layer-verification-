@@ -1,9 +1,12 @@
 import { auditAttestation, reproduceAttestation } from "./audit";
-import { verifyReadings } from "./engine";
+import { DEMO_PLANT } from "./demo";
+import type { VerificationReport } from "./engine";
 import type { MirrorTopicMessage } from "./mirror";
-import { HCS_CHUNK_BYTES, buildDataMessage, buildHcsMessage } from "./report";
-import { DEMO_PLANT, generateScenario } from "./scenarios";
+import { prepareAnchors } from "./pipeline";
+import { HCS_CHUNK_BYTES, buildHcsMessage } from "./report";
+import { type ScenarioName, generateScenario } from "./scenarios";
 import type { AttestationView } from "./views";
+import type { Hex } from "viem";
 import { describe, expect, it } from "vitest";
 
 const TOPIC = "0.0.5005";
@@ -55,37 +58,48 @@ class FakeMirror {
   };
 }
 
-/** Publishes data then report exactly as the attestation pipeline does, returning what the contract would store. */
-function anchor(mirror: FakeMirror, scenarioName: Parameters<typeof generateScenario>[0] = "healthy") {
-  const readings = generateScenario(scenarioName, { end: END });
-  const report = verifyReadings(readings, DEMO_PLANT, 0.82);
-  const data = buildDataMessage(readings, DEMO_PLANT, 0.82, report.engine);
-  mirror.skipTo(DATA_SEQUENCE);
-  const dataSequence = mirror.publish(data.message);
-  const anchored = buildHcsMessage(report, { hash: data.dataHash, sequence: dataSequence });
-  const reportSequence = mirror.publish(anchored.message);
-
-  const attestation: AttestationView = {
+/** What the contract stores for an anchored report: the monitored inputs and its own recomputed figures. */
+function onChain(report: VerificationReport, reportHash: Hex, hcsSequence: number): AttestationView {
+  const e = report.emissions!;
+  return {
     id: 3,
     plantId: report.plantId,
     periodStart: report.periodStart,
     periodEnd: report.periodEnd,
-    energyWh: report.energyWh,
-    unitsMinted: Math.floor(report.energyWh / 1_000),
-    trustScoreBps: report.trustScoreBps,
-    reportHash: anchored.reportHash,
+    netEnergyWh: report.monitored.netWh,
+    grossEnergyWh: report.monitored.grossWh,
+    fuelG: report.monitored.fuelG,
+    projectEnergyWh: e.egProjectWh,
+    baselineG: e.baselineG,
+    reservoirG: e.reservoirG,
+    fossilFuelG: e.fossilFuelG,
+    leakageG: e.leakageG,
+    reductionG: e.reductionG,
+    unitsMinted: e.unitsMinted,
+    completenessBps: report.completenessBps,
+    reportHash,
     hcsTopicId: TOPIC,
-    hcsSequence: reportSequence,
+    hcsSequence,
     verifier: "0x0000000000000000000000000000000000000001",
     timestamp: report.periodEnd + 60,
   };
-  return { readings, report, data, anchored, attestation };
+}
+
+/** Publishes data then report exactly as the attestation pipeline does, returning what the contract would store. */
+function anchor(mirror: FakeMirror, scenarioName: ScenarioName = "healthy") {
+  const request = generateScenario(scenarioName, { end: END });
+  const { report, data } = prepareAnchors(request);
+  mirror.skipTo(DATA_SEQUENCE);
+  const dataSequence = mirror.publish(data.message);
+  const anchored = buildHcsMessage(report, { hash: data.dataHash, sequence: dataSequence });
+  const reportSequence = mirror.publish(anchored.message);
+  return { request, report, data, anchored, attestation: onChain(report, anchored.reportHash, reportSequence) };
 }
 
 describe("auditAttestation", () => {
   it("verifies an attestation whose HCS report hashes and matches field by field", async () => {
     const mirror = new FakeMirror();
-    const { attestation, anchored } = anchor(mirror);
+    const { attestation, anchored } = anchor(mirror, "diesel-backup");
     const result = await auditAttestation(attestation, mirror.fetch);
 
     expect(result.status).toBe("verified");
@@ -94,14 +108,17 @@ describe("auditAttestation", () => {
     expect(result.hashscanUrl).toContain(`/topic/${TOPIC}/message/${attestation.hcsSequence}`);
   });
 
-  it("detects an attestation that claims more energy than its anchored report", async () => {
+  it("detects an attestation that minted more than its anchored report computed", async () => {
     const mirror = new FakeMirror();
     const { attestation } = anchor(mirror);
-    const result = await auditAttestation({ ...attestation, energyWh: attestation.energyWh * 2 }, mirror.fetch);
+    const result = await auditAttestation(
+      { ...attestation, reductionG: attestation.reductionG * 2, unitsMinted: attestation.unitsMinted * 2 },
+      mirror.fetch,
+    );
 
     expect(result.status).toBe("mismatch");
     if (result.status !== "mismatch") return;
-    expect(result.checks.filter(check => !check.ok).map(check => check.field)).toEqual(["energyWh"]);
+    expect(result.checks.filter(check => !check.ok).map(check => check.field)).toEqual(["ER (g)", "credits (kg)"]);
   });
 
   it("detects a report whose bytes differ from the on-chain hash", async () => {
@@ -134,17 +151,38 @@ describe("auditAttestation", () => {
 });
 
 describe("reproduceAttestation", () => {
-  it("re-derives the decision from the chunked readings published on HCS", async () => {
+  it("re-derives every figure from the chunked readings published on HCS", async () => {
     const mirror = new FakeMirror();
     const { attestation, data, report } = anchor(mirror);
     expect(data.chunks).toBeGreaterThan(1);
 
-    const result = await reproduceAttestation(attestation, mirror.fetch);
+    const result = await reproduceAttestation(attestation, mirror.fetch, DEMO_PLANT.design);
     expect(result.status).toBe("reproduced");
     if (result.status !== "reproduced") return;
     expect(result.engineMatches).toBe(true);
     expect(result.recomputed).toEqual(report);
     expect(result.checks.every(check => check.ok)).toBe(true);
+    expect(result.checks.some(check => check.field === "registered.efGridGPerMwh")).toBe(true);
+  });
+
+  it("catches readings quantified with a grid factor other than the registered one", async () => {
+    const mirror = new FakeMirror();
+    const request = generateScenario("healthy", { end: END });
+    const inflatedEf = { ...request.plant, design: { ...request.plant.design, efGridGPerMwh: 1_300_000 } };
+    const { report, data } = prepareAnchors({ ...request, plant: inflatedEf });
+    mirror.skipTo(DATA_SEQUENCE);
+    const dataSequence = mirror.publish(data.message);
+    const anchored = buildHcsMessage(report, { hash: data.dataHash, sequence: dataSequence });
+    const reportSequence = mirror.publish(anchored.message);
+
+    const result = await reproduceAttestation(
+      onChain(report, anchored.reportHash, reportSequence),
+      mirror.fetch,
+      DEMO_PLANT.design,
+    );
+    expect(result.status).toBe("diverged");
+    if (result.status !== "diverged") return;
+    expect(result.checks.filter(check => !check.ok).map(check => check.field)).toEqual(["registered.efGridGPerMwh"]);
   });
 
   it("reassembles chunks even when another submitter's messages interleave", async () => {
@@ -166,49 +204,39 @@ describe("reproduceAttestation", () => {
 
   it("catches a verifier who approves data the engine rejects", async () => {
     const mirror = new FakeMirror();
-    const readings = generateScenario("inflated", { end: END });
-    const honest = verifyReadings(readings, DEMO_PLANT, 0.82);
-    const data = buildDataMessage(readings, DEMO_PLANT, 0.82, honest.engine);
+    const request = generateScenario("inflated", { end: END });
+    const { report: honest, data } = prepareAnchors(request);
     mirror.skipTo(DATA_SEQUENCE);
     const dataSequence = mirror.publish(data.message);
-    // The dishonest verifier publishes the real readings but a doctored verdict.
+    // The dishonest verifier publishes the real readings but a doctored verdict and credits.
+    const healthy = anchor(new FakeMirror()).report;
     const forged = buildHcsMessage(
-      { ...honest, decision: "APPROVED", trustScore: 0.95, trustScoreBps: 9_500 },
+      { ...honest, decision: "APPROVED", completenessBps: 10_000, emissions: healthy.emissions },
       { hash: data.dataHash, sequence: dataSequence },
     );
     const reportSequence = mirror.publish(forged.message);
-    const attestation = {
-      ...anchor(new FakeMirror()).attestation,
-      energyWh: honest.energyWh,
-      trustScoreBps: 9_500,
-      reportHash: forged.reportHash,
-      hcsSequence: reportSequence,
-    };
+    const attestation = { ...onChain(healthy, forged.reportHash, reportSequence) };
 
     const result = await reproduceAttestation(attestation, mirror.fetch);
     expect(result.status).toBe("diverged");
     if (result.status !== "diverged") return;
     expect(result.recomputed.decision).toBe("REJECTED");
-    expect(result.checks.find(check => check.field === "decision")?.ok).toBe(false);
+    const failed = result.checks.filter(check => !check.ok).map(check => check.field);
+    expect(failed).toContain("decision");
+    expect(failed).toContain("ER (g)");
   });
 
   it("flags readings that do not match the hash the report committed to", async () => {
     const mirror = new FakeMirror();
-    const readings = generateScenario("healthy", { end: END });
-    const report = verifyReadings(readings, DEMO_PLANT, 0.82);
-    const real = buildDataMessage(readings, DEMO_PLANT, 0.82, report.engine);
-    const swapped = buildDataMessage(readings.slice(1), DEMO_PLANT, 0.82, report.engine);
+    const request = generateScenario("healthy", { end: END });
+    const { report, data: real } = prepareAnchors(request);
+    const { data: swapped } = prepareAnchors({ ...request, readings: request.readings.slice(1) });
     mirror.skipTo(DATA_SEQUENCE);
     const dataSequence = mirror.publish(swapped.message);
     const anchored = buildHcsMessage(report, { hash: real.dataHash, sequence: dataSequence });
     const reportSequence = mirror.publish(anchored.message);
-    const attestation = {
-      ...anchor(new FakeMirror()).attestation,
-      reportHash: anchored.reportHash,
-      hcsSequence: reportSequence,
-    };
 
-    const result = await reproduceAttestation(attestation, mirror.fetch);
+    const result = await reproduceAttestation(onChain(report, anchored.reportHash, reportSequence), mirror.fetch);
     expect(result.status).toBe("diverged");
     if (result.status !== "diverged") return;
     expect(result.checks.find(check => check.field === "dataHash")?.ok).toBe(false);
@@ -216,18 +244,11 @@ describe("reproduceAttestation", () => {
 
   it("explains when a report does not reference published readings", async () => {
     const mirror = new FakeMirror();
-    const readings = generateScenario("healthy", { end: END });
-    const report = verifyReadings(readings, DEMO_PLANT, 0.82);
-    const data = buildDataMessage(readings, DEMO_PLANT, 0.82, report.engine);
+    const { report, data } = prepareAnchors(generateScenario("healthy", { end: END }));
     const anchored = buildHcsMessage(report, { hash: data.dataHash, sequence: null });
     const reportSequence = mirror.publish(anchored.message);
-    const attestation = {
-      ...anchor(new FakeMirror()).attestation,
-      reportHash: anchored.reportHash,
-      hcsSequence: reportSequence,
-    };
 
-    const result = await reproduceAttestation(attestation, mirror.fetch);
+    const result = await reproduceAttestation(onChain(report, anchored.reportHash, reportSequence), mirror.fetch);
     expect(result.status).toBe("no-data");
   });
 });
