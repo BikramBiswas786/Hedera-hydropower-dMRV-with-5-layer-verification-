@@ -19,11 +19,11 @@ buyer's key: purchases are returned as unsigned transactions.
 - Monitoring: `list_scenarios`, `generate_sample_telemetry`, `verify_telemetry` (decision, 5 stages, EG_PJ, BE, PE,
   LE, ER with an equation trace, the exact HCS report)
 - Registry: `get_registry_overview` (totals in kg CO2e, plants with design and ledger, tokens, both oracle sources),
-  `list_attestations`
+  `list_attestations`, `get_plant` (design, ledger, lifetime totals and attestations of one plant)
 - Evidence: `audit_attestation` (report vs chain), `reproduce_attestation` (re-run the engine on the data published to
   HCS, check the registered design was used, compare every figure)
 - Market: `list_open_listings`, `prepare_purchase` (unsigned buy / buyAndRetire for your own wallet),
-  `get_retirement_certificate`
+  `get_retirement_certificate`, `get_portfolio` (retirements by an account or on behalf of a beneficiary)
 - Write tool `submit_attestation` is listed only when the request carries `Authorization: Bearer <MRV_API_KEY>`
 - Resource: `hydro-dmrv://methodology` (equations, QA/QC rules, IPCC bounds, what is not implemented)
 
@@ -38,15 +38,19 @@ Buying as an agent: `list_open_listings` → `prepare_purchase { listingId, amou
 - `GET  /api/methodology/projects/{plantId}?raw=1` — the exact bytes whose SHA-256 is the on-chain designHash
 - `GET  /api/mrv/scenarios` — scenarios, demo plant profiles and metering
 - `GET  /api/mrv/scenarios/{name}?hours=24&plant=HYDRO-DEMO-01` — a ready `/api/mrv/verify` body
-- `POST /api/mrv/verify` — body `{ readings, plant?, metering?, ledger? }` → report, HCS report message, reportHash,
+- `POST /api/mrv/verify` — body `{ readings, plant?, metering?, ledger?, signature? }` → report, HCS report message, reportHash,
   dataHash, dataChunks
 - `GET  /api/registry` — on-chain totals, plants (design + ledger), credit token, oracle status
+- `GET  /api/registry/plants` — registered plants; `GET /api/registry/plants/{plantId}` — design, ledger, totals,
+  attestations
 - `GET  /api/registry/attestations?start=0&count=20` — attestations: monitored inputs, EG_PJ, BE, PE, LE, ER, credits
 - `GET  /api/registry/attestations/{id}/audit` — report vs on-chain record
 - `GET  /api/registry/attestations/{id}/reproduce` — full reproduction from HCS data
 - `GET  /api/registry/listings` — open listings with HBAR quotes (tinybar)
 - `POST /api/market/prepare-purchase` — body `{ listingId, amountKg, retire?: true, beneficiary?: "" }`
 - `GET  /api/registry/retirements/{id}` — retirement and NFT certificate
+- `GET  /api/registry/retirements?account=0x…&beneficiary=…&format=json|csv` — portfolio: retirements by the
+  account or on behalf of the beneficiary, totals, certificates; CSV for ESG reporting
 - `POST /api/mrv/attest` — verify → HCS (readings, report) → submitAttestation; requires `Authorization: Bearer
   <MRV_API_KEY>`
 

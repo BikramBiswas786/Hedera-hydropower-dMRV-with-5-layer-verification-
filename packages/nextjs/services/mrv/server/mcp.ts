@@ -10,6 +10,7 @@ import { verifyRequestSchema } from "../schema";
 import { plantIdToBytes32 } from "../views";
 import { attestReadings } from "./attest";
 import { ApiError } from "./errors";
+import { getPlantDetail, getPortfolio, portfolioQuerySchema } from "./insights";
 import { getRetirementCertificate, preparePurchase, preparePurchaseSchema } from "./market";
 import { assessDesign, getProject, gridEmissionFactor } from "./methodology";
 import { getAttestation, getAttestations, getOpenListings, getPlant, getRegistryOverview } from "./registry";
@@ -24,7 +25,8 @@ quantification, safeguards). Only APPROVED periods can be attested. Raw readings
 reproduce_attestation re-runs the engine on the published data and compares every figure with the contract.
 Credits are HTS tokens (1 token = 1 t CO2e, 1 unit = 1 kg) priced in USD per tonne and settled in HBAR through
 Chainlink HBAR/USD with a Supra fallback. Agents buy with their own wallet: list_open_listings -> prepare_purchase ->
-sign and send; retiring mints an HTS NFT certificate. Registry tools read chain ${HYDRO_CHAIN_ID}.`;
+sign and send; retiring mints an HTS NFT certificate. get_plant and get_portfolio summarise a plant's issuance or a
+buyer's retirements for reporting. Registry tools read chain ${HYDRO_CHAIN_ID}.`;
 
 function ok(data: unknown) {
   return { content: [{ type: "text" as const, text: JSON.stringify(data, null, 2) }] };
@@ -168,6 +170,18 @@ export function buildMcpServer({ canWrite }: { canWrite: boolean }): McpServer {
   );
 
   server.registerTool(
+    "get_plant",
+    {
+      title: "Plant detail",
+      description:
+        "One registered plant: design (methodology, capacity, reservoir power density, grid factor, crediting period), ledger (crediting year, carried balance), lifetime totals (EG, BE, PE_HP, PE_FF, ER, credits, coverage, credits per MWh) and every attestation with its HCS report link.",
+      inputSchema: z.object({ plantId: z.string().min(1).max(31) }),
+      annotations: readOnly,
+    },
+    async ({ plantId }) => run(() => getPlantDetail(plantId)),
+  );
+
+  server.registerTool(
     "list_attestations",
     {
       title: "List attestations",
@@ -238,6 +252,18 @@ export function buildMcpServer({ canWrite }: { canWrite: boolean }): McpServer {
       annotations: readOnly,
     },
     async ({ retirementId }) => run(() => getRetirementCertificate(retirementId)),
+  );
+
+  server.registerTool(
+    "get_portfolio",
+    {
+      title: "Retirement portfolio",
+      description:
+        "Credits retired by an account or on behalf of a beneficiary (exact, case-insensitive), newest first, with totals in kg CO2e, NFT certificate serials and links; the account's unlisted custody balance too. Pass both to get a company's full record. The same data as CSV: GET /api/registry/retirements?format=csv.",
+      inputSchema: portfolioQuerySchema,
+      annotations: readOnly,
+    },
+    async query => run(() => getPortfolio(query)),
   );
 
   if (canWrite) {

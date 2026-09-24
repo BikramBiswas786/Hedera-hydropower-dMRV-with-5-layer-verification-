@@ -19,7 +19,7 @@ npm create scaffold-hbar@latest --template BikramBiswas786/Hedera-hydropower-dMR
 | Hedera services | **HCS**: chunked monitoring-data messages and reports · **HTS**: fungible credit token and NFT certificate collection, both created, minted and burned by the contract · **Smart contracts**: on-chain quantification registry and oracle aggregator |
 | Ecosystem integration | **Chainlink** Data Feeds (primary) and **Supra** push oracle (fallback and cross-check), testnet and mainnet |
 | Stack | Next.js 15 · Hardhat · Yarn workspaces · Node ≥ 20.18.3 |
-| Agent surface | MCP server at `/api/mcp` (13 public tools, 1 authenticated write tool, a methodology resource), JSON API under `/api`, [`/llms.txt`](packages/nextjs/public/llms.txt), [`AGENTS.md`](AGENTS.md), [Hedera Harness](#testing) recipe |
+| Agent surface | MCP server at `/api/mcp` (15 public tools, 1 authenticated write tool, a methodology resource), JSON API under `/api`, [`/llms.txt`](packages/nextjs/public/llms.txt), [`AGENTS.md`](AGENTS.md), [Hedera Harness](#testing) recipe |
 
 ### Live on Hedera testnet
 
@@ -369,6 +369,8 @@ Nothing is required to browse the app or use the engine. Copy the `.env.example`
 | **Methodology** `/methodology` | The equations, QA/QC rules, the TOOL07 calculation on the demo grid unit by unit (EF_EL, option A1/A2, BM sample), each demo plant's assessment and the exact integers registered on-chain. |
 | **Verify** `/verify` | Pick a plant and a scenario, or edit the JSON (readings, meter calibration, even the plant design). The report updates as you type: decision, five stages, ER / BE / PE / LE, an equation trace, QA/QC deductions and every finding. When the registry is deployed it quantifies against the plant's on-chain ledger. It previews the exact HCS report and data hash; operators can publish with the API key. |
 | **Market** `/market` | Both oracle sources, which one is pricing, and whether purchases are paused. Your custody balance and proceeds; list credits in USD per tonne; buy, or buy and retire in one transaction; associate the HTS token (HIP-719) and withdraw to your wallet. |
+| **Plants** `/plants`, `/plants/{id}` | Every registered plant; per plant the registered design (capacity, reservoir and power density, TOOL07 grid factor, TOOL03 COEF, baseline, crediting period, design hash), the on-chain ledger (crediting year, carried balance) and every attestation with BE, PE, ER, credits, coverage and links to its HCS report and reproduction. Rendered on the server from the same reads as the API. |
+| **Portfolio** `/portfolio` | Everything an account retired, or anyone retired on behalf of a company, with totals, NFT certificates and a **CSV export** for a GHG inventory or ESG report (beneficiary names are formula-escaped). |
 | **Audit** `/audit` | Every attestation with EG_PJ, ER, credits and its HCS link. **Check evidence** runs the full reproduction in your browser. Retirements link to their certificates. |
 | **Certificate** `/certificate/{id}` | A printable retirement certificate in t CO₂e backed by on-chain data, with its NFT serial and Hashscan link. If the NFT could not be delivered at retirement, associate and claim it here. |
 | **Debug** `/debug` | Scaffold-HBAR's contract console for every function, including `quantify` to preview an attestation. |
@@ -527,7 +529,8 @@ claude mcp add --transport http hydro-dmrv http://localhost:3000/api/mcp
 | `list_attestations` | public | Attestations with monitored inputs, EG_PJ, BE, PE, LE, ER, credits and HCS anchors |
 | `audit_attestation` · `reproduce_attestation` | public | Report vs chain · full reproduction from HCS including the registered design |
 | `list_open_listings` · `prepare_purchase` | public | Listings with HBAR quotes · unsigned `buy` / `buyAndRetire` (to, data, value) for the agent's own wallet |
-| `get_retirement_certificate` | public | Retirement record and its NFT certificate |
+| `get_plant` | public | One plant: design, power density, ledger, lifetime EG / BE / PE / ER / credits, coverage, credits per MWh, attestations with HCS links |
+| `get_retirement_certificate` · `get_portfolio` | public | Retirement record and its NFT certificate · everything an account or a beneficiary retired, with totals |
 | `submit_attestation` | bearer `MRV_API_KEY` | Verify → contract agreement check → HCS → mint. Only listed for authenticated requests |
 
 An autonomous buyer needs no special permissions:

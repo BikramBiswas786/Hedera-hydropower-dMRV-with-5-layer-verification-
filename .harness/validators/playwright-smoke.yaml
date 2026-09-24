@@ -14,8 +14,14 @@ routes:
     path: /methodology
   - name: verify
     path: /verify
+  - name: plants
+    path: /plants
+  - name: plant
+    path: /plants/HYDRO-DEMO-01
   - name: market
     path: /market
+  - name: portfolio
+    path: /portfolio
   - name: audit
     path: /audit
   - name: certificate

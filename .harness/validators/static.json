@@ -39,7 +39,11 @@
       "packages/nextjs/services/mrv/methodology/tool07.ts",
       "packages/nextjs/services/mrv/methodology/quantify.ts",
       "packages/hardhat/test/fixtures/quantificationVectors.ts",
-      "packages/nextjs/app/methodology/page.tsx"
+      "packages/nextjs/app/methodology/page.tsx",
+      "packages/nextjs/app/plants/page.tsx",
+      "packages/nextjs/app/portfolio/page.tsx",
+      "packages/nextjs/services/mrv/provenance.ts",
+      "packages/nextjs/services/mrv/provenance.test.ts"
     ],
     "forbidden": [
       ".env",

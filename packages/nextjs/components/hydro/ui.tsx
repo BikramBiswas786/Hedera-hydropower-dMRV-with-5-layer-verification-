@@ -51,6 +51,15 @@ export const NotDeployedNotice = ({ networkName }: { networkName: string }) => (
   </div>
 );
 
+export const NetworkErrorNotice = ({ message }: { message: string }) => (
+  <div role="alert" className="alert alert-warning">
+    <div>
+      <p className="font-semibold m-0">The registry could not be read right now.</p>
+      <p className="m-0 text-sm">{message} Reload in a moment; nothing on-chain is affected.</p>
+    </div>
+  </div>
+);
+
 export const shortHash = (hash: string) => `${hash.slice(0, 10)}…${hash.slice(-6)}`;
 
 export const formatPeriod = (start: number, end: number) => {

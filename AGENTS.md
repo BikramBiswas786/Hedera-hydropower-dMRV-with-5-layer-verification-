@@ -53,7 +53,8 @@ yarn hardhat:test:fork            # contract tests against Hedera's HTS emulatio
 | Unit conversions (t ↔ kg units, cents, tinybar/weibar) | `packages/nextjs/services/mrv/pricing.ts` |
 | Server-only code (keys, HCS, writes, unsigned purchases) | `packages/nextjs/services/mrv/server/` |
 | REST routes / MCP route | `packages/nextjs/app/api/**/route.ts` |
-| Pages | `packages/nextjs/app/{methodology,verify,market,audit,certificate/[id]}/` with client components in `_components/` |
+| Pages | `packages/nextjs/app/{methodology,verify,plants,market,portfolio,audit,certificate/[id]}/` with components in `_components/` |
+| Plant detail, portfolios, CSV export (server) | `packages/nextjs/services/mrv/server/insights.ts` |
 | Generated ABIs + addresses | `packages/nextjs/contracts/deployedContracts.ts` (never edit by hand) |
 
 ## Invariants — keep these true
