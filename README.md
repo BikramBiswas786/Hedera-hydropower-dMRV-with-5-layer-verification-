@@ -1,471 +1,412 @@
-# Hedera Hydropower dMRV System
+# Hydro dMRV — a Scaffold-HBAR template
 
-[![Tests](https://img.shields.io/badge/tests-237%20passing-success)](./tests)
-[![Coverage](https://img.shields.io/badge/coverage-85%25-brightgreen)](./tests)
-[![Hedera](https://img.shields.io/badge/Hedera-Testnet-blue)](https://hashscan.io/testnet/topic/0.0.7462776)
-[![License](https://img.shields.io/badge/license-MIT-blue)](./LICENSE)
+**Verified hydropower renewable energy certificates on Hedera.** Metered telemetry from a run-of-river plant is
+checked by a deterministic 5-layer verifier, the report is anchored on the **Hedera Consensus Service**, a Solidity
+registry mints **Hedera Token Service** RECs, and a **Chainlink HBAR/USD** feed settles USD-priced sales in HBAR.
+Every capability is also exposed over **MCP** so AI agents can verify, audit and trade without scraping the UI.
 
-**Blockchain-powered carbon verification for small-scale hydropower plants**
-
-A production-ready digital MRV (Monitoring, Reporting & Verification) platform that automates carbon credit issuance for 1-15 MW hydropower projects using Hedera DLT, AI-enhanced verification, and UN CDM ACM0002 methodology.
-
-**Deployment**: [hydropower-mrv-19feb26.vercel.app](https://hydropower-mrv-19feb26.vercel.app/) | **Testnet**: [HashScan Topic 0.0.7462776](https://hashscan.io/testnet/topic/0.0.7462776)
-
----
-
-## System Architecture (Detailed)
-
-The platform is designed as a deterministic verification pipeline where each stage contributes to trust scoring, compliance calculations, and immutable auditability.
-
-### End-to-end processing flow
-1. **Telemetry ingestion**
-   - Plant devices send flow, head, generation, and environmental readings through authenticated API requests.
-   - Payloads include plant identity and timestamps required for replay protection and traceability.
-
-2. **Pre-verification controls**
-   - Schema and boundary validation reject malformed or physically impossible inputs early.
-   - Replay protection checks duplicate timestamp/plant combinations to prevent duplicate credit claims.
-   - Optional Redis-backed controls support low-latency deduplication and rate limiting.
-
-3. **5-layer verification engine**
-   - Layer 1: Physics validation against hydropower fundamentals.
-   - Layer 2: Temporal consistency against recent operating behavior.
-   - Layer 3: Environmental bounds for pH/turbidity/temperature sanity.
-   - Layer 4: Statistical anomaly detection for outlier behavior.
-   - Layer 5: Device consistency checks across correlated measurements.
-   - Weighted aggregation produces a normalized trust score and decision state.
-
-4. **Methodology computation (ACM0002)**
-   - Emission reductions are computed using baseline/project/leakage terms.
-   - Output is attached to verification records for auditable, methodology-aligned reporting.
-
-5. **Hedera integration and audit finalization**
-   - HCS writes immutable evidence of verification events and key metadata.
-   - HTS enables tokenized HREC lifecycle for approved issuance workflows.
-   - Transaction IDs and topic references provide public verifiability on HashScan.
-
-### Component boundaries
-- **API layer (Express/Node.js)**: authentication, validation, request orchestration.
-- **Verification core**: deterministic scoring logic and policy thresholds.
-- **Compliance module**: ACM0002 calculations and reporting fields.
-- **Blockchain adapter**: HCS/HTS submission, retries, and transaction reference capture.
-- **Operational controls**: replay prevention, rate limits, and test/monitoring hooks.
-
-### Implementation map (code-level)
-- `src/api/v1/telemetry.js` — telemetry ingestion endpoint and response shaping.
-- `src/engine/engine-v1.js` — weighted 5-layer trust scoring implementation.
-- `src/middleware/auth.js` — API key authentication gate.
-- `src/middleware/rateLimiter.js` — request throttling controls.
-- `src/middleware/replayProtection.js` — duplicate submission blocking (`plant_id + device_id + timestamp`).
-- `src/hedera/hcs.js` — immutable audit writes to HCS topic.
-- `src/hedera/hts.js` — HREC mint/transfer primitives over HTS.
-- `src/workflow.js` — orchestration across validation, engine, and Hedera clients.
-
-### Single reading lifecycle (API to chain)
-1. Client submits telemetry to `POST /api/v1/telemetry` with credentials.
-2. Middleware enforces auth, rate limits, schema checks, and replay guardrails.
-3. Engine computes layer scores, weighted aggregate trust score, and decision state.
-4. ACM0002 terms are computed and attached to the verification result.
-5. Result is submitted to Hedera HCS for immutable audit evidence.
-6. Approved results can trigger HTS HREC minting and return on-chain references.
-
-### Trust score policy
-- **> 0.90**: auto-approve (high confidence)
-- **0.50 - 0.90**: flagged for review or conditional handling
-- **< 0.50**: reject (low confidence/high anomaly likelihood)
-
-### Deployment and reliability notes
-- Stateless API deployment supports horizontal scaling.
-- Hedera transaction writes provide an append-only audit trail independent of API state.
-- Test coverage (237 tests) and PS1-PS6 scenarios validate fraud detection, replay controls, and plant isolation behavior.
-
----
-
-## Problem
-
-Small renewable projects cannot afford traditional carbon credit verification:
-
-- **Cost**: $15,000-50,000 per project
-- **Time**: 3-6 months manual auditing
-- **Fraud**: 30-40% error rate in manual MRV
-- **Access**: 70% of small projects excluded from carbon markets
-
-**Market opportunity**: 500+ GW of small-scale hydro globally generating 2 billion potential carbon credits annually.
-
----
-
-## Solution
-
-Automated verification platform combining:
-
-### 5-Layer AI Verification Engine
-1. **Physics Validation** (30%) — Hydropower equation: P = ρ×g×Q×H×η
-2. **Temporal Consistency** (25%) — Pattern analysis over time
-3. **Environmental Bounds** (20%) — Water quality parameters (pH, turbidity, temperature)
-4. **Statistical Anomalies** (15%) — 3-sigma outlier detection
-5. **Device Consistency** (10%) — Cross-reading validation
-
-**Trust Score**: 0-1.0 scale with automatic approval (>0.90), flagging (0.50-0.90), or rejection (<0.50).
-
-### Hedera Blockchain Integration
-- **HCS (Consensus Service)**: Immutable audit trail of all readings
-- **HTS (Token Service)**: Programmable carbon credit tokens (HRECs)
-- **Testnet Proof**: [2000+ transactions on HashScan](https://hashscan.io/testnet/topic/0.0.7462776)
-
-### ACM0002 Compliance
-Implements UN CDM methodology for small-scale grid-connected renewable energy:
-```
-ER = BE - PE - LE
-Where: ER = Emission Reductions, BE = Baseline Emissions, 
-       PE = Project Emissions, LE = Leakage Emissions
+```bash
+npm create scaffold-hbar@latest --template BikramBiswas786/Hedera-hydropower-dMRV-with-5-layer-verification-
 ```
 
----
-
-## Key Results
-
-### Production Test Suite (PS1-PS6)
-
-| Test | Result | Evidence |
-|------|--------|----------|
-| **PS1: Valid Telemetry** | ✅ PASSED | 98.5% trust score, auto-approved |
-| **PS2: Fraud Detection** | ✅ PASSED | 10x inflated reading caught (60.5% trust) |
-| **PS3: Environmental Violations** | ✅ PASSED | pH/turbidity anomalies flagged |
-| **PS4: Zero-Flow Protection** | ✅ PASSED | Impossible readings rejected (400) |
-| **PS5: Multi-Plant Isolation** | ✅ PASSED | Independent transaction IDs |
-| **PS6: Replay Protection** | ✅ PASSED | Duplicate timestamps blocked (409) |
-
-**Test Coverage**: 237 unit tests | 85.3% coverage | 6 production scenarios
-
-### Live Verification
-
-- **Testnet Transactions**: 2000+ on [HashScan](https://hashscan.io/testnet/topic/0.0.7462776)
-- **HCS Topic**: 0.0.7462776 (audit trail)
-- **HTS Token**: 0.0.7964264 (HREC carbon credits)
-- **Response Time**: <2 seconds per verification
-- **Cost**: $0.0001 per transaction
+| | |
+| --- | --- |
+| Hedera services | HCS (audit trail) · HTS (REC token created and minted by a contract) · Smart contracts |
+| Ecosystem integration | Chainlink Data Feeds, HBAR/USD on Hedera testnet and mainnet |
+| Stack | Next.js 15 · Hardhat · Yarn workspaces · Node ≥ 20.18.3 |
+| Agent surface | MCP server at `/api/mcp`, JSON API under `/api`, [`/llms.txt`](packages/nextjs/public/llms.txt), [`AGENTS.md`](AGENTS.md) |
 
 ---
 
-## Verification & On-Chain Evidence (Detailed)
+## Contents
 
-### What is written on-chain per reading
-For each processed telemetry packet, the system persists a verification attestation to Hedera HCS (when Hedera credentials/topic are configured). The attestation includes:
-- Device and timestamp identity fields
-- Verification status (`APPROVED`, `FLAGGED`, `REJECTED`)
-- Trust score and per-layer checks
-- ACM0002 calculation outputs (`BE`, `PE`, `LE`, `ER`)
-- Transaction metadata for traceability
-
-This creates an immutable sequence that auditors can independently cross-check against API logs and exported reports.
-
-### Decision behavior and credit flow
-- **APPROVED (>0.90)**: Recorded on HCS and eligible for HREC minting flow.
-- **FLAGGED (0.50-0.90)**: Recorded on HCS; issuance withheld pending review policy.
-- **REJECTED (<0.50)**: Recorded on HCS; no issuance.
-
-All outcomes are retained in the audit trail so rejected/flagged attempts are not hidden.
-
-### Anti-fraud controls implemented in pipeline
-- Input validation with physical plausibility checks
-- Replay protection (`plant_id + device_id + timestamp` uniqueness)
-- Multi-layer trust scoring (physics, temporal, environmental, anomaly, consistency)
-- Statistical anomaly detection and deterministic policy thresholds
-
-### Audit replacement readiness (unbiased criteria)
-The platform is designed to reduce manual audit burden significantly, but full replacement of manual audit should only be claimed after all of the following are met:
-1. 90-day shadow-mode results satisfy acceptance gates (<5% delta, low false rejection, stable operations)
-2. Mainnet deployment with production key management and operational monitoring
-3. Registry/compliance acceptance (e.g., Verra/Gold Standard process requirements)
-4. Independent third-party assurance for methodology and control environment
-
-### Practical reviewer checklist
-1. Submit known-good and known-bad telemetry payloads.
-2. Confirm API decisions align with trust thresholds.
-3. Verify corresponding HCS records on HashScan for each submission.
-4. Verify issuance only occurs for approved events.
-5. Reconcile monitoring report totals with on-chain entries.
+1. [Why this template exists](#why-this-template-exists)
+2. [Architecture](#architecture)
+3. [Quick start](#quick-start)
+4. [Environment variables](#environment-variables)
+5. [Walkthrough](#walkthrough)
+6. [The verification engine](#the-verification-engine)
+7. [The HydroREC contract](#the-hydrorec-contract)
+8. [Chainlink integration](#chainlink-integration)
+9. [For AI agents](#for-ai-agents)
+10. [Testing](#testing)
+11. [Project structure](#project-structure)
+12. [Extending the template](#extending-the-template)
+13. [Security model and limitations](#security-model-and-limitations)
 
 ---
 
-## Quick Start
+## Why this template exists
+
+Small hydropower plants sell renewable energy certificates (RECs) and carbon credits, but the evidence behind them
+is usually a spreadsheet checked once a year. Buyers cannot see the generation data, double counting is hard to rule
+out, and payment is manual. Building a trustworthy pipeline needs four hard pieces at once, and this template wires
+them together so you start from a working system instead of a blank page:
+
+- **Verification you can re-run.** A pure, deterministic engine that anyone can execute on the same readings.
+- **Tamper-evident evidence.** Reports are ordered and timestamped by HCS; the contract stores their SHA-256.
+- **Rules the issuer cannot bypass.** The contract enforces the plant's nameplate capacity, rejects overlapping
+  periods and requires a minimum trust score before it mints a single token.
+- **Settlement in real prices.** Sellers think in USD per MWh, buyers pay HBAR. That conversion has to happen
+  on-chain at an oracle price, or the seller is exposed to HBAR volatility between listing and sale.
+
+## Architecture
+
+```mermaid
+flowchart LR
+  subgraph Plant
+    SCADA[Data logger<br/>flow · head · kWh · water quality]
+  end
+  subgraph Next.js server
+    ENGINE[5-layer verifier<br/>services/mrv/engine.ts]
+    API[REST + MCP<br/>/api/*]
+  end
+  subgraph Hedera
+    HCS[(HCS audit topic)]
+    REG[HydroREC.sol]
+    HTS[(HTS token HREC)]
+    CL[Chainlink HBAR/USD]
+    MIRROR[Mirror node]
+  end
+  SCADA --> ENGINE
+  API --> ENGINE
+  ENGINE -- APPROVED report --> HCS
+  ENGINE -- submitAttestation(reportHash, HCS seq) --> REG
+  REG -- mint / burn via 0x167 --> HTS
+  REG -- latestRoundData --> CL
+  Browser((Buyer / auditor / agent)) -- buy · retire --> REG
+  Browser -- audit --> MIRROR
+  MIRROR -. HCS message .-> Browser
+```
+
+The sequence for one day of generation:
+
+1. The verifier scores 24 hourly readings (`verifyReadings`). Anything but **APPROVED** stops here.
+2. The report, a compact JSON message under 1024 bytes, is published to the HCS topic. `reportHash` is
+   `sha256(message)` and the message itself contains `dataHash = sha256(readings)`.
+3. `HydroREC.submitAttestation` is simulated first, so a rejection costs nothing, then sent with the HCS topic and
+   sequence number. The contract mints `energyWh / 1000` HTS units (kWh) into the plant operator's custody balance.
+4. The operator lists RECs at a USD price. A buyer calls `buy` or `buyAndRetire`; the contract reads Chainlink,
+   converts to HBAR, escrows the seller's proceeds and refunds any overpayment. Retiring burns the tokens on HTS.
+5. Anyone runs **Audit**: fetch the HCS message from the mirror node, hash it, and compare hash, plant, period,
+   energy and trust score with the on-chain record.
+
+### Why each integration is load-bearing
+
+| Piece | Remove it and… |
+| --- | --- |
+| **HCS** | Reports become mutable server data. The on-chain `reportHash` would point at nothing verifiable. |
+| **HTS via the contract** | RECs would be ledger entries in a contract with no wallet, explorer or ecosystem support. Because the contract is the token's treasury and supply key, no one can mint outside the verification rules. |
+| **Chainlink HBAR/USD** | USD-denominated settlement is impossible on-chain. Sellers would reprice by hand or carry HBAR risk. |
+
+## Quick start
 
 ### Prerequisites
-- Node.js 18+
-- npm 9+
-- Redis (optional, for replay protection)
 
-### Installation
+- Node.js **≥ 20.18.3** and Git
+- Yarn via Corepack: `corepack enable`
+- For testnet: a Hedera testnet account with an **ECDSA** key, funded from the
+  [Hedera Portal faucet](https://portal.hedera.com/faucet). ECDSA matters: the same key signs HCS messages and,
+  through its EVM alias, holds the contract's verifier role.
 
-```bash
-# Clone repository
-git clone https://github.com/BikramBiswas786/Hedera-hydropower-dMRV-with-5-layer-verification-.git
-cd Hedera-hydropower-dMRV-with-5-layer-verification-
-
-# Install dependencies
-npm install
-
-# Configure environment
-cp .env.example .env
-# Edit .env with your Hedera testnet credentials
-
-# Start API server
-npm run api
-
-# Run tests (in another terminal)
-npm test
-```
-
-**Detailed guides**: [QUICK_START.md](./QUICK_START.md) | [Setup Instructions](./README-SETUP.md)
-
----
-
-## High-Level Architecture Diagram
-
-```
-┌────────────────────────────────────────────────┐
-│  IoT Sensors (Flow, Head, Generation, Water Quality)  │
-└────────────────────────┬───────────────────────┘
-                         │
-                         │ REST API (Node.js/Express)
-                         │
-          ┌──────────────┼──────────────┐
-          │              │              │
-   [Input Validation]  [Replay Check]  [5-Layer Verification]
-          │              │              │
-          │              │        Trust Score (0-1.0)
-          │              │              │
-          └──────────────┼──────────────┘
-                         │
-          ┌──────────────┼──────────────┐
-          │              │              │
-    [HCS Audit Log] [ACM0002 Calc] [HREC Minting]
-          │              │              │
-          └──────────────┴──────────────┘
-                         │
-                  Hedera Network
-```
-
-**Documentation**: [Architecture Details](./docs/ARCHITECTURE.md) | [API Reference](./docs/API.md)
-
----
-
-## Benefits
-
-| Metric | Traditional | This Solution | Improvement |
-|--------|-------------|---------------|-------------|
-| **Cost** | $50,000 | $500 | 99% reduction |
-| **Time** | 6 months | 1 day | 180x faster |
-| **Accuracy** | 60-70% | 95%+ | 35% improvement |
-| **Transparency** | Opaque | Public ledger | Full auditability |
-| **Double-Counting** | Risk exists | Impossible | Zero risk |
-
----
-
-## Documentation
-
-### Getting Started
-- [Quick Start Guide](./QUICK_START.md) — 5-minute setup
-- [Development Setup](./README-SETUP.md) — Local environment
-- [API Documentation](./docs/API.md) — REST endpoints
-- [Demo Script](./DEMO_SCRIPT.txt) — Walkthrough
-
-### Technical
-- [Methodology](./docs/METHODOLOGY.md) — **Canonical verification logic**
-- [Architecture](./docs/ARCHITECTURE.md) — System design
-- [Security](./docs/SECURITY.md) — Security practices
-- [Testing Guide](./TESTING_GUIDE.md) — Running tests
-
-### Business & Operations
-- [6 MW Pilot Plan](./docs/PILOT_PLAN_6MW_PLANT.md) — 90-day deployment roadmap
-- [Cost Analysis](./docs/COST-ANALYSIS.md) — ROI breakdown
-- [Operator Guide](./docs/OPERATOR_GUIDE.md) — System operation
-- [Verra Integration](./docs/VERRA-GUIDEBOOK.md) — Carbon registry submission
-
-### Audit & Quality
-- [Complete Audit Guidebook](./docs/COMPLETE_AUDIT_GUIDEBOOK.md) — Full test documentation
-- [Documentation Audit](./docs/DOCUMENTATION-AUDIT-2026-03.md) — March 2026 audit report
-- [Live Demo Results](./LIVE_DEMO_RESULTS.md) — Test evidence
-
----
-
-## Production Roadmap
-
-### Phase 0: Foundation ✅ COMPLETE (March 2026)
-- Core 5-layer MRV engine
-- Hedera HCS/HTS integration
-- 237 automated tests (85% coverage)
-- Production test suite (PS1-PS6)
-- Vercel deployment
-- REST API with authentication
-- Redis replay protection
-- Comprehensive documentation
-
-### Phase 1: Mainnet Launch (Q2 2026)
-- Mainnet deployment on Hedera
-- 5-plant pilot in India
-- Real-time dashboard
-- Grafana monitoring
-- Guardian policy integration
-
-### Phase 2: Market Expansion (Q3 2026)
-- Verra/Gold Standard integration
-- Automated REC marketplace
-- Solar and wind support
-- ML model training on production data
-
-### Phase 3: Enterprise Scale (Q4 2026)
-- White-label SaaS platform
-- API marketplace
-- Multi-tenancy architecture
-- 10,000+ project data training
-
----
-
-## Next Milestone: 6 MW Shadow Pilot
-
-**Target**: 90-day parallel validation for 6 MW run-of-river plant
-
-**Success Criteria**:
-- <5% delta vs manual MRV reports
-- <0.5% false rejection rate  
-- 99% Hedera transaction success
-- Zero manual intervention for 90 days
-
-**Economics**:
-- Pilot cost: ₹38,000-63,000
-- Manual MRV: ₹1.25 lakh/quarter
-- Savings: 60-70%
-
-[Full Pilot Plan](./docs/PILOT_PLAN_6MW_PLANT.md)
-
----
-
-## For Developers
-
-### Technology Stack
-- **Backend**: Node.js, Express.js
-- **Blockchain**: Hedera SDK (@hashgraph/sdk)
-- **Database**: Redis (replay protection, rate limiting)
-- **Testing**: Jest (237 tests, 85% coverage)
-- **Deployment**: Vercel (serverless)
-- **CI/CD**: GitHub Actions
-
-### Contributing
-
-See [README-SETUP.md](./README-SETUP.md) for development environment setup.
-
-### Running Tests
+### 1. Scaffold and install
 
 ```bash
-# All tests
-npm test
-
-# Start API (required for PowerShell production tests)
-npm run api
-
-# Production PowerShell suite (PS1-PS6)
-powershell -ExecutionPolicy Bypass -File .\RUN_TESTS.ps1
-
-# Cross-platform PowerShell 7 equivalent
-pwsh -File ./RUN_TESTS.ps1
-
-# Coverage report
-npm run test:coverage
+npm create scaffold-hbar@latest --template BikramBiswas786/Hedera-hydropower-dMRV-with-5-layer-verification-
+cd <your-project>
+yarn install
 ```
 
-#### PS1 testing (explicit)
+Working from a clone instead? `git clone`, then `yarn install`.
 
-The `RUN_TESTS.ps1` script includes **PS1: Valid APPROVED Telemetry** as its first test case.
-To verify PS1 quickly after running the suite, check the output for:
+### 2. Run everything locally (no Hedera account, no internet)
 
-- `[PS1] Valid APPROVED Telemetry`
-- `[PASS] PS1 PASSED`
-
-You can also run a direct PS1 smoke request (PowerShell one-liner):
-
-```powershell
-$ts=[int64]([DateTimeOffset]::UtcNow.ToUnixTimeMilliseconds()); $body=@{plant_id='PLANT-ALPHA';device_id='TURBINE-PS1';readings=@{timestamp=$ts;flowRate=2.5;head=45;generatedKwh=900;pH=7.2;turbidity=10;temperature=18;efficiency=0.85}} | ConvertTo-Json -Depth 5; Invoke-RestMethod -Uri 'http://localhost:3000/api/v1/telemetry' -Method POST -Headers @{'x-api-key'='demokey001';'Content-Type'='application/json'} -Body $body
+```bash
+yarn chain:offline                     # terminal 1: Hardhat node on :8545
+yarn deploy --network localhost        # terminal 2: HydroREC + mock Chainlink feed + HTS mock + demo plant
 ```
 
----
+Open `packages/nextjs/scaffold.config.ts` and move `hederaLocalFork` to the front of `targetNetworks`, then:
 
-## For Plant Operators
+```bash
+yarn start                             # http://localhost:3000
+```
 
-Interested in piloting this system? Our [6 MW Plant Integration Guide](./docs/PILOT_PLAN_6MW_PLANT.md) includes:
+On a local chain there is no HCS, so the deploy step installs a faithful HTS mock at `0x167`
+(`contracts/mocks/MockHederaTokenService.sol`) and a settable `MockV3Aggregator` priced at $0.25/HBAR. To mint
+locally, create `packages/nextjs/.env.local` with `MRV_API_KEY=local-dev-key` and set `VERIFIER_PRIVATE_KEY` to the
+private key of **Account #0**, which `yarn chain:offline` prints when it starts. That well-known test account
+deployed the contracts, so it already holds the verifier role.
 
-- Hardware requirements (₹15K-50K depending on quality)
-- Software setup (open source, ₹0)
-- Shadow-mode validation process
-- ROI analysis and cost breakdown
+Then publish from **Verify** with the key `local-dev-key`, or run `yarn mrv:attest`. The burner wallet in the header
+lets you buy and retire on the **Market** page immediately.
 
-**Contact**: Open an [issue](https://github.com/BikramBiswas786/Hedera-hydropower-dMRV-with-5-layer-verification-/issues) with "Pilot" tag
+Prefer real HTS semantics locally? `yarn chain` starts a Hedera-forked node through
+[`@hashgraph/system-contracts-forking`](https://github.com/hashgraph/hedera-forking), which emulates HTS against
+testnet state. It needs internet access.
 
----
+### 3. Deploy to Hedera testnet
 
-## For Investors & Enterprise
+```bash
+yarn hardhat:account:import            # paste the ECDSA private key; it is stored encrypted in packages/hardhat/.env
+yarn deploy --network hederaTestnet
+```
 
-### Production Evidence
+The deploy prints Hashscan links for every transaction: contract creation, **HTS token creation from the contract**
+(it sends 20 HBAR for the creation fee; set `REC_TOKEN_CREATE_FEE_HBAR` to change it), and the demo plant
+registration. It also regenerates `packages/nextjs/contracts/deployedContracts.ts`. Commit that file so everyone
+who scaffolds your fork gets a working read-only app on testnet.
 
-- **Working Code**: 237 passing tests, 85% coverage
-- **Live Blockchain**: [Verifiable on HashScan](https://hashscan.io/testnet/topic/0.0.7462776)
-- **Deployed System**: [Production endpoint](https://hydropower-mrv-19feb26.vercel.app/)
-- **Proven Fraud Detection**: [Test results](./LIVE_DEMO_RESULTS.md)
-- **Clear Roadmap**: Documented pilot plan with economics
+Then enable publishing. In `packages/nextjs/.env.local`:
 
-### What Makes This Different
+```bash
+HEDERA_OPERATOR_ID=0.0.xxxxxxx
+HEDERA_OPERATOR_KEY=0x...          # the same ECDSA key as the deployer, or grant VERIFIER_ROLE to another one
+MRV_API_KEY=<a long random string>
+```
 
-| Aspect | This Project | Typical "Blockchain MRV" |
-|--------|--------------|---------------------------|
-| **Tests** | 237 automated + PS1-PS6 | "Coming soon" |
-| **Blockchain** | Live testnet, publicly verifiable | Mock or centralized |
-| **Deployment** | Production endpoint + API | Local demo only |
-| **Fraud Detection** | Proven (10x inflation caught) | Theoretical claims |
-| **Documentation** | Full pilot plan + economics | Whitepaper only |
-| **Methodology** | ACM0002 implemented | Vague carbon claims |
+```bash
+yarn mrv:create-topic              # prints HCS_TOPIC_ID=0.0.… → add it to .env.local
+yarn mrv:attest                    # verify 24 h of sample telemetry, anchor on HCS, mint RECs
+```
 
----
+`mrv:attest` prints the Hashscan links for the HCS message and the contract call. Open `/audit` and click
+**Audit** on the new row to watch your browser prove the two match.
 
-## License
+## Environment variables
 
-MIT License - see [LICENSE](./LICENSE)
+Nothing is required to browse the app or use the verifier. Copy the `.env.example` next to each package.
 
----
+`packages/nextjs/.env.local`
 
-## Legal Disclaimer
+| Variable | Required for | Notes |
+| --- | --- | --- |
+| `HEDERA_OPERATOR_ID` | publishing | Account that signs and pays for HCS messages. |
+| `HEDERA_OPERATOR_KEY` | publishing | Hex or DER. If ECDSA it is also the verifier's EVM key. |
+| `HCS_TOPIC_ID` | publishing | Created by `yarn mrv:create-topic`; the operator key is its submit key. |
+| `MRV_API_KEY` | publishing | Bearer token for `POST /api/mrv/attest` and the MCP `submit_attestation` tool. Unset disables writes. |
+| `VERIFIER_PRIVATE_KEY` | optional | Overrides the verifier EVM key (ED25519 operators, local chains). |
+| `NEXT_PUBLIC_HEDERA_TESTNET_RPC_URL` / `…MAINNET…` | optional | JSON-RPC relay; defaults to Hashio. |
+| `NEXT_PUBLIC_MIRROR_NODE_URL` | optional | Defaults to the public mirror node of the first target network. |
+| `NEXT_PUBLIC_WALLET_CONNECT_PROJECT_ID` | optional | Your WalletConnect project id for production. |
 
-**Testnet Environment**: This system currently operates on Hedera testnet. Carbon credits issued are for demonstration and testing purposes only. Production deployment requires:
+`packages/hardhat/.env`
 
-1. Mainnet Hedera account registration
-2. Verra VCS or Gold Standard certification
-3. Project-specific emission factor validation
-4. Legal compliance with local carbon market regulations
-5. Third-party audit of methodology implementation
+| Variable | Notes |
+| --- | --- |
+| `DEPLOYER_PRIVATE_KEY_ENCRYPTED` | Written by `yarn hardhat:account:import` / `:generate`. |
+| `VERIFIER_ADDRESS` | Extra address to grant `VERIFIER_ROLE` (the deployer always has it). |
+| `PLANT_OPERATOR_ADDRESS` | Receives the demo plant's RECs; defaults to the deployer. |
+| `REC_TOKEN_CREATE_FEE_HBAR` | HBAR sent with `createRecToken` (default 20). Unused change can be swept. |
+| `MAX_PRICE_AGE_SECONDS` | Oracle staleness bound for settlement (default 90000 = 25 h). |
 
-No claims are made about legal enforceability of testnet-issued credits.
+## Walkthrough
 
----
+| Page | What you can do |
+| --- | --- |
+| **Home** `/` | See the flow, live registry totals, and how to connect an agent over MCP. |
+| **Verify** `/verify` | Pick a scenario (`healthy`, `inflated`, `replay`, `spikes`, `polluted`) or paste your own readings. The report updates as you type, shows each layer's score and every failing interval, and previews the exact HCS message and `reportHash`. Operators can publish with the API key. |
+| **Market** `/market` | See the Chainlink HBAR/USD price and its age, your custody balance and proceeds; list RECs in USD/MWh; buy, or buy and retire in one transaction; associate the HTS token (HIP-719) and withdraw to your wallet. |
+| **Audit** `/audit` | Every attestation with its HCS link. **Audit** re-derives the evidence in your browser from the mirror node. Retirements are listed with their beneficiary. |
+| **Debug** `/debug` | Scaffold-HBAR's contract console for every `HydroREC` function. |
 
-## Contact
+## The verification engine
 
-**GitHub**: [@BikramBiswas786](https://github.com/BikramBiswas786)  
-**Issues**: [GitHub Issues](https://github.com/BikramBiswas786/Hedera-hydropower-dMRV-with-5-layer-verification-/issues)  
-**Documentation**: [Complete Docs](./docs/README.md)
+`packages/nextjs/services/mrv/engine.ts` is pure TypeScript with no I/O, so the same code runs in the browser, the
+API, the MCP server and the tests. Each layer scores every interval between 0 and 1, and the layer score is the mean.
 
----
+| Layer | Weight | Checks |
+| --- | --- | --- |
+| Physics | 30% | Metered energy vs hydraulic energy `E = ρ·g·Q·H·η·t`. Within 5% scores 1.0; beyond 30% scores 0. |
+| Temporal | 25% | Contiguous timestamps (no duplicates, reordering or gaps) and plausible hour-to-hour changes in energy, flow and head. |
+| Environmental | 20% | pH, turbidity and temperature inside river-plausible bands. Implausible water points to faulty or fabricated sensors. |
+| Statistical | 15% | Modified z-score (median/MAD) of each interval's metered/hydraulic ratio. A few bad points cannot skew it. |
+| Device | 10% | Energy ≤ nameplate capacity × interval, flow and head within design limits, declared efficiency within range. |
 
-## Acknowledgments
+Decision rules:
 
-- **Hedera** for excellent SDK and documentation
-- **UN Framework Convention on Climate Change** for ACM0002 methodology
-- **Open Source Community** for dependencies (Hashgraph SDK, Jest, Express)
+- **APPROVED**: trust ≥ 0.90 **and** no interval failed a check. A high average cannot launder a few inflated hours.
+- **FLAGGED**: trust ≥ 0.50, or high trust with failing intervals. Needs manual review; never minted automatically.
+- **REJECTED**: trust < 0.50, or an integrity failure: replayed or reordered timestamps, energy above nameplate
+  capacity, or more than 20% of intervals exceeding what the water can physically produce.
 
----
+The report also estimates avoided emissions with ACM0002 for run-of-river (`ER = EG × EF_grid`, default grid factor
+0.82 tCO₂/MWh). It is informational; carbon credit issuance is out of scope.
 
-<p align="center">
-  <strong>Built for a sustainable future</strong><br>
-  <a href="./QUICK_START.md">Quick Start</a> •
-  <a href="./docs/API.md">API Docs</a> •
-  <a href="./LIVE_DEMO_RESULTS.md">Live Results</a> •
-  <a href="./docs/PILOT_PLAN_6MW_PLANT.md">Pilot Plan</a>
-</p>
+Sample scenarios and their outcomes (`services/mrv/scenarios.ts`, covered by tests):
+
+| Scenario | What it simulates | Outcome |
+| --- | --- | --- |
+| `healthy` | 24 h of normal operation with sensor noise | APPROVED, 100% |
+| `inflated` | Meter reports 35% more energy than the river can produce | REJECTED |
+| `replay` | Four hours re-submitted with duplicate timestamps | REJECTED |
+| `spikes` | Three isolated 22% spikes | FLAGGED, 96% |
+| `polluted` | Acidic, very turbid water readings | FLAGGED, 82% |
+
+## The HydroREC contract
+
+`packages/hardhat/contracts/HydroREC.sol` (OpenZeppelin `AccessControl` + `ReentrancyGuard`).
+
+**Units.** 1 HREC token = 1 MWh. The token has 3 decimals, so one base unit is 1 kWh. Attestations carry `energyWh`;
+sub-kWh remainders carry over to the plant's next attestation so nothing is lost to rounding.
+
+**Registry custody.** Minted RECs stay in the contract, which is the HTS treasury, and are tracked per account, like
+I-REC and Verra registry accounts. Buyers therefore never need an HTS token association to buy or retire. Only
+`withdraw` moves tokens to a wallet, and that wallet must be associated first (HIP-719 `associate()` on the token
+address; the Market page has a button).
+
+| Function | Who | What it enforces |
+| --- | --- | --- |
+| `createRecToken(name, symbol)` payable | admin | Creates the HTS token via `0x167`; the contract is treasury, admin and supply key. Once only. |
+| `registerPlant(id, name, operator, capacityKw)` | admin | Unique id, non-zero capacity and operator. |
+| `submitAttestation(input)` | `VERIFIER_ROLE` | Plant active; `periodEnd ≤ now`; `periodStart ≥ lastPeriodEnd` (no double counting); `energyWh ≤ capacityKw × duration`; trust ≥ `minTrustScoreBps`; non-empty `reportHash`. Mints into the operator's custody. |
+| `createListing(units, usdCentsPerMwh)` / `cancelListing(id)` | holder | Moves units between custody and escrow. |
+| `quote(listingId, units)` | view | Native cost at the Chainlink price, rounded up in the seller's favour. |
+| `buy` / `buyAndRetire` payable | anyone | Rejects stale or invalid oracle answers and underpayment; escrows proceeds (pull payment); refunds excess. |
+| `retire(units, beneficiary)` | holder | Burns on HTS and stores a permanent retirement record. |
+| `withdraw(units)` · `withdrawProceeds()` | holder / seller | Token transfer via HTS · HBAR proceeds. |
+| `sweepHbar(to)` | admin | Recovers stray HBAR (for example, change from the token-creation fee) but never seller proceeds. |
+
+**HBAR decimals.** Inside the EVM on Hedera, `msg.value` is in tinybar (10⁸ per HBAR), while JSON-RPC `value` is
+18-decimal weibar. The contract takes `NATIVE_UNITS_PER_HBAR` as a constructor argument (10⁸ on Hedera, 10¹⁸ on a
+local Hardhat EVM), so quotes are always in the unit `msg.value` uses. The UI scales quotes to weibar with
+`quoteToTxValue` (`app/market/_components/pricing.ts`).
+
+**HTS response codes.** HTS returns a response code instead of reverting. `contracts/lib/HederaTokenLib.sol`
+converts every non-`SUCCESS` (22) code into `HtsCallFailed(selector, code)`, so failures can never pass silently.
+
+## Chainlink integration
+
+Feeds are configured per network in `packages/hardhat/utils/hydroNetworkConfig.ts`:
+
+| Network | HBAR/USD feed |
+| --- | --- |
+| Hedera testnet (296) | `0x59bC155EB6c6C415fE43255aF66EcF0523c92B4a` |
+| Hedera mainnet (295) | `0xAF685FB45C12b92b5054ccb9313e135525F9b5d5` |
+| Local | `MockV3Aggregator` (8 decimals, $0.25) |
+
+Settlement price for `units` kWh listed at `p` US cents per MWh, with feed answer `a` at `d` decimals:
+
+```
+native = ceil( p · units · 10^d · NATIVE_UNITS_PER_HBAR / (100 · 1000 · a) )
+```
+
+`_freshHbarUsd` rejects non-positive answers, incomplete rounds and answers older than `maxPriceAge` (set per
+network, adjustable by the admin with `setMaxPriceAge`). The Market page shows the answer's age and warns when
+purchases are paused. `hbarUsdPrice()` returns the raw answer for display without the staleness check.
+
+The contract only depends on the `AggregatorV3Interface`, so any adapter that exposes it works. To use Pyth or Supra,
+deploy an adapter (see Scaffold-HBAR's `oracles` template) and pass its address to the constructor.
+
+## For AI agents
+
+Agents get the same capabilities as people, without a browser.
+
+**MCP** at `/api/mcp` (streamable HTTP, stateless; `@modelcontextprotocol/server` v2, serving both current and
+2025-era clients):
+
+```bash
+claude mcp add --transport http hydro-dmrv http://localhost:3000/api/mcp
+```
+
+| Tool | Access | Purpose |
+| --- | --- | --- |
+| `list_scenarios` | public | Scenario catalogue and the demo plant profile |
+| `generate_sample_telemetry` | public | Deterministic readings for any scenario |
+| `verify_telemetry` | public | Full report, HCS message and `reportHash`; writes nothing |
+| `get_registry_overview` | public | Totals, plants, token, Chainlink price |
+| `list_attestations` | public | Paginated attestations with HCS anchors |
+| `audit_attestation` | public | Mirror-node proof that an attestation matches its report |
+| `list_open_listings` | public | Listings with HBAR quotes |
+| `submit_attestation` | bearer `MRV_API_KEY` | Verify → HCS → mint. Only listed for authenticated requests |
+
+Resource `hydro-dmrv://methodology` gives agents the verification rules. The same operations are available as REST
+endpoints, listed in [`/llms.txt`](packages/nextjs/public/llms.txt). For coding agents working *on* the template,
+[`AGENTS.md`](AGENTS.md) has the conventions and invariants.
+
+## Testing
+
+```bash
+yarn test              # contracts + frontend unit tests
+yarn hardhat:test      # 23 contract tests, hermetic (HTS mock installed at 0x167)
+yarn hardhat:test:fork # same suite against Hedera's HTS emulation (HEDERA_FORKING, needs internet)
+yarn hardhat:test:gas  # with a gas report
+yarn next:test         # 27 vitest tests: engine, HCS report, audit, pricing
+yarn lint && yarn next:build
+```
+
+What the tests pin down:
+
+- **Contracts**: HTS token creation, mint and burn; HTS failure codes surfacing as reverts; the association
+  requirement; the capacity ceiling; period overlap; trust threshold; sub-kWh carry; oracle-priced quotes that
+  track the feed; stale and invalid price rejection; refunds; pull-payment proceeds; sweep never touching seller
+  funds; and the invariant *treasury balance = custody + listed units*.
+- **Engine**: every scenario's decision, capacity hard failure, determinism, the physics formula, HCS messages
+  fitting a single chunk, and hash equality between local and mirror-node payloads.
+- **Audit**: a report that matches, an attestation claiming more energy than its report, a report altered after
+  anchoring, a missing anchor and a mirror-node outage.
+
+The template also ships a [Hedera Harness](https://github.com/hedera-dev/hedera-harness) recipe in `.harness/`:
+static and command validators, a Playwright smoke gate for every route, a Tier 3 acceptance contract, and an opt-in
+Tier 3.5 testnet deployment. `hedera-harness` and `playwright` are dev dependencies, so after a one-time
+`npx playwright install chromium` you can run `yarn harness:validate` (Tiers 0–2, no credentials) or
+`yarn harness:run` to have an agent build a feature against these validators.
+
+## Project structure
+
+```
+packages/
+├── hardhat/
+│   ├── contracts/
+│   │   ├── HydroREC.sol                 registry, attestation, marketplace, retirement
+│   │   ├── lib/HederaTokenLib.sol       HTS create/mint/burn/transfer with response-code checks
+│   │   ├── interfaces/                  IHederaTokenService subset, Chainlink AggregatorV3Interface
+│   │   └── mocks/                       MockHederaTokenService (0x167), MockV3Aggregator
+│   ├── deploy/                          00 deploy · 01 idempotent setup (token, roles, demo plant)
+│   ├── utils/hydroNetworkConfig.ts      feeds, HBAR units, staleness, Hashscan links per network
+│   └── test/HydroREC.test.ts
+└── nextjs/
+    ├── app/
+    │   ├── verify/ market/ audit/       pages (server components + client components in _components/)
+    │   └── api/                         mrv/* · registry/* · mcp
+    ├── services/mrv/
+    │   ├── engine.ts  schema.ts  scenarios.ts   pure verification core
+    │   ├── report.ts  audit.ts  views.ts        HCS message, mirror-node audit, contract view models
+    │   ├── network.ts                           chain, mirror node, Hashscan, deployment lookup
+    │   └── server/                              HCS, registry reads, attestation pipeline, MCP, auth
+    ├── scripts/mrv.ts                   yarn mrv:create-topic · yarn mrv:attest
+    └── public/llms.txt
+.harness/                                Hedera Harness spec, PRD, validators, acceptance contract
+template.json                            create-scaffold-hbar manifest
+```
+
+## Extending the template
+
+- **Your plant.** Register it with `registerPlant` (Debug page) and pass a matching `plant` profile to the API or
+  MCP tools. The attestation pipeline refuses profiles whose capacity differs from the on-chain registration.
+- **Real telemetry.** Post your logger's readings to `POST /api/mrv/attest` on a schedule. The schema is in
+  `services/mrv/schema.ts`; readings are validated with zod at the boundary.
+- **Stricter verification.** Tune `LAYER_WEIGHTS`, `DECISION_THRESHOLDS` or add a layer in `engine.ts`; keep it
+  pure and add a scenario plus a test. Raise `minTrustScoreBps` on-chain to match.
+- **Another oracle.** Anything exposing `AggregatorV3Interface`; see [Chainlink integration](#chainlink-integration).
+- **Mainnet.** Put `chains.hedera` first in `scaffold.config.ts` and deploy with `--network hederaMainnet`.
+
+## Security model and limitations
+
+- **The verifier is trusted to run the engine honestly.** What it cannot do is hide its work: every report is on
+  HCS, the engine is deterministic, `dataHash` commits to the raw readings, and the contract independently enforces
+  capacity, continuity and trust thresholds. Production deployments should add device-signed telemetry and several
+  verifiers.
+- **Registry custody** means the contract holds RECs for accounts. The contract is not upgradeable and has no
+  admin path to move anyone's balance.
+- **Oracle risk** is bounded by the staleness check and the seller-favouring round-up. Tune `maxPriceAge` to the
+  feed's heartbeat.
+- **Write endpoints** are disabled unless `MRV_API_KEY` is set and use constant-time comparison. Put them behind
+  your own authentication before exposing them publicly.
+- **Not audited.** This is a starting point, not production-ready code.
+
+## License and credits
+
+MIT, see [LICENCE](LICENCE). Built on [Scaffold-HBAR](https://github.com/hedera-dev/scaffold-hbar) (MIT, BuidlGuidl
+and hedera-dev). The verification layers originate from the author's
+[Hedera hydropower MRV](https://github.com/BikramBiswas786/hedera-hydropower-mrv) research.

@@ -1,0 +1,50 @@
+schemaVersion: 2
+
+name: hydro-dmrv
+description: >-
+  Scaffold-HBAR template for digital MRV of run-of-river hydropower. A 5-layer verifier scores metered
+  telemetry, approved reports are anchored on HCS, the HydroREC contract mints HTS RECs, and a Chainlink
+  HBAR/USD feed settles USD-priced sales in HBAR. Read-only MCP tools and REST endpoints expose it to agents.
+
+agent: claude
+
+baseline:
+  commands:
+    - name: install
+      command: yarn install
+    - name: build
+      command: yarn next:build
+      timeoutMs: 600000
+
+validators:
+  static: .harness/validators/static.json
+  commands: .harness/validators/yarn.json
+  playwright: .harness/validators/playwright-smoke.yaml
+
+contract: .harness/acceptance-contract.json
+validator:
+  enabled: true
+
+forbiddenFiles:
+  - .env
+  - packages/nextjs/.env
+  - packages/nextjs/.env.local
+  - packages/hardhat/.env
+
+# Tier 3.5: deploys to testnet with an ephemeral funded signer. Export HEDERA_OPERATOR_ID / HEDERA_OPERATOR_KEY
+# (ECDSA) in your shell to enable; nothing is written into the workspace.
+chainValidation:
+  enabled: false
+  network: testnet
+  operator:
+    accountIdEnv: HEDERA_OPERATOR_ID
+    privateKeyEnv: HEDERA_OPERATOR_KEY
+  fundingHbar: 40
+  sweepBack: true
+  expose:
+    browserLocalStorageKey: burnerWallet.pk
+    envVars: [__RUNTIME_DEPLOYER_PRIVATE_KEY]
+  deploy:
+    commands:
+      - name: deploy-testnet
+        command: yarn workspace @sh/hardhat hardhat deploy --network hederaTestnet
