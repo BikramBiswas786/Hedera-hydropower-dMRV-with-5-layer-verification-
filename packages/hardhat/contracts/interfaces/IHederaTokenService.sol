@@ -41,6 +41,10 @@ interface IHederaTokenService {
         int32 decimals
     ) external payable returns (int64 responseCode, address tokenAddress);
 
+    function createNonFungibleToken(
+        HederaToken memory token
+    ) external payable returns (int64 responseCode, address tokenAddress);
+
     function mintToken(
         address token,
         int64 amount,
@@ -52,6 +56,13 @@ interface IHederaTokenService {
         int64 amount,
         int64[] memory serialNumbers
     ) external returns (int64 responseCode, int64 newTotalSupply);
+
+    function transferNFT(
+        address token,
+        address sender,
+        address recipient,
+        int64 serialNumber
+    ) external returns (int64 responseCode);
 
     function transferToken(
         address token,

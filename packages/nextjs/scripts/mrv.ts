@@ -50,7 +50,10 @@ async function attest(scenario: ScenarioName) {
 
   console.log(`Attestation #${outcome.attestationId} minted ${outcome.unitsMinted} kWh of RECs`);
   console.log(`Contract call: ${outcome.transaction.url ?? outcome.transaction.hash}`);
-  if (outcome.hcs) console.log(`HCS report:    ${outcome.hcs.url}`);
+  if (outcome.hcs) {
+    console.log(`HCS readings:  ${outcome.hcs.dataUrl}`);
+    console.log(`HCS report:    ${outcome.hcs.url}`);
+  }
 }
 
 async function main() {

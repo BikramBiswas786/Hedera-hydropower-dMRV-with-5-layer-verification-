@@ -56,8 +56,28 @@
       "journey": "market",
       "route": "/market",
       "severity": "major",
-      "statement": "Without a deployment the market and audit pages explain how to deploy instead of crashing; with one they show the Chainlink HBAR/USD price and listings.",
-      "howToVerify": "Open /market and /audit. Either an info alert says HydroREC is not deployed and names the deploy command, or the HBAR / USD (Chainlink) card and an 'Open listings' heading are visible.",
+      "statement": "Without a deployment the market and audit pages explain how to deploy instead of crashing; with one, the market shows the settlement price with both oracle sources (Chainlink primary, Supra fallback) and which one is pricing.",
+      "howToVerify": "Open /market and /audit. Either an info alert says HydroREC is not deployed and names the deploy command, or the 'HBAR / USD settlement price' card lists 'Chainlink (primary)' and 'Supra (fallback)' rows with one marked 'pricing', and an 'Open listings' heading is visible.",
+      "walletRequired": false,
+      "verifiableWithoutCredentials": true
+    },
+    {
+      "id": "C7",
+      "journey": "certificate",
+      "route": "/certificate/0",
+      "severity": "major",
+      "statement": "The certificate route renders without crashing: a not-deployed notice, a 'does not exist' message, or a Retirement Certificate with amount, beneficiary and NFT details.",
+      "howToVerify": "Open /certificate/0 and /certificate/abc. The first shows one of the three states; the second returns the 404 page.",
+      "walletRequired": false,
+      "verifiableWithoutCredentials": true
+    },
+    {
+      "id": "C8",
+      "journey": "agents",
+      "route": "/llms.txt",
+      "severity": "major",
+      "statement": "Agents can discover the reproduction and purchase tools.",
+      "howToVerify": "Open /llms.txt and confirm it names reproduce_attestation and prepare_purchase and states that purchases are returned unsigned.",
       "walletRequired": false,
       "verifiableWithoutCredentials": true
     }

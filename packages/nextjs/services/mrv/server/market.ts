@@ -1,0 +1,85 @@
+import { hashscan, isLiveHederaChain } from "../network";
+import { formatHbar, quoteToTxValue } from "../pricing";
+import { type RetirementView, toRetirementView } from "../views";
+import { ApiError, revertReason } from "./errors";
+import { requireDeployment } from "./registry";
+import { type Address, type Hex, encodeFunctionData, zeroAddress } from "viem";
+import { z } from "zod";
+
+export const preparePurchaseSchema = z.object({
+  listingId: z.number().int().min(0),
+  amountKwh: z.number().int().positive(),
+  retire: z.boolean().default(true),
+  beneficiary: z.string().max(128).default(""),
+});
+
+export type PreparedPurchase = {
+  chainId: number;
+  to: Address;
+  data: Hex;
+  /** JSON-RPC `value` in weibar (18 decimals), including a 1% buffer; the contract refunds the excess. */
+  value: string;
+  valueHbar: string;
+  exactCostHbar: string;
+  functionName: "buy" | "buyAndRetire";
+  summary: string;
+};
+
+/**
+ * Builds an unsigned purchase so an agent (or any wallet) can sign and send it itself. The server never holds the
+ * buyer's key. The quote is read at the current oracle price; resubmit if it is minutes old.
+ */
+export async function preparePurchase(input: z.input<typeof preparePurchaseSchema>): Promise<PreparedPurchase> {
+  const { listingId, amountKwh, retire, beneficiary } = preparePurchaseSchema.parse(input);
+  const { address, abi, client } = requireDeployment();
+  const units = BigInt(amountKwh);
+
+  let quote: bigint;
+  try {
+    quote = await client.readContract({ address, abi, functionName: "quote", args: [BigInt(listingId), units] });
+  } catch (error) {
+    throw new ApiError(`Cannot quote listing ${listingId}: ${revertReason(error)}`, 409);
+  }
+  const nativeUnitsPerHbar = await client.readContract({ address, abi, functionName: "NATIVE_UNITS_PER_HBAR" });
+  const value = quoteToTxValue(quote, nativeUnitsPerHbar);
+  const data = retire
+    ? encodeFunctionData({ abi, functionName: "buyAndRetire", args: [BigInt(listingId), units, beneficiary] })
+    : encodeFunctionData({ abi, functionName: "buy", args: [BigInt(listingId), units] });
+
+  const exactCostHbar = formatHbar(quote, nativeUnitsPerHbar);
+  return {
+    chainId: client.chain.id,
+    to: address,
+    data,
+    value: value.toString(),
+    valueHbar: formatHbar(value, 10n ** 18n),
+    exactCostHbar,
+    functionName: retire ? "buyAndRetire" : "buy",
+    summary: `${retire ? "Buy and retire" : "Buy"} ${amountKwh} kWh from listing #${listingId} for ${exactCostHbar} HBAR`,
+  };
+}
+
+export type RetirementCertificate = RetirementView & {
+  certificateToken: Address | null;
+  nftUrl: string | null;
+  certificateUrl: string;
+};
+
+export async function getRetirementCertificate(retirementId: number): Promise<RetirementCertificate> {
+  const { address, abi, client } = requireDeployment();
+  const count = await client.readContract({ address, abi, functionName: "retirementCount" });
+  if (BigInt(retirementId) >= count) throw new ApiError(`Retirement #${retirementId} does not exist`, 404);
+
+  const [raw, token] = await Promise.all([
+    client.readContract({ address, abi, functionName: "getRetirement", args: [BigInt(retirementId)] }),
+    client.readContract({ address, abi, functionName: "certificateToken" }),
+  ]);
+  const retirement = toRetirementView(raw, retirementId);
+  const hasNft = token !== zeroAddress && retirement.certificateSerial > 0;
+  return {
+    ...retirement,
+    certificateToken: token === zeroAddress ? null : token,
+    nftUrl: hasNft && isLiveHederaChain() ? hashscan.nft(token, retirement.certificateSerial) : null,
+    certificateUrl: `/certificate/${retirementId}`,
+  };
+}

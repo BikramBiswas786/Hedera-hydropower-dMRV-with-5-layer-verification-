@@ -4,7 +4,8 @@ name: hydro-dmrv
 description: >-
   Scaffold-HBAR template for digital MRV of run-of-river hydropower. A 5-layer verifier scores metered
   telemetry, approved reports are anchored on HCS, the HydroREC contract mints HTS RECs, and a Chainlink
-  HBAR/USD feed settles USD-priced sales in HBAR. Read-only MCP tools and REST endpoints expose it to agents.
+  HBAR/USD feed with a Supra fallback settles USD-priced sales in HBAR; retirements mint HTS NFT certificates.
+  Raw readings are on HCS so verdicts can be reproduced. MCP tools and REST endpoints expose it all to agents.
 
 agent: claude
 
@@ -39,7 +40,7 @@ chainValidation:
   operator:
     accountIdEnv: HEDERA_OPERATOR_ID
     privateKeyEnv: HEDERA_OPERATOR_KEY
-  fundingHbar: 40
+  fundingHbar: 70
   sweepBack: true
   expose:
     browserLocalStorageKey: burnerWallet.pk

@@ -81,6 +81,21 @@ async function listedFixture() {
   return ctx;
 }
 
+/** ERC-721 facade of an HTS NFT collection plus HIP-719 `associate()`. */
+const HTS_NFT_ABI = [
+  "function ownerOf(uint256) view returns (address)",
+  "function tokenURI(uint256) view returns (string)",
+  "function totalSupply() view returns (uint256)",
+  "function associate() returns (uint256)",
+];
+
+async function certificateFixture() {
+  const ctx = await listedFixture();
+  await ctx.registry.createCertificateToken("Hydro REC Retirement", "HRET", { value: ethers.parseEther("20") });
+  const certificates = new ethers.Contract(await ctx.registry.certificateToken(), HTS_NFT_ABI, ethers.provider);
+  return { ...ctx, certificates };
+}
+
 describe("HydroREC", function () {
   describe("REC token", function () {
     it("creates an HTS token with 3 decimals and no initial supply", async function () {
@@ -376,6 +391,93 @@ describe("HydroREC", function () {
       await expect(registry.connect(buyer).retire(1, "x")).to.be.revertedWithCustomError(
         registry,
         "InsufficientCustody",
+      );
+    });
+  });
+
+  describe("retirement certificates (HTS NFT)", function () {
+    it("mints a certificate NFT per retirement and delivers it to an associated wallet", async function () {
+      const { registry, certificates, buyer } = await loadFixture(certificateFixture);
+      await (certificates.connect(buyer) as typeof certificates).associate();
+      const cost = await registry.quote(0, 250);
+
+      await expect(registry.connect(buyer).buyAndRetire(0, 250, "Acme FY2026", { value: cost }))
+        .to.emit(registry, "CertificateIssued")
+        .withArgs(0, 1, true);
+
+      expect(await certificates.ownerOf(1)).to.equal(buyer.address);
+      expect(await certificates.tokenURI(1)).to.equal("hydro-dmrv:retirement:0");
+      const retirement = await registry.getRetirement(0);
+      expect(retirement.certificateSerial).to.equal(1);
+      expect(retirement.certificateDelivered).to.equal(true);
+    });
+
+    it("never fails a retirement because the wallet cannot hold the NFT yet", async function () {
+      const { registry, certificates, operator, mocked } = await loadFixture(certificateFixture);
+      if (!mocked) this.skip();
+
+      await expect(registry.connect(operator).retire(10, "self-consumption"))
+        .to.emit(registry, "CertificateIssued")
+        .withArgs(0, 1, false);
+      expect(await certificates.ownerOf(1)).to.equal(await registry.getAddress());
+      expect((await registry.getRetirement(0)).certificateDelivered).to.equal(false);
+    });
+
+    it("lets only the retiring account claim a pending certificate, once, after associating", async function () {
+      const { registry, certificates, operator, stranger, mocked } = await loadFixture(certificateFixture);
+      if (!mocked) this.skip();
+      await registry.connect(operator).retire(10, "");
+
+      await expect(registry.connect(stranger).claimCertificate(0)).to.be.revertedWithCustomError(
+        registry,
+        "NotRetirementOwner",
+      );
+      await expect(registry.connect(operator).claimCertificate(0)).to.be.revertedWithCustomError(
+        registry,
+        "HtsCallFailed",
+      );
+
+      await (certificates.connect(operator) as typeof certificates).associate();
+      await expect(registry.connect(operator).claimCertificate(0))
+        .to.emit(registry, "CertificateClaimed")
+        .withArgs(0, operator.address, 1);
+      expect(await certificates.ownerOf(1)).to.equal(operator.address);
+      await expect(registry.connect(operator).claimCertificate(0)).to.be.revertedWithCustomError(
+        registry,
+        "NoCertificateToClaim",
+      );
+    });
+
+    it("numbers certificates sequentially with metadata that points at each retirement", async function () {
+      const { registry, certificates, operator } = await loadFixture(certificateFixture);
+      await registry.connect(operator).retire(5, "a");
+      await registry.connect(operator).retire(5, "b");
+
+      expect(await certificates.totalSupply()).to.equal(2);
+      expect(await certificates.tokenURI(2)).to.equal("hydro-dmrv:retirement:1");
+    });
+
+    it("issues no certificate when the collection was never created", async function () {
+      const { registry, operator } = await loadFixture(listedFixture);
+
+      await expect(registry.connect(operator).retire(10, "")).to.not.emit(registry, "CertificateIssued");
+      expect((await registry.getRetirement(0)).certificateSerial).to.equal(0);
+      await expect(registry.connect(operator).claimCertificate(0)).to.be.revertedWithCustomError(
+        registry,
+        "NoCertificateToClaim",
+      );
+    });
+
+    it("creates the collection once, admin only", async function () {
+      const { registry, stranger } = await loadFixture(certificateFixture);
+
+      await expect(registry.createCertificateToken("X", "X")).to.be.revertedWithCustomError(
+        registry,
+        "TokenAlreadyCreated",
+      );
+      await expect(registry.connect(stranger).createCertificateToken("X", "X")).to.be.revertedWithCustomError(
+        registry,
+        "AccessControlUnauthorizedAccount",
       );
     });
   });

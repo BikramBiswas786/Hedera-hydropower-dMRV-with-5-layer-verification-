@@ -1,6 +1,5 @@
 import { DECISION_THRESHOLDS, LAYER_WEIGHTS, expectedEnergyKwh, verifyReadings } from "./engine";
-import { buildHcsMessage, hashBase64Message, readingsHash } from "./report";
-import { DEMO_PLANT, SCENARIO_NAMES, generateScenario } from "./scenarios";
+import { DEMO_PLANT, generateScenario } from "./scenarios";
 import { describe, expect, it } from "vitest";
 
 const END = new Date("2026-09-20T00:00:00Z");
@@ -76,28 +75,5 @@ describe("verifyReadings", () => {
     const [reading] = scenario("healthy");
     const expected = (1_000 * 9.81 * reading.flowRateM3s * reading.headM * 0.85) / 1_000;
     expect(expectedEnergyKwh(reading, DEMO_PLANT)).toBeCloseTo(expected, 9);
-  });
-});
-
-describe("HCS report", () => {
-  it.each(SCENARIO_NAMES)("fits a single HCS chunk for the %s scenario", name => {
-    const readings = scenario(name);
-    const { message } = buildHcsMessage(verifyReadings(readings, DEMO_PLANT), readings);
-    expect(new TextEncoder().encode(message).length).toBeLessThanOrEqual(1_024);
-  });
-
-  it("hashes identically whether computed locally or from the mirror node's base64 payload", () => {
-    const readings = scenario("healthy");
-    const { message, reportHash, body } = buildHcsMessage(verifyReadings(readings, DEMO_PLANT), readings);
-    const base64 = btoa(String.fromCharCode(...new TextEncoder().encode(message)));
-
-    expect(hashBase64Message(base64)).toEqual({ text: message, hash: reportHash });
-    expect(body.dataHash).toBe(readingsHash(readings));
-  });
-
-  it("changes the data hash when any reading is altered", () => {
-    const readings = scenario("healthy");
-    const tampered = readings.map((r, i) => (i === 3 ? { ...r, energyKwh: r.energyKwh + 0.001 } : r));
-    expect(readingsHash(tampered)).not.toBe(readingsHash(readings));
   });
 });

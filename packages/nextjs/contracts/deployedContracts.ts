@@ -7,7 +7,7 @@ import { GenericContractsDeclaration } from "~~/utils/scaffold-hbar/contract";
 const deployedContracts = {
   31337: {
     HydroREC: {
-      address: "0xe7f1725E7734CE288F8367e1Bb143E90bb3F0512",
+      address: "0xDc64a140Aa3E981100a9becA4E685f962f0cF6C9",
       abi: [
         {
           inputs: [
@@ -231,6 +231,28 @@ const deployedContracts = {
           inputs: [
             {
               internalType: "uint256",
+              name: "retirementId",
+              type: "uint256",
+            },
+          ],
+          name: "NoCertificateToClaim",
+          type: "error",
+        },
+        {
+          inputs: [
+            {
+              internalType: "uint256",
+              name: "retirementId",
+              type: "uint256",
+            },
+          ],
+          name: "NotRetirementOwner",
+          type: "error",
+        },
+        {
+          inputs: [
+            {
+              internalType: "uint256",
               name: "listingId",
               type: "uint256",
             },
@@ -386,6 +408,69 @@ const deployedContracts = {
             },
           ],
           name: "AttestationSubmitted",
+          type: "event",
+        },
+        {
+          anonymous: false,
+          inputs: [
+            {
+              indexed: true,
+              internalType: "uint256",
+              name: "retirementId",
+              type: "uint256",
+            },
+            {
+              indexed: true,
+              internalType: "address",
+              name: "account",
+              type: "address",
+            },
+            {
+              indexed: false,
+              internalType: "uint64",
+              name: "serial",
+              type: "uint64",
+            },
+          ],
+          name: "CertificateClaimed",
+          type: "event",
+        },
+        {
+          anonymous: false,
+          inputs: [
+            {
+              indexed: true,
+              internalType: "uint256",
+              name: "retirementId",
+              type: "uint256",
+            },
+            {
+              indexed: false,
+              internalType: "uint64",
+              name: "serial",
+              type: "uint64",
+            },
+            {
+              indexed: false,
+              internalType: "bool",
+              name: "delivered",
+              type: "bool",
+            },
+          ],
+          name: "CertificateIssued",
+          type: "event",
+        },
+        {
+          anonymous: false,
+          inputs: [
+            {
+              indexed: true,
+              internalType: "address",
+              name: "token",
+              type: "address",
+            },
+          ],
+          name: "CertificateTokenCreated",
           type: "event",
         },
         {
@@ -880,6 +965,50 @@ const deployedContracts = {
           type: "function",
         },
         {
+          inputs: [],
+          name: "certificateToken",
+          outputs: [
+            {
+              internalType: "address",
+              name: "",
+              type: "address",
+            },
+          ],
+          stateMutability: "view",
+          type: "function",
+        },
+        {
+          inputs: [
+            {
+              internalType: "uint256",
+              name: "retirementId",
+              type: "uint256",
+            },
+          ],
+          name: "claimCertificate",
+          outputs: [],
+          stateMutability: "nonpayable",
+          type: "function",
+        },
+        {
+          inputs: [
+            {
+              internalType: "string",
+              name: "name",
+              type: "string",
+            },
+            {
+              internalType: "string",
+              name: "symbol",
+              type: "string",
+            },
+          ],
+          name: "createCertificateToken",
+          outputs: [],
+          stateMutability: "payable",
+          type: "function",
+        },
+        {
           inputs: [
             {
               internalType: "uint64",
@@ -1216,6 +1345,57 @@ const deployedContracts = {
           inputs: [
             {
               internalType: "uint256",
+              name: "retirementId",
+              type: "uint256",
+            },
+          ],
+          name: "getRetirement",
+          outputs: [
+            {
+              components: [
+                {
+                  internalType: "address",
+                  name: "account",
+                  type: "address",
+                },
+                {
+                  internalType: "uint64",
+                  name: "units",
+                  type: "uint64",
+                },
+                {
+                  internalType: "uint64",
+                  name: "timestamp",
+                  type: "uint64",
+                },
+                {
+                  internalType: "string",
+                  name: "beneficiary",
+                  type: "string",
+                },
+                {
+                  internalType: "uint64",
+                  name: "certificateSerial",
+                  type: "uint64",
+                },
+                {
+                  internalType: "bool",
+                  name: "certificateDelivered",
+                  type: "bool",
+                },
+              ],
+              internalType: "struct HydroREC.Retirement",
+              name: "",
+              type: "tuple",
+            },
+          ],
+          stateMutability: "view",
+          type: "function",
+        },
+        {
+          inputs: [
+            {
+              internalType: "uint256",
               name: "start",
               type: "uint256",
             },
@@ -1248,6 +1428,16 @@ const deployedContracts = {
                   internalType: "string",
                   name: "beneficiary",
                   type: "string",
+                },
+                {
+                  internalType: "uint64",
+                  name: "certificateSerial",
+                  type: "uint64",
+                },
+                {
+                  internalType: "bool",
+                  name: "certificateDelivered",
+                  type: "bool",
                 },
               ],
               internalType: "struct HydroREC.Retirement[]",
@@ -1314,29 +1504,6 @@ const deployedContracts = {
               internalType: "bool",
               name: "",
               type: "bool",
-            },
-          ],
-          stateMutability: "view",
-          type: "function",
-        },
-        {
-          inputs: [],
-          name: "hbarUsdPrice",
-          outputs: [
-            {
-              internalType: "int256",
-              name: "answer",
-              type: "int256",
-            },
-            {
-              internalType: "uint8",
-              name: "decimals",
-              type: "uint8",
-            },
-            {
-              internalType: "uint256",
-              name: "updatedAt",
-              type: "uint256",
             },
           ],
           stateMutability: "view",
@@ -1768,6 +1935,110 @@ const deployedContracts = {
         revokeRole: "@openzeppelin/contracts/access/AccessControl.sol",
         supportsInterface: "@openzeppelin/contracts/access/AccessControl.sol",
       },
+      deployedOnBlock: 8,
+    },
+    MockSupraSValueFeed: {
+      address: "0xe7f1725E7734CE288F8367e1Bb143E90bb3F0512",
+      abi: [
+        {
+          inputs: [],
+          name: "broken",
+          outputs: [
+            {
+              internalType: "bool",
+              name: "",
+              type: "bool",
+            },
+          ],
+          stateMutability: "view",
+          type: "function",
+        },
+        {
+          inputs: [
+            {
+              internalType: "uint256",
+              name: "pairIndex",
+              type: "uint256",
+            },
+          ],
+          name: "getSvalue",
+          outputs: [
+            {
+              components: [
+                {
+                  internalType: "uint256",
+                  name: "round",
+                  type: "uint256",
+                },
+                {
+                  internalType: "uint256",
+                  name: "decimals",
+                  type: "uint256",
+                },
+                {
+                  internalType: "uint256",
+                  name: "time",
+                  type: "uint256",
+                },
+                {
+                  internalType: "uint256",
+                  name: "price",
+                  type: "uint256",
+                },
+              ],
+              internalType: "struct ISupraSValueFeed.PriceFeed",
+              name: "",
+              type: "tuple",
+            },
+          ],
+          stateMutability: "view",
+          type: "function",
+        },
+        {
+          inputs: [
+            {
+              internalType: "bool",
+              name: "broken_",
+              type: "bool",
+            },
+          ],
+          name: "setBroken",
+          outputs: [],
+          stateMutability: "nonpayable",
+          type: "function",
+        },
+        {
+          inputs: [
+            {
+              internalType: "uint256",
+              name: "pairIndex",
+              type: "uint256",
+            },
+            {
+              internalType: "uint256",
+              name: "price",
+              type: "uint256",
+            },
+            {
+              internalType: "uint256",
+              name: "decimals",
+              type: "uint256",
+            },
+            {
+              internalType: "uint256",
+              name: "time",
+              type: "uint256",
+            },
+          ],
+          name: "setPrice",
+          outputs: [],
+          stateMutability: "nonpayable",
+          type: "function",
+        },
+      ],
+      inheritedFunctions: {
+        getSvalue: "contracts/interfaces/ISupraSValueFeed.sol",
+      },
       deployedOnBlock: 3,
     },
     MockV3Aggregator: {
@@ -1881,6 +2152,303 @@ const deployedContracts = {
         latestRoundData: "contracts/interfaces/AggregatorV3Interface.sol",
       },
       deployedOnBlock: 1,
+    },
+    ResilientHbarUsdFeed: {
+      address: "0xCf7Ed3AccA5a467e9e704C703E8D87F634fB0Fc9",
+      abi: [
+        {
+          inputs: [
+            {
+              internalType: "contract AggregatorV3Interface",
+              name: "primary",
+              type: "address",
+            },
+            {
+              internalType: "contract ISupraSValueFeed",
+              name: "fallbackFeed",
+              type: "address",
+            },
+            {
+              internalType: "uint256",
+              name: "fallbackPairId",
+              type: "uint256",
+            },
+            {
+              internalType: "uint256",
+              name: "maxAge",
+              type: "uint256",
+            },
+            {
+              internalType: "uint256",
+              name: "maxDeviationBps",
+              type: "uint256",
+            },
+          ],
+          stateMutability: "nonpayable",
+          type: "constructor",
+        },
+        {
+          inputs: [],
+          name: "InvalidConfig",
+          type: "error",
+        },
+        {
+          inputs: [],
+          name: "NoFreshPrice",
+          type: "error",
+        },
+        {
+          inputs: [
+            {
+              internalType: "int256",
+              name: "primaryAnswer",
+              type: "int256",
+            },
+            {
+              internalType: "int256",
+              name: "fallbackAnswer",
+              type: "int256",
+            },
+            {
+              internalType: "uint256",
+              name: "deviationBps",
+              type: "uint256",
+            },
+          ],
+          name: "PriceSourcesDisagree",
+          type: "error",
+        },
+        {
+          inputs: [],
+          name: "FALLBACK",
+          outputs: [
+            {
+              internalType: "contract ISupraSValueFeed",
+              name: "",
+              type: "address",
+            },
+          ],
+          stateMutability: "view",
+          type: "function",
+        },
+        {
+          inputs: [],
+          name: "FALLBACK_PAIR_ID",
+          outputs: [
+            {
+              internalType: "uint256",
+              name: "",
+              type: "uint256",
+            },
+          ],
+          stateMutability: "view",
+          type: "function",
+        },
+        {
+          inputs: [],
+          name: "MAX_AGE",
+          outputs: [
+            {
+              internalType: "uint256",
+              name: "",
+              type: "uint256",
+            },
+          ],
+          stateMutability: "view",
+          type: "function",
+        },
+        {
+          inputs: [],
+          name: "MAX_DEVIATION_BPS",
+          outputs: [
+            {
+              internalType: "uint256",
+              name: "",
+              type: "uint256",
+            },
+          ],
+          stateMutability: "view",
+          type: "function",
+        },
+        {
+          inputs: [],
+          name: "PRIMARY",
+          outputs: [
+            {
+              internalType: "contract AggregatorV3Interface",
+              name: "",
+              type: "address",
+            },
+          ],
+          stateMutability: "view",
+          type: "function",
+        },
+        {
+          inputs: [],
+          name: "PRIMARY_DECIMALS",
+          outputs: [
+            {
+              internalType: "uint8",
+              name: "",
+              type: "uint8",
+            },
+          ],
+          stateMutability: "view",
+          type: "function",
+        },
+        {
+          inputs: [],
+          name: "decimals",
+          outputs: [
+            {
+              internalType: "uint8",
+              name: "",
+              type: "uint8",
+            },
+          ],
+          stateMutability: "view",
+          type: "function",
+        },
+        {
+          inputs: [],
+          name: "description",
+          outputs: [
+            {
+              internalType: "string",
+              name: "",
+              type: "string",
+            },
+          ],
+          stateMutability: "pure",
+          type: "function",
+        },
+        {
+          inputs: [],
+          name: "latestRoundData",
+          outputs: [
+            {
+              internalType: "uint80",
+              name: "",
+              type: "uint80",
+            },
+            {
+              internalType: "int256",
+              name: "",
+              type: "int256",
+            },
+            {
+              internalType: "uint256",
+              name: "",
+              type: "uint256",
+            },
+            {
+              internalType: "uint256",
+              name: "",
+              type: "uint256",
+            },
+            {
+              internalType: "uint80",
+              name: "",
+              type: "uint80",
+            },
+          ],
+          stateMutability: "view",
+          type: "function",
+        },
+        {
+          inputs: [],
+          name: "readSources",
+          outputs: [
+            {
+              components: [
+                {
+                  internalType: "int256",
+                  name: "answer",
+                  type: "int256",
+                },
+                {
+                  internalType: "uint256",
+                  name: "updatedAt",
+                  type: "uint256",
+                },
+                {
+                  internalType: "bool",
+                  name: "fresh",
+                  type: "bool",
+                },
+              ],
+              internalType: "struct ResilientHbarUsdFeed.Reading",
+              name: "primary",
+              type: "tuple",
+            },
+            {
+              components: [
+                {
+                  internalType: "int256",
+                  name: "answer",
+                  type: "int256",
+                },
+                {
+                  internalType: "uint256",
+                  name: "updatedAt",
+                  type: "uint256",
+                },
+                {
+                  internalType: "bool",
+                  name: "fresh",
+                  type: "bool",
+                },
+              ],
+              internalType: "struct ResilientHbarUsdFeed.Reading",
+              name: "secondary",
+              type: "tuple",
+            },
+          ],
+          stateMutability: "view",
+          type: "function",
+        },
+        {
+          inputs: [],
+          name: "resolve",
+          outputs: [
+            {
+              components: [
+                {
+                  internalType: "int256",
+                  name: "answer",
+                  type: "int256",
+                },
+                {
+                  internalType: "uint256",
+                  name: "updatedAt",
+                  type: "uint256",
+                },
+                {
+                  internalType: "bool",
+                  name: "fresh",
+                  type: "bool",
+                },
+              ],
+              internalType: "struct ResilientHbarUsdFeed.Reading",
+              name: "answer",
+              type: "tuple",
+            },
+            {
+              internalType: "enum ResilientHbarUsdFeed.Source",
+              name: "source",
+              type: "uint8",
+            },
+          ],
+          stateMutability: "view",
+          type: "function",
+        },
+      ],
+      inheritedFunctions: {
+        decimals: "contracts/interfaces/AggregatorV3Interface.sol",
+        description: "contracts/interfaces/AggregatorV3Interface.sol",
+        latestRoundData: "contracts/interfaces/AggregatorV3Interface.sol",
+      },
+      deployedOnBlock: 6,
     },
   },
 } as const;

@@ -17,7 +17,7 @@ const STEPS = [
   {
     title: "Anchor",
     service: "HCS",
-    body: "The report is published to a Consensus Service topic. Its SHA-256 is what the contract records.",
+    body: "Raw readings and the report are published to a Consensus Service topic, so anyone can re-run the verification.",
   },
   {
     title: "Issue",
@@ -26,8 +26,8 @@ const STEPS = [
   },
   {
     title: "Settle",
-    service: "Chainlink HBAR/USD",
-    body: "RECs are priced in USD and paid in HBAR at the oracle rate. Retiring burns them on HTS.",
+    service: "Chainlink + Supra",
+    body: "RECs are priced in USD and paid in HBAR at a cross-checked oracle rate. Retiring burns them and mints an NFT certificate.",
   },
 ];
 

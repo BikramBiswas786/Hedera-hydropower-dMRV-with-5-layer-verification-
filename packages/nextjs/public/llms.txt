@@ -1,30 +1,43 @@
 # Hydro dMRV
 
 > Digital measurement, reporting and verification (dMRV) for run-of-river hydropower on Hedera. A deterministic
-> 5-layer engine verifies metered telemetry; approved reports are anchored on the Hedera Consensus Service (HCS);
-> the HydroREC contract mints Hedera Token Service RECs (1 token = 1 MWh, 1 base unit = 1 kWh) and sells them at
-> USD prices settled in HBAR through a Chainlink HBAR/USD feed. Retiring burns the tokens.
+> 5-layer engine verifies metered telemetry. The raw readings and the verdict are published on the Hedera Consensus
+> Service (HCS), so any agent can reproduce a decision from public data. The HydroREC contract mints Hedera Token
+> Service RECs (1 token = 1 MWh, 1 base unit = 1 kWh), sells them at USD prices settled in HBAR through Chainlink
+> HBAR/USD cross-checked against a Supra fallback, and on retirement burns them and mints an HTS NFT certificate.
 
-Everything below is relative to this site's origin. Read-only access needs no credentials.
+Everything below is relative to this site's origin. Read-only access needs no credentials. The server never holds a
+buyer's key: purchases are returned as unsigned transactions.
 
 ## MCP (recommended for agents)
 
 - Endpoint: `/api/mcp` (streamable HTTP, stateless; MCP 2025-06-18 and 2026-07-28)
-- Tools: `list_scenarios`, `generate_sample_telemetry`, `verify_telemetry`, `get_registry_overview`,
-  `list_attestations`, `audit_attestation`, `list_open_listings`
+- Verify: `list_scenarios`, `generate_sample_telemetry`, `verify_telemetry`
+- Registry: `get_registry_overview` (totals, plants, tokens, both oracle sources), `list_attestations`
+- Evidence: `audit_attestation` (report vs chain), `reproduce_attestation` (re-run the engine on the readings
+  published to HCS and compare every figure)
+- Market: `list_open_listings`, `prepare_purchase` (unsigned buy / buyAndRetire for your own wallet),
+  `get_retirement_certificate`
 - Write tool `submit_attestation` is listed only when the request carries `Authorization: Bearer <MRV_API_KEY>`
 - Resource: `hydro-dmrv://methodology` (verification rules in Markdown)
+
+Buying as an agent: `list_open_listings` → `prepare_purchase { listingId, amountKwh, beneficiary }` → sign and send
+`{ to, data, value }` with your wallet on `chainId` → `get_retirement_certificate`.
 
 ## REST
 
 - `GET  /api/mrv/scenarios` — sample scenarios and the demo plant profile
 - `GET  /api/mrv/scenarios/{healthy|inflated|replay|spikes|polluted}?hours=24` — deterministic readings
-- `POST /api/mrv/verify` — body `{ "readings": Reading[], "plant"?: PlantProfile }` → report, HCS message, reportHash
-- `GET  /api/registry` — on-chain totals, plants, REC token, Chainlink HBAR/USD price
+- `POST /api/mrv/verify` — body `{ "readings": Reading[], "plant"?: PlantProfile }` → report, HCS report message,
+  reportHash, dataHash, dataChunks
+- `GET  /api/registry` — on-chain totals, plants, REC token, oracle status (price, active source, both providers)
 - `GET  /api/registry/attestations?start=0&count=20` — attestations with HCS anchors
-- `GET  /api/registry/attestations/{id}/audit` — mirror-node proof that an attestation matches its HCS report
+- `GET  /api/registry/attestations/{id}/audit` — report vs on-chain record
+- `GET  /api/registry/attestations/{id}/reproduce` — full reproduction from HCS data
 - `GET  /api/registry/listings` — open listings with HBAR quotes (tinybar)
-- `POST /api/mrv/attest` — verify → HCS → mint; requires `Authorization: Bearer <MRV_API_KEY>`
+- `POST /api/market/prepare-purchase` — body `{ listingId, amountKwh, retire?: true, beneficiary?: "" }`
+- `GET  /api/registry/retirements/{id}` — retirement and NFT certificate
+- `POST /api/mrv/attest` — verify → HCS (readings, report) → mint; requires `Authorization: Bearer <MRV_API_KEY>`
 
 ## Data shapes
 
@@ -32,9 +45,13 @@ Everything below is relative to this site's origin. Read-only access needs no cr
   efficiency?, ph?, turbidityNtu?, temperatureC? }`
 - Decision: APPROVED (trust ≥ 0.90 and no failed interval), FLAGGED (trust ≥ 0.50), else REJECTED.
   Replayed timestamps, energy above nameplate capacity or >20% of intervals failing physics are always REJECTED.
+- HCS: `hydro-dmrv/readings@1` (readings + plant profile, up to 20 chunks) then `hydro-dmrv/report@2`
+  (verdict with `data: { hash, sequence }`). The contract stores sha256(report) and the report's sequence number.
+- Prices: listings in US cents per MWh; quotes in the EVM's native unit (tinybar on Hedera); `prepare_purchase`
+  returns `value` already scaled to 18-decimal weibar with a 1% buffer that the contract refunds.
 
 ## Source
 
-- Contracts: `packages/hardhat/contracts/HydroREC.sol`
-- Engine: `packages/nextjs/services/mrv/engine.ts`
+- Contracts: `packages/hardhat/contracts/HydroREC.sol`, `ResilientHbarUsdFeed.sol`
+- Engine: `packages/nextjs/services/mrv/engine.ts`; reproduction: `services/mrv/audit.ts`
 - Agent briefing for coding agents: `AGENTS.md`

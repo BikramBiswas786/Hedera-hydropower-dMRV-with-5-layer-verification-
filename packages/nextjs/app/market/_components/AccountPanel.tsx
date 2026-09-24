@@ -1,10 +1,10 @@
 "use client";
 
 import { useState } from "react";
-import { formatHbar, mwhToUnits, usdToCents } from "./pricing";
 import type { Address } from "viem";
 import { useWriteContract } from "wagmi";
 import { useScaffoldReadContract, useScaffoldWriteContract, useTransactor } from "~~/hooks/scaffold-hbar";
+import { formatHbar, mwhToUnits, usdToCents } from "~~/services/mrv/pricing";
 import { formatMwh } from "~~/services/mrv/views";
 
 /** HIP-719: HTS tokens expose `associate()` at their EVM address so an EOA can opt in to holding them. */

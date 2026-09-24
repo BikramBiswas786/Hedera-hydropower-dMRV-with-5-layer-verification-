@@ -54,6 +54,58 @@ contract MockHtsToken {
     }
 }
 
+/// @notice NFT collection created by MockHederaTokenService, exposing the ERC-721 read facade real HTS NFTs have.
+contract MockHtsNft {
+    address public immutable HTS;
+    address public immutable TREASURY;
+    address public immutable KEY_HOLDER;
+
+    string public name;
+    string public symbol;
+    uint256 public totalSupply;
+
+    mapping(uint256 serial => address) public ownerOf;
+    mapping(uint256 serial => bytes) private _metadata;
+    mapping(address account => uint256) public balanceOf;
+    mapping(address account => bool) public isAssociated;
+
+    constructor(string memory name_, string memory symbol_, address treasury, address keyHolder) {
+        HTS = msg.sender;
+        name = name_;
+        symbol = symbol_;
+        TREASURY = treasury;
+        KEY_HOLDER = keyHolder;
+        isAssociated[treasury] = true;
+    }
+
+    modifier onlyHts() {
+        require(msg.sender == HTS, "only HTS");
+        _;
+    }
+
+    function associate() external returns (uint256 responseCode) {
+        isAssociated[msg.sender] = true;
+        return 22;
+    }
+
+    function tokenURI(uint256 serial) external view returns (string memory) {
+        return string(_metadata[serial]);
+    }
+
+    function mintToTreasury(bytes memory metadata) external onlyHts returns (uint256 serial) {
+        serial = ++totalSupply;
+        ownerOf[serial] = TREASURY;
+        _metadata[serial] = metadata;
+        balanceOf[TREASURY] += 1;
+    }
+
+    function move(address from, address to, uint256 serial) external onlyHts {
+        ownerOf[serial] = to;
+        balanceOf[from] -= 1;
+        balanceOf[to] += 1;
+    }
+}
+
 /// @notice Local stand-in for the HTS system contract, installed at 0x167 with `hardhat_setCode`.
 /// @dev Models the behaviours the template relies on: response codes instead of reverts, supply-key checks,
 /// treasury-only mint/burn and the association requirement on transfers.
@@ -62,6 +114,10 @@ contract MockHederaTokenService {
     int64 internal constant INVALID_SIGNATURE = 7;
     int64 internal constant INSUFFICIENT_TOKEN_BALANCE = 178;
     int64 internal constant TOKEN_NOT_ASSOCIATED_TO_ACCOUNT = 184;
+    int64 internal constant SENDER_DOES_NOT_OWN_NFT_SERIAL_NO = 237;
+    int64 internal constant METADATA_TOO_LONG = 199;
+
+    mapping(address token => bool) public isNft;
 
     /// @dev Non-zero forces every call to return this code, to exercise failure handling.
     int64 public forcedResponseCode;
@@ -89,17 +145,58 @@ contract MockHederaTokenService {
         return (SUCCESS, address(created));
     }
 
+    function createNonFungibleToken(
+        IHederaTokenService.HederaToken memory token
+    ) external payable returns (int64 responseCode, address tokenAddress) {
+        if (forcedResponseCode != 0) return (forcedResponseCode, address(0));
+
+        address keyHolder = token.tokenKeys.length > 0 ? token.tokenKeys[0].key.contractId : address(0);
+        MockHtsNft created = new MockHtsNft(token.name, token.symbol, token.treasury, keyHolder);
+        isNft[address(created)] = true;
+        return (SUCCESS, address(created));
+    }
+
+    function transferNFT(
+        address token,
+        address sender,
+        address recipient,
+        int64 serialNumber
+    ) external returns (int64) {
+        if (forcedResponseCode != 0) return forcedResponseCode;
+        MockHtsNft nft = MockHtsNft(token);
+        if (msg.sender != sender) return INVALID_SIGNATURE;
+        if (nft.ownerOf(uint64(serialNumber)) != sender) return SENDER_DOES_NOT_OWN_NFT_SERIAL_NO;
+        if (!nft.isAssociated(recipient)) return TOKEN_NOT_ASSOCIATED_TO_ACCOUNT;
+
+        nft.move(sender, recipient, uint64(serialNumber));
+        return SUCCESS;
+    }
+
     function mintToken(
         address token,
         int64 amount,
-        bytes[] memory
+        bytes[] memory metadata
     ) external returns (int64 responseCode, int64 newTotalSupply, int64[] memory serialNumbers) {
         if (forcedResponseCode != 0) return (forcedResponseCode, 0, serialNumbers);
+        if (isNft[token]) return _mintNfts(MockHtsNft(token), metadata);
         MockHtsToken t = MockHtsToken(token);
         if (msg.sender != t.KEY_HOLDER()) return (INVALID_SIGNATURE, 0, serialNumbers);
 
         t.mintToTreasury(uint64(amount));
         return (SUCCESS, int64(uint64(t.totalSupply())), serialNumbers);
+    }
+
+    function _mintNfts(
+        MockHtsNft nft,
+        bytes[] memory metadata
+    ) private returns (int64 responseCode, int64 newTotalSupply, int64[] memory serialNumbers) {
+        if (msg.sender != nft.KEY_HOLDER()) return (INVALID_SIGNATURE, 0, serialNumbers);
+        serialNumbers = new int64[](metadata.length);
+        for (uint256 i = 0; i < metadata.length; i++) {
+            if (metadata[i].length > 100) return (METADATA_TOO_LONG, 0, new int64[](0));
+            serialNumbers[i] = int64(uint64(nft.mintToTreasury(metadata[i])));
+        }
+        return (SUCCESS, int64(uint64(nft.totalSupply())), serialNumbers);
     }
 
     function burnToken(address token, int64 amount, int64[] memory) external returns (int64, int64) {

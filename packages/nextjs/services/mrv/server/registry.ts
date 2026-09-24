@@ -1,4 +1,4 @@
-import { HYDRO_CHAIN_ID, getHydroRecDeployment } from "../network";
+import { HYDRO_CHAIN_ID, getDeployment, getHydroRecDeployment } from "../network";
 import {
   type AttestationView,
   type ListingView,
@@ -7,6 +7,7 @@ import {
   toListingView,
   toPlantView,
 } from "../views";
+import { ApiError } from "./errors";
 import { type Address, type Hex, createPublicClient, http, zeroAddress } from "viem";
 import scaffoldConfig from "~~/scaffold.config";
 
@@ -31,10 +32,10 @@ const HARDHAT_NETWORK_NAME: Partial<Record<number, string>> = {
   31337: "localhost",
 };
 
-export class RegistryNotDeployedError extends Error {
+export class RegistryNotDeployedError extends ApiError {
   constructor() {
     const network = HARDHAT_NETWORK_NAME[HYDRO_CHAIN_ID] ?? "<network>";
-    super(`HydroREC is not deployed on chain ${HYDRO_CHAIN_ID}. Run \`yarn deploy --network ${network}\` first.`);
+    super(`HydroREC is not deployed on chain ${HYDRO_CHAIN_ID}. Run \`yarn deploy --network ${network}\` first.`, 503);
   }
 }
 
@@ -42,6 +43,40 @@ export function requireDeployment() {
   const deployment = getHydroRecDeployment();
   if (!deployment) throw new RegistryNotDeployedError();
   return { address: deployment.address, abi: deployment.abi, client };
+}
+
+type SourceStatus = { price: number | null; updatedAt: number; fresh: boolean };
+
+export type OracleStatus = {
+  /** Settlement price, or null when purchases are paused (sources disagree or none is fresh). */
+  price: number | null;
+  activeSource: "chainlink" | "supra" | null;
+  pausedReason: string | null;
+  chainlink: SourceStatus;
+  supra: SourceStatus;
+};
+
+const toSourceStatus = ({ answer, updatedAt, fresh }: { answer: bigint; updatedAt: bigint; fresh: boolean }) => ({
+  price: answer > 0n ? Number(answer) / 1e8 : null,
+  updatedAt: Number(updatedAt),
+  fresh,
+});
+
+/** Reads both oracle sources behind the settlement feed; null when the feed is not part of this deployment. */
+export async function getOracleStatus(): Promise<OracleStatus | null> {
+  const feed = getDeployment("ResilientHbarUsdFeed");
+  if (!feed) return null;
+  const read = { address: feed.address, abi: feed.abi } as const;
+  const [primary, fallback] = await client.readContract({ ...read, functionName: "readSources" });
+  const base = { chainlink: toSourceStatus(primary), supra: toSourceStatus(fallback) };
+  try {
+    const [answer, source] = await client.readContract({ ...read, functionName: "resolve" });
+    const activeSource = source === 1 ? "chainlink" : "supra";
+    return { ...base, price: Number(answer.answer) / 1e8, activeSource, pausedReason: null };
+  } catch (error) {
+    const reason = String(error).includes("PriceSourcesDisagree") ? "oracle sources disagree" : "no fresh oracle price";
+    return { ...base, price: null, activeSource: null, pausedReason: reason };
+  }
 }
 
 export type RegistryOverview = {
@@ -54,7 +89,7 @@ export type RegistryOverview = {
   listingCount: number;
   retirementCount: number;
   minTrustScoreBps: number;
-  hbarUsd: { price: number; updatedAt: number } | null;
+  oracle: OracleStatus | null;
   plants: PlantView[];
 };
 
@@ -73,20 +108,14 @@ export async function getRegistryOverview(): Promise<RegistryOverview> {
     client.readContract({ ...read, functionName: "getPlantIds" }),
   ]);
 
-  const [plants, hbarUsd] = await Promise.all([
+  const [plants, oracle] = await Promise.all([
     Promise.all(
       plantIds.map(async id =>
         toPlantView(id, await client.readContract({ ...read, functionName: "getPlant", args: [id] })),
       ),
     ),
-    client
-      .readContract({ ...read, functionName: "hbarUsdPrice" })
-      .then(([answer, decimals, updatedAt]) => ({
-        price: Number(answer) / 10 ** decimals,
-        updatedAt: Number(updatedAt),
-      }))
-      // A missing or broken feed must not hide the rest of the registry.
-      .catch(() => null),
+    // A broken feed must not hide the rest of the registry.
+    getOracleStatus().catch(() => null),
   ]);
 
   return {
@@ -99,7 +128,7 @@ export async function getRegistryOverview(): Promise<RegistryOverview> {
     listingCount: Number(listings),
     retirementCount: Number(retirements),
     minTrustScoreBps: minTrust,
-    hbarUsd,
+    oracle,
     plants,
   };
 }

@@ -6,7 +6,9 @@ see the "For AI agents" section of `README.md`.
 
 This is **Hydro dMRV**, a Scaffold-HBAR template: Next.js App Router frontend and API in `packages/nextjs`, Hardhat
 contracts in `packages/hardhat`, Yarn 3 workspaces. It verifies hydropower telemetry, anchors reports on HCS, mints
-HTS RECs through the `HydroREC` contract, and prices them with a Chainlink HBAR/USD feed.
+HTS RECs through the `HydroREC` contract, prices them through `ResilientHbarUsdFeed` (Chainlink with a Supra
+fallback), and mints an HTS NFT certificate for every retirement. Raw readings are on HCS too, so anyone can reproduce
+a verdict.
 
 ## Commands
 
@@ -33,17 +35,19 @@ yarn hardhat:test:fork            # contract tests against Hedera's HTS emulatio
 
 | Concern | Path |
 | --- | --- |
-| Contract | `packages/hardhat/contracts/HydroREC.sol` |
+| Registry contract | `packages/hardhat/contracts/HydroREC.sol` |
+| Oracle aggregator | `packages/hardhat/contracts/ResilientHbarUsdFeed.sol` |
 | HTS calls (always go through this) | `packages/hardhat/contracts/lib/HederaTokenLib.sol` |
-| Local test doubles | `packages/hardhat/contracts/mocks/` (HTS mock installed at `0x167`, Chainlink mock) |
+| Local test doubles | `packages/hardhat/contracts/mocks/` (HTS mock at `0x167` incl. NFTs, Chainlink and Supra mocks) |
 | Deploy + idempotent setup | `packages/hardhat/deploy/00_*.ts`, `01_*.ts` |
 | Per-network feeds, units, staleness | `packages/hardhat/utils/hydroNetworkConfig.ts` |
 | Verification engine (pure) | `packages/nextjs/services/mrv/engine.ts`, `schema.ts`, `scenarios.ts` |
-| HCS message format and hashing | `packages/nextjs/services/mrv/report.ts` |
-| Mirror-node audit | `packages/nextjs/services/mrv/audit.ts` |
-| Server-only code (keys, HCS, writes) | `packages/nextjs/services/mrv/server/` |
+| HCS data + report messages | `packages/nextjs/services/mrv/report.ts`, built together by `pipeline.ts` |
+| Mirror-node reads, audit, reproduction | `packages/nextjs/services/mrv/mirror.ts`, `audit.ts` |
+| Unit conversions (kWh, cents, tinybar/weibar) | `packages/nextjs/services/mrv/pricing.ts` |
+| Server-only code (keys, HCS, writes, unsigned purchases) | `packages/nextjs/services/mrv/server/` |
 | REST routes / MCP route | `packages/nextjs/app/api/**/route.ts` |
-| Pages | `packages/nextjs/app/{verify,market,audit}/` with client components in `_components/` |
+| Pages | `packages/nextjs/app/{verify,market,audit,certificate/[id]}/` with client components in `_components/` |
 | Generated ABIs + addresses | `packages/nextjs/contracts/deployedContracts.ts` (never edit by hand) |
 
 ## Invariants — keep these true
@@ -52,24 +56,32 @@ yarn hardhat:test:fork            # contract tests against Hedera's HTS emulatio
   `units = (energyWh + carryWh) / 1000`. Listing prices are **US cents per MWh**.
 - **HBAR units.** `msg.value` inside the EVM is tinybar (1e8) on Hedera but wei (1e18) on a local chain.
   `HydroREC.NATIVE_UNITS_PER_HBAR` records which. `quote()` returns that unit; the UI converts with
-  `quoteToTxValue` in `app/market/_components/pricing.ts`. Never hardcode 1e8 or 1e18 elsewhere.
+  `quoteToTxValue` in `services/mrv/pricing.ts`. Never hardcode 1e8 or 1e18 elsewhere.
 - **HTS never reverts.** It returns a response code (`SUCCESS = 22`). Every HTS call must go through
-  `HederaTokenLib`, which reverts with `HtsCallFailed(selector, code)`.
+  `HederaTokenLib`, which reverts with `HtsCallFailed(selector, code)`. The one deliberate exception is certificate
+  delivery (`tryTransferNftFromSelf`): a retirement must never fail because a wallet cannot hold the NFT yet.
+- **Prices come from two providers.** `ResilientHbarUsdFeed` reverts when fresh Chainlink and Supra answers disagree
+  beyond `MAX_DEVIATION_BPS`, and uses whichever is fresh when only one is. Keep `readSources()` non-reverting; the UI,
+  REST overview and MCP read it to explain paused markets.
 - **Treasury accounting.** `recToken.balanceOf(HydroREC) == Σ custodyBalanceOf + Σ active listing units`. There is
   a test for it; extend it when you add a flow that moves units.
 - **The engine is pure and deterministic.** No I/O, no `Date.now()`, no randomness in `engine.ts`. It runs in the
   browser, API, MCP and tests. Scenario generation takes an explicit `end` date in tests.
-- **HCS messages fit one chunk** (≤ 1024 bytes, enforced in `buildHcsMessage`). If you add fields to the report
-  message, check the size test still passes.
-- **`reportHash` = sha256 of the exact HCS message bytes.** The audit also compares plant, period, energy, trust and
-  decision field by field. If you change the message shape, bump `REPORT_SCHEMA` and update `audit.ts`.
+- **Two HCS messages per attestation, in order.** The data message (readings + plant profile, up to 20 chunks) is
+  published first; the report (one chunk, ≤ 1024 bytes) commits to it with `data: { hash, sequence }`. Both limits are
+  enforced in `report.ts` and tested.
+- **`reportHash` = sha256 of the exact report bytes.** `reproduceAttestation` checks report vs chain, data vs report
+  and an engine re-run vs report. If you change either message shape, bump its schema string and update `audit.ts`.
 - **On-chain rules mirror the engine's hard failures.** Capacity ceiling, non-overlapping periods and minimum trust
   are enforced in `submitAttestation`. Changing a threshold in one place means reviewing the other.
 - **Secrets stay server-side.** Anything reading `HEDERA_OPERATOR_KEY`, `VERIFIER_PRIVATE_KEY` or `MRV_API_KEY`
   lives under `services/mrv/server/` and is imported only by route handlers and `scripts/`. Client components may
   import server *types* only (`import type`).
-- **Writes are authenticated.** New write endpoints or MCP tools must check `isAuthorized` and stay disabled when
-  `MRV_API_KEY` is unset. Read-only tools need `readOnlyHint: true`.
+- **Writes are authenticated; purchases are not the server's.** Server-signed writes (attestation) must check
+  `isAuthorized` and stay disabled when `MRV_API_KEY` is unset. Anything a user or agent pays for is returned unsigned
+  (`prepare_purchase`) for their own wallet. Read-only MCP tools need `readOnlyHint: true`.
+- **Errors callers may see** are `ApiError(message, httpStatus)` from `services/mrv/server/errors.ts`; route handlers
+  map them with `toErrorResponse`, MCP tools with `run()`.
 
 ## Frontend contract interaction
 
@@ -102,8 +114,11 @@ Server code reads the chain with viem through `services/mrv/server/registry.ts`,
   methodology text in `services/mrv/server/mcp.ts`.
 - **A contract function**: custom errors over strings, events for every state change, `nonReentrant` on anything
   that moves value, and tests for the happy path and each revert. Run `yarn deploy` to regenerate ABIs.
-- **An API route or MCP tool**: validate input with the zod schemas in `schema.ts`, map errors through
-  `toErrorResponse`, and list it in `public/llms.txt` and the README.
+- **An API route or MCP tool**: validate input with zod (`schema.ts`, or a schema next to the server function),
+  throw `ApiError` for caller mistakes, give every MCP tool a REST twin, and list both in `public/llms.txt` and the
+  README.
+- **An oracle provider**: wrap it behind `AggregatorV3Interface`, or extend `ResilientHbarUsdFeed._read*` and add
+  cases to `ResilientHbarUsdFeed.test.ts` for fresh, stale, broken and disagreeing answers.
 
 ## Style
 
