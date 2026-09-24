@@ -145,7 +145,7 @@ export async function reproduceAttestation(
     return { status: "no-data", audit, reason: `Published readings are malformed: ${(error as Error).message}` };
   }
 
-  const recomputed = verifyReadings(parsed.readings, parsed.plant, parsed.metering, parsed.ledger);
+  const recomputed = verifyReadings(parsed.readings, parsed.plant, parsed.metering, parsed.ledger, parsed.signature);
   const r = recomputed.emissions;
   const e = report.emissions;
   const designChecks = registered

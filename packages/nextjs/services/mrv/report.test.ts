@@ -1,4 +1,4 @@
-import { DEMO_DESIGNS, DEMO_METERING, DEMO_PLANT, DEMO_PLANTS } from "./demo";
+import { DEMO_DESIGNS, DEMO_METERING, DEMO_PLANT, DEMO_PLANTS, demoMeteringFor } from "./demo";
 import { prepareAnchors } from "./pipeline";
 import {
   HCS_CHUNK_BYTES,
@@ -23,6 +23,7 @@ function anchors(name: ScenarioName, hours = 24, plant = DEMO_PLANT) {
   return {
     ...prepared,
     readings: request.readings,
+    signature: request.signature,
     anchored: buildHcsMessage(prepared.report, { hash: prepared.data.dataHash, sequence: 41 }),
   };
 }
@@ -64,14 +65,27 @@ describe("HCS report message", () => {
 });
 
 describe("HCS data message", () => {
-  it("round-trips readings, plant, metering and ledger exactly", () => {
-    const { readings, data, plant } = anchors("polluted");
+  it("round-trips readings, plant, metering, ledger and the meter signature exactly", () => {
+    const { readings, data, plant, signature } = anchors("polluted");
     const parsed = parseDataMessage(data.message);
 
     expect(parsed.readings).toEqual(readings);
     expect(parsed.plant).toEqual(plant);
-    expect(parsed.metering).toEqual(DEMO_METERING);
+    expect(parsed.metering).toEqual(demoMeteringFor(plant.plantId));
     expect(parsed.ledger).toEqual(LEDGER);
+    expect(parsed.signature).toBe(signature);
+  });
+
+  it("still parses readings@2 messages published before meter signatures", () => {
+    const { readings, data } = anchors("healthy");
+    const legacy = JSON.parse(data.message);
+    legacy.schema = "hydro-dmrv/readings@2";
+    delete legacy.signature;
+    delete legacy.metering.deviceAddress;
+    const parsed = parseDataMessage(JSON.stringify(legacy));
+    expect(parsed.readings).toEqual(readings);
+    expect(parsed.metering).toEqual(DEMO_METERING);
+    expect(parsed.signature).toBeUndefined();
   });
 
   it("omits absent optional fields instead of inventing values", () => {

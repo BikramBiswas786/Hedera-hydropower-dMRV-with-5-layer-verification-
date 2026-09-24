@@ -61,6 +61,7 @@ verifier cannot mint more than the equations allow. 1 credit = 1 t CO2e; 1 token
 
 | Data | Treatment |
 | --- | --- |
+| Source | metering record names a meter key → the batch must carry its EIP-191 signature; missing, wrong key or edited after signing → REJECTED |
 | Timestamps | duplicates, out-of-order and overlapping intervals → REJECTED (double counting) |
 | Gaps | credited as zero; coverage < ${DECISION_RULES.minCompletenessBps / 100}% → FLAGGED; the contract enforces the same floor |
 | Main vs check meter | disagreement beyond combined accuracy → lower reading used, FLAGGED |

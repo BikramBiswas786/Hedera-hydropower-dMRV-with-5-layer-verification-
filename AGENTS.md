@@ -27,6 +27,7 @@ yarn start                        # next dev on :3000
 
 yarn mrv:create-topic             # create the HCS audit topic
 yarn mrv:attest [scenario] [plant] # verify → HCS → submitAttestation from the CLI
+yarn mrv:meter-key                # key for a plant's data logger; METER_PRIVATE_KEY=… yarn mrv:sign file.json signs
 yarn hardhat:test:fork            # contract tests against Hedera's HTS emulation
 ```
 
@@ -44,6 +45,7 @@ yarn hardhat:test:fork            # contract tests against Hedera's HTS emulatio
 | Per-network feeds, units, staleness | `packages/hardhat/utils/hydroNetworkConfig.ts` |
 | Methodology (pure): TOOL07, TOOL03, design assessment, integer quantification | `packages/nextjs/services/mrv/methodology/` |
 | Verification engine (pure): 5 stages, QA/QC, report | `packages/nextjs/services/mrv/engine.ts`, `schema.ts` |
+| Meter signatures (pure): batch digest, sign, recover | `packages/nextjs/services/mrv/provenance.ts` |
 | Demo grid, designs, plants, scenarios | `packages/nextjs/services/mrv/demo.ts`, `scenarios.ts` |
 | Shared quantification test vectors (contract + TS) | `packages/hardhat/test/fixtures/quantificationVectors.ts` |
 | HCS data + report messages | `packages/nextjs/services/mrv/report.ts`, built together by `pipeline.ts` |
@@ -85,6 +87,9 @@ yarn hardhat:test:fork            # contract tests against Hedera's HTS emulatio
   publishing. `plantSequence` guards against stale reports (`StaleLedger`).
 - **Demo registrations are generated.** `packages/hardhat/utils/demoPlants.ts` holds the engine's output for the demo
   designs; `services/mrv/demo.test.ts` fails if they drift. Regenerate, never hand-edit.
+- **Readings are signed at the source.** When the metering record has a `deviceAddress`, the engine rejects a batch
+  without that key's signature over `readingsDigest` (`provenance.ts`). The digest uses the data message's row
+  encoding; change one and you change the other. Scenarios sign after their manipulation, except `tampered`.
 - **Two HCS messages per attestation, in order.** The data message (readings, plant, metering, ledger; up to 20
   chunks) is published first; the report (one chunk, ≤ 1024 bytes) commits to it with `data: { hash, sequence }`. Both limits are
   enforced in `report.ts` and tested.

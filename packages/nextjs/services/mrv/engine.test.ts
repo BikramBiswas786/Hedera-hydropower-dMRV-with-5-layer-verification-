@@ -8,7 +8,10 @@ import { describe, expect, it } from "vitest";
 const END = new Date("2026-09-20T00:00:00Z");
 const run = (name: ScenarioName, plant = DEMO_PLANT) => {
   const request = generateScenario(name, { end: END, plant });
-  return { request, report: verifyReadings(request.readings, request.plant, request.metering) };
+  return {
+    request,
+    report: verifyReadings(request.readings, request.plant, request.metering, undefined, request.signature),
+  };
 };
 const stage = (report: VerificationReport, name: VerificationReport["stages"][number]["stage"]) =>
   report.stages.find(s => s.stage === name)?.status;
@@ -24,6 +27,7 @@ describe("verifyReadings — decisions", () => {
     polluted: "FLAGGED",
     inflated: "REJECTED",
     replay: "REJECTED",
+    tampered: "REJECTED",
   };
 
   for (const plant of DEMO_PLANTS) {
@@ -33,6 +37,37 @@ describe("verifyReadings — decisions", () => {
       });
     }
   }
+});
+
+describe("verifyReadings — meter provenance", () => {
+  it("accepts a batch signed by the registered meter", () => {
+    const { report } = run("healthy");
+    expect(report.provenance.status).toBe("signed");
+    expect(report.issues.some(i => i.severity === "info" && /Signed at the source/.test(i.message))).toBe(true);
+  });
+
+  it("rejects readings edited after signing even when meters and physics agree", () => {
+    const { report } = run("tampered");
+    expect(report.provenance.status).toBe("invalid");
+    expect(stage(report, "integrity")).toBe("FAIL");
+    expect(stage(report, "physics")).toBe("PASS");
+    expect(report.monitored.deductions.checkMeterWh).toBe(0);
+  });
+
+  it("rejects an unsigned batch when the metering record names a meter", () => {
+    const { request } = run("healthy");
+    const report = verifyReadings(request.readings, request.plant, request.metering);
+    expect(report.provenance.status).toBe("missing");
+    expect(report.decision).toBe("REJECTED");
+  });
+
+  it("only notes the missing source trace when no meter key is registered", () => {
+    const { request } = run("healthy");
+    const { deviceAddress: _, ...unregistered } = request.metering;
+    const report = verifyReadings(request.readings, request.plant, unregistered);
+    expect(report.provenance.status).toBe("unregistered");
+    expect(report.decision).toBe("APPROVED");
+  });
 });
 
 describe("verifyReadings — monitoring data QA/QC", () => {

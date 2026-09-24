@@ -1,5 +1,5 @@
 import { auditAttestation, reproduceAttestation } from "../audit";
-import { DEMO_METERING, DEMO_PLANTS, findDemoPlant } from "../demo";
+import { DEMO_PLANTS, demoMeteringFor, findDemoPlant } from "../demo";
 import { ENGINE_VERSION } from "../engine";
 import { METHODOLOGY_MARKDOWN } from "../methodology/document";
 import { gridEmissionFactorRequestSchema, projectDesignSchema } from "../methodology/schema";
@@ -66,10 +66,15 @@ export function buildMcpServer({ canWrite }: { canWrite: boolean }): McpServer {
     {
       title: "List sample scenarios",
       description:
-        "Sample monitoring scenarios, the demo plant profiles (registered design + hydraulics) and metering.",
+        "Sample monitoring scenarios, the demo plant profiles (registered design + hydraulics) and each plant's metering record, including the address of the meter key that signs its readings.",
       annotations: { readOnlyHint: true },
     },
-    async () => ok({ plants: DEMO_PLANTS, metering: DEMO_METERING, scenarios: SCENARIOS }),
+    async () =>
+      ok({
+        plants: DEMO_PLANTS,
+        metering: Object.fromEntries(DEMO_PLANTS.map(plant => [plant.plantId, demoMeteringFor(plant.plantId)])),
+        scenarios: SCENARIOS,
+      }),
   );
 
   server.registerTool(
@@ -77,7 +82,7 @@ export function buildMcpServer({ canWrite }: { canWrite: boolean }): McpServer {
     {
       title: "Generate sample telemetry",
       description:
-        "Deterministic hourly monitoring data (gross generation, export/import, check meter, flow, head, fuel, water quality) for a demo plant, ending at the last whole hour. The result is a ready verify_telemetry request.",
+        "Deterministic hourly monitoring data (gross generation, export/import, check meter, flow, head, fuel, water quality) for a demo plant, ending at the last whole hour and signed by the plant's demo meter key. The result is a ready verify_telemetry request; changing any reading invalidates the signature.",
       inputSchema: z.object({
         scenario: z.enum(SCENARIO_NAMES),
         hours: z.number().int().min(1).max(168).default(24),
@@ -98,7 +103,7 @@ export function buildMcpServer({ canWrite }: { canWrite: boolean }): McpServer {
     {
       title: "Verify and quantify a monitoring period",
       description:
-        "Run the 5-stage verification and the AMS-I.D/ACM0002 quantification on interval readings. Returns decision, stages, issues, monitored quantities, EG_PJ/BE/PE/LE/ER with an equation trace, the exact HCS report message and the hash of the raw-data message it commits to. Pass `ledger` (from get_registry_overview) to quantify against the plant's on-chain state. Writes nothing.",
+        "Run the 5-stage verification and the AMS-I.D/ACM0002 quantification on interval readings, including the meter signature check when the metering record names a meter key. Returns decision, provenance, stages, issues, monitored quantities, EG_PJ/BE/PE/LE/ER with an equation trace, the exact HCS report message and the hash of the raw-data message it commits to. Pass `ledger` (from get_registry_overview) to quantify against the plant's on-chain state. Writes nothing.",
       inputSchema: verifyRequestSchema,
       annotations: { readOnlyHint: true },
     },

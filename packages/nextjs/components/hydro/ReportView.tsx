@@ -8,6 +8,13 @@ const STAGE_STYLE: Record<StageResult["status"], string> = {
   FAIL: "badge-error",
 };
 
+const PROVENANCE_BADGE: Record<VerificationReport["provenance"]["status"], { label: string; style: string }> = {
+  signed: { label: "Meter-signed", style: "badge-success" },
+  unregistered: { label: "Unsigned (no meter key)", style: "badge-ghost" },
+  missing: { label: "Meter signature missing", style: "badge-error" },
+  invalid: { label: "Meter signature invalid", style: "badge-error" },
+};
+
 const SEVERITY_STYLE = { reject: "text-error", review: "text-warning", info: "text-base-content/60" } as const;
 
 const Figure = ({ label, value, unit, strong }: { label: string; value: string; unit: string; strong?: boolean }) => (
@@ -31,6 +38,12 @@ export const ReportView = ({ report }: { report: VerificationReport }) => {
       <div className="flex flex-col gap-1">
         <div className="flex flex-wrap items-center gap-2">
           <DecisionBadge decision={report.decision} />
+          <span
+            className={`badge ${PROVENANCE_BADGE[report.provenance.status].style}`}
+            title={"device" in report.provenance ? `Meter ${report.provenance.device}` : undefined}
+          >
+            {PROVENANCE_BADGE[report.provenance.status].label}
+          </span>
           <span className="badge badge-outline">{report.methodology}</span>
           <span className="text-xs text-base-content/60">{report.engine}</span>
         </div>

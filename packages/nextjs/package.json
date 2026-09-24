@@ -12,12 +12,15 @@
     "start": "next dev",
     "test": "vitest run",
     "mrv:create-topic": "tsx scripts/mrv.ts create-topic",
-    "mrv:attest": "tsx scripts/mrv.ts attest"
+    "mrv:attest": "tsx scripts/mrv.ts attest",
+    "mrv:meter-key": "tsx scripts/mrv.ts meter-key",
+    "mrv:sign": "tsx scripts/mrv.ts sign"
   },
   "dependencies": {
     "@heroicons/react": "^2.1.5",
     "@hiero-ledger/sdk": "^2.80.0",
     "@modelcontextprotocol/server": "^2.1.0",
+    "@noble/curves": "^1.9.7",
     "@rainbow-me/rainbowkit": "2.2.9",
     "@react-native-async-storage/async-storage": "^2.2.0",
     "@scaffold-hbar-ui/components": "^2.0.0",

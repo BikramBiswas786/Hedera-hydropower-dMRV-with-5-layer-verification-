@@ -38,7 +38,18 @@ export const meteringSchema = z.object({
   calibrationValidUntil: z.iso.datetime({ offset: true }),
   /** Uncertainty of the flow measurement in %, widening the hydraulic upper bound. */
   flowUncertaintyPct: z.number().nonnegative().max(50),
+  /**
+   * Address of the data logger's secp256k1 key, recorded at validation like a calibration certificate. When set,
+   * every batch must carry that key's signature (`provenance.ts`), or the engine rejects it.
+   */
+  deviceAddress: z
+    .string()
+    .regex(/^0x[0-9a-fA-F]{40}$/, "Expected a 20-byte hex address")
+    .optional(),
 });
+
+/** 65-byte r‖s‖v secp256k1 signature. */
+export const signatureSchema = z.string().regex(/^0x[0-9a-fA-F]{130}$/, "Expected a 65-byte hex signature");
 
 /** The integers `HydroCreditRegistry.registerPlant` stores (see `methodology/project.ts`). */
 export const registeredDesignSchema = z.object({
@@ -82,6 +93,8 @@ export const verifyRequestSchema = z.object({
   plant: plantProfileSchema.optional(),
   metering: meteringSchema.optional(),
   ledger: ledgerSchema.optional(),
+  /** The meter's signature over the batch (`provenance.ts`); required when `metering.deviceAddress` is set. */
+  signature: signatureSchema.optional(),
 });
 
 export type Reading = z.infer<typeof readingSchema>;

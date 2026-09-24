@@ -1,9 +1,9 @@
 import { auditAttestation, reproduceAttestation } from "./audit";
-import { DEMO_PLANT } from "./demo";
+import { DEMO_METERING, DEMO_PLANT } from "./demo";
 import type { VerificationReport } from "./engine";
 import type { MirrorTopicMessage } from "./mirror";
 import { prepareAnchors } from "./pipeline";
-import { HCS_CHUNK_BYTES, buildHcsMessage } from "./report";
+import { HCS_CHUNK_BYTES, buildHcsMessage, decodeMessage } from "./report";
 import { type ScenarioName, generateScenario } from "./scenarios";
 import type { AttestationView } from "./views";
 import type { Hex } from "viem";
@@ -224,6 +224,47 @@ describe("reproduceAttestation", () => {
     const failed = result.checks.filter(check => !check.ok).map(check => check.field);
     expect(failed).toContain("decision");
     expect(failed).toContain("ER (g)");
+  });
+
+  it("catches readings edited after the meter signed them, even when the report matches the edit", async () => {
+    const mirror = new FakeMirror();
+    const request = generateScenario("healthy", { end: END });
+    const edited = request.readings.map(r => ({ ...r, exportKwh: r.exportKwh * 1.01, checkExportKwh: undefined }));
+    // The verifier computes an honest-looking report on edited readings, dropping the meter key from the record.
+    const { deviceAddress: _, ...unsigned } = request.metering;
+    const { report } = prepareAnchors({ ...request, readings: edited, metering: unsigned, signature: undefined });
+    const { data } = prepareAnchors({ ...request, readings: edited });
+    mirror.skipTo(DATA_SEQUENCE);
+    const dataSequence = mirror.publish(data.message);
+    const anchored = buildHcsMessage(report, { hash: data.dataHash, sequence: dataSequence });
+    const reportSequence = mirror.publish(anchored.message);
+
+    const result = await reproduceAttestation(onChain(report, anchored.reportHash, reportSequence), mirror.fetch);
+    expect(result.status).toBe("diverged");
+    if (result.status !== "diverged") return;
+    expect(result.recomputed.provenance.status).toBe("invalid");
+    expect(result.checks.find(check => check.field === "decision")?.ok).toBe(false);
+  });
+
+  it("reproduces attestations published as readings@2, before meter signatures", async () => {
+    const mirror = new FakeMirror();
+    const request = generateScenario("diesel-backup", { end: END });
+    const { data } = prepareAnchors({ ...request, metering: DEMO_METERING, signature: undefined });
+    const legacy = JSON.parse(data.message);
+    legacy.schema = "hydro-dmrv/readings@2";
+    delete legacy.signature;
+    const legacyMessage = JSON.stringify(legacy);
+    const { report } = prepareAnchors({ ...request, metering: DEMO_METERING, signature: undefined });
+    mirror.skipTo(DATA_SEQUENCE);
+    const dataSequence = mirror.publish(legacyMessage);
+    const legacyHash = decodeMessage(new TextEncoder().encode(legacyMessage)).hash;
+    const anchored = buildHcsMessage(report, { hash: legacyHash, sequence: dataSequence });
+    const reportSequence = mirror.publish(anchored.message);
+
+    const result = await reproduceAttestation(onChain(report, anchored.reportHash, reportSequence), mirror.fetch);
+    expect(result.status).toBe("reproduced");
+    if (result.status !== "reproduced") return;
+    expect(result.recomputed.provenance.status).toBe("unregistered");
   });
 
   it("flags readings that do not match the hash the report committed to", async () => {

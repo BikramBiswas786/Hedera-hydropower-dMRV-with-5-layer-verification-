@@ -89,7 +89,9 @@ export const VerifyWorkbench = () => {
             {ledger
               ? `quantified against the on-chain ledger (${ledger.attestations} attestation${ledger.attestations === 1 ? "" : "s"})`
               : "empty ledger (registry not deployed on this network)"}
-            . Edit the JSON (readings, meter calibration, plant design) to see each stage react.
+            . The plant&apos;s meter signed this batch: edit any reading and QA/QC rejects it, exactly as it would
+            reject data changed between the meter and HCS. Edit the metering record or plant design to see the other
+            stages react.
           </p>
           <textarea
             aria-label="Verification request JSON"

@@ -1,6 +1,8 @@
 import { type ProjectAssessment, type ProjectDesign, assessProject } from "./methodology/project";
 import type { GenerationSource, GridYear, PowerUnit, Tool07Input } from "./methodology/tool07";
 import type { Metering, PlantProfile } from "./schema";
+import { type Hex, keccak256, stringToBytes } from "viem";
+import { privateKeyToAddress } from "viem/accounts";
 
 /**
  * An ILLUSTRATIVE grid (not a real country) for the demo plants' TOOL07 calculation: coal, gas, oil, hydro, wind
@@ -103,3 +105,15 @@ export const DEMO_METERING: Metering = {
   calibrationValidUntil: "2027-06-30T00:00:00Z",
   flowUncertaintyPct: 5,
 };
+
+/**
+ * The demo data loggers' signing keys. PUBLIC by construction (derived from the plant id) so anyone can generate
+ * signed sample data; a real meter keeps its key in a secure element and only its address is published.
+ */
+export const demoMeterKey = (plantId: string): Hex => keccak256(stringToBytes(`hydro-dmrv demo meter ${plantId}`));
+
+/** A demo plant's metering record, including its meter's address. */
+export const demoMeteringFor = (plantId: string): Metering => ({
+  ...DEMO_METERING,
+  deviceAddress: privateKeyToAddress(demoMeterKey(plantId)),
+});

@@ -54,13 +54,16 @@ Buying as an agent: `list_open_listings` → `prepare_purchase { listingId, amou
 
 - Reading: `{ timestamp (ISO 8601, end of interval), intervalMinutes, generationKwh (gross, TEG), exportKwh,
   importKwh?, checkExportKwh?, flowRateM3s, headM, fuelKg?, ph?, turbidityNtu?, temperatureC? }`
-- Metering: `{ mainMeterAccuracyPct, checkMeterAccuracyPct, calibrationValidUntil, flowUncertaintyPct }`
-- Decision: REJECTED for replayed or overlapping intervals, > 20% of intervals physically impossible, periods outside
+- Metering: `{ mainMeterAccuracyPct, checkMeterAccuracyPct, calibrationValidUntil, flowUncertaintyPct, deviceAddress? }`
+- Meter signature: a verify request's `signature` is the meter key's EIP-191 signature over
+  sha256({ schema: "hydro-dmrv/meter-batch@1", plantId, fields, readings }) (see `services/mrv/provenance.ts`);
+  required when `metering.deviceAddress` is set. Sample telemetry is signed by the public demo meter keys.
+- Decision: REJECTED for a missing or invalid meter signature, replayed or overlapping intervals, > 20% of intervals physically impossible, periods outside
   the crediting period or across a crediting year, or unregistered fuel; FLAGGED for coverage < 90%, excluded
   intervals, main/check meter disagreement, efficiency outliers or safeguard exceedances; otherwise APPROVED.
 - Units: energy in Wh, emissions in g CO2e, grid EF in g CO2/MWh, fuel in g, COEF in g CO2 per tonne of fuel.
   BE rounds down, PE rounds up; sub-kg remainders and deficits carry to the plant's next period.
-- HCS: `hydro-dmrv/readings@2` (readings + plant + metering + ledger, up to 20 chunks) then `hydro-dmrv/report@3`
+- HCS: `hydro-dmrv/readings@3` (readings + meter signature + plant + metering + ledger, up to 20 chunks) then `hydro-dmrv/report@3`
   (monitored inputs, emissions, `data: { hash, sequence }`). The contract stores sha256(report) and its sequence.
 - Prices: listings in US cents per tonne; quotes in the EVM's native unit (tinybar on Hedera); `prepare_purchase`
   returns `value` already scaled to 18-decimal weibar with a 1% buffer that the contract refunds.
