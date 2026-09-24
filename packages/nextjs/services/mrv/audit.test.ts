@@ -231,7 +231,7 @@ describe("reproduceAttestation", () => {
     const request = generateScenario("healthy", { end: END });
     const edited = request.readings.map(r => ({ ...r, exportKwh: r.exportKwh * 1.01, checkExportKwh: undefined }));
     // The verifier computes an honest-looking report on edited readings, dropping the meter key from the record.
-    const { deviceAddress: _, ...unsigned } = request.metering;
+    const unsigned = { ...request.metering, deviceAddress: undefined };
     const { report } = prepareAnchors({ ...request, readings: edited, metering: unsigned, signature: undefined });
     const { data } = prepareAnchors({ ...request, readings: edited });
     mirror.skipTo(DATA_SEQUENCE);

@@ -63,7 +63,7 @@ describe("verifyReadings — meter provenance", () => {
 
   it("only notes the missing source trace when no meter key is registered", () => {
     const { request } = run("healthy");
-    const { deviceAddress: _, ...unregistered } = request.metering;
+    const unregistered = { ...request.metering, deviceAddress: undefined };
     const report = verifyReadings(request.readings, request.plant, unregistered);
     expect(report.provenance.status).toBe("unregistered");
     expect(report.decision).toBe("APPROVED");
