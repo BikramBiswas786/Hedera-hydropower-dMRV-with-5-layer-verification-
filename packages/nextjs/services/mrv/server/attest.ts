@@ -118,6 +118,10 @@ export async function attestReadings(request: VerifyRequest): Promise<AttestOutc
     );
   }
 
+  // Hashio rejects the EIP-1559 fees viem derives from fee history when they fall under its minimum gas price, so
+  // send a legacy transaction at the relay's own eth_gasPrice. Fetched before HCS so a dead relay publishes nothing.
+  const gasPrice = await client.getGasPrice();
+
   // Data first: the report must carry the data message's sequence number, which only consensus assigns.
   const dataReceipt = operator ? await publishMessage(operator, data.message) : null;
   const final = dataReceipt
@@ -139,6 +143,7 @@ export async function attestReadings(request: VerifyRequest): Promise<AttestOutc
     ],
     // HTS system-contract calls are under-estimated by eth_estimateGas on some relays.
     gas: 1_000_000n,
+    gasPrice,
   });
   const receipt = await client.waitForTransactionReceipt({ hash });
   if (receipt.status !== "success") throw new ApiError(`Attestation transaction ${hash} reverted`, 502);
