@@ -1,9 +1,12 @@
 import { NextResponse } from "next/server";
-import { AttestError } from "./attest";
-import { RegistryNotDeployedError } from "./registry";
+import { ApiError } from "./errors";
 import { z } from "zod";
 
-export class BadRequestError extends Error {}
+export class BadRequestError extends ApiError {
+  constructor(message: string) {
+    super(message, 400);
+  }
+}
 
 export async function parseJsonBody<T extends z.ZodType>(request: Request, schema: T): Promise<z.infer<T>> {
   let body: unknown;
@@ -18,9 +21,7 @@ export async function parseJsonBody<T extends z.ZodType>(request: Request, schem
 }
 
 export function toErrorResponse(error: unknown): NextResponse {
-  if (error instanceof BadRequestError) return NextResponse.json({ error: error.message }, { status: 400 });
-  if (error instanceof AttestError) return NextResponse.json({ error: error.message }, { status: error.httpStatus });
-  if (error instanceof RegistryNotDeployedError) return NextResponse.json({ error: error.message }, { status: 503 });
+  if (error instanceof ApiError) return NextResponse.json({ error: error.message }, { status: error.httpStatus });
   console.error("[mrv api]", error);
   return NextResponse.json({ error: "Internal error" }, { status: 500 });
 }

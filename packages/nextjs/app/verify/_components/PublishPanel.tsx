@@ -50,7 +50,7 @@ export const PublishPanel = ({ readings, decision }: { readings: Reading[]; deci
     <div className="flex flex-col gap-3 border-t border-base-300 pt-4">
       <h3 className="font-semibold m-0">Publish & mint (operator)</h3>
       <p className="text-sm text-base-content/70 m-0">
-        Publishes the report to HCS and calls <code>submitAttestation</code>. Requires the server&apos;s{" "}
+        Publishes the readings and report to HCS, then calls <code>submitAttestation</code>. Requires the server&apos;s{" "}
         <code>MRV_API_KEY</code>.
       </p>
       <div className="flex flex-wrap gap-2">
@@ -78,7 +78,14 @@ export const PublishPanel = ({ readings, decision }: { readings: Reading[]; deci
             Attestation #{state.outcome.attestationId} minted {state.outcome.unitsMinted.toLocaleString()} kWh of RECs.
           </span>
           {state.outcome.hcs && (
-            <ExternalLink href={state.outcome.hcs.url}>HCS message #{state.outcome.hcs.sequenceNumber}</ExternalLink>
+            <>
+              <ExternalLink href={state.outcome.hcs.dataUrl}>
+                Raw readings on HCS (#{state.outcome.hcs.dataSequenceNumber})
+              </ExternalLink>
+              <ExternalLink href={state.outcome.hcs.url}>
+                Report on HCS (#{state.outcome.hcs.sequenceNumber})
+              </ExternalLink>
+            </>
           )}
           {state.outcome.transaction.url ? (
             <ExternalLink href={state.outcome.transaction.url}>Contract transaction</ExternalLink>

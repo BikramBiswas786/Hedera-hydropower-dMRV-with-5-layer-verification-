@@ -74,9 +74,15 @@ contract HydroREC is AccessControl, ReentrancyGuard {
         uint64 units;
         uint64 timestamp;
         string beneficiary;
+        /// @dev Serial of the HTS NFT certificate, 0 when no certificate collection exists.
+        uint64 certificateSerial;
+        /// @dev False while the NFT waits in the treasury for the account to associate and `claimCertificate`.
+        bool certificateDelivered;
     }
 
     address public recToken;
+    /// @notice HTS NFT collection of retirement certificates (optional; created with `createCertificateToken`).
+    address public certificateToken;
     uint16 public minTrustScoreBps;
     uint32 public maxPriceAge;
 
@@ -113,6 +119,9 @@ contract HydroREC is AccessControl, ReentrancyGuard {
     event ListingCancelled(uint256 indexed listingId, uint64 unitsReturned);
     event Purchased(uint256 indexed listingId, address indexed buyer, uint64 units, uint256 nativePaid);
     event Retired(uint256 indexed retirementId, address indexed account, uint64 units, string beneficiary);
+    event CertificateTokenCreated(address indexed token);
+    event CertificateIssued(uint256 indexed retirementId, uint64 serial, bool delivered);
+    event CertificateClaimed(uint256 indexed retirementId, address indexed account, uint64 serial);
     event ProceedsWithdrawn(address indexed seller, uint256 amount);
 
     error TokenAlreadyCreated();
@@ -137,6 +146,8 @@ contract HydroREC is AccessControl, ReentrancyGuard {
     error StalePrice(uint256 updatedAt, uint32 maxPriceAge);
     error NativeTransferFailed();
     error ZeroAddress();
+    error NoCertificateToClaim(uint256 retirementId);
+    error NotRetirementOwner(uint256 retirementId);
 
     /// @param admin Account granted DEFAULT_ADMIN_ROLE and VERIFIER_ROLE.
     /// @param hbarUsdFeed Chainlink HBAR/USD AggregatorV3 feed.
@@ -179,6 +190,23 @@ contract HydroREC is AccessControl, ReentrancyGuard {
             msg.value
         );
         emit RecTokenCreated(recToken);
+    }
+
+    /// @notice Creates the HTS NFT collection used for retirement certificates. Each retirement then mints one NFT
+    /// with metadata `hydro-dmrv:retirement:<retirementId>`; the collection belongs to exactly one registry, so the
+    /// pair (certificate token, retirement id) identifies the record.
+    function createCertificateToken(
+        string calldata name,
+        string calldata symbol
+    ) external payable onlyRole(DEFAULT_ADMIN_ROLE) {
+        if (certificateToken != address(0)) revert TokenAlreadyCreated();
+        certificateToken = HederaTokenLib.createContractOwnedNft(
+            name,
+            symbol,
+            "Hydro dMRV retirement certificates. Each NFT proves RECs were permanently retired.",
+            msg.value
+        );
+        emit CertificateTokenCreated(certificateToken);
     }
 
     function registerPlant(
@@ -308,6 +336,19 @@ contract HydroREC is AccessControl, ReentrancyGuard {
         return _retire(msg.sender, units, beneficiary);
     }
 
+    /// @notice Delivers a certificate NFT that could not be sent at retirement time. Associate the certificate
+    /// token first (HIP-719 `associate()` on its address).
+    function claimCertificate(uint256 retirementId) external nonReentrant {
+        Retirement storage retirement = _retirements[retirementId];
+        if (retirement.account != msg.sender) revert NotRetirementOwner(retirementId);
+        if (retirement.certificateSerial == 0 || retirement.certificateDelivered) {
+            revert NoCertificateToClaim(retirementId);
+        }
+        retirement.certificateDelivered = true;
+        HederaTokenLib.transferNftFromSelf(certificateToken, msg.sender, retirement.certificateSerial);
+        emit CertificateClaimed(retirementId, msg.sender, retirement.certificateSerial);
+    }
+
     // ─── Marketplace ─────────────────────────────────────────────────────────
 
     function createListing(uint64 units, uint64 priceUsdCentsPerMwh) external nonReentrant returns (uint256 listingId) {
@@ -383,12 +424,6 @@ contract HydroREC is AccessControl, ReentrancyGuard {
         return (numerator + denominator - 1) / denominator;
     }
 
-    /// @notice Latest raw oracle answer, for display. Settlement uses the staleness-checked price.
-    function hbarUsdPrice() external view returns (int256 answer, uint8 decimals, uint256 updatedAt) {
-        (, answer, , updatedAt, ) = HBAR_USD_FEED.latestRoundData();
-        decimals = HBAR_USD_FEED.decimals();
-    }
-
     // ─── Views ───────────────────────────────────────────────────────────────
 
     function getPlant(bytes32 plantId) external view returns (Plant memory) {
@@ -427,6 +462,10 @@ contract HydroREC is AccessControl, ReentrancyGuard {
         return _retirements.length;
     }
 
+    function getRetirement(uint256 retirementId) external view returns (Retirement memory) {
+        return _retirements[retirementId];
+    }
+
     function getRetirements(uint256 start, uint256 count) external view returns (Retirement[] memory page) {
         uint256 end = _pageEnd(start, count, _retirements.length);
         page = new Retirement[](end - start);
@@ -460,12 +499,26 @@ contract HydroREC is AccessControl, ReentrancyGuard {
         totalRetiredUnits += units;
 
         retirementId = _retirements.length;
-        _retirements.push(
-            Retirement({ account: account, units: units, timestamp: uint64(block.timestamp), beneficiary: beneficiary })
-        );
+        Retirement storage retirement = _retirements.push();
+        retirement.account = account;
+        retirement.units = units;
+        retirement.timestamp = uint64(block.timestamp);
+        retirement.beneficiary = beneficiary;
 
         HederaTokenLib.burn(recToken, units);
         emit Retired(retirementId, account, units, beneficiary);
+
+        if (certificateToken != address(0)) _issueCertificate(retirement, retirementId);
+    }
+
+    /// @dev Delivery is best-effort so a retirement never fails because the wallet cannot yet hold the NFT.
+    function _issueCertificate(Retirement storage retirement, uint256 retirementId) private {
+        bytes memory metadata = abi.encodePacked("hydro-dmrv:retirement:", _toDecimal(retirementId));
+        uint64 serial = HederaTokenLib.mintNft(certificateToken, metadata);
+        bool delivered = HederaTokenLib.tryTransferNftFromSelf(certificateToken, retirement.account, serial);
+        retirement.certificateSerial = serial;
+        retirement.certificateDelivered = delivered;
+        emit CertificateIssued(retirementId, serial, delivered);
     }
 
     function _debitCustody(address account, uint256 units) private {
@@ -493,6 +546,14 @@ contract HydroREC is AccessControl, ReentrancyGuard {
         if (amount == 0) return;
         (bool ok, ) = payable(to).call{ value: amount }("");
         if (!ok) revert NativeTransferFailed();
+    }
+
+    function _toDecimal(uint256 value) private pure returns (bytes memory digits) {
+        if (value == 0) return "0";
+        uint256 length;
+        for (uint256 v = value; v != 0; v /= 10) length++;
+        digits = new bytes(length);
+        for (; value != 0; value /= 10) digits[--length] = bytes1(uint8(48 + (value % 10)));
     }
 
     function _pageEnd(uint256 start, uint256 count, uint256 length) private pure returns (uint256) {

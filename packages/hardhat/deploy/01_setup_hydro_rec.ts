@@ -13,7 +13,8 @@ function describeToken(address: string): string {
 }
 
 /**
- * Idempotent post-deploy setup: creates the HTS REC token, grants the verifier role and registers a demo plant.
+ * Idempotent post-deploy setup: creates the HTS REC token and NFT certificate collection, grants the verifier
+ * role and registers a demo plant.
  * Safe to re-run; every step checks on-chain state first.
  */
 const setupHydroRec: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
@@ -29,6 +30,17 @@ const setupHydroRec: DeployFunction = async function (hre: HardhatRuntimeEnviron
     await tx.wait();
     const token = await registry.recToken();
     console.log(`Created HTS REC token ${describeToken(token)}: ${hashscanTx(config, tx.hash)}`);
+  }
+
+  if ((await registry.certificateToken()) === hre.ethers.ZeroAddress) {
+    const fee = hre.ethers.parseEther(process.env.CERTIFICATE_TOKEN_CREATE_FEE_HBAR ?? "20");
+    const tx = await registry.createCertificateToken("Hydro REC Retirement", "HRET", {
+      value: fee,
+      gasLimit: 1_000_000,
+    });
+    await tx.wait();
+    const token = await registry.certificateToken();
+    console.log(`Created HTS NFT certificate collection ${describeToken(token)}: ${hashscanTx(config, tx.hash)}`);
   }
 
   const verifier = process.env.VERIFIER_ADDRESS;

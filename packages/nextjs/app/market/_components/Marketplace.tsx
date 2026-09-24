@@ -2,32 +2,11 @@
 
 import { AccountPanel } from "./AccountPanel";
 import { ListingCard } from "./ListingCard";
+import { OraclePanel } from "./OraclePanel";
 import { useAccount } from "wagmi";
-import { NotDeployedNotice, StatCard } from "~~/components/hydro/ui";
+import { NotDeployedNotice } from "~~/components/hydro/ui";
 import { useDeployedContractInfo, useScaffoldReadContract, useTargetNetwork } from "~~/hooks/scaffold-hbar";
 import { type RawListing, toListingView } from "~~/services/mrv/views";
-
-const OraclePanel = () => {
-  const { data: price } = useScaffoldReadContract({ contractName: "HydroREC", functionName: "hbarUsdPrice" });
-  const { data: maxAge } = useScaffoldReadContract({ contractName: "HydroREC", functionName: "maxPriceAge" });
-  if (!price) return <StatCard label="HBAR / USD (Chainlink)" value="…" />;
-
-  const [answer, decimals, updatedAt] = price;
-  const ageSeconds = Math.max(0, Math.floor(Date.now() / 1_000) - Number(updatedAt));
-  const stale = maxAge !== undefined && ageSeconds > maxAge;
-  return (
-    <StatCard
-      label="HBAR / USD (Chainlink)"
-      value={`$${(Number(answer) / 10 ** decimals).toFixed(5)}`}
-      hint={
-        <span className={stale ? "text-error" : undefined}>
-          Updated {Math.round(ageSeconds / 60)} min ago
-          {stale && " · stale, purchases are paused until the feed updates"}
-        </span>
-      }
-    />
-  );
-};
 
 export const Marketplace = () => {
   const { targetNetwork } = useTargetNetwork();

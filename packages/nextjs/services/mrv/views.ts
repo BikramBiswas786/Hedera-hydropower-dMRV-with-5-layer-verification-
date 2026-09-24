@@ -109,3 +109,35 @@ export function toListingView(raw: RawListing, id: number): ListingView {
     active: raw.active,
   };
 }
+
+export type RawRetirement = {
+  account: Address;
+  units: bigint;
+  timestamp: bigint;
+  beneficiary: string;
+  certificateSerial: bigint;
+  certificateDelivered: boolean;
+};
+
+export type RetirementView = {
+  id: number;
+  account: Address;
+  units: number;
+  timestamp: number;
+  beneficiary: string;
+  /** 0 when the registry had no certificate collection at retirement time. */
+  certificateSerial: number;
+  certificateDelivered: boolean;
+};
+
+export function toRetirementView(raw: RawRetirement, id: number): RetirementView {
+  return {
+    id,
+    account: raw.account,
+    units: Number(raw.units),
+    timestamp: Number(raw.timestamp),
+    beneficiary: raw.beneficiary,
+    certificateSerial: Number(raw.certificateSerial),
+    certificateDelivered: raw.certificateDelivered,
+  };
+}

@@ -29,43 +29,52 @@ library HederaTokenLib {
         int32 decimals,
         uint256 fee
     ) internal returns (address token) {
-        IHederaTokenService.TokenKey[] memory keys = new IHederaTokenService.TokenKey[](1);
-        keys[0] = IHederaTokenService.TokenKey({
-            keyType: ADMIN_KEY | SUPPLY_KEY,
-            key: IHederaTokenService.KeyValue({
-                inheritAccountKey: false,
-                contractId: address(this),
-                ed25519: "",
-                ECDSA_secp256k1: "",
-                delegatableContractId: address(0)
-            })
-        });
-
-        IHederaTokenService.HederaToken memory definition = IHederaTokenService.HederaToken({
-            name: name,
-            symbol: symbol,
-            treasury: address(this),
-            memo: memo,
-            tokenSupplyType: false,
-            maxSupply: 0,
-            freezeDefault: false,
-            tokenKeys: keys,
-            expiry: IHederaTokenService.Expiry({
-                second: 0,
-                autoRenewAccount: address(this),
-                autoRenewPeriod: AUTO_RENEW_PERIOD
-            })
-        });
-
         int64 code;
-        (code, token) = HTS.createFungibleToken{ value: fee }(definition, 0, decimals);
+        (code, token) = HTS.createFungibleToken{ value: fee }(
+            _contractOwnedDefinition(name, symbol, memo),
+            0,
+            decimals
+        );
         _check(IHederaTokenService.createFungibleToken.selector, code);
+    }
+
+    /// @notice Creates an NFT collection whose treasury, admin and supply key are this contract.
+    function createContractOwnedNft(
+        string memory name,
+        string memory symbol,
+        string memory memo,
+        uint256 fee
+    ) internal returns (address token) {
+        int64 code;
+        (code, token) = HTS.createNonFungibleToken{ value: fee }(_contractOwnedDefinition(name, symbol, memo));
+        _check(IHederaTokenService.createNonFungibleToken.selector, code);
     }
 
     /// @notice Mints `amount` units into the token treasury.
     function mint(address token, uint256 amount) internal {
         (int64 code, , ) = HTS.mintToken(token, _toInt64(amount), new bytes[](0));
         _check(IHederaTokenService.mintToken.selector, code);
+    }
+
+    /// @notice Mints one NFT into the treasury and returns its serial number. HTS caps `metadata` at 100 bytes.
+    function mintNft(address token, bytes memory metadata) internal returns (uint64 serial) {
+        bytes[] memory batch = new bytes[](1);
+        batch[0] = metadata;
+        (int64 code, , int64[] memory serials) = HTS.mintToken(token, 0, batch);
+        _check(IHederaTokenService.mintToken.selector, code);
+        serial = uint64(serials[0]);
+    }
+
+    /// @notice Transfers an NFT out of this contract, returning false instead of reverting when HTS refuses
+    /// (typically because the recipient is not associated and has no free auto-association slots).
+    function tryTransferNftFromSelf(address token, address to, uint64 serial) internal returns (bool) {
+        return HTS.transferNFT(token, address(this), to, int64(serial)) == SUCCESS;
+    }
+
+    /// @notice Transfers an NFT out of this contract, reverting with the HTS response code on failure.
+    function transferNftFromSelf(address token, address to, uint64 serial) internal {
+        int64 code = HTS.transferNFT(token, address(this), to, int64(serial));
+        _check(IHederaTokenService.transferNFT.selector, code);
     }
 
     /// @notice Burns `amount` units from the token treasury.
@@ -78,6 +87,40 @@ library HederaTokenLib {
     function transferFromSelf(address token, address to, uint256 amount) internal {
         int64 code = HTS.transferToken(token, address(this), to, _toInt64(amount));
         _check(IHederaTokenService.transferToken.selector, code);
+    }
+
+    function _contractOwnedDefinition(
+        string memory name,
+        string memory symbol,
+        string memory memo
+    ) private view returns (IHederaTokenService.HederaToken memory) {
+        IHederaTokenService.TokenKey[] memory keys = new IHederaTokenService.TokenKey[](1);
+        keys[0] = IHederaTokenService.TokenKey({
+            keyType: ADMIN_KEY | SUPPLY_KEY,
+            key: IHederaTokenService.KeyValue({
+                inheritAccountKey: false,
+                contractId: address(this),
+                ed25519: "",
+                ECDSA_secp256k1: "",
+                delegatableContractId: address(0)
+            })
+        });
+        return
+            IHederaTokenService.HederaToken({
+                name: name,
+                symbol: symbol,
+                treasury: address(this),
+                memo: memo,
+                tokenSupplyType: false,
+                maxSupply: 0,
+                freezeDefault: false,
+                tokenKeys: keys,
+                expiry: IHederaTokenService.Expiry({
+                    second: 0,
+                    autoRenewAccount: address(this),
+                    autoRenewPeriod: AUTO_RENEW_PERIOD
+                })
+            });
     }
 
     function _toInt64(uint256 amount) private pure returns (int64) {

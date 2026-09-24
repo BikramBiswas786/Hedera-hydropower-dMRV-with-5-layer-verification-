@@ -1,9 +1,9 @@
 "use client";
 
 import { useState } from "react";
-import { formatHbar, mwhToUnits, quoteToTxValue } from "./pricing";
 import { HederaAddress } from "~~/components/scaffold-hbar";
 import { useScaffoldReadContract, useScaffoldWriteContract, useTargetNetwork } from "~~/hooks/scaffold-hbar";
+import { formatHbar, mwhToUnits, quoteToTxValue } from "~~/services/mrv/pricing";
 import { type ListingView, formatMwh, formatUsdCents } from "~~/services/mrv/views";
 
 type Props = { listing: ListingView; isOwn: boolean; nativeUnitsPerHbar: bigint };

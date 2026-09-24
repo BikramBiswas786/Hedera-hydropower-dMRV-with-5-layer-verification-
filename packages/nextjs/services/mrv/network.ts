@@ -17,6 +17,7 @@ export const hashscan = {
   transaction: (id: string) => `${HASHSCAN}/transaction/${id}`,
   contract: (address: string) => `${HASHSCAN}/contract/${address}`,
   token: (address: string) => `${HASHSCAN}/token/${evmToEntityId(address) ?? address}`,
+  nft: (address: string, serial: number) => `${HASHSCAN}/token/${evmToEntityId(address) ?? address}/${serial}`,
   topic: (topicId: string) => `${HASHSCAN}/topic/${topicId}`,
   topicMessage: (topicId: string, sequence: number | string) => `${HASHSCAN}/topic/${topicId}/message/${sequence}`,
 };
@@ -27,13 +28,21 @@ export function evmToEntityId(address: string): string | null {
 }
 
 type Deployed = typeof deployedContracts;
-type HydroRecEntry = { [Id in keyof Deployed]: Deployed[Id] extends { HydroREC: infer C } ? C : never }[keyof Deployed];
-/** ABI of whichever chain has a HydroREC deployment, independent of which network is configured first. */
-export type HydroRecAbi = HydroRecEntry extends { abi: infer A } ? A : never;
+type DeployedName = "HydroREC" | "ResilientHbarUsdFeed";
+type EntryOf<Name extends DeployedName> = {
+  [Id in keyof Deployed]: Deployed[Id] extends Record<Name, infer C> ? C : never;
+}[keyof Deployed];
+/** ABI of whichever chain has the contract deployed, independent of which network is configured first. */
+export type DeployedAbi<Name extends DeployedName> = EntryOf<Name> extends { abi: infer A } ? A : never;
+export type HydroRecAbi = DeployedAbi<"HydroREC">;
+
+export function getDeployment<Name extends DeployedName>(name: Name, chainId: number = HYDRO_CHAIN_ID) {
+  const contract = (deployedContracts as GenericContractsDeclaration)[chainId]?.[name];
+  return contract ? { address: contract.address, abi: contract.abi as DeployedAbi<Name>, chainId } : undefined;
+}
 
 export function getHydroRecDeployment(chainId: number = HYDRO_CHAIN_ID) {
-  const contract = (deployedContracts as GenericContractsDeclaration)[chainId]?.HydroREC;
-  return contract ? { address: contract.address, abi: contract.abi as HydroRecAbi, chainId } : undefined;
+  return getDeployment("HydroREC", chainId);
 }
 
 export function isLiveHederaChain(chainId: number = HYDRO_CHAIN_ID): boolean {

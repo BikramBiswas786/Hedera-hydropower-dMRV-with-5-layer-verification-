@@ -16,6 +16,8 @@ routes:
     path: /market
   - name: audit
     path: /audit
+  - name: certificate
+    path: /certificate/0
   - name: debug
     path: /debug
 forbidden:

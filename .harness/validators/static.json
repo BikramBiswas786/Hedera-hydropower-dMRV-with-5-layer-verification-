@@ -2,8 +2,16 @@
   "name": "hydro-dmrv-static",
   "description": "Structural invariants of the Hydro dMRV template.",
   "jsonAssertions": [
-    { "file": "package.json", "path": "packageManager", "equals": "yarn@3.2.3" },
-    { "file": "template.json", "path": "name", "equals": "hydro-dmrv" }
+    {
+      "file": "package.json",
+      "path": "packageManager",
+      "equals": "yarn@3.2.3"
+    },
+    {
+      "file": "template.json",
+      "path": "name",
+      "equals": "hydro-dmrv"
+    }
   ],
   "fileAssertions": {
     "required": [
@@ -20,15 +28,59 @@
       "packages/nextjs/app/verify/page.tsx",
       "packages/nextjs/app/market/page.tsx",
       "packages/nextjs/app/audit/page.tsx",
+      "packages/hardhat/contracts/ResilientHbarUsdFeed.sol",
+      "packages/hardhat/test/ResilientHbarUsdFeed.test.ts",
+      "packages/nextjs/services/mrv/audit.test.ts",
+      "packages/nextjs/services/mrv/report.test.ts",
+      "packages/nextjs/app/certificate/[id]/page.tsx",
       "packages/nextjs/public/llms.txt",
       "packages/nextjs/.env.example",
       "packages/hardhat/.env.example"
     ],
-    "forbidden": [".env", "packages/nextjs/.env", "packages/nextjs/.env.local", "packages/hardhat/.env", "packages/foundry"]
+    "forbidden": [
+      ".env",
+      "packages/nextjs/.env",
+      "packages/nextjs/.env.local",
+      "packages/hardhat/.env",
+      "packages/foundry"
+    ]
   },
   "textAssertions": [
-    { "file": "README.md", "contains": ["yarn install", "yarn deploy --network hederaTestnet", "yarn mrv:attest", "/api/mcp"] },
-    { "file": "AGENTS.md", "contains": ["yarn test", "NATIVE_UNITS_PER_HBAR", "1 token = 1 MWh"] },
-    { "file": "packages/hardhat/contracts/HydroREC.sol", "contains": ["AggregatorV3Interface", "HederaTokenLib.mint", "HederaTokenLib.burn"] }
+    {
+      "file": "README.md",
+      "contains": [
+        "yarn install",
+        "yarn deploy --network hederaTestnet",
+        "yarn mrv:attest",
+        "/api/mcp",
+        "reproduce_attestation",
+        "Supra"
+      ]
+    },
+    {
+      "file": "AGENTS.md",
+      "contains": [
+        "yarn test",
+        "NATIVE_UNITS_PER_HBAR",
+        "1 token = 1 MWh"
+      ]
+    },
+    {
+      "file": "packages/hardhat/contracts/HydroREC.sol",
+      "contains": [
+        "AggregatorV3Interface",
+        "HederaTokenLib.mint",
+        "HederaTokenLib.burn",
+        "HederaTokenLib.mintNft"
+      ]
+    },
+    {
+      "file": "packages/hardhat/contracts/ResilientHbarUsdFeed.sol",
+      "contains": [
+        "PriceSourcesDisagree",
+        "NoFreshPrice",
+        "ISupraSValueFeed"
+      ]
+    }
   ]
 }

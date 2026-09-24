@@ -1,17 +1,19 @@
 import { NextResponse } from "next/server";
-import { verifyReadings } from "~~/services/mrv/engine";
-import { buildHcsMessage } from "~~/services/mrv/report";
-import { DEMO_PLANT } from "~~/services/mrv/scenarios";
+import { prepareAnchors } from "~~/services/mrv/pipeline";
 import { verifyRequestSchema } from "~~/services/mrv/schema";
 import { parseJsonBody, toErrorResponse } from "~~/services/mrv/server/http";
 
-/** Runs the 5-layer verification without writing anything. No credentials needed. */
+/** Runs the 5-layer verification and builds both HCS messages without writing anything. No credentials needed. */
 export async function POST(request: Request) {
   try {
-    const { readings, plant, gridEmissionFactor } = await parseJsonBody(request, verifyRequestSchema);
-    const report = verifyReadings(readings, plant ?? DEMO_PLANT, gridEmissionFactor);
-    const { message, reportHash } = buildHcsMessage(report, readings);
-    return NextResponse.json({ report, hcsMessage: message, reportHash });
+    const { report, data, preview } = prepareAnchors(await parseJsonBody(request, verifyRequestSchema));
+    return NextResponse.json({
+      report,
+      hcsMessage: preview.message,
+      reportHash: preview.reportHash,
+      dataHash: data.dataHash,
+      dataChunks: data.chunks,
+    });
   } catch (error) {
     return toErrorResponse(error);
   }

@@ -7,7 +7,8 @@ const ENDPOINTS = [
   ["POST", "/api/mrv/verify", "5-layer verification of readings (no credentials)"],
   ["GET", "/api/mrv/scenarios/{name}", "Deterministic sample telemetry"],
   ["GET", "/api/registry", "On-chain totals, plants, oracle price"],
-  ["GET", "/api/registry/attestations/{id}/audit", "Prove an attestation matches its HCS report"],
+  ["GET", "/api/registry/attestations/{id}/reproduce", "Re-run the engine on readings published to HCS"],
+  ["POST", "/api/market/prepare-purchase", "Unsigned buy / buy-and-retire tx for your own wallet"],
   ["POST", "/api/mrv/attest", "Verify → HCS → mint (Bearer MRV_API_KEY)"],
 ] as const;
 

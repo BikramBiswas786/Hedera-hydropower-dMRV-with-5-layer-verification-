@@ -1,19 +1,21 @@
-import { auditAttestation } from "../audit";
-import { DECISION_THRESHOLDS, ENGINE_VERSION, LAYER_WEIGHTS, verifyReadings } from "../engine";
+import { auditAttestation, reproduceAttestation } from "../audit";
+import { DECISION_THRESHOLDS, ENGINE_VERSION, LAYER_WEIGHTS } from "../engine";
 import { HYDRO_CHAIN_ID } from "../network";
-import { buildHcsMessage } from "../report";
+import { prepareAnchors } from "../pipeline";
 import { DEMO_PLANT, SCENARIOS, SCENARIO_NAMES, generateScenario } from "../scenarios";
 import { verifyRequestSchema } from "../schema";
 import { attestReadings } from "./attest";
+import { getRetirementCertificate, preparePurchase, preparePurchaseSchema } from "./market";
 import { getAttestation, getAttestations, getOpenListings, getRegistryOverview } from "./registry";
 import { McpServer } from "@modelcontextprotocol/server";
 import { z } from "zod";
 
 const INSTRUCTIONS = `Hydro dMRV: digital measurement, reporting and verification for run-of-river hydropower on Hedera.
 Typical flow: generate_sample_telemetry (or bring real readings) -> verify_telemetry -> inspect the 5 layer scores.
-Only APPROVED batches can be attested. Attested reports live on HCS; audit_attestation proves an on-chain
-attestation matches its HCS report. RECs are HTS tokens (1 token = 1 MWh, 1 unit = 1 kWh) priced in USD and
-settled in HBAR through a Chainlink HBAR/USD feed. Registry tools read chain ${HYDRO_CHAIN_ID}.`;
+Only APPROVED batches can be attested. Raw readings and reports live on HCS; audit_attestation proves an on-chain
+attestation matches its HCS report, and reproduce_attestation re-runs the engine on the published readings. RECs are HTS tokens (1 token = 1 MWh, 1 unit = 1 kWh) priced in USD and
+settled in HBAR through Chainlink HBAR/USD with a Supra fallback. Agents can buy with their own wallet:
+list_open_listings -> prepare_purchase -> sign and send; retiring mints an HTS NFT certificate. Registry tools read chain ${HYDRO_CHAIN_ID}.`;
 
 const METHODOLOGY = `# Hydro dMRV verification methodology (${ENGINE_VERSION})
 
@@ -92,15 +94,20 @@ export function buildMcpServer({ canWrite }: { canWrite: boolean }): McpServer {
     {
       title: "Verify telemetry",
       description:
-        "Run the 5-layer verification on interval readings. Returns trust score, decision, per-layer results, issues and the exact HCS message that would be anchored. Writes nothing.",
+        "Run the 5-layer verification on interval readings. Returns trust score, decision, per-layer results, issues, the exact HCS report message and the hash of the raw-readings message it commits to. Writes nothing.",
       inputSchema: verifyRequestSchema,
       annotations: { readOnlyHint: true },
     },
-    async ({ readings, plant, gridEmissionFactor }) =>
+    async request =>
       run(() => {
-        const report = verifyReadings(readings, plant ?? DEMO_PLANT, gridEmissionFactor);
-        const { message, reportHash } = buildHcsMessage(report, readings);
-        return { report, hcsMessage: message, reportHash };
+        const { report, data, preview } = prepareAnchors(request);
+        return {
+          report,
+          hcsMessage: preview.message,
+          reportHash: preview.reportHash,
+          dataHash: data.dataHash,
+          dataChunks: data.chunks,
+        };
       }),
   );
 
@@ -141,6 +148,18 @@ export function buildMcpServer({ canWrite }: { canWrite: boolean }): McpServer {
   );
 
   server.registerTool(
+    "reproduce_attestation",
+    {
+      title: "Reproduce attestation",
+      description:
+        "Strongest check available: audit the report, fetch the raw readings it commits to from HCS (reassembling chunks), verify their hash, re-run the verification engine and compare decision, trust, energy, period and every layer score. Status 'reproduced' means the issuance follows from public data alone.",
+      inputSchema: z.object({ attestationId: z.number().int().min(0) }),
+      annotations: readOnly,
+    },
+    async ({ attestationId }) => run(async () => reproduceAttestation(await getAttestation(attestationId))),
+  );
+
+  server.registerTool(
     "list_open_listings",
     {
       title: "List REC listings",
@@ -149,6 +168,30 @@ export function buildMcpServer({ canWrite }: { canWrite: boolean }): McpServer {
       annotations: readOnly,
     },
     async () => run(getOpenListings),
+  );
+
+  server.registerTool(
+    "prepare_purchase",
+    {
+      title: "Prepare a REC purchase",
+      description:
+        "Build an unsigned transaction that buys RECs from a listing (and by default retires them, minting an HTS NFT certificate to the buyer). Returns chainId, to, data and value (weibar, with a 1% buffer the contract refunds). Sign and send it with your own wallet; this server never holds your key.",
+      inputSchema: preparePurchaseSchema,
+      annotations: readOnly,
+    },
+    async request => run(() => preparePurchase(request)),
+  );
+
+  server.registerTool(
+    "get_retirement_certificate",
+    {
+      title: "Get retirement certificate",
+      description:
+        "Retirement record with beneficiary, amount and its HTS NFT certificate (serial, whether it reached the wallet, Hashscan link).",
+      inputSchema: z.object({ retirementId: z.number().int().min(0) }),
+      annotations: readOnly,
+    },
+    async ({ retirementId }) => run(() => getRetirementCertificate(retirementId)),
   );
 
   if (canWrite) {

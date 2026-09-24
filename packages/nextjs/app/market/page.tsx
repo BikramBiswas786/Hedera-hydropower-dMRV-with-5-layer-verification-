@@ -12,9 +12,9 @@ const MarketPage: NextPage = () => (
   <div className="flex flex-col gap-6 px-5 py-8 max-w-6xl w-full mx-auto">
     <PageHeader title="REC market">
       <p className="mt-2">
-        Sellers price certificates in USD per MWh. At purchase the contract converts that price to HBAR using the{" "}
-        <strong>Chainlink HBAR/USD</strong> feed on Hedera, rejecting stale answers. Retiring burns the HTS tokens and
-        records the beneficiary permanently.
+        Sellers price certificates in USD per MWh. At purchase the contract converts that price to HBAR using{" "}
+        <strong>Chainlink HBAR/USD</strong>, cross-checked against <strong>Supra</strong> and falling back to it when
+        Chainlink is unavailable. Retiring burns the HTS tokens and mints an HTS NFT certificate to the buyer.
       </p>
     </PageHeader>
     <Marketplace />

@@ -4,8 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import { PublishPanel } from "./PublishPanel";
 import { z } from "zod";
 import { ReportView } from "~~/components/hydro/ReportView";
-import { verifyReadings } from "~~/services/mrv/engine";
-import { buildHcsMessage } from "~~/services/mrv/report";
+import { prepareAnchors } from "~~/services/mrv/pipeline";
 import { DEMO_PLANT, SCENARIOS, SCENARIO_NAMES, type ScenarioName, generateScenario } from "~~/services/mrv/scenarios";
 import { type Reading, readingSchema } from "~~/services/mrv/schema";
 
@@ -30,9 +29,14 @@ export const VerifyWorkbench = () => {
   const parsed = useMemo(() => (text ? parseReadings(text) : null), [text]);
   const result = useMemo(() => {
     if (!parsed || "error" in parsed) return null;
-    const report = verifyReadings(parsed.readings, DEMO_PLANT);
-    return { readings: parsed.readings, report, anchored: buildHcsMessage(report, parsed.readings) };
+    try {
+      return { readings: parsed.readings, ...prepareAnchors({ readings: parsed.readings, plant: DEMO_PLANT }) };
+    } catch (error) {
+      return { error: (error as Error).message };
+    }
   }, [parsed]);
+  const error = parsed && "error" in parsed ? parsed.error : result && "error" in result ? result.error : null;
+  const ready = result && !("error" in result) ? result : null;
 
   return (
     <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">
@@ -64,9 +68,9 @@ export const VerifyWorkbench = () => {
             value={text}
             onChange={event => setText(event.target.value)}
           />
-          {parsed && "error" in parsed && (
+          {error && (
             <pre className="text-error text-xs whitespace-pre-wrap m-0" role="alert">
-              {parsed.error}
+              {error}
             </pre>
           )}
         </div>
@@ -75,25 +79,32 @@ export const VerifyWorkbench = () => {
       <section className="lg:col-span-3 flex flex-col gap-6">
         <div className="bg-base-100 border border-base-300 rounded-2xl p-5">
           <h2 className="font-semibold text-lg mt-0 mb-4">2. Verification report</h2>
-          {result ? (
-            <ReportView report={result.report} />
+          {ready ? (
+            <ReportView report={ready.report} />
           ) : (
             <p className="m-0 text-base-content/60">No valid readings yet.</p>
           )}
         </div>
 
-        {result && (
+        {ready && (
           <div className="bg-base-100 border border-base-300 rounded-2xl p-5 flex flex-col gap-3">
-            <h2 className="font-semibold text-lg m-0">3. HCS anchor</h2>
+            <h2 className="font-semibold text-lg m-0">3. HCS anchors</h2>
             <p className="text-sm text-base-content/70 m-0">
-              This exact message is published to the audit topic. Its SHA-256 becomes the attestation&apos;s{" "}
-              <code>reportHash</code> on-chain; <code>dataHash</code> commits to the raw readings above.
+              Publishing writes two messages to the audit topic. First the raw readings and plant profile (
+              {ready.data.chunks} HCS chunk{ready.data.chunks === 1 ? "" : "s"}), so anyone can re-run this
+              verification; then this report, which commits to them by hash and sequence number. The report&apos;s
+              SHA-256 becomes the attestation&apos;s <code>reportHash</code> on-chain.
             </p>
             <pre className="bg-base-200 rounded-xl p-3 text-xs overflow-x-auto m-0">
-              {JSON.stringify(result.anchored.body, null, 2)}
+              {JSON.stringify(ready.preview.body, null, 2)}
             </pre>
-            <p className="text-xs font-mono break-all m-0">reportHash: {result.anchored.reportHash}</p>
-            <PublishPanel readings={result.readings} decision={result.report.decision} />
+            <p className="text-xs font-mono break-all m-0">
+              dataHash: {ready.data.dataHash}
+              <br />
+              reportHash: {ready.preview.reportHash}{" "}
+              <span className="text-base-content/60">(before data.sequence is known)</span>
+            </p>
+            <PublishPanel readings={ready.readings} decision={ready.report.decision} />
           </div>
         )}
       </section>

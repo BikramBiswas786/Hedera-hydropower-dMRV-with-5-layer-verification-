@@ -1,46 +1,80 @@
 "use client";
 
 import { useState } from "react";
+import Link from "next/link";
 import { ExternalLink, NotDeployedNotice, formatPeriod, shortHash } from "~~/components/hydro/ui";
 import { useDeployedContractInfo, useScaffoldReadContract, useTargetNetwork } from "~~/hooks/scaffold-hbar";
-import { type AuditResult, auditAttestation } from "~~/services/mrv/audit";
+import { type AuditCheck, type ReproductionResult, reproduceAttestation } from "~~/services/mrv/audit";
 import { hashscan } from "~~/services/mrv/network";
-import { type AttestationView, type RawAttestation, formatMwh, toAttestationView } from "~~/services/mrv/views";
+import {
+  type AttestationView,
+  type RawAttestation,
+  type RawRetirement,
+  formatMwh,
+  toAttestationView,
+  toRetirementView,
+} from "~~/services/mrv/views";
 
 const PAGE_SIZE = 50n;
 
-const AuditOutcome = ({ result }: { result: AuditResult }) => {
-  if (result.status === "no-anchor") return <span className="badge badge-ghost">no HCS anchor (local chain)</span>;
-  if (result.status === "unavailable") return <span className="badge badge-warning">mirror node: {result.error}</span>;
+const CheckTable = ({ title, checks }: { title: string; checks: AuditCheck[] }) => (
+  <>
+    <p className="font-semibold m-0 mt-2">{title}</p>
+    <table className="table table-xs">
+      <tbody>
+        {checks.map(check => (
+          <tr key={check.field}>
+            <td>{check.ok ? "✓" : "✗"}</td>
+            <td className="font-medium">{check.field}</td>
+            <td className="break-all">{String(check.actual ?? "—")}</td>
+          </tr>
+        ))}
+      </tbody>
+    </table>
+  </>
+);
+
+const VERDICT: Record<string, { label: string; tone: string }> = {
+  reproduced: { label: "✓ reproduced from public data", tone: "badge-success" },
+  diverged: { label: "✗ does not reproduce", tone: "badge-error" },
+  verified: { label: "✓ report verified", tone: "badge-success" },
+  mismatch: { label: "✗ report mismatch", tone: "badge-error" },
+};
+
+/** Shows the strongest result available: reproduction when readings are on HCS, otherwise the report audit. */
+const EvidenceOutcome = ({ result }: { result: ReproductionResult }) => {
+  const { audit } = result;
+  if (audit.status === "no-anchor") return <span className="badge badge-ghost">no HCS anchor (local chain)</span>;
+  if (audit.status === "unavailable") return <span className="badge badge-warning">mirror node: {audit.error}</span>;
+
+  const verdict = VERDICT[result.status === "no-data" ? audit.status : result.status];
   return (
     <details className="dropdown dropdown-end">
-      <summary className={`badge cursor-pointer ${result.status === "verified" ? "badge-success" : "badge-error"}`}>
-        {result.status === "verified" ? "✓ verified" : "✗ mismatch"}
-      </summary>
-      <div className="dropdown-content z-10 bg-base-100 border border-base-300 rounded-xl p-3 shadow-lg w-96 text-xs">
-        <table className="table table-xs">
-          <tbody>
-            {result.checks.map(check => (
-              <tr key={check.field}>
-                <td>{check.ok ? "✓" : "✗"}</td>
-                <td className="font-medium">{check.field}</td>
-                <td className="break-all">{String(check.report ?? "—")}</td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-        <ExternalLink href={result.hashscanUrl}>HCS message on Hashscan</ExternalLink>
+      <summary className={`badge cursor-pointer ${verdict.tone}`}>{verdict.label}</summary>
+      <div className="dropdown-content z-10 bg-base-100 border border-base-300 rounded-xl p-3 shadow-lg w-[26rem] text-xs">
+        <CheckTable title="Report vs on-chain attestation" checks={audit.checks} />
+        {result.status === "no-data" && <p className="m-0 mt-2 text-warning">Readings not re-run: {result.reason}</p>}
+        {(result.status === "reproduced" || result.status === "diverged") && (
+          <>
+            <CheckTable title="Engine re-run on published readings vs report" checks={result.checks} />
+            {!result.engineMatches && (
+              <p className="m-0 text-warning">Published with a different engine version than this app runs.</p>
+            )}
+            <ExternalLink href={result.dataHashUrl}>Raw readings on Hashscan</ExternalLink>{" "}
+          </>
+        )}
+        <ExternalLink href={audit.hashscanUrl}>Report on Hashscan</ExternalLink>
       </div>
     </details>
   );
 };
 
 const AttestationRow = ({ attestation }: { attestation: AttestationView }) => {
-  const [result, setResult] = useState<AuditResult | "pending">();
+  const [result, setResult] = useState<ReproductionResult | "pending">();
 
-  const audit = async () => {
+  const check = async () => {
     setResult("pending");
-    setResult(await auditAttestation(attestation));
+    setResult(await reproduceAttestation(attestation));
   };
 
   return (
@@ -61,12 +95,12 @@ const AttestationRow = ({ attestation }: { attestation: AttestationView }) => {
       </td>
       <td>
         {result === undefined && (
-          <button className="btn btn-xs btn-outline" onClick={audit}>
-            Audit
+          <button className="btn btn-xs btn-outline" onClick={check}>
+            Check evidence
           </button>
         )}
         {result === "pending" && <span className="loading loading-spinner loading-xs" />}
-        {result && result !== "pending" && <AuditOutcome result={result} />}
+        {result && result !== "pending" && <EvidenceOutcome result={result} />}
       </td>
     </tr>
   );
@@ -97,7 +131,8 @@ export const AuditTrail = () => {
 
   const rawAttestations: readonly RawAttestation[] = page ?? [];
   const attestations = rawAttestations.map((raw, i) => toAttestationView(raw, Number(start) + i)).reverse();
-  const retirements = [...(retirementPage ?? [])].reverse();
+  const rawRetirements: readonly RawRetirement[] = retirementPage ?? [];
+  const retirements = rawRetirements.map((raw, i) => toRetirementView(raw, Number(retirementStart) + i)).reverse();
 
   return (
     <div className="flex flex-col gap-6">
@@ -137,12 +172,15 @@ export const AuditTrail = () => {
           <p className="m-0 text-base-content/60">No RECs retired yet.</p>
         ) : (
           <ul className="m-0 pl-4 list-disc text-sm">
-            {retirements.map((retirement, i) => (
-              <li key={i}>
+            {retirements.map(retirement => (
+              <li key={retirement.id}>
                 {formatMwh(retirement.units)} MWh retired on{" "}
-                {new Date(Number(retirement.timestamp) * 1_000).toISOString().slice(0, 10)}
+                {new Date(retirement.timestamp * 1_000).toISOString().slice(0, 10)}
                 {retirement.beneficiary && <> for “{retirement.beneficiary}”</>} by{" "}
-                <span className="font-mono">{shortHash(retirement.account)}</span>
+                <span className="font-mono">{shortHash(retirement.account)}</span> ·{" "}
+                <Link className="link link-primary" href={`/certificate/${retirement.id}`}>
+                  certificate #{retirement.id}
+                </Link>
               </li>
             ))}
           </ul>
