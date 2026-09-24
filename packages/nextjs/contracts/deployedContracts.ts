@@ -5,9 +5,9 @@
 import { GenericContractsDeclaration } from "~~/utils/scaffold-hbar/contract";
 
 const deployedContracts = {
-  31337: {
+  296: {
     HydroCreditRegistry: {
-      address: "0xDc64a140Aa3E981100a9becA4E685f962f0cF6C9",
+      address: "0x7Da5C616f478c4111cF9173102298b2B6D888993",
       abi: [
         {
           inputs: [
@@ -2635,226 +2635,10 @@ const deployedContracts = {
         revokeRole: "@openzeppelin/contracts/access/AccessControl.sol",
         supportsInterface: "@openzeppelin/contracts/access/AccessControl.sol",
       },
-      deployedOnBlock: 8,
-    },
-    MockSupraSValueFeed: {
-      address: "0xe7f1725E7734CE288F8367e1Bb143E90bb3F0512",
-      abi: [
-        {
-          inputs: [],
-          name: "broken",
-          outputs: [
-            {
-              internalType: "bool",
-              name: "",
-              type: "bool",
-            },
-          ],
-          stateMutability: "view",
-          type: "function",
-        },
-        {
-          inputs: [
-            {
-              internalType: "uint256",
-              name: "pairIndex",
-              type: "uint256",
-            },
-          ],
-          name: "getSvalue",
-          outputs: [
-            {
-              components: [
-                {
-                  internalType: "uint256",
-                  name: "round",
-                  type: "uint256",
-                },
-                {
-                  internalType: "uint256",
-                  name: "decimals",
-                  type: "uint256",
-                },
-                {
-                  internalType: "uint256",
-                  name: "time",
-                  type: "uint256",
-                },
-                {
-                  internalType: "uint256",
-                  name: "price",
-                  type: "uint256",
-                },
-              ],
-              internalType: "struct ISupraSValueFeed.PriceFeed",
-              name: "",
-              type: "tuple",
-            },
-          ],
-          stateMutability: "view",
-          type: "function",
-        },
-        {
-          inputs: [
-            {
-              internalType: "bool",
-              name: "broken_",
-              type: "bool",
-            },
-          ],
-          name: "setBroken",
-          outputs: [],
-          stateMutability: "nonpayable",
-          type: "function",
-        },
-        {
-          inputs: [
-            {
-              internalType: "uint256",
-              name: "pairIndex",
-              type: "uint256",
-            },
-            {
-              internalType: "uint256",
-              name: "price",
-              type: "uint256",
-            },
-            {
-              internalType: "uint256",
-              name: "decimals",
-              type: "uint256",
-            },
-            {
-              internalType: "uint256",
-              name: "time",
-              type: "uint256",
-            },
-          ],
-          name: "setPrice",
-          outputs: [],
-          stateMutability: "nonpayable",
-          type: "function",
-        },
-      ],
-      inheritedFunctions: {
-        getSvalue: "contracts/interfaces/ISupraSValueFeed.sol",
-      },
-      deployedOnBlock: 3,
-    },
-    MockV3Aggregator: {
-      address: "0x5FbDB2315678afecb367f032d93F642f64180aa3",
-      abi: [
-        {
-          inputs: [
-            {
-              internalType: "uint8",
-              name: "decimals_",
-              type: "uint8",
-            },
-            {
-              internalType: "int256",
-              name: "initialAnswer",
-              type: "int256",
-            },
-          ],
-          stateMutability: "nonpayable",
-          type: "constructor",
-        },
-        {
-          inputs: [],
-          name: "decimals",
-          outputs: [
-            {
-              internalType: "uint8",
-              name: "",
-              type: "uint8",
-            },
-          ],
-          stateMutability: "view",
-          type: "function",
-        },
-        {
-          inputs: [],
-          name: "description",
-          outputs: [
-            {
-              internalType: "string",
-              name: "",
-              type: "string",
-            },
-          ],
-          stateMutability: "pure",
-          type: "function",
-        },
-        {
-          inputs: [],
-          name: "latestRoundData",
-          outputs: [
-            {
-              internalType: "uint80",
-              name: "",
-              type: "uint80",
-            },
-            {
-              internalType: "int256",
-              name: "",
-              type: "int256",
-            },
-            {
-              internalType: "uint256",
-              name: "",
-              type: "uint256",
-            },
-            {
-              internalType: "uint256",
-              name: "",
-              type: "uint256",
-            },
-            {
-              internalType: "uint80",
-              name: "",
-              type: "uint80",
-            },
-          ],
-          stateMutability: "view",
-          type: "function",
-        },
-        {
-          inputs: [
-            {
-              internalType: "uint256",
-              name: "updatedAt",
-              type: "uint256",
-            },
-          ],
-          name: "setUpdatedAt",
-          outputs: [],
-          stateMutability: "nonpayable",
-          type: "function",
-        },
-        {
-          inputs: [
-            {
-              internalType: "int256",
-              name: "answer",
-              type: "int256",
-            },
-          ],
-          name: "updateAnswer",
-          outputs: [],
-          stateMutability: "nonpayable",
-          type: "function",
-        },
-      ],
-      inheritedFunctions: {
-        decimals: "contracts/interfaces/AggregatorV3Interface.sol",
-        description: "contracts/interfaces/AggregatorV3Interface.sol",
-        latestRoundData: "contracts/interfaces/AggregatorV3Interface.sol",
-      },
-      deployedOnBlock: 1,
+      deployedOnBlock: 40939832,
     },
     ResilientHbarUsdFeed: {
-      address: "0xCf7Ed3AccA5a467e9e704C703E8D87F634fB0Fc9",
+      address: "0x5A07AE6219509948fBdab08cc65ccd1b6897A591",
       abi: [
         {
           inputs: [
@@ -3148,7 +2932,7 @@ const deployedContracts = {
         description: "contracts/interfaces/AggregatorV3Interface.sol",
         latestRoundData: "contracts/interfaces/AggregatorV3Interface.sol",
       },
-      deployedOnBlock: 6,
+      deployedOnBlock: 40939828,
     },
   },
 } as const;
