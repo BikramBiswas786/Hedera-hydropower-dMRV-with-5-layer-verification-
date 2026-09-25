@@ -1,6 +1,7 @@
 import { hashscan, isLiveHederaChain } from "../network";
 import { formatHbar, quoteToTxValue } from "../pricing";
 import { type RetirementView, formatTonnes, toRetirementView } from "../views";
+import { type DexCheck, readDexCheck } from "./dex";
 import { ApiError, revertReason } from "./errors";
 import { requireDeployment } from "./registry";
 import { type Address, type Hex, encodeFunctionData, zeroAddress } from "viem";
@@ -24,6 +25,8 @@ export type PreparedPurchase = {
   exactCostHbar: string;
   functionName: "buy" | "buyAndRetire";
   summary: string;
+  /** SaucerSwap spot. Present only when it is inside the 3% band; otherwise this function throws. */
+  dex: DexCheck;
 };
 
 /**
@@ -48,6 +51,13 @@ export async function preparePurchase(input: z.input<typeof preparePurchaseSchem
     : encodeFunctionData({ abi, functionName: "buy", args: [BigInt(listingId), units] });
 
   const exactCostHbar = formatHbar(quote, nativeUnitsPerHbar);
+  const dex = await readDexCheck();
+  if (!dex.accepted) {
+    throw new ApiError(
+      `SaucerSwap WHBAR/USDC is ${dex.deviationBps} bps from the settlement price (max ${dex.maxDeviationBps}). No purchase transaction was built.`,
+      409,
+    );
+  }
   return {
     chainId: client.chain.id,
     to: address,
@@ -57,6 +67,7 @@ export async function preparePurchase(input: z.input<typeof preparePurchaseSchem
     exactCostHbar,
     functionName: retire ? "buyAndRetire" : "buy",
     summary: `${retire ? "Buy and retire" : "Buy"} ${formatTonnes(units)} t CO2e from listing #${listingId} for ${exactCostHbar} HBAR`,
+    dex,
   };
 }
 

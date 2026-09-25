@@ -48,9 +48,9 @@ Public, no key: [**/documents**](https://hydro-dmrv.vercel.app/documents) (hash-
 | --- | --- |
 | Methodology | Verra VMR0017 v1.0 + ACM0002 v22.0 (per plant; demo plants) or CDM AMS-I.D v18.0 / ACM0002 v22.0 · TOOL07 (OM simple, simple adjusted, average; BM sample group; CM weights) · TOOL03 (NCV × EF) · IPCC 2006 defaults with conservative bounds |
 | Hedera services | **HCS**: chunked monitoring-data messages and reports · **HTS**: fungible credit token and NFT certificate collection, both created, minted and burned by the contract · **Smart contracts**: on-chain quantification registry and oracle aggregator |
-| Ecosystem integration | **Chainlink** Data Feeds (primary) and **Supra** push oracle (fallback and cross-check), testnet and mainnet |
+| Ecosystem integration | **Chainlink** and **Supra** must agree before the contract prices a sale. **SaucerSwap** V1 WHBAR/USDC on mainnet ([pair 0.0.1462797](https://hashscan.io/mainnet/contract/0.0.1462797)) must be within 3% or `prepare_purchase` returns no transaction |
 | Stack | Next.js 15 · Hardhat · Yarn workspaces · Node ≥ 20.18.3 |
-| Agent surface | MCP server at `/api/mcp` (21 public tools, 2 authenticated write tools, a methodology resource), JSON API under `/api`, [`/llms.txt`](packages/nextjs/public/llms.txt), [`AGENTS.md`](AGENTS.md), [Hedera Harness](#testing) recipe |
+| Agent surface | MCP server at `/api/mcp` (22 public tools, 2 authenticated write tools, a methodology resource), JSON API under `/api`, [`/llms.txt`](packages/nextjs/public/llms.txt), [`AGENTS.md`](AGENTS.md), [Hedera Harness](#testing) recipe |
 
 ### Live on Hedera testnet
 
@@ -596,6 +596,11 @@ Rules, applied on every read:
 Both answers are normalised to 8 decimals. Supra's millisecond timestamps and 18-decimal prices are handled, and a
 reverting provider counts as unavailable instead of bubbling up. `readSources()` never reverts, so dashboards and
 agents can always see both providers.
+
+The purchase builder adds one more check the contract does not. It reads reserves on the SaucerSwap V1 pair
+[0.0.1462797](https://hashscan.io/mainnet/contract/0.0.1462797) (WHBAR/USDC, mainnet) and will not return a transaction
+if that spot is more than 3% from the testnet settlement price. `GET /api/market/dex` and `get_dex_price` report the
+gap. A direct contract call still settles on Chainlink and Supra only.
 
 Settlement price for `units` kg listed at `p` US cents per tonne, with feed answer `a` at `d` decimals:
 

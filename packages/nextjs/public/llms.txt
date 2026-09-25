@@ -28,13 +28,12 @@ buyer's key: purchases are returned as unsigned transactions. The REST API is de
   `list_attestations`, `get_plant` (design, ledger, lifetime totals and attestations of one plant)
 - Evidence: `audit_attestation` (report vs chain), `reproduce_attestation` (re-run the engine on the data published to
   HCS, check the registered design was used, compare every figure)
-- Market: `list_open_listings`, `prepare_purchase` (unsigned buy / buyAndRetire for your own wallet),
+- Market: `get_dex_price`, `list_open_listings`, `prepare_purchase` (unsigned buy / buyAndRetire for your own wallet),
   `get_retirement_certificate`, `get_portfolio` (retirements by an account or on behalf of a beneficiary)
 - Write tool `submit_attestation` is listed only when the request carries `Authorization: Bearer <MRV_API_KEY>`
 - Resource: `hydro-dmrv://methodology` (equations, QA/QC rules, IPCC bounds, what is not implemented)
 
-Buying as an agent: `list_open_listings` → `prepare_purchase { listingId, amountKg, beneficiary }` → sign and send
-`{ to, data, value }` with your wallet on `chainId` → `get_retirement_certificate`.
+Buying as an agent: `get_dex_price` → `list_open_listings` → `prepare_purchase { listingId, amountKg, beneficiary }` → sign and send `{ to, data, value }` with your wallet on `chainId` → `get_retirement_certificate`. `prepare_purchase` returns nothing if the SaucerSwap WHBAR/USDC spot is more than 3% from the settlement price. The server never holds your key.
 
 ## REST
 

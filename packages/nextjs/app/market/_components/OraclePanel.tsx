@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import { useScaffoldReadContract } from "~~/hooks/scaffold-hbar";
 
 type Reading = { answer: bigint; updatedAt: bigint; fresh: boolean };
@@ -44,6 +45,22 @@ export const OraclePanel = () => {
     contractName: "ResilientHbarUsdFeed",
     functionName: "MAX_DEVIATION_BPS",
   });
+  const [dex, setDex] = useState<{ price: number; accepted: boolean; deviationBps: number } | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    fetch("/api/market/dex")
+      .then(response => (response.ok ? response.json() : null))
+      .then(body => {
+        if (!cancelled) setDex(body);
+      })
+      .catch(() => {
+        if (!cancelled) setDex(null);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   const [primary, fallback] = (sources ?? []) as Reading[];
   const [answer, source] = (resolved ?? []) as [Reading | undefined, number | undefined];
@@ -58,6 +75,21 @@ export const OraclePanel = () => {
         <tbody>
           <SourceRow name="Chainlink (primary)" reading={primary} active={source === 1} />
           <SourceRow name="Supra (fallback)" reading={fallback} active={source === 2} />
+          <tr>
+            <td className="font-medium">
+              SaucerSwap <span className="badge badge-ghost badge-xs">mainnet pool</span>
+            </td>
+            <td className="text-right">{dex ? `$${dex.price.toFixed(5)}` : "…"}</td>
+            <td className="text-right">
+              {dex ? (
+                <span className={dex.accepted ? undefined : "text-error"}>
+                  {dex.deviationBps} bps{dex.accepted ? "" : " · refused"}
+                </span>
+              ) : (
+                "—"
+              )}
+            </td>
+          </tr>
         </tbody>
       </table>
       <p className="m-0 text-xs text-base-content/60">

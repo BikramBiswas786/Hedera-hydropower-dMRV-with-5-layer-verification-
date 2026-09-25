@@ -198,6 +198,12 @@ export function buildOpenApi(origin: string) {
         summary: "Open listings with an HBAR quote for the full listing",
         responses: ok("Listings (units in kg, price in US cents per tonne, quote in tinybar)"),
       }),
+      "/api/market/dex": get({
+        operationId: "get_dex_price",
+        tags: ["market"],
+        summary: "SaucerSwap WHBAR/USDC spot versus the settlement price",
+        responses: ok("Price, deviation in basis points, and whether a purchase may be built"),
+      }),
       "/api/market/prepare-purchase": post({
         operationId: "prepare_purchase",
         tags: ["market"],

@@ -19,6 +19,7 @@ import {
 import { runPublicWork } from "../documents/work";
 import { quantifySafeWater } from "../water/vmr0015";
 import { attestReadings } from "./attest";
+import { readDexCheck } from "./dex";
 import { ApiError } from "./errors";
 import { getPlantDetail, getPortfolio, portfolioQuerySchema } from "./insights";
 import { getRetirementCertificate, preparePurchase, preparePurchaseSchema } from "./market";
@@ -242,11 +243,22 @@ export function buildMcpServer({ canWrite }: { canWrite: boolean }): McpServer {
   );
 
   server.registerTool(
+    "get_dex_price",
+    {
+      title: "SaucerSwap HBAR price",
+      description:
+        "Spot HBAR/USD from the SaucerSwap V1 WHBAR/USDC reserves on mainnet (pair 0.0.1462797), and how far it sits from the testnet settlement price. accepted is false above 3%. Reading needs no key.",
+      annotations: readOnly,
+    },
+    async () => run(readDexCheck),
+  );
+
+  server.registerTool(
     "prepare_purchase",
     {
       title: "Prepare a credit purchase",
       description:
-        "Build an unsigned transaction that buys credits (amountKg) from a listing and by default retires them, minting an HTS NFT certificate to the buyer. Returns chainId, to, data and value (weibar, with a 1% buffer the contract refunds). Sign and send it with your own wallet; this server never holds your key.",
+        "Build an unsigned transaction that buys credits (amountKg) from a listing and by default retires them, minting an HTS NFT certificate to the buyer. Refuses if the SaucerSwap WHBAR/USDC spot is more than 3% from the settlement price. Returns chainId, to, data and value (weibar, with a 1% buffer the contract refunds). Sign and send it with your own wallet; this server never holds your key.",
       inputSchema: preparePurchaseSchema,
       annotations: readOnly,
     },

@@ -1,0 +1,25 @@
+/**
+ * SaucerSwap V1 pair SS-LP USDC–WHBAR on Hedera mainnet, 0.0.1462797.
+ * token0 is USDC (6 decimals) and token1 is WHBAR (8 decimals). Use the mirror `evm_address`:
+ * the long-zero alias answers `getReserves` but not `token0`.
+ * The testnet contract does not read this pair. The purchase builder does, and it uses the same 3% band.
+ */
+export const SAUCERSWAP_PAIR_ID = "0.0.1462797";
+export const SAUCERSWAP_PAIR = "0xdb34c1ef944883f0e5a2fc18b6c1978b088bd31d" as const;
+export const SAUCERSWAP_USDC = "0x000000000000000000000000000000000006f89a";
+/** Same bound as `ResilientHbarUsdFeed.MAX_DEVIATION_BPS`. */
+export const SAUCERSWAP_MAX_DEVIATION_BPS = 300n;
+
+/** HBAR/USD with 8 decimals, the same scale as the Chainlink answer. */
+export function hbarUsd8FromReserves(reserveUsdc: bigint, reserveWhbar: bigint): bigint {
+  if (reserveWhbar <= 0n || reserveUsdc <= 0n) return 0n;
+  return (reserveUsdc * 10_000_000_000n) / reserveWhbar;
+}
+
+/** `(high − low) / low`, in basis points. Matches the feed contract. */
+export function deviationBps(a: bigint, b: bigint): bigint {
+  if (a <= 0n || b <= 0n) return 10_000n;
+  const high = a > b ? a : b;
+  const low = a > b ? b : a;
+  return ((high - low) * 10_000n) / low;
+}
