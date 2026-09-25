@@ -40,7 +40,7 @@ const PATHS = [
   ["#look", "Just looking", "5 min, no wallet"],
   ["#buy", "Buying credits", "10 min, testnet wallet"],
   ["#operate", "Running a plant", "an afternoon"],
-  ["#build", "Building on it", "15 min to a local copy"],
+  ["#build", "Building on it", "follow Quick start; local chain has no faucet"],
   ["#agents", "AI agents", "1 command"],
 ] as const;
 
@@ -191,7 +191,7 @@ const GuidePage: NextPage = async () => {
         </p>
       </Path>
 
-      <Path id="build" who="Building on it" time="15 min to a local copy">
+      <Path id="build" who="Building on it" time="follow Quick start; local chain has no faucet">
         <p className="m-0 text-base-content/80">
           Hydro dMRV is a Scaffold-HBAR template: one command gives you the contracts, this app, the API and the MCP
           server, ready to change.
