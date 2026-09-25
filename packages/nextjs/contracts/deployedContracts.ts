@@ -7,7 +7,7 @@ import { GenericContractsDeclaration } from "~~/utils/scaffold-hbar/contract";
 const deployedContracts = {
   296: {
     HydroCreditRegistry: {
-      address: "0x7Da5C616f478c4111cF9173102298b2B6D888993",
+      address: "0xAEA76b83ea8e71621d443053A5Ee20D7AF8Ce746",
       abi: [
         {
           inputs: [
@@ -80,6 +80,33 @@ const deployedContracts = {
             },
           ],
           name: "CompletenessTooLow",
+          type: "error",
+        },
+        {
+          inputs: [],
+          name: "ECDSAInvalidSignature",
+          type: "error",
+        },
+        {
+          inputs: [
+            {
+              internalType: "uint256",
+              name: "length",
+              type: "uint256",
+            },
+          ],
+          name: "ECDSAInvalidSignatureLength",
+          type: "error",
+        },
+        {
+          inputs: [
+            {
+              internalType: "bytes32",
+              name: "s",
+              type: "bytes32",
+            },
+          ],
+          name: "ECDSAInvalidSignatureS",
           type: "error",
         },
         {
@@ -246,6 +273,22 @@ const deployedContracts = {
         {
           inputs: [
             {
+              internalType: "address",
+              name: "signer",
+              type: "address",
+            },
+            {
+              internalType: "address",
+              name: "meter",
+              type: "address",
+            },
+          ],
+          name: "InvalidMeterSignature",
+          type: "error",
+        },
+        {
+          inputs: [
+            {
               internalType: "uint64",
               name: "periodStart",
               type: "uint64",
@@ -282,6 +325,22 @@ const deployedContracts = {
           type: "error",
         },
         {
+          inputs: [
+            {
+              internalType: "enum HydroCreditRegistry.Methodology",
+              name: "methodology",
+              type: "uint8",
+            },
+            {
+              internalType: "uint32",
+              name: "capacityKw",
+              type: "uint32",
+            },
+          ],
+          name: "MethodologyNotApplicable",
+          type: "error",
+        },
+        {
           inputs: [],
           name: "NativeTransferFailed",
           type: "error",
@@ -311,6 +370,27 @@ const deployedContracts = {
             },
           ],
           name: "NoCertificateToClaim",
+          type: "error",
+        },
+        {
+          inputs: [
+            {
+              internalType: "uint64",
+              name: "grossEnergyWh",
+              type: "uint64",
+            },
+            {
+              internalType: "int64",
+              name: "netEnergyWh",
+              type: "int64",
+            },
+            {
+              internalType: "uint64",
+              name: "fuelG",
+              type: "uint64",
+            },
+          ],
+          name: "NotMetered",
           type: "error",
         },
         {
@@ -729,6 +809,31 @@ const deployedContracts = {
           anonymous: false,
           inputs: [
             {
+              indexed: true,
+              internalType: "uint256",
+              name: "attestationId",
+              type: "uint256",
+            },
+            {
+              indexed: true,
+              internalType: "address",
+              name: "meter",
+              type: "address",
+            },
+            {
+              indexed: false,
+              internalType: "bytes32",
+              name: "readingsDigest",
+              type: "bytes32",
+            },
+          ],
+          name: "MeterStatementAccepted",
+          type: "event",
+        },
+        {
+          anonymous: false,
+          inputs: [
+            {
               indexed: false,
               internalType: "uint16",
               name: "minCompletenessBps",
@@ -736,6 +841,25 @@ const deployedContracts = {
             },
           ],
           name: "MinCompletenessChanged",
+          type: "event",
+        },
+        {
+          anonymous: false,
+          inputs: [
+            {
+              indexed: true,
+              internalType: "bytes32",
+              name: "plantId",
+              type: "bytes32",
+            },
+            {
+              indexed: true,
+              internalType: "address",
+              name: "meter",
+              type: "address",
+            },
+          ],
+          name: "PlantMeterChanged",
           type: "event",
         },
         {
@@ -1100,6 +1224,19 @@ const deployedContracts = {
         },
         {
           inputs: [],
+          name: "METER_STATEMENT_TAG",
+          outputs: [
+            {
+              internalType: "bytes32",
+              name: "",
+              type: "bytes32",
+            },
+          ],
+          stateMutability: "view",
+          type: "function",
+        },
+        {
+          inputs: [],
           name: "MIN_POWER_DENSITY",
           outputs: [
             {
@@ -1171,6 +1308,45 @@ const deployedContracts = {
               internalType: "bytes32",
               name: "",
               type: "bytes32",
+            },
+          ],
+          stateMutability: "view",
+          type: "function",
+        },
+        {
+          inputs: [],
+          name: "VMR0017_EMBODIED_HYDRO_G_PER_MWH",
+          outputs: [
+            {
+              internalType: "uint32",
+              name: "",
+              type: "uint32",
+            },
+          ],
+          stateMutability: "view",
+          type: "function",
+        },
+        {
+          inputs: [],
+          name: "VMR0017_MAX_HYDRO_KW",
+          outputs: [
+            {
+              internalType: "uint32",
+              name: "",
+              type: "uint32",
+            },
+          ],
+          stateMutability: "view",
+          type: "function",
+        },
+        {
+          inputs: [],
+          name: "VMR0017_RESERVOIR_EF_G_PER_MWH",
+          outputs: [
+            {
+              internalType: "uint32",
+              name: "",
+              type: "uint32",
             },
           ],
           stateMutability: "view",
@@ -1673,6 +1849,11 @@ const deployedContracts = {
                   type: "address",
                 },
                 {
+                  internalType: "address",
+                  name: "meter",
+                  type: "address",
+                },
+                {
                   internalType: "bool",
                   name: "active",
                   type: "bool",
@@ -1682,6 +1863,11 @@ const deployedContracts = {
                     {
                       internalType: "enum HydroCreditRegistry.ProjectType",
                       name: "projectType",
+                      type: "uint8",
+                    },
+                    {
+                      internalType: "enum HydroCreditRegistry.Methodology",
+                      name: "methodology",
                       type: "uint8",
                     },
                     {
@@ -1747,6 +1933,11 @@ const deployedContracts = {
                 {
                   internalType: "uint32",
                   name: "reservoirGPerMwh",
+                  type: "uint32",
+                },
+                {
+                  internalType: "uint32",
+                  name: "embodiedGPerMwh",
                   type: "uint32",
                 },
                 {
@@ -2001,6 +2192,124 @@ const deployedContracts = {
           type: "function",
         },
         {
+          inputs: [
+            {
+              internalType: "bytes32",
+              name: "plantId",
+              type: "bytes32",
+            },
+            {
+              components: [
+                {
+                  internalType: "bytes32",
+                  name: "plantId",
+                  type: "bytes32",
+                },
+                {
+                  internalType: "uint32",
+                  name: "plantSequence",
+                  type: "uint32",
+                },
+                {
+                  internalType: "uint64",
+                  name: "periodStart",
+                  type: "uint64",
+                },
+                {
+                  internalType: "uint64",
+                  name: "periodEnd",
+                  type: "uint64",
+                },
+                {
+                  internalType: "int64",
+                  name: "netEnergyWh",
+                  type: "int64",
+                },
+                {
+                  internalType: "uint64",
+                  name: "grossEnergyWh",
+                  type: "uint64",
+                },
+                {
+                  internalType: "uint64",
+                  name: "fuelG",
+                  type: "uint64",
+                },
+                {
+                  internalType: "uint64",
+                  name: "leakageG",
+                  type: "uint64",
+                },
+                {
+                  internalType: "uint16",
+                  name: "completenessBps",
+                  type: "uint16",
+                },
+                {
+                  internalType: "bytes32",
+                  name: "reportHash",
+                  type: "bytes32",
+                },
+                {
+                  internalType: "uint64",
+                  name: "hcsTopicNum",
+                  type: "uint64",
+                },
+                {
+                  internalType: "uint64",
+                  name: "hcsSequence",
+                  type: "uint64",
+                },
+                {
+                  components: [
+                    {
+                      internalType: "uint64",
+                      name: "grossEnergyWh",
+                      type: "uint64",
+                    },
+                    {
+                      internalType: "int64",
+                      name: "netEnergyWh",
+                      type: "int64",
+                    },
+                    {
+                      internalType: "uint64",
+                      name: "fuelG",
+                      type: "uint64",
+                    },
+                    {
+                      internalType: "bytes32",
+                      name: "readingsDigest",
+                      type: "bytes32",
+                    },
+                    {
+                      internalType: "bytes",
+                      name: "signature",
+                      type: "bytes",
+                    },
+                  ],
+                  internalType: "struct HydroCreditRegistry.MeterStatement",
+                  name: "meter",
+                  type: "tuple",
+                },
+              ],
+              internalType: "struct HydroCreditRegistry.AttestationInput",
+              name: "input",
+              type: "tuple",
+            },
+          ],
+          name: "meterStatementHash",
+          outputs: [
+            {
+              internalType: "bytes32",
+              name: "",
+              type: "bytes32",
+            },
+          ],
+          stateMutability: "view",
+          type: "function",
+        },
+        {
           inputs: [],
           name: "minCompletenessBps",
           outputs: [
@@ -2101,6 +2410,38 @@ const deployedContracts = {
                   name: "hcsSequence",
                   type: "uint64",
                 },
+                {
+                  components: [
+                    {
+                      internalType: "uint64",
+                      name: "grossEnergyWh",
+                      type: "uint64",
+                    },
+                    {
+                      internalType: "int64",
+                      name: "netEnergyWh",
+                      type: "int64",
+                    },
+                    {
+                      internalType: "uint64",
+                      name: "fuelG",
+                      type: "uint64",
+                    },
+                    {
+                      internalType: "bytes32",
+                      name: "readingsDigest",
+                      type: "bytes32",
+                    },
+                    {
+                      internalType: "bytes",
+                      name: "signature",
+                      type: "bytes",
+                    },
+                  ],
+                  internalType: "struct HydroCreditRegistry.MeterStatement",
+                  name: "meter",
+                  type: "tuple",
+                },
               ],
               internalType: "struct HydroCreditRegistry.AttestationInput",
               name: "input",
@@ -2139,6 +2480,11 @@ const deployedContracts = {
                 {
                   internalType: "uint256",
                   name: "fossilFuelG",
+                  type: "uint256",
+                },
+                {
+                  internalType: "uint256",
+                  name: "leakageG",
                   type: "uint256",
                 },
                 {
@@ -2207,10 +2553,20 @@ const deployedContracts = {
               type: "address",
             },
             {
+              internalType: "address",
+              name: "meter",
+              type: "address",
+            },
+            {
               components: [
                 {
                   internalType: "enum HydroCreditRegistry.ProjectType",
                   name: "projectType",
+                  type: "uint8",
+                },
+                {
+                  internalType: "enum HydroCreditRegistry.Methodology",
+                  name: "methodology",
                   type: "uint8",
                 },
                 {
@@ -2432,6 +2788,24 @@ const deployedContracts = {
         {
           inputs: [
             {
+              internalType: "bytes32",
+              name: "plantId",
+              type: "bytes32",
+            },
+            {
+              internalType: "address",
+              name: "meter",
+              type: "address",
+            },
+          ],
+          name: "setPlantMeter",
+          outputs: [],
+          stateMutability: "nonpayable",
+          type: "function",
+        },
+        {
+          inputs: [
+            {
               components: [
                 {
                   internalType: "bytes32",
@@ -2492,6 +2866,38 @@ const deployedContracts = {
                   internalType: "uint64",
                   name: "hcsSequence",
                   type: "uint64",
+                },
+                {
+                  components: [
+                    {
+                      internalType: "uint64",
+                      name: "grossEnergyWh",
+                      type: "uint64",
+                    },
+                    {
+                      internalType: "int64",
+                      name: "netEnergyWh",
+                      type: "int64",
+                    },
+                    {
+                      internalType: "uint64",
+                      name: "fuelG",
+                      type: "uint64",
+                    },
+                    {
+                      internalType: "bytes32",
+                      name: "readingsDigest",
+                      type: "bytes32",
+                    },
+                    {
+                      internalType: "bytes",
+                      name: "signature",
+                      type: "bytes",
+                    },
+                  ],
+                  internalType: "struct HydroCreditRegistry.MeterStatement",
+                  name: "meter",
+                  type: "tuple",
                 },
               ],
               internalType: "struct HydroCreditRegistry.AttestationInput",
@@ -2635,7 +3041,7 @@ const deployedContracts = {
         revokeRole: "@openzeppelin/contracts/access/AccessControl.sol",
         supportsInterface: "@openzeppelin/contracts/access/AccessControl.sol",
       },
-      deployedOnBlock: 40939832,
+      deployedOnBlock: 40978237,
     },
     ResilientHbarUsdFeed: {
       address: "0x5A07AE6219509948fBdab08cc65ccd1b6897A591",
