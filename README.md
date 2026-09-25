@@ -13,6 +13,12 @@ No wallet. No faucet.
 
 That is the template. The methodology paper is below, for the people who need the equations.
 
+### Why this is not Guardian
+
+Hedera Guardian already runs a methodology as a policy: forms, roles, an off-chain calculation, and an HTS mint for whatever number that calculation returns. A digitized VMR0017 or VMR0015 policy is that product. This template does not replace it.
+
+It exists for the step that calculation does not do. `HydroCreditRegistry.quantify` recomputes `ER = BE − PE − LE` in the contract and will not mint a different integer. Chainlink and Supra must agree before a sale. Anyone can rerun the tonne from the HCS message without operating a Guardian server. The demo plants are VMR0017 v1.0 with ACM0002 v22.0. The page at `/water` is VMR0015 for illustration, and it does not mint the hydro token.
+
 ```bash
 npm create scaffold-hbar@latest --template BikramBiswas786/Hedera-hydropower-dMRV-with-5-layer-verification-
 ```

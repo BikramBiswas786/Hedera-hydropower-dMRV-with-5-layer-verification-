@@ -63,7 +63,8 @@ const GuidePage: NextPage = async () => {
           </li>
           <li>
             a verification engine <strong>checks</strong> them (gaps, meters that disagree, physically impossible
-            numbers) and <strong>calculates</strong> the CO₂ avoided with the UN&apos;s CDM formulas;
+            numbers). Demo plants use Verra VMR0017 v1.0 with ACM0002 v22.0. A CDM registration still splits AMS-I.D
+            and ACM0002 at 15 MW;
           </li>
           <li>
             the readings and the result are <strong>published</strong> on the Hedera Consensus Service, and a smart
@@ -163,8 +164,9 @@ const GuidePage: NextPage = async () => {
           <Step n={1} title="Check the project qualifies">
             Describe the plant (capacity, reservoir area, start date, grid data) and post it to{" "}
             <code>/api/methodology/assess</code>, or ask an agent to call <code>assess_project</code>. You get the
-            methodology (AMS-I.D up to 15 MW, ACM0002 above), the grid emission factor, reservoir rules and the exact
-            numbers to register on-chain.
+            methodology. VMR0017, which the demo plants use, applies ACM0002 v22.0, limits hydro to 15 MW, and only in
+            a least developed country. CDM uses AMS-I.D up to 15 MW and ACM0002 above. You also get the grid emission
+            factor, reservoir rules and the exact numbers to register on-chain.
           </Step>
           <Step n={2} title="Register it">
             The registry admin records the validated design on-chain (<code>registerPlant</code>, done for the demo
@@ -250,7 +252,11 @@ yarn start                       # terminal 3: http://localhost:3000`}</Code>
           {[
             [
               "Is this a real carbon registry?",
-              "No. It implements the published CDM methodologies (AMS-I.D, ACM0002, TOOL07, TOOL03) and runs on Hedera testnet with demo plants. Credits it mints are not Verra or Gold Standard units. A real deployment needs a validated project, an accredited verifier and a standard's approval.",
+              "No. The demo plants are registered as Verra VMR0017 v1.0 with ACM0002 v22.0. CDM AMS-I.D and ACM0002 remain selectable. Credits it mints are testnet tokens, not Verra or Gold Standard units. A real project needs a validated design, an accredited verifier and the standard's approval.",
+            ],
+            [
+              "Why is this needed if Guardian already digitizes the policy?",
+              "Guardian runs the methodology: forms, roles, an off-chain calculation, and a mint for the number that calculation returns. This template does not replace that. The contract recomputes the tonne and refuses a different integer, two price feeds must agree before a sale, and anyone can rerun the figure from HCS without a Guardian server.",
             ],
             [
               "Why should I trust the numbers?",
