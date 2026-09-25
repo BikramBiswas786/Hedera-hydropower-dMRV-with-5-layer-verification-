@@ -63,12 +63,21 @@ export const DEMO_GRID: Omit<Tool07Input, "projectKind" | "creditingPeriod"> = {
 const DEMO_ADDITIONALITY: AdditionalityEvidence = {
   tool: "VT0008",
   regulatorySurplus: true,
-  investment: { indicator: "IRR", projectValuePct: 8.1, benchmarkPct: 11.5 },
-  commonPractice: {
-    isCommonPractice: false,
-    basis: "Illustrative: grid-connected small hydro supplies under 20% of comparable capacity in the host country",
+  investment: {
+    analysis: "benchmark",
+    irr: "project",
+    irrWithoutCreditsPct: 8.1,
+    irrWithCreditsPct: 12.4,
+    benchmarkPct: 11.5,
+    sensitivityConfirms: true,
+    decisiveIncrease: true,
   },
-  assessedBy: "Illustrative demo data, not validated",
+  commonPractice: {
+    nAll: 12,
+    nDiff: 10,
+    basis: "Illustrative: grid-connected small hydro within ±50% of the design capacity in the host country",
+  },
+  assessedBy: "none (illustrative demo data, not validated)",
 };
 
 /**

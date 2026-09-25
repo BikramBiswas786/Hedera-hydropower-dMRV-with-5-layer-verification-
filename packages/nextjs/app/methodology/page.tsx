@@ -47,8 +47,9 @@ const MethodologyPage: NextPage = () => (
         less in Least Developed Countries, VT0008 additionality, EF_Res 100 kg CO₂e/MWh and embodied-emission leakage.
         The <strong>CDM</strong> rules (AMS-I.D v{METHODOLOGIES["AMS-I.D"].version} up to 15 MW, ACM0002 above) remain
         available; Verra inactivates them as standalone methodologies on 1 January 2027. <strong>TOOL03</strong> prices
-        fossil fuel burnt on site and the grid factor follows <strong>TOOL07</strong>&apos;s procedure (VMR0017 names
-        VT0011 for it). The same integer arithmetic runs in this app, in the MCP server and inside the{" "}
+        fossil fuel burnt on site. The grid factor follows <strong>TOOL07</strong> v7.0 for CDM plants and Verra&apos;s{" "}
+        <strong>VT0011</strong> v1.0 revision of it for VMR0017 plants (build margin over all units, hydro weights 0.4 /
+        0.6). The same integer arithmetic runs in this app, in the MCP server and inside the{" "}
         <code>HydroCreditRegistry</code> contract, and shared test vectors keep them identical.
       </p>
     </PageHeader>
@@ -158,6 +159,10 @@ EG_facility = export − import at the grid meter, after QA/QC`}</Eq>
                 {tool07 && (
                   <>
                     <tr>
+                      <td>Grid tool</td>
+                      <td>{tool07.tool === "VT0011" ? "VT0011 v1.0 with TOOL07 v7.0" : "TOOL07 v7.0"}</td>
+                    </tr>
+                    <tr>
                       <td>EF_grid,OM</td>
                       <td className="font-mono">{t(tool07.operatingMargin.efTPerMwh)} t/MWh</td>
                     </tr>
@@ -194,6 +199,10 @@ EG_facility = export − import at the grid meter, after QA/QC`}</Eq>
                 <tr>
                   <td>Leakage</td>
                   <td>{assessment.leakage.basis}</td>
+                </tr>
+                <tr>
+                  <td>Additionality</td>
+                  <td>{assessment.additionality.basis}</td>
                 </tr>
                 <tr>
                   <td>Crediting</td>
@@ -264,8 +273,7 @@ EG_facility = export − import at the grid meter, after QA/QC`}</Eq>
           </li>
         </ul>
         <p className="text-sm text-base-content/70 m-0">
-          Not implemented: VT0011 as a separate tool (the grid factor follows TOOL07, which VMR0017 replaces with
-          VT0011; register a published combined margin if they differ), TOOL07 option B, dispatch-data and ex-post OM,
+          Not implemented: VT0011&apos;s annual build-margin update, TOOL07 option B, dispatch-data and ex-post OM,
           off-grid plants and imports, integrated hydro projects, battery and pumped storage, geothermal sources. The
           LDC and VT0008 conditions are checked at design assessment from recorded evidence; a VVB validates the design
           and the additionality, and this is a digital implementation of the equations, not a certification.

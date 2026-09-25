@@ -86,17 +86,33 @@ export type Hydraulics = {
 };
 
 /**
- * VT0008 additionality evidence as validated by the VVB (VMR0017 §7): regulatory surplus, investment analysis
- * (benchmark, Step 3) and common practice (Step 4). Barrier analysis is not applicable under VMR0017. The engine
- * checks that the evidence is complete and consistent; the determination itself is the VVB's.
+ * VT0008 v1.0 additionality evidence as validated by the VVB (VMR0017 §7): regulatory surplus, Step 3 investment
+ * analysis and Step 4 common practice. Barrier analysis is not applicable under VMR0017. The engine applies
+ * VT0008's decision rules to the recorded figures; producing and validating those figures is the VVB's job.
  */
 export type AdditionalityEvidence = {
   tool: "VT0008";
   regulatorySurplus: boolean;
-  /** Step 3, benchmark analysis: the project's financial indicator without carbon revenue vs the benchmark. */
-  investment: { indicator: "IRR" | "NPV-ratio"; projectValuePct: number; benchmarkPct: number };
-  /** Step 4: whether the activity is common practice in the host country and sector. */
-  commonPractice: { isCommonPractice: boolean; basis: string };
+  /**
+   * Step 3, benchmark analysis (§5.4.2), which must use the project or equity IRR. (a) The IRR without carbon credit
+   * revenue is below the benchmark, confirmed by the sensitivity analysis; for Core Carbon Principles labels also
+   * (b) credit revenue raises economic performance decisively and (c) lifts the IRR to or above the benchmark.
+   */
+  investment: {
+    analysis: "benchmark";
+    irr: "project" | "equity";
+    irrWithoutCreditsPct: number;
+    irrWithCreditsPct: number;
+    benchmarkPct: number;
+    sensitivityConfirms: boolean;
+    decisiveIncrease: boolean;
+  };
+  /**
+   * Step 4b (renewable power is a technology switch, §5.5.1): N_all similar projects in the applicable geographic
+   * area not under the VCS Program, N_diff of them with essential distinctions. Common practice when
+   * F = 1 − N_diff / N_all > 20 % and N_all − N_diff > 3.
+   */
+  commonPractice: { nAll: number; nDiff: number; basis: string };
   /** Validation/verification body and the report the evidence comes from. */
   assessedBy?: string;
   reportUri?: string;
@@ -184,7 +200,14 @@ export type ProjectAssessment = {
   };
   projectEmissions: { fuel: FuelCoefficient | null; reservoir: string };
   leakage: { basis: string; embodiedGPerMwh: number };
-  additionality: { basis: string; evidence: AdditionalityEvidence | null };
+  additionality: {
+    basis: string;
+    evidence: AdditionalityEvidence | null;
+    /** VT0008 §5.5.2 factor F; null without evidence. */
+    commonPracticeFactor: number | null;
+    /** VT0008 §5.4.2(2)(b) and (c) hold, which VMR0017 §7 requires projects to record (CCP label eligibility). */
+    ccpInvestmentConditions: boolean | null;
+  };
   crediting: { start: number; end: number; years: number; period: number };
   registration: RegisteredDesign;
 };
@@ -248,35 +271,68 @@ export function powerDensity(
   };
 }
 
-/** VMR0017 §7: all three VT0008 steps must support additionality; the engine checks completeness and consistency. */
+/** VT0008 §5.5.2: F = 1 − N_diff / N_all; common practice when F > 20 % and N_all − N_diff > 3. */
+export function commonPracticeOf({ nAll, nDiff }: { nAll: number; nDiff: number }) {
+  const similar = nAll - nDiff;
+  // F > 20% ⇔ 5·(N_all − N_diff) > N_all, compared in integers so F = 20% exactly never tips over in floating point.
+  return { factor: nAll === 0 ? 0 : similar / nAll, commonPractice: 5 * similar > nAll && similar > 3 };
+}
+
+/** VMR0017 §7: regulatory surplus, VT0008 Step 3 and Step 4 must all support additionality. */
 function additionalityOf(
   design: ProjectDesign,
   vmr0017: boolean,
   failures: string[],
 ): ProjectAssessment["additionality"] {
   const evidence = design.additionality ?? null;
+  const none = { commonPracticeFactor: null, ccpInvestmentConditions: null };
   if (!vmr0017) {
     return {
       basis: "CDM: additionality per TOOL01/TOOL02 is part of validation and is not recorded here",
       evidence,
+      ...none,
     };
   }
   if (!evidence) {
     failures.push(
       "VMR0017 §7: VT0008 additionality evidence (regulatory surplus, investment analysis, common practice) is required",
     );
-    return { basis: "VT0008 evidence missing", evidence: null };
+    return { basis: "VT0008 evidence missing", evidence: null, ...none };
   }
+  const { investment } = evidence;
   if (!evidence.regulatorySurplus) failures.push("VT0008: the project must demonstrate regulatory surplus");
-  if (evidence.investment.projectValuePct >= evidence.investment.benchmarkPct) {
+  if (investment.irrWithoutCreditsPct >= investment.benchmarkPct) {
     failures.push(
-      `VT0008 Step 3: the project ${evidence.investment.indicator} without carbon revenue (${evidence.investment.projectValuePct}%) is not below the benchmark (${evidence.investment.benchmarkPct}%)`,
+      `VT0008 §5.4.2(2)(a): the ${investment.irr} IRR without carbon credit revenue (${investment.irrWithoutCreditsPct}%) must be below the benchmark (${investment.benchmarkPct}%)`,
     );
   }
-  if (evidence.commonPractice.isCommonPractice) failures.push("VT0008 Step 4: the project activity is common practice");
+  if (!investment.sensitivityConfirms) {
+    failures.push("VT0008 §5.4.2(3): the sensitivity analysis must confirm the result under reasonable variations");
+  }
+  if (investment.irrWithCreditsPct < investment.irrWithoutCreditsPct) {
+    failures.push("VT0008: the IRR with carbon credit revenue cannot be below the IRR without it");
+  }
+  if (evidence.commonPractice.nDiff > evidence.commonPractice.nAll) {
+    failures.push("VT0008 §5.5.2: N_diff cannot exceed N_all");
+  }
+  const { factor, commonPractice } = commonPracticeOf(evidence.commonPractice);
+  if (commonPractice) {
+    failures.push(
+      `VT0008 §5.5.2: common practice (F = ${(factor * 100).toFixed(1)}% > 20% and N_all − N_diff = ${evidence.commonPractice.nAll - evidence.commonPractice.nDiff} > 3)`,
+    );
+  }
+  const ccp = investment.decisiveIncrease && investment.irrWithCreditsPct >= investment.benchmarkPct;
   return {
-    basis: `VT0008: regulatory surplus, ${evidence.investment.indicator} ${evidence.investment.projectValuePct}% below the ${evidence.investment.benchmarkPct}% benchmark without carbon revenue, not common practice${evidence.assessedBy ? `; assessed by ${evidence.assessedBy}` : ""}`,
+    basis:
+      `VT0008: regulatory surplus; ${investment.irr} IRR ${investment.irrWithoutCreditsPct}% without and ${investment.irrWithCreditsPct}% with carbon revenue against a ${investment.benchmarkPct}% benchmark; ` +
+      `F = ${(factor * 100).toFixed(1)}%, ${commonPractice ? "common practice" : "not common practice"}` +
+      (ccp
+        ? "; §5.4.2(2)(b)–(c) met (CCP-eligible)"
+        : "; §5.4.2(2)(b)–(c) not met: additional, but may not be CCP-eligible") +
+      (evidence.assessedBy ? `; assessor: ${evidence.assessedBy}` : ""),
     evidence,
+    commonPracticeFactor: factor,
+    ccpInvestmentConditions: ccp,
   };
 }
 
@@ -290,19 +346,20 @@ function gridFactor(design: ProjectDesign): ProjectAssessment["grid"] {
       reference,
     };
   }
+  const vt0011 = design.methodology === "VMR0017";
   const tool07 = calculateGridEmissionFactor({
     ...design.grid.input,
     projectKind: "hydro",
     creditingPeriod: design.crediting.period,
+    tool: vt0011 ? "VT0011" : "TOOL07",
   });
   return {
     source: "tool07",
     efTPerMwh: tool07.combinedMargin.efTPerMwh,
     efGPerMwh: tool07.combinedMargin.efGPerMwh,
-    reference:
-      design.methodology === "VMR0017"
-        ? `TOOL07 ex-ante combined margin for ${tool07.system}. VMR0017 replaces TOOL07 with VT0011; this engine applies TOOL07's procedure, so check it against VT0011 (or register a published CM) before validation`
-        : `TOOL07 ex-ante combined margin for ${tool07.system}`,
+    reference: vt0011
+      ? `VT0011 v1.0 (with TOOL07 v7.0) ex-ante combined margin for ${tool07.system}`
+      : `TOOL07 ex-ante combined margin for ${tool07.system}`,
     tool07,
   };
 }

@@ -150,6 +150,81 @@ describe("TOOL07 build margin sample group (step 5)", () => {
   });
 });
 
+describe("VT0011 v1.0 revision of TOOL07", () => {
+  const EF_COAL_TOOL09 = (0.0895 * 3.6) / 0.39;
+  const units: PowerUnit[] = [
+    { id: "N1", source: "solar", commissioned: 2024 },
+    { id: "N2", source: "natural-gas", commissioned: 2020, efficiency: 0.5 },
+    { id: "N3", source: "other-bituminous-coal", commissioned: 2010, tool09Efficiency: 0.39 },
+    { id: "N4", source: "other-bituminous-coal", commissioned: 2005, efficiency: 0.36 },
+    { id: "N5", source: "hydro", commissioned: 2000 },
+    { id: "VCS1", source: "wind", commissioned: 2019, cdm: true },
+    { id: "VCS2", source: "solar", commissioned: 2016, cdm: true },
+  ];
+  const grid = (overrides: Partial<Tool07Input> = {}) =>
+    smallGrid({
+      tool: "VT0011",
+      units,
+      years: [2023, 2024, 2025].map(year => ({
+        year,
+        units: {
+          N1: { mwh: 50 },
+          N2: { mwh: 100 },
+          N3: { mwh: 400, fuelT: 150 },
+          N4: { mwh: 450 },
+          N5: { mwh: 1_000 },
+          VCS1: { mwh: 300 },
+          VCS2: { mwh: 30 },
+        },
+      })),
+      ...overrides,
+    });
+
+  it("¶50 A3: a unit with generation data only counts as 0 t CO2/MWh when supplying the grid", () => {
+    const unit: PowerUnit = { id: "X", source: "lignite", commissioned: 2000 };
+    expect(unitEmissionFactor(unit, { mwh: 10 }, "VT0011")).toMatchObject({ option: "A3", efTPerMwh: 0 });
+    expect(() => unitEmissionFactor(unit, { mwh: 10 })).toThrow(MethodologyError);
+  });
+
+  it("¶75: BM sample over all units, GHG-program units included, without steps (d)–(f)", () => {
+    const { buildMargin, tool } = calculateGridEmissionFactor(grid());
+    expect(tool).toBe("VT0011");
+    expect(buildMargin.step).toBe("VT0011 ¶75(c) SET_sample");
+    expect(buildMargin.totalMwh).toBe(2_330);
+    // SET_≥20% (target 466 MWh) = N1 + N2 + VCS1 + VCS2 = 480; SET_5 adds N3 and is larger.
+    expect(buildMargin.set20Mwh).toBe(480);
+    expect(buildMargin.set5Mwh).toBe(880);
+    expect(buildMargin.sample.map(u => u.id)).toEqual(["N1", "N2", "VCS1", "VCS2", "N3"]);
+  });
+
+  it("¶79: a sample unit older than 10 years uses option A2 with the TOOL09 default efficiency", () => {
+    const { buildMargin } = calculateGridEmissionFactor(grid());
+    const n3 = buildMargin.sample.find(u => u.id === "N3");
+    expect(n3).toMatchObject({ option: "A2" });
+    expect(n3?.efTPerMwh).toBeCloseTo(EF_COAL_TOOL09, 12);
+    expect(buildMargin.efTPerMwh).toBeCloseTo((100 * EF_GAS_50 + 400 * EF_COAL_TOOL09) / 880, 12);
+
+    const withoutDefault = grid({ units: units.map(u => (u.id === "N3" ? { ...u, tool09Efficiency: undefined } : u)) });
+    expect(() => calculateGridEmissionFactor(withoutDefault)).toThrow(/VT0011 ¶79: N3/);
+  });
+
+  it("¶86 Case 1 weights: hydro 0.4/0.6 then 0.25/0.75; wind and solar 0.5/0.5, 0.4/0.6, 0.3/0.7", () => {
+    expect(combinedMarginWeights("hydro", 1, "VT0011")).toEqual({ operatingMargin: 0.4, buildMargin: 0.6 });
+    expect(combinedMarginWeights("hydro", 2, "VT0011")).toEqual({ operatingMargin: 0.25, buildMargin: 0.75 });
+    expect(combinedMarginWeights("hydro", 3, "VT0011")).toEqual({ operatingMargin: 0.25, buildMargin: 0.75 });
+    expect(combinedMarginWeights("wind-solar", 1, "VT0011")).toEqual({ operatingMargin: 0.5, buildMargin: 0.5 });
+    expect(combinedMarginWeights("wind-solar", 2, "VT0011")).toEqual({ operatingMargin: 0.4, buildMargin: 0.6 });
+    expect(combinedMarginWeights("wind-solar", 3, "VT0011")).toEqual({ operatingMargin: 0.3, buildMargin: 0.7 });
+  });
+
+  it("CM = 0.4 × OM + 0.6 × BM for a first-period hydro plant", () => {
+    const result = calculateGridEmissionFactor(grid());
+    const expected = 0.4 * result.operatingMargin.efTPerMwh + 0.6 * result.buildMargin.efTPerMwh;
+    expect(result.combinedMargin.efTPerMwh).toBeCloseTo(expected, 12);
+    expect(result.combinedMargin.efGPerMwh).toBe(Math.floor(expected * 1e6));
+  });
+});
+
 describe("TOOL07 combined margin", () => {
   it("weights OM and BM by technology and crediting period", () => {
     expect(combinedMarginWeights("hydro", 1)).toEqual({ operatingMargin: 0.5, buildMargin: 0.5 });

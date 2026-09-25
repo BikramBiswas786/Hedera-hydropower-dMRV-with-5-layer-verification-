@@ -58,7 +58,8 @@ export function buildOpenApi(origin: string) {
     info: {
       title: "Hydro dMRV API",
       version: ENGINE_VERSION,
-      summary: "Digital MRV for grid-connected hydropower on Hedera (CDM AMS-I.D / ACM0002, TOOL07, TOOL03)",
+      summary:
+        "Digital MRV for grid-connected hydropower on Hedera (Verra VMR0017 with ACM0002, CDM AMS-I.D / ACM0002, VT0011 / TOOL07, TOOL03)",
       description:
         "Verify and quantify monitoring periods, read the on-chain registry, reproduce any issuance from HCS data, and prepare unsigned purchases for your own wallet. The same capabilities are MCP tools at /api/mcp; where a tool does what an endpoint does, the operationId is the tool's name. Units: energy in Wh, emissions in g CO2e, credits in kg (1 token = 1 t CO2e). Methodology: /methodology and the MCP resource hydro-dmrv://methodology.",
       license: { name: "MIT", identifier: "MIT" },
@@ -68,7 +69,7 @@ export function buildOpenApi(origin: string) {
     security: [],
     externalDocs: { description: "Guide for AI agents", url: `${origin}/llms.txt` },
     tags: [
-      { name: "methodology", description: "Project design, TOOL07 grid factor, design documents" },
+      { name: "methodology", description: "Project design, TOOL07 / VT0011 grid factor, design documents" },
       { name: "monitoring", description: "Sample telemetry, verification, attestation" },
       { name: "registry", description: `On-chain state on chain ${HYDRO_CHAIN_ID}` },
       { name: "evidence", description: "Audit and reproduction from HCS through the public mirror node" },
@@ -80,14 +81,14 @@ export function buildOpenApi(origin: string) {
         tags: ["methodology"],
         summary: "Assess a hydro project design",
         description:
-          "Applicability, reservoir power density and PE_HP rate, baseline, TOOL07 combined margin, TOOL03 fuel coefficient, leakage and crediting period. Returns the integers registerPlant expects and the designHash.",
+          "Applicability, reservoir power density and PE_HP rate, baseline, TOOL07 or VT0011 combined margin, VT0008 additionality, TOOL03 fuel coefficient, leakage and crediting period. Returns the integers registerPlant expects and the designHash.",
         requestBody: body(projectDesignSchema),
         responses: ok("Assessment, registration integers and designHash"),
       }),
       "/api/methodology/grid-emission-factor": post({
         operationId: "calculate_grid_emission_factor",
         tags: ["methodology"],
-        summary: "TOOL07 combined margin from per-unit grid data",
+        summary: "TOOL07 or VT0011 combined margin from per-unit grid data",
         requestBody: body(gridEmissionFactorRequestSchema),
         responses: ok("Operating margin, build-margin sample group, weights and combined margin"),
       }),

@@ -15,6 +15,7 @@ export const tool07InputSchema = z.object({
         commissioned: z.number().int().min(1900).max(2100),
         cdm: z.boolean().optional(),
         efficiency: z.number().gt(0).lte(1).optional(),
+        tool09Efficiency: z.number().gt(0).lte(1).optional(),
       }),
     )
     .min(1)
@@ -38,6 +39,7 @@ export const tool07InputSchema = z.object({
 export const gridEmissionFactorRequestSchema = tool07InputSchema.extend({
   projectKind: z.enum(["hydro", "wind-solar"]).default("hydro"),
   creditingPeriod: period.default(1),
+  tool: z.enum(["TOOL07", "VT0011"]).default("TOOL07"),
 });
 
 const wholeNumber = z.number().int().min(0).max(Number.MAX_SAFE_INTEGER);
@@ -56,11 +58,19 @@ export const projectDesignSchema = z.object({
       tool: z.literal("VT0008"),
       regulatorySurplus: z.boolean(),
       investment: z.object({
-        indicator: z.enum(["IRR", "NPV-ratio"]),
-        projectValuePct: z.number(),
+        analysis: z.literal("benchmark"),
+        irr: z.enum(["project", "equity"]),
+        irrWithoutCreditsPct: z.number(),
+        irrWithCreditsPct: z.number(),
         benchmarkPct: z.number(),
+        sensitivityConfirms: z.boolean(),
+        decisiveIncrease: z.boolean(),
       }),
-      commonPractice: z.object({ isCommonPractice: z.boolean(), basis: z.string().min(1).max(500) }),
+      commonPractice: z.object({
+        nAll: z.number().int().min(0),
+        nDiff: z.number().int().min(0),
+        basis: z.string().min(1).max(500),
+      }),
       assessedBy: z.string().max(120).optional(),
       reportUri: z.string().max(300).optional(),
     })

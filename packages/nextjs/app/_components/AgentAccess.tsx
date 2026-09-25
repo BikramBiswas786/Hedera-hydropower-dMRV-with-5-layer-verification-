@@ -5,8 +5,8 @@ import Link from "next/link";
 
 const ENDPOINTS = [
   ["POST", "/api/mrv/verify", "Verify + quantify ER = BE − PE − LE (no credentials)"],
-  ["POST", "/api/methodology/assess", "AMS-I.D / ACM0002 design check, TOOL07 CM, registration integers"],
-  ["POST", "/api/methodology/grid-emission-factor", "TOOL07 combined margin from per-unit grid data"],
+  ["POST", "/api/methodology/assess", "VMR0017 / CDM design check, combined margin, registration integers"],
+  ["POST", "/api/methodology/grid-emission-factor", "TOOL07 or VT0011 combined margin from per-unit grid data"],
   ["GET", "/api/mrv/scenarios/{name}", "Deterministic sample monitoring data"],
   ["GET", "/api/registry", "On-chain totals, plants and ledgers, oracle price"],
   ["GET", "/api/registry/plants/{id}", "A plant's design, ledger, lifetime ER and attestations"],
