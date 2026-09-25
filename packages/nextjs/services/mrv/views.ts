@@ -115,6 +115,8 @@ type RawDesign = {
 export type RawPlant = {
   name: string;
   operator: Address;
+  /** Absent on registries deployed before meter statements were checked on-chain. */
+  meter?: Address;
   active: boolean;
   design: RawDesign;
   reservoirGPerMwh: number;
@@ -131,6 +133,8 @@ export type PlantView = {
   plantId: string;
   name: string;
   operator: Address;
+  /** The data logger whose signature every attestation must carry; null on registries that predate it. */
+  meter: Address | null;
   active: boolean;
   design: RegisteredDesign;
   designHash: Hex;
@@ -147,6 +151,7 @@ export function toPlantView(id: Hex, raw: RawPlant): PlantView {
     plantId: bytes32ToPlantId(id),
     name: raw.name,
     operator: raw.operator,
+    meter: raw.meter ?? null,
     active: raw.active,
     design: {
       projectType: d.projectType,

@@ -14,7 +14,15 @@ import {
   creditingPeriodViolation,
   quantifyPeriod,
 } from "./methodology/quantify";
-import { type ProvenanceCheck, checkProvenance } from "./provenance";
+import {
+  type MeterDomain,
+  type MeterStatement,
+  type ProvenanceCheck,
+  checkProvenance,
+  meterStatementOf,
+  milliCeil,
+  milliFloor,
+} from "./provenance";
 import type { LedgerJson, Metering, PlantProfile, Reading } from "./schema";
 import type { Address, Hex } from "viem";
 
@@ -35,7 +43,7 @@ import type { Address, Hex } from "viem";
  * Pure and deterministic (no I/O, no clock), so anyone can re-run it on the readings published to HCS.
  */
 
-export const ENGINE_VERSION = "hydro-dmrv-engine@3.0.0";
+export const ENGINE_VERSION = "hydro-dmrv-engine@3.1.0";
 
 /** P (kW) = ρ·g·Q·H·η / 1000 with ρ = 1000 kg/m³ and g = 9.81 m/s². */
 const KW_PER_M4_S = 9.81;
@@ -112,6 +120,10 @@ export type VerificationReport = {
   readingCount: number;
   /** Whether the batch was signed by the meter key in the metering record. */
   provenance: ProvenanceCheck;
+  /** Raw totals the meter signs for the registry in `meterDomain`; the contract only accepts figures at least this
+   * conservative (net ≤, fuel ≥, gross = metered capped at nameplate). */
+  meterStatement: MeterStatement;
+  meterDomain: MeterDomain | null;
   decision: Decision;
   reasoning: string;
   completenessBps: number;
@@ -124,7 +136,7 @@ export type VerificationReport = {
     importWh: number;
     /** EG_facility after QA/QC; what the contract receives. */
     netWh: number;
-    /** TEG, capped at nameplate per interval. */
+    /** TEG as metered, capped only at what the nameplate can produce in the period (the PE_HP basis). */
     grossWh: number;
     fuelG: number;
     leakageG: number;
@@ -158,9 +170,6 @@ export const toLedgerJson = (ledger: PlantLedger): LedgerJson => ({
   yearNetWh: Number(ledger.yearNetWh),
 });
 
-/** kWh → Wh (or kg → g) with directed rounding; `toFixed(3)` strips float noise (0.1 + 0.2) first. */
-const milliFloor = (value: number) => Math.floor(Number((value * 1_000).toFixed(3)));
-const milliCeil = (value: number) => Math.ceil(Number((value * 1_000).toFixed(3)));
 const pct = (value: number, digits = 1) => `${(value * 100).toFixed(digits)}%`;
 const fmt = (value: number, digits = 1) => Number(value.toFixed(digits)).toLocaleString("en-US");
 
@@ -202,6 +211,8 @@ export function verifyReadings(
   metering: Metering = DEFAULT_METERING,
   ledgerJson: LedgerJson = toLedgerJson(EMPTY_LEDGER),
   signature?: string,
+  /** The registry the meter statement is signed for; `null` checks the legacy batch signature (before readings@5). */
+  domain: MeterDomain | null = null,
 ): VerificationReport {
   if (readings.length === 0) throw new Error("At least one reading is required");
 
@@ -216,7 +227,9 @@ export function verifyReadings(
     readings,
     metering.deviceAddress as Address | undefined,
     signature as Hex | undefined,
+    domain,
   );
+  const meterStatement = meterStatementOf(plant.plantId, readings);
   switch (provenance.status) {
     case "unregistered":
       add("integrity", "info", "No meter key in the metering record: the batch cannot be traced to its source");
@@ -419,7 +432,8 @@ export function verifyReadings(
   const sum = (pick: (i: Interval) => number) => intervals.reduce((s, i) => s + pick(i), 0);
   const maxEnergyWh = Math.floor((design.capacityKw * (periodEnd - periodStart) * 1_000) / 3_600);
   const netWh = milliFloor(sum(i => i.exportKwh - i.importKwh));
-  const grossWh = Math.min(milliCeil(sum(i => i.generationKwh)), maxEnergyWh);
+  // Not reduced by QA/QC: TEG is the PE_HP basis, so only the physical ceiling of the period applies.
+  const grossWh = Math.min(meterStatement.grossWh, maxEnergyWh);
   const fuelG = milliCeil(readings.reduce((s, r) => s + (r.fuelKg ?? 0), 0));
   const leakageG = 0;
 
@@ -500,6 +514,8 @@ export function verifyReadings(
     periodEnd,
     readingCount: readings.length,
     provenance,
+    meterStatement,
+    meterDomain: domain,
     decision,
     reasoning,
     completenessBps,

@@ -11,7 +11,7 @@ import {
   parseDataMessage,
 } from "./report";
 import type { AttestationView } from "./views";
-import type { Hex } from "viem";
+import type { Address, Hex } from "viem";
 
 export type AuditCheck = {
   field: string;
@@ -128,6 +128,8 @@ export async function reproduceAttestation(
   attestation: AttestationView,
   fetchImpl: typeof fetch = fetch,
   registered?: RegisteredDesign,
+  /** The plant's meter as registered on-chain; checked against the metering record the readings were verified with. */
+  registeredMeter?: Address | null,
 ): Promise<ReproductionResult> {
   const audit = await auditAttestation(attestation, fetchImpl);
   if (audit.status !== "verified" && audit.status !== "mismatch") return { status: "not-auditable", audit };
@@ -154,13 +156,23 @@ export async function reproduceAttestation(
     return { status: "no-data", audit, reason: `Published readings are malformed: ${(error as Error).message}` };
   }
 
-  const recomputed = verifyReadings(parsed.readings, parsed.plant, parsed.metering, parsed.ledger, parsed.signature);
+  const recomputed = verifyReadings(
+    parsed.readings,
+    parsed.plant,
+    parsed.metering,
+    parsed.ledger,
+    parsed.signature,
+    parsed.domain,
+  );
   const r = recomputed.emissions;
   const e = report.emissions;
   const designChecks = registered
     ? (Object.keys(registered) as (keyof RegisteredDesign)[]).map(key =>
         check(`registered.${key}`, registered[key], parsed.plant.design[key]),
       )
+    : [];
+  const meterChecks = registeredMeter
+    ? [check("registered.meter", registeredMeter.toLowerCase(), parsed.metering.deviceAddress?.toLowerCase() ?? null)]
     : [];
   const checks = [
     dataHashCheck,
@@ -183,6 +195,7 @@ export async function reproduceAttestation(
     check("credits (kg)", e?.unitsMinted ?? null, r?.unitsMinted ?? null),
     check("EF_grid,CM (g/MWh)", report.parameters.efGridGPerMwh, recomputed.parameters.efGridGPerMwh),
     ...designChecks,
+    ...meterChecks,
   ];
 
   return {

@@ -14,11 +14,12 @@ import { SCENARIO_NAMES, type ScenarioName, generateScenario } from "./scenarios
 import { describe, expect, it } from "vitest";
 
 const END = new Date("2026-09-20T00:00:00Z");
+const DOMAIN = { chainId: 296, registry: "0x7Da5C616f478c4111cF9173102298b2B6D888993" };
 const LEDGER = { attestations: 3, balanceG: -1_250, creditingYear: 0, yearNetWh: 42_000_000 };
 const toBase64 = (text: string) => btoa(String.fromCharCode(...new TextEncoder().encode(text)));
 
 function anchors(name: ScenarioName, hours = 24, plant = DEMO_PLANT) {
-  const request = generateScenario(name, { end: END, hours, plant });
+  const request = generateScenario(name, { end: END, hours, plant, domain: DOMAIN });
   const prepared = prepareAnchors({ ...request, ledger: LEDGER });
   return {
     ...prepared,
@@ -86,6 +87,15 @@ describe("HCS data message", () => {
     expect(parsed.readings).toEqual(readings);
     expect(parsed.metering).toEqual(DEMO_METERING);
     expect(parsed.signature).toBeUndefined();
+    expect(parsed.domain).toBeNull();
+  });
+
+  it("carries the registry the meter statement is signed for (readings@5)", () => {
+    const { data } = anchors("healthy");
+    expect(data.body.schema).toBe("hydro-dmrv/readings@5");
+    expect(parseDataMessage(data.message).domain).toEqual(DOMAIN);
+    const legacy = { ...JSON.parse(data.message), schema: "hydro-dmrv/readings@4" };
+    expect(parseDataMessage(JSON.stringify(legacy)).domain).toBeNull();
   });
 
   it("omits absent optional fields instead of inventing values", () => {
@@ -98,16 +108,17 @@ describe("HCS data message", () => {
       flowRateM3s: first.flowRateM3s,
       headM: first.headM,
     };
-    const data = buildDataMessage([bare], DEMO_PLANT, DEMO_METERING, LEDGER, "engine");
+    const data = buildDataMessage([bare], DEMO_PLANT, DEMO_METERING, LEDGER, "engine", null, DOMAIN);
     expect(parseDataMessage(data.message).readings[0]).toEqual(bare);
   });
 
   it("changes its hash when any reading is altered", () => {
     const { readings, data } = anchors("healthy");
     const tampered = readings.map((r, i) => (i === 3 ? { ...r, exportKwh: r.exportKwh + 0.001 } : r));
-    expect(buildDataMessage(tampered, DEMO_PLANT, DEMO_METERING, LEDGER, data.body.engine).dataHash).not.toBe(
-      data.dataHash,
-    );
+    expect(
+      buildDataMessage(tampered, DEMO_PLANT, DEMO_METERING, LEDGER, data.body.engine, data.body.signature, DOMAIN)
+        .dataHash,
+    ).not.toBe(data.dataHash);
   });
 
   it("fits a day in a few chunks and a week of hourly data within the 20-chunk limit", () => {

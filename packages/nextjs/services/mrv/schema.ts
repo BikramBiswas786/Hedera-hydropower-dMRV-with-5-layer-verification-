@@ -48,6 +48,12 @@ export const meteringSchema = z.object({
     .optional(),
 });
 
+/** The registry a meter statement is signed for (`provenance.ts`): its chain id and address. */
+export const meterDomainSchema = z.object({
+  chainId: z.number().int().positive(),
+  registry: z.string().regex(/^0x[0-9a-fA-F]{40}$/, "Expected a 20-byte hex address"),
+});
+
 /** 65-byte r‖s‖v secp256k1 signature. */
 export const signatureSchema = z.string().regex(/^0x[0-9a-fA-F]{130}$/, "Expected a 65-byte hex signature");
 
@@ -95,8 +101,13 @@ export const verifyRequestSchema = z.object({
   plant: plantProfileSchema.optional(),
   metering: meteringSchema.optional(),
   ledger: ledgerSchema.optional(),
-  /** The meter's signature over the batch (`provenance.ts`); required when `metering.deviceAddress` is set. */
+  /**
+   * The meter's signature over the batch's meter statement (`provenance.ts`); required when `metering.deviceAddress`
+   * is set.
+   */
   signature: signatureSchema.optional(),
+  /** Registry the statement is signed for; defaults to this app's registry (`defaultMeterDomain`). */
+  domain: meterDomainSchema.optional(),
 });
 
 export type Reading = z.infer<typeof readingSchema>;

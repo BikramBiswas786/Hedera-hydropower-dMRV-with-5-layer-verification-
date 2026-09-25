@@ -1,5 +1,6 @@
 import { DEMO_PLANT, demoMeterKey, demoMeteringFor } from "./demo";
-import { signReadings } from "./provenance";
+import { defaultMeterDomain } from "./network";
+import { type MeterDomain, signMeterStatement } from "./provenance";
 import type { Metering, PlantProfile, Reading } from "./schema";
 
 export const SCENARIOS = {
@@ -50,13 +51,26 @@ const OPERATING_POINT: Record<string, { flow: number; head: number; efficiency: 
 /** Station service: the share of gross generation consumed on site before the grid meter. */
 const AUXILIARY_SHARE = 0.015;
 
-export type GenerateOptions = { end?: Date; hours?: number; seed?: number; plant?: PlantProfile };
-export type ScenarioRequest = { plant: PlantProfile; metering: Metering; readings: Reading[]; signature: string };
+export type GenerateOptions = {
+  end?: Date;
+  hours?: number;
+  seed?: number;
+  plant?: PlantProfile;
+  /** Registry the meter statement is signed for; defaults to this app's registry. */
+  domain?: MeterDomain;
+};
+export type ScenarioRequest = {
+  plant: PlantProfile;
+  metering: Metering;
+  readings: Reading[];
+  signature: string;
+  domain: MeterDomain;
+};
 
 /**
  * Generates hourly monitoring data for a demo plant. Flow follows a gentle diurnal curve with ±1% sensor noise;
  * gross generation is ρ·g·Q·H·η at the plant's true efficiency; the main meter exports it net of station service
- * and the check meter agrees within ±0.1%. The plant's demo meter signs the batch as delivered, so manipulations
+ * and the check meter agrees within ±0.1%. The plant's demo meter signs the batch's statement as delivered, so manipulations
  * that happen at the meter are signed and must be caught by QA/QC and physics, while `tampered` edits after signing.
  */
 export function generateScenario(scenario: ScenarioName, options: GenerateOptions = {}): ScenarioRequest {
@@ -149,7 +163,8 @@ export function generateScenario(scenario: ScenarioName, options: GenerateOption
     case "tampered":
       break;
   }
-  const signature = signReadings(demoMeterKey(plant.plantId), plant.plantId, readings);
+  const domain = options.domain ?? defaultMeterDomain();
+  const signature = signMeterStatement(demoMeterKey(plant.plantId), domain, plant.plantId, readings);
   if (scenario === "tampered") {
     readings = readings.map((r, i) =>
       i >= 12 && i < 18
@@ -157,5 +172,5 @@ export function generateScenario(scenario: ScenarioName, options: GenerateOption
         : r,
     );
   }
-  return { plant, metering, readings, signature };
+  return { plant, metering, readings, signature, domain };
 }

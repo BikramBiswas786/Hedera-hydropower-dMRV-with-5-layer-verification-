@@ -1,11 +1,13 @@
 import type { VerificationReport } from "./engine";
 import type { ProjectDesign } from "./methodology/project";
+import type { MeterDomain } from "./provenance";
 import {
   type LedgerJson,
   type Metering,
   type PlantProfile,
   type Reading,
   ledgerSchema,
+  meterDomainSchema,
   meteringSchema,
   plantProfileSchema,
   readingSchema,
@@ -17,9 +19,12 @@ import { z } from "zod";
 export const REPORT_SCHEMA = "hydro-dmrv/report@4";
 /** report@3 predates VMR0017: no computed leakage in `emissions`. Still audited. */
 export const LEGACY_REPORT_SCHEMAS = ["hydro-dmrv/report@3"] as const;
-export const DATA_SCHEMA = "hydro-dmrv/readings@4";
-/** readings@2 predates meter signatures, readings@3 the plant's registered methodology; both still reproduce. */
-export const LEGACY_DATA_SCHEMAS = ["hydro-dmrv/readings@2", "hydro-dmrv/readings@3"] as const;
+export const DATA_SCHEMA = "hydro-dmrv/readings@5";
+/**
+ * readings@2 predates meter signatures, readings@3 the plant's registered methodology, readings@4 the on-chain meter
+ * statement (its signature covers the readings digest only). All still reproduce.
+ */
+export const LEGACY_DATA_SCHEMAS = ["hydro-dmrv/readings@2", "hydro-dmrv/readings@3", "hydro-dmrv/readings@4"] as const;
 export const PROJECT_SCHEMA = "hydro-dmrv/project@1";
 
 /** HCS splits messages into 1024-byte chunks and accepts at most 20 per message. */
@@ -72,8 +77,10 @@ export type HcsDataMessage = {
   fields: typeof READING_KEYS;
   /** One row per reading, values in `fields` order; absent optional values are `null`. */
   readings: (string | number | null)[][];
-  /** The meter's signature over the batch (`provenance.ts`), or null when the plant has no meter key. */
+  /** The meter's signature over the meter statement (`provenance.ts`), or null when the plant has no meter key. */
   signature: string | null;
+  /** The registry the statement is signed for. */
+  domain: MeterDomain;
 };
 
 export type AnchoredData = { message: string; dataHash: Hex; body: HcsDataMessage; chunks: number };
@@ -84,7 +91,8 @@ export function buildDataMessage(
   metering: Metering,
   ledger: LedgerJson,
   engine: string,
-  signature: string | null = null,
+  signature: string | null,
+  domain: MeterDomain,
 ): AnchoredData {
   const body: HcsDataMessage = {
     schema: DATA_SCHEMA,
@@ -95,6 +103,7 @@ export function buildDataMessage(
     fields: READING_KEYS,
     readings: readings.map(reading => READING_KEYS.map(key => reading[key] ?? null)),
     signature,
+    domain,
   };
   const { message, bytes, hash } = encode(body);
   if (bytes.length > HCS_MAX_DATA_BYTES) {
@@ -114,6 +123,7 @@ const dataMessageSchema = z.object({
   fields: z.array(z.string()),
   readings: z.array(z.array(z.union([z.string(), z.number(), z.null()]))),
   signature: signatureSchema.nullish(),
+  domain: meterDomainSchema.optional(),
 });
 
 /** Parses a data message back into typed inputs. Throws with a readable reason on malformed input. */
@@ -131,6 +141,8 @@ export function parseDataMessage(text: string) {
     ledger: body.ledger,
     engine: body.engine,
     signature: body.signature ?? undefined,
+    /** `null` for data messages before readings@5, whose signature covers the readings digest only. */
+    domain: body.schema === DATA_SCHEMA ? (body.domain ?? null) : null,
   };
 }
 

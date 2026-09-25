@@ -61,9 +61,13 @@ Buying as an agent: `list_open_listings` → `prepare_purchase { listingId, amou
 - Reading: `{ timestamp (ISO 8601, end of interval), intervalMinutes, generationKwh (gross, TEG), exportKwh,
   importKwh?, checkExportKwh?, flowRateM3s, headM, fuelKg?, ph?, turbidityNtu?, temperatureC? }`
 - Metering: `{ mainMeterAccuracyPct, checkMeterAccuracyPct, calibrationValidUntil, flowUncertaintyPct, deviceAddress? }`
-- Meter signature: a verify request's `signature` is the meter key's EIP-191 signature over
-  sha256({ schema: "hydro-dmrv/meter-batch@1", plantId, fields, readings }) (see `services/mrv/provenance.ts`);
-  required when `metering.deviceAddress` is set. Sample telemetry is signed by the public demo meter keys.
+- Meter signature: a verify request's `signature` is the meter key's EIP-191 signature over the meter statement
+  keccak256(abi.encode(keccak256("hydro-dmrv/meter-statement@1"), chainId, registry, plantId, periodStart, periodEnd,
+  grossWh, netWh, fuelG, readingsDigest)) with raw totals, `readingsDigest` = sha256({ schema:
+  "hydro-dmrv/meter-batch@1", plantId, fields, readings }), and `domain: { chainId, registry }` naming the registry
+  (defaults to this app's). See `services/mrv/provenance.ts`. Required when `metering.deviceAddress` is set; the
+  contract also requires it, from the plant's registered meter, and rejects figures less conservative than the
+  statement. Sample telemetry is signed by the public demo meter keys.
 - Decision: REJECTED for a missing or invalid meter signature, replayed or overlapping intervals, > 20% of intervals physically impossible, periods outside
   the crediting period or across a crediting year, or unregistered fuel; FLAGGED for coverage < 90%, excluded
   intervals, main/check meter disagreement, efficiency outliers or safeguard exceedances; otherwise APPROVED.
@@ -74,7 +78,7 @@ Buying as an agent: `list_open_listings` → `prepare_purchase { listingId, amou
   leakage = embodied emissions 21 g CO2e/kWh of EG_facility (greenfield) or EG_PJ_Add (capacity addition), and the
   grid factor by VT0011 (BM over all units incl. VCS/CDM ones, hydro weights 0.4/0.6 then 0.25/0.75). The grid-factor
   tool takes `tool: "TOOL07" | "VT0011"`.
-- HCS: `hydro-dmrv/readings@4` (readings + meter signature + plant + metering + ledger, up to 20 chunks) then `hydro-dmrv/report@4`
+- HCS: `hydro-dmrv/readings@5` (readings + meter signature + domain + plant + metering + ledger, up to 20 chunks) then `hydro-dmrv/report@4`
   (monitored inputs, emissions, `data: { hash, sequence }`). The contract stores sha256(report) and its sequence.
 - Prices: listings in US cents per tonne; quotes in the EVM's native unit (tinybar on Hedera); `prepare_purchase`
   returns `value` already scaled to 18-decimal weibar with a 1% buffer that the contract refunds.

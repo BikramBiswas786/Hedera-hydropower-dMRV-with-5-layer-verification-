@@ -1,5 +1,7 @@
+import type { Wallet } from "ethers";
 import { ethers } from "hardhat";
 import { time } from "@nomicfoundation/hardhat-network-helpers";
+import type { HydroCreditRegistry } from "../../typechain-types";
 
 export const DAY = 86_400;
 export const HOUR = 3_600;
@@ -47,6 +49,17 @@ export async function plantDesign(overrides: Partial<DesignInput> = {}, startedD
   };
 }
 
+/** The plant data logger used by the tests; its address is registered as every test plant's meter. */
+export const METER = new ethers.Wallet(ethers.id("hydro-dmrv test meter"));
+
+export type MeterFields = {
+  grossEnergyWh: bigint;
+  netEnergyWh: bigint;
+  fuelG: bigint;
+  readingsDigest: string;
+  signature: string;
+};
+
 export type AttestationFields = {
   plantId: string;
   plantSequence: number;
@@ -60,15 +73,22 @@ export type AttestationFields = {
   reportHash: string;
   hcsTopicNum: bigint;
   hcsSequence: bigint;
+  meter: MeterFields;
 };
 
-/** The last hour before the latest block, 450 kWh net of 460 kWh gross. */
+/**
+ * The last hour before the latest block, 450 kWh net of 460 kWh gross. The meter statement repeats the verifier's
+ * figures (or `metered` overrides) and is signed by `signer`, the registered test meter by default.
+ */
 export async function attestationInput(
+  registry: HydroCreditRegistry,
   plantId: string,
-  overrides: Partial<AttestationFields> = {},
+  overrides: Partial<Omit<AttestationFields, "meter">> = {},
+  metered: Partial<Omit<MeterFields, "signature">> = {},
+  signer: Wallet = METER,
 ): Promise<AttestationFields> {
   const now = BigInt(await time.latest());
-  return {
+  const fields = {
     plantId,
     plantSequence: 0,
     periodStart: now - BigInt(HOUR),
@@ -83,4 +103,14 @@ export async function attestationInput(
     hcsSequence: 7n,
     ...overrides,
   };
+  const meter = {
+    grossEnergyWh: fields.grossEnergyWh,
+    netEnergyWh: fields.netEnergyWh,
+    fuelG: fields.fuelG,
+    readingsDigest: ethers.id("readings"),
+    ...metered,
+    signature: "0x",
+  };
+  const hash = await registry.meterStatementHash(plantId, { ...fields, meter });
+  return { ...fields, meter: { ...meter, signature: await signer.signMessage(ethers.getBytes(hash)) } };
 }

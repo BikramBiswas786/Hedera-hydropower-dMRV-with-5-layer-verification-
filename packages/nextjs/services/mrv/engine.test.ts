@@ -10,7 +10,14 @@ const run = (name: ScenarioName, plant = DEMO_PLANT) => {
   const request = generateScenario(name, { end: END, plant });
   return {
     request,
-    report: verifyReadings(request.readings, request.plant, request.metering, undefined, request.signature),
+    report: verifyReadings(
+      request.readings,
+      request.plant,
+      request.metering,
+      undefined,
+      request.signature,
+      request.domain,
+    ),
   };
 };
 const stage = (report: VerificationReport, name: VerificationReport["stages"][number]["stage"]) =>
@@ -34,6 +41,23 @@ describe("verifyReadings — decisions", () => {
     for (const name of SCENARIO_NAMES) {
       it(`${plant.plantId} ${name} → ${expected[name]}`, () => {
         expect(run(name, plant).report.decision).toBe(expected[name]);
+      });
+    }
+  }
+});
+
+describe("verifyReadings — never more than the meter signed", () => {
+  // HydroCreditRegistry rejects any attestation that is less conservative than the meter statement.
+  for (const plant of DEMO_PLANTS) {
+    for (const name of SCENARIO_NAMES) {
+      it(`${plant.plantId} ${name}: net ≤ metered, fuel ≥ metered, gross = metered capped at nameplate`, () => {
+        const { report } = run(name, plant);
+        const { meterStatement: metered, monitored } = report;
+        const capWh = Math.floor((plant.design.capacityKw * (report.periodEnd - report.periodStart) * 1_000) / 3_600);
+        expect(monitored.netWh).toBeLessThanOrEqual(metered.netWh);
+        expect(monitored.fuelG).toBeGreaterThanOrEqual(metered.fuelG);
+        expect(monitored.grossWh).toBe(Math.min(metered.grossWh, capWh));
+        expect([report.periodStart, report.periodEnd]).toEqual([metered.periodStart, metered.periodEnd]);
       });
     }
   }

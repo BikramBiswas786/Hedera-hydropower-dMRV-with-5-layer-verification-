@@ -27,7 +27,7 @@ yarn start                        # next dev on :3000
 
 yarn mrv:create-topic             # create the HCS audit topic
 yarn mrv:attest [scenario] [plant] # verify → HCS → submitAttestation from the CLI
-yarn mrv:meter-key                # key for a plant's data logger; METER_PRIVATE_KEY=… yarn mrv:sign file.json signs
+yarn mrv:meter-key                # key for a plant's data logger; METER_PRIVATE_KEY=… yarn mrv:sign file.json signs its statement
 yarn hardhat:test:fork            # contract tests against Hedera's HTS emulation
 ```
 
@@ -45,7 +45,7 @@ yarn hardhat:test:fork            # contract tests against Hedera's HTS emulatio
 | Per-network feeds, units, staleness | `packages/hardhat/utils/hydroNetworkConfig.ts` |
 | Methodology (pure): VMR0017 / CDM rules, TOOL07 and VT0011, TOOL03, LDC list, VT0008 checks, design assessment, integer quantification | `packages/nextjs/services/mrv/methodology/` |
 | Verification engine (pure): 5 stages, QA/QC, report | `packages/nextjs/services/mrv/engine.ts`, `schema.ts` |
-| Meter signatures (pure): batch digest, sign, recover | `packages/nextjs/services/mrv/provenance.ts` |
+| Meter statements (pure): raw totals, digest, hash, sign, recover | `packages/nextjs/services/mrv/provenance.ts` |
 | Demo grid, designs, plants, scenarios | `packages/nextjs/services/mrv/demo.ts`, `scenarios.ts` |
 | Shared quantification test vectors (contract + TS) | `packages/hardhat/test/fixtures/quantificationVectors.ts` |
 | HCS data + report messages | `packages/nextjs/services/mrv/report.ts`, built together by `pipeline.ts` |
@@ -92,9 +92,17 @@ yarn hardhat:test:fork            # contract tests against Hedera's HTS emulatio
   publishing. `plantSequence` guards against stale reports (`StaleLedger`).
 - **Demo registrations are generated.** `packages/hardhat/utils/demoPlants.ts` holds the engine's output for the demo
   designs; `services/mrv/demo.test.ts` fails if they drift. Regenerate, never hand-edit.
-- **Readings are signed at the source.** When the metering record has a `deviceAddress`, the engine rejects a batch
-  without that key's signature over `readingsDigest` (`provenance.ts`). The digest uses the data message's row
-  encoding; change one and you change the other. Scenarios sign after their manipulation, except `tampered`.
+- **Readings are signed at the source, and the contract enforces it.** The meter signs a statement (raw gross, net,
+  fuel, period, `readingsDigest`, chain id, registry). The engine rejects a batch whose statement is not signed by the
+  metering record's `deviceAddress`; `HydroCreditRegistry` rejects an attestation not signed by the plant's registered
+  meter, or with net above, fuel below or gross different from (metered, capped at nameplate) the statement. So the
+  engine may only make figures more conservative: never raise EG_facility, lower FC or reduce TEG below the metered
+  value. `meterStatementHash` in `provenance.ts` and the contract must stay byte-identical
+  (`test/fixtures/meterStatementVector.ts`). The digest uses the data message's row encoding. Scenarios sign after
+  their manipulation, except `tampered`. Data messages before readings@5 carry the legacy batch signature.
+- **Keys are split.** Meter keys sign, `VERIFIER_ROLE` attests, `DEFAULT_ADMIN_ROLE` registers plants and meters
+  (production: a threshold-key account via `ADMIN_ADDRESS`). Do not add a path that lets the verifier or the server
+  change a registration, or that lets anyone mint without a meter statement.
 - **Two HCS messages per attestation, in order.** The data message (readings, plant, metering, ledger; up to 20
   chunks) is published first; the report (one chunk, ≤ 1024 bytes) commits to it with `data: { hash, sequence }`. Both limits are
   enforced in `report.ts` and tested.

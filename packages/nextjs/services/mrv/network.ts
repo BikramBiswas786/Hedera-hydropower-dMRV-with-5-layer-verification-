@@ -1,3 +1,5 @@
+import type { MeterDomain } from "./provenance";
+import { zeroAddress } from "viem";
 import { hedera, hederaTestnet } from "viem/chains";
 import deployedContracts from "~~/contracts/deployedContracts";
 import scaffoldConfig from "~~/scaffold.config";
@@ -43,6 +45,11 @@ export function getDeployment<Name extends DeployedName>(name: Name, chainId: nu
 
 export function getRegistryDeployment(chainId: number = HYDRO_CHAIN_ID) {
   return getDeployment("HydroCreditRegistry", chainId);
+}
+
+/** The registry meter statements are signed for: this app's registry, or the zero address before it is deployed. */
+export function defaultMeterDomain(): MeterDomain {
+  return { chainId: HYDRO_CHAIN_ID, registry: getRegistryDeployment()?.address ?? zeroAddress };
 }
 
 export function isLiveHederaChain(chainId: number = HYDRO_CHAIN_ID): boolean {

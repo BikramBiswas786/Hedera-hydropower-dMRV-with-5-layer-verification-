@@ -15,7 +15,7 @@ export async function GET(_request: Request, { params }: { params: Promise<{ id:
     const id = intParam((await params).id, 0, Number.MAX_SAFE_INTEGER);
     const attestation = await getAttestation(id);
     const plant = await getPlant(plantIdToBytes32(attestation.plantId));
-    return NextResponse.json(await reproduceAttestation(attestation, fetch, plant?.design));
+    return NextResponse.json(await reproduceAttestation(attestation, fetch, plant?.design, plant?.meter));
   } catch (error) {
     return toErrorResponse(error);
   }
