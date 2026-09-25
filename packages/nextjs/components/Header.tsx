@@ -8,6 +8,7 @@ import {
   AcademicCapIcon,
   Bars3Icon,
   BeakerIcon,
+  BookOpenIcon,
   BriefcaseIcon,
   BugAntIcon,
   BuildingOffice2Icon,
@@ -27,6 +28,11 @@ export const menuLinks: HeaderMenuLink[] = [
   {
     label: "Home",
     href: "/",
+  },
+  {
+    label: "Start here",
+    href: "/guide",
+    icon: <BookOpenIcon className="h-4 w-4" />,
   },
   {
     label: "Methodology",
@@ -84,7 +90,8 @@ export const HeaderMenuLinks = ({ withHome = true }: { withHome?: boolean }) => 
                   isActive ? "bg-primary/10 text-primary font-semibold" : "hover:bg-primary/5"
                 } py-1.5 px-3 text-sm rounded-full gap-2 grid grid-flow-col transition-colors`}
               >
-                {icon}
+                {/* Beside a connected wallet the desktop bar only fits every link without icons below 2xl. */}
+                {withHome ? icon : <span className="hidden 2xl:inline-flex">{icon}</span>}
                 <span>{label}</span>
               </Link>
             </li>

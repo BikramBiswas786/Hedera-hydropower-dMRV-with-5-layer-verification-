@@ -43,7 +43,10 @@ const Home: NextPage = () => (
           leakage) is recomputed on-chain and reproducible from public data on Hedera.
         </p>
         <div className="flex flex-wrap gap-3 mt-2">
-          <Link href="/verify" className="btn bg-white text-hedera-indigo border-none hover:bg-white/90">
+          <Link href="/guide" className="btn bg-white text-hedera-indigo border-none hover:bg-white/90">
+            Start here
+          </Link>
+          <Link href="/verify" className="btn btn-outline text-white border-white hover:bg-white/10">
             Try the verifier
           </Link>
           <Link href="/market" className="btn btn-outline text-white border-white hover:bg-white/10">
