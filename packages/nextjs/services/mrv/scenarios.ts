@@ -1,4 +1,5 @@
-import { DEMO_METERING, DEMO_PLANT } from "./demo";
+import { DEMO_PLANT, demoMeterKey, demoMeteringFor } from "./demo";
+import { signReadings } from "./provenance";
 import type { Metering, PlantProfile, Reading } from "./schema";
 
 export const SCENARIOS = {
@@ -15,6 +16,8 @@ export const SCENARIOS = {
   polluted: "Water-quality sensors report acidic, very turbid water. Quantity unchanged, FLAGGED for review.",
   inflated: "Meter tampering: every interval reports 35% more energy than the water can produce. Should be REJECTED.",
   replay: "Four intervals re-submitted with the same timestamps to double count energy. Should be REJECTED.",
+  tampered:
+    "Main and check meter export raised 1% in six intervals after the meter signed the batch: the meters agree and the physics is plausible, only the signature catches it. Should be REJECTED.",
 } as const;
 
 export type ScenarioName = keyof typeof SCENARIOS;
@@ -48,12 +51,13 @@ const OPERATING_POINT: Record<string, { flow: number; head: number; efficiency: 
 const AUXILIARY_SHARE = 0.015;
 
 export type GenerateOptions = { end?: Date; hours?: number; seed?: number; plant?: PlantProfile };
-export type ScenarioRequest = { plant: PlantProfile; metering: Metering; readings: Reading[] };
+export type ScenarioRequest = { plant: PlantProfile; metering: Metering; readings: Reading[]; signature: string };
 
 /**
  * Generates hourly monitoring data for a demo plant. Flow follows a gentle diurnal curve with ±1% sensor noise;
  * gross generation is ρ·g·Q·H·η at the plant's true efficiency; the main meter exports it net of station service
- * and the check meter agrees within ±0.1%.
+ * and the check meter agrees within ±0.1%. The plant's demo meter signs the batch as delivered, so manipulations
+ * that happen at the meter are signed and must be caught by QA/QC and physics, while `tampered` edits after signing.
  */
 export function generateScenario(scenario: ScenarioName, options: GenerateOptions = {}): ScenarioRequest {
   const plant = options.plant ?? DEMO_PLANT;
@@ -85,7 +89,7 @@ export function generateScenario(scenario: ScenarioName, options: GenerateOption
       temperatureC: round(14 * noise(0.05), 1),
     };
   });
-  let metering = DEMO_METERING;
+  let metering = demoMeteringFor(plant.plantId);
 
   switch (scenario) {
     case "healthy":
@@ -142,6 +146,16 @@ export function generateScenario(scenario: ScenarioName, options: GenerateOption
     case "replay":
       readings = [...readings.slice(0, 14), ...readings.slice(10, 14), ...readings.slice(14)];
       break;
+    case "tampered":
+      break;
   }
-  return { plant, metering, readings };
+  const signature = signReadings(demoMeterKey(plant.plantId), plant.plantId, readings);
+  if (scenario === "tampered") {
+    readings = readings.map((r, i) =>
+      i >= 12 && i < 18
+        ? { ...r, exportKwh: round(r.exportKwh * 1.01, 3), checkExportKwh: round((r.checkExportKwh ?? 0) * 1.01, 3) }
+        : r,
+    );
+  }
+  return { plant, metering, readings, signature };
 }

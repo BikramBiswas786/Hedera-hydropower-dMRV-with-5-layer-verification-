@@ -19,7 +19,7 @@ npm create scaffold-hbar@latest --template BikramBiswas786/Hedera-hydropower-dMR
 | Hedera services | **HCS**: chunked monitoring-data messages and reports · **HTS**: fungible credit token and NFT certificate collection, both created, minted and burned by the contract · **Smart contracts**: on-chain quantification registry and oracle aggregator |
 | Ecosystem integration | **Chainlink** Data Feeds (primary) and **Supra** push oracle (fallback and cross-check), testnet and mainnet |
 | Stack | Next.js 15 · Hardhat · Yarn workspaces · Node ≥ 20.18.3 |
-| Agent surface | MCP server at `/api/mcp` (13 public tools, 1 authenticated write tool, a methodology resource), JSON API under `/api`, [`/llms.txt`](packages/nextjs/public/llms.txt), [`AGENTS.md`](AGENTS.md), [Hedera Harness](#testing) recipe |
+| Agent surface | MCP server at `/api/mcp` (15 public tools, 1 authenticated write tool, a methodology resource), JSON API under `/api`, [`/llms.txt`](packages/nextjs/public/llms.txt), [`AGENTS.md`](AGENTS.md), [Hedera Harness](#testing) recipe |
 
 ### Live on Hedera testnet
 
@@ -144,6 +144,7 @@ The demo plants sit on an **illustrative** 13-unit grid (coal, gas, oil, hydro, 
 
 | Data | Treatment |
 | --- | --- |
+| Source | when the metering record names a meter key (`deviceAddress`), the batch must carry that key's signature; missing, wrong key or any reading edited after signing → **REJECTED** |
 | Timestamps | duplicates, out-of-order or overlapping intervals → **REJECTED** (double counting) |
 | Gaps | credited as zero; coverage < 90% → FLAGGED; the contract refuses < 90% too |
 | Main vs check meter | disagreement beyond their combined accuracy → lower reading used, FLAGGED |
@@ -154,6 +155,23 @@ The demo plants sit on an **illustrative** 13-unit grid (coal, gas, oil, hydro, 
 | Efficiency outliers | modified z-score ≥ 3.5 on water-to-wire efficiency → FLAGGED |
 | Fuel | burnt on site with no fuel registered → **REJECTED** (PE_FF cannot be computed) |
 | Water quality | pH, turbidity, temperature out of range → FLAGGED for environmental review; quantity unchanged |
+
+### Meter-signed data
+
+QA/QC and physics catch readings that are implausible; they cannot catch readings that are plausible but were changed
+on the way from the meter. So the plant's data logger holds a secp256k1 key and signs each batch at the source
+(`services/mrv/provenance.ts`): an EIP-191 `personal_sign` over the SHA-256 of the plant id and the readings, in the
+same row encoding as the HCS data message. The meter's address is part of the metering record, validated on site like
+a calibration certificate. The engine checks the signature in the QA/QC stage; the signature and the address are
+published to HCS with the readings, so every reproduction checks it again.
+
+```bash
+yarn mrv:meter-key                                   # new meter key; its address goes in metering.deviceAddress
+METER_PRIVATE_KEY=0x… yarn mrv:sign request.json     # sign a verify request's readings in place, as the logger would
+```
+
+Any Ethereum library, hardware wallet or secure element can be the signer. The demo meters' keys are derived from the
+plant id and are public on purpose, so sample data is signed; on `/verify`, edit any value and watch QA/QC reject it.
 
 ### How this compares with Guardian's digitised policies
 
@@ -351,6 +369,8 @@ Nothing is required to browse the app or use the engine. Copy the `.env.example`
 | **Methodology** `/methodology` | The equations, QA/QC rules, the TOOL07 calculation on the demo grid unit by unit (EF_EL, option A1/A2, BM sample), each demo plant's assessment and the exact integers registered on-chain. |
 | **Verify** `/verify` | Pick a plant and a scenario, or edit the JSON (readings, meter calibration, even the plant design). The report updates as you type: decision, five stages, ER / BE / PE / LE, an equation trace, QA/QC deductions and every finding. When the registry is deployed it quantifies against the plant's on-chain ledger. It previews the exact HCS report and data hash; operators can publish with the API key. |
 | **Market** `/market` | Both oracle sources, which one is pricing, and whether purchases are paused. Your custody balance and proceeds; list credits in USD per tonne; buy, or buy and retire in one transaction; associate the HTS token (HIP-719) and withdraw to your wallet. |
+| **Plants** `/plants`, `/plants/{id}` | Every registered plant; per plant the registered design (capacity, reservoir and power density, TOOL07 grid factor, TOOL03 COEF, baseline, crediting period, design hash), the on-chain ledger (crediting year, carried balance) and every attestation with BE, PE, ER, credits, coverage and links to its HCS report and reproduction. Rendered on the server from the same reads as the API. |
+| **Portfolio** `/portfolio` | Everything an account retired, or anyone retired on behalf of a company, with totals, NFT certificates and a **CSV export** for a GHG inventory or ESG report (beneficiary names are formula-escaped). |
 | **Audit** `/audit` | Every attestation with EG_PJ, ER, credits and its HCS link. **Check evidence** runs the full reproduction in your browser. Retirements link to their certificates. |
 | **Certificate** `/certificate/{id}` | A printable retirement certificate in t CO₂e backed by on-chain data, with its NFT serial and Hashscan link. If the NFT could not be delivered at retirement, associate and claim it here. |
 | **Debug** `/debug` | Scaffold-HBAR's contract console for every function, including `quantify` to preview an attestation. |
@@ -384,6 +404,7 @@ Scenarios on the run-of-river demo plant (500 kW, day ending at midnight UTC):
 | `polluted` | acidic, very turbid water | FLAGGED · quantity unchanged |
 | `inflated` | every interval 35% above what the water can produce | REJECTED |
 | `replay` | four hours re-submitted with duplicate timestamps | REJECTED |
+| `tampered` | main and check meter raised 1% in six hours *after* the meter signed: meters agree, physics is plausible | REJECTED (signature) |
 
 The storage demo plant (12 MW, new 1.8 km² reservoir, PD 6.67 W/m², second crediting period) shows reservoir
 emissions: a healthy day is about 208 MWh net, BE 112.1 t, PE_HP 19.0 t, ER 93.1 t.
@@ -394,7 +415,7 @@ Two message types go to the audit topic (`services/mrv/report.ts`):
 
 | Message | Schema | Contents | Size |
 | --- | --- | --- | --- |
-| Data | `hydro-dmrv/readings@2` | Every reading, the plant profile (registered design + hydraulics), metering data, the plant's ledger before the period, engine version | 4 chunks for a day, 16 for a week; HCS caps a message at 20 |
+| Data | `hydro-dmrv/readings@3` | Every reading, the meter's signature over them, the plant profile (registered design + hydraulics), metering data including the meter's address, the plant's ledger before the period, engine version. `readings@2` (before meter signatures) is still reproduced. | 4 chunks for a day, 16 for a week; HCS caps a message at 20 |
 | Report | `hydro-dmrv/report@3` | Decision, coverage, monitored inputs (EG_facility, TEG, FC, LE), EG_PJ, BE, PE_HP, PE_FF, ER, credits, parameters, `plantSequence`, and `data: { hash, sequence }` | 1 chunk (~700 bytes) |
 
 `reproduceAttestation` (`services/mrv/audit.ts`) runs these checks:
@@ -406,7 +427,8 @@ Two message types go to the audit topic (`services/mrv/report.ts`):
 3. **Design vs registration.** The plant design inside the data message must equal the on-chain registration, so a
    verifier cannot quantify with a flattering grid factor.
 4. **Figures vs data.** Re-run the engine and compare decision, coverage, EG_facility, TEG, fuel, EG_PJ, BE, PE, ER and
-   credits with the report.
+   credits with the report. The re-run checks the meter's signature too, so readings edited after the meter signed
+   them fail reproduction even when the report was computed from the edited values.
 
 The same function backs the Audit page, `GET /api/registry/attestations/{id}/reproduce` and the
 `reproduce_attestation` MCP tool, and needs no credentials. The design documents themselves are served at
@@ -507,7 +529,8 @@ claude mcp add --transport http hydro-dmrv http://localhost:3000/api/mcp
 | `list_attestations` | public | Attestations with monitored inputs, EG_PJ, BE, PE, LE, ER, credits and HCS anchors |
 | `audit_attestation` · `reproduce_attestation` | public | Report vs chain · full reproduction from HCS including the registered design |
 | `list_open_listings` · `prepare_purchase` | public | Listings with HBAR quotes · unsigned `buy` / `buyAndRetire` (to, data, value) for the agent's own wallet |
-| `get_retirement_certificate` | public | Retirement record and its NFT certificate |
+| `get_plant` | public | One plant: design, power density, ledger, lifetime EG / BE / PE / ER / credits, coverage, credits per MWh, attestations with HCS links |
+| `get_retirement_certificate` · `get_portfolio` | public | Retirement record and its NFT certificate · everything an account or a beneficiary retired, with totals |
 | `submit_attestation` | bearer `MRV_API_KEY` | Verify → contract agreement check → HCS → mint. Only listed for authenticated requests |
 
 An autonomous buyer needs no special permissions:
@@ -518,7 +541,9 @@ list_open_listings → prepare_purchase { listingId, amountKg, beneficiary } →
 ```
 
 The server never sees the agent's key. Every tool has a REST twin, listed in
-[`/llms.txt`](packages/nextjs/public/llms.txt). For coding agents working *on* the template, [`AGENTS.md`](AGENTS.md)
+[`/llms.txt`](packages/nextjs/public/llms.txt) and described in **OpenAPI 3.1** at `/api/openapi.json`: request bodies
+are generated from the zod schemas that validate them, each twin's `operationId` is its tool's name, and a test fails
+if a route or tool is added without the other. For coding agents working *on* the template, [`AGENTS.md`](AGENTS.md)
 has the conventions and invariants.
 
 ## Testing
@@ -541,6 +566,9 @@ What the tests pin down:
 - **Quantification in both implementations**: `test/fixtures/quantificationVectors.ts` (greenfield with reservoir and
   diesel emissions and a deficit; a retrofit across crediting years and past DATE_BaselineRetrofit) is asserted by the
   contract suite *and* the TypeScript suite, gram for gram.
+- **Meter provenance**: signatures interoperate with standard EIP-191 wallets both ways; wrong key, missing signature,
+  any edited reading and replay against another plant are rejected; edits after signing fail reproduction, and
+  `readings@2` attestations still reproduce.
 - **Engine**: every scenario on both plants; net metering; lower-of-two-meters; MPE after calibration expiry; gaps;
   replays; export capped at generation; physics exclusions; reservoir emissions from TEG; safeguards never changing
   the quantity; determinism.
@@ -588,7 +616,7 @@ packages/
     │   ├── mirror.ts  audit.ts          mirror-node reads, audit and reproduction
     │   ├── pricing.ts  views.ts  network.ts
     │   └── server/                      HCS publishing, registry reads, attestation, methodology, market, MCP, auth
-    ├── scripts/mrv.ts                   yarn mrv:create-topic · yarn mrv:attest [scenario] [plant]
+    ├── scripts/mrv.ts                   yarn mrv:create-topic · mrv:attest [scenario] [plant] · mrv:meter-key · mrv:sign
     └── public/llms.txt
 .harness/                                Hedera Harness spec, PRD, validators, acceptance contract
 template.json                            create-scaffold-hbar manifest

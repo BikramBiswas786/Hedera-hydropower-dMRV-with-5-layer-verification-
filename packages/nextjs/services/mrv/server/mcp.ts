@@ -1,5 +1,5 @@
 import { auditAttestation, reproduceAttestation } from "../audit";
-import { DEMO_METERING, DEMO_PLANTS, findDemoPlant } from "../demo";
+import { DEMO_PLANTS, demoMeteringFor, findDemoPlant } from "../demo";
 import { ENGINE_VERSION } from "../engine";
 import { METHODOLOGY_MARKDOWN } from "../methodology/document";
 import { gridEmissionFactorRequestSchema, projectDesignSchema } from "../methodology/schema";
@@ -10,6 +10,7 @@ import { verifyRequestSchema } from "../schema";
 import { plantIdToBytes32 } from "../views";
 import { attestReadings } from "./attest";
 import { ApiError } from "./errors";
+import { getPlantDetail, getPortfolio, portfolioQuerySchema } from "./insights";
 import { getRetirementCertificate, preparePurchase, preparePurchaseSchema } from "./market";
 import { assessDesign, getProject, gridEmissionFactor } from "./methodology";
 import { getAttestation, getAttestations, getOpenListings, getPlant, getRegistryOverview } from "./registry";
@@ -24,7 +25,8 @@ quantification, safeguards). Only APPROVED periods can be attested. Raw readings
 reproduce_attestation re-runs the engine on the published data and compares every figure with the contract.
 Credits are HTS tokens (1 token = 1 t CO2e, 1 unit = 1 kg) priced in USD per tonne and settled in HBAR through
 Chainlink HBAR/USD with a Supra fallback. Agents buy with their own wallet: list_open_listings -> prepare_purchase ->
-sign and send; retiring mints an HTS NFT certificate. Registry tools read chain ${HYDRO_CHAIN_ID}.`;
+sign and send; retiring mints an HTS NFT certificate. get_plant and get_portfolio summarise a plant's issuance or a
+buyer's retirements for reporting. Registry tools read chain ${HYDRO_CHAIN_ID}.`;
 
 function ok(data: unknown) {
   return { content: [{ type: "text" as const, text: JSON.stringify(data, null, 2) }] };
@@ -66,10 +68,15 @@ export function buildMcpServer({ canWrite }: { canWrite: boolean }): McpServer {
     {
       title: "List sample scenarios",
       description:
-        "Sample monitoring scenarios, the demo plant profiles (registered design + hydraulics) and metering.",
+        "Sample monitoring scenarios, the demo plant profiles (registered design + hydraulics) and each plant's metering record, including the address of the meter key that signs its readings.",
       annotations: { readOnlyHint: true },
     },
-    async () => ok({ plants: DEMO_PLANTS, metering: DEMO_METERING, scenarios: SCENARIOS }),
+    async () =>
+      ok({
+        plants: DEMO_PLANTS,
+        metering: Object.fromEntries(DEMO_PLANTS.map(plant => [plant.plantId, demoMeteringFor(plant.plantId)])),
+        scenarios: SCENARIOS,
+      }),
   );
 
   server.registerTool(
@@ -77,7 +84,7 @@ export function buildMcpServer({ canWrite }: { canWrite: boolean }): McpServer {
     {
       title: "Generate sample telemetry",
       description:
-        "Deterministic hourly monitoring data (gross generation, export/import, check meter, flow, head, fuel, water quality) for a demo plant, ending at the last whole hour. The result is a ready verify_telemetry request.",
+        "Deterministic hourly monitoring data (gross generation, export/import, check meter, flow, head, fuel, water quality) for a demo plant, ending at the last whole hour and signed by the plant's demo meter key. The result is a ready verify_telemetry request; changing any reading invalidates the signature.",
       inputSchema: z.object({
         scenario: z.enum(SCENARIO_NAMES),
         hours: z.number().int().min(1).max(168).default(24),
@@ -98,7 +105,7 @@ export function buildMcpServer({ canWrite }: { canWrite: boolean }): McpServer {
     {
       title: "Verify and quantify a monitoring period",
       description:
-        "Run the 5-stage verification and the AMS-I.D/ACM0002 quantification on interval readings. Returns decision, stages, issues, monitored quantities, EG_PJ/BE/PE/LE/ER with an equation trace, the exact HCS report message and the hash of the raw-data message it commits to. Pass `ledger` (from get_registry_overview) to quantify against the plant's on-chain state. Writes nothing.",
+        "Run the 5-stage verification and the AMS-I.D/ACM0002 quantification on interval readings, including the meter signature check when the metering record names a meter key. Returns decision, provenance, stages, issues, monitored quantities, EG_PJ/BE/PE/LE/ER with an equation trace, the exact HCS report message and the hash of the raw-data message it commits to. Pass `ledger` (from get_registry_overview) to quantify against the plant's on-chain state. Writes nothing.",
       inputSchema: verifyRequestSchema,
       annotations: { readOnlyHint: true },
     },
@@ -160,6 +167,18 @@ export function buildMcpServer({ canWrite }: { canWrite: boolean }): McpServer {
       annotations: readOnly,
     },
     async () => run(getRegistryOverview),
+  );
+
+  server.registerTool(
+    "get_plant",
+    {
+      title: "Plant detail",
+      description:
+        "One registered plant: design (methodology, capacity, reservoir power density, grid factor, crediting period), ledger (crediting year, carried balance), lifetime totals (EG, BE, PE_HP, PE_FF, ER, credits, coverage, credits per MWh) and every attestation with its HCS report link.",
+      inputSchema: z.object({ plantId: z.string().min(1).max(31) }),
+      annotations: readOnly,
+    },
+    async ({ plantId }) => run(() => getPlantDetail(plantId)),
   );
 
   server.registerTool(
@@ -233,6 +252,18 @@ export function buildMcpServer({ canWrite }: { canWrite: boolean }): McpServer {
       annotations: readOnly,
     },
     async ({ retirementId }) => run(() => getRetirementCertificate(retirementId)),
+  );
+
+  server.registerTool(
+    "get_portfolio",
+    {
+      title: "Retirement portfolio",
+      description:
+        "Credits retired by an account or on behalf of a beneficiary (exact, case-insensitive), newest first, with totals in kg CO2e, NFT certificate serials and links; the account's unlisted custody balance too. Pass both to get a company's full record. The same data as CSV: GET /api/registry/retirements?format=csv.",
+      inputSchema: portfolioQuerySchema,
+      annotations: readOnly,
+    },
+    async query => run(() => getPortfolio(query)),
   );
 
   if (canWrite) {

@@ -9,8 +9,10 @@ const ENDPOINTS = [
   ["POST", "/api/methodology/grid-emission-factor", "TOOL07 combined margin from per-unit grid data"],
   ["GET", "/api/mrv/scenarios/{name}", "Deterministic sample monitoring data"],
   ["GET", "/api/registry", "On-chain totals, plants and ledgers, oracle price"],
+  ["GET", "/api/registry/plants/{id}", "A plant's design, ledger, lifetime ER and attestations"],
   ["GET", "/api/registry/attestations/{id}/reproduce", "Re-run the engine on readings published to HCS"],
   ["POST", "/api/market/prepare-purchase", "Unsigned buy / buy-and-retire tx for your own wallet"],
+  ["GET", "/api/registry/retirements?format=csv", "Retirement portfolio for ESG reporting"],
   ["POST", "/api/mrv/attest", "Verify → HCS → mint (Bearer MRV_API_KEY)"],
 ] as const;
 
@@ -41,7 +43,11 @@ export const AgentAccess = () => {
             Machine-readable overview:{" "}
             <Link className="link link-primary" href="/llms.txt">
               /llms.txt
-            </Link>
+            </Link>{" "}
+            · OpenAPI 3.1:{" "}
+            <a className="link link-primary" href="/api/openapi.json">
+              /api/openapi.json
+            </a>
           </p>
         </div>
         <div className="overflow-x-auto">

@@ -7,15 +7,18 @@ import {
   creditingPeriodViolation,
   quantifyPeriod,
 } from "./methodology/quantify";
+import { type ProvenanceCheck, checkProvenance } from "./provenance";
 import type { LedgerJson, Metering, PlantProfile, Reading } from "./schema";
+import type { Address, Hex } from "viem";
 
 /**
  * Verifies one monitoring period of a registered hydro plant and quantifies its emission reductions.
  *
  *   1. Applicability    — the registered design satisfies ACM0002 / AMS-I.D; the period lies inside the crediting
  *                          period and within one crediting year.
- *   2. Data QA/QC       — no replayed or overlapping intervals; completeness; main/check meter reconciliation;
- *                          delayed-calibration deduction. Every adjustment goes the conservative way.
+ *   2. Data QA/QC       — the batch is signed by the registered meter key; no replayed or overlapping intervals;
+ *                          completeness; main/check meter reconciliation; delayed-calibration deduction. Every
+ *                          adjustment goes the conservative way.
  *   3. Physics          — generation within nameplate and within the hydraulic potential ρ·g·Q·H·η_max; export
  *                          never above generation. Failing intervals are excluded, i.e. credited as zero.
  *   4. Quantification   — EG_PJ, BE, PE (TOOL03 fuel, reservoir), LE and ER in exact integers, the same numbers
@@ -25,7 +28,7 @@ import type { LedgerJson, Metering, PlantProfile, Reading } from "./schema";
  * Pure and deterministic (no I/O, no clock), so anyone can re-run it on the readings published to HCS.
  */
 
-export const ENGINE_VERSION = "hydro-dmrv-engine@2.0.0";
+export const ENGINE_VERSION = "hydro-dmrv-engine@2.1.0";
 
 /** P (kW) = ρ·g·Q·H·η / 1000 with ρ = 1000 kg/m³ and g = 9.81 m/s². */
 const KW_PER_M4_S = 9.81;
@@ -98,6 +101,8 @@ export type VerificationReport = {
   periodStart: number;
   periodEnd: number;
   readingCount: number;
+  /** Whether the batch was signed by the meter key in the metering record. */
+  provenance: ProvenanceCheck;
   decision: Decision;
   reasoning: string;
   completenessBps: number;
@@ -169,6 +174,13 @@ type Interval = {
   impliedEfficiency: number | null;
 };
 
+const PROVENANCE_SUMMARY: Record<ProvenanceCheck["status"], string> = {
+  signed: "meter signature valid",
+  unregistered: "no meter key registered",
+  missing: "meter signature missing",
+  invalid: "meter signature invalid",
+};
+
 const SAFEGUARD_BANDS = {
   ph: { range: [6, 9], label: "pH" },
   turbidityNtu: { range: [0, 100], label: "Turbidity (NTU)" },
@@ -180,6 +192,7 @@ export function verifyReadings(
   plant: PlantProfile,
   metering: Metering = DEFAULT_METERING,
   ledgerJson: LedgerJson = toLedgerJson(EMPTY_LEDGER),
+  signature?: string,
 ): VerificationReport {
   if (readings.length === 0) throw new Error("At least one reading is required");
 
@@ -187,6 +200,32 @@ export function verifyReadings(
   const issues: Issue[] = [];
   const add = (stage: Stage, severity: Severity, message: string, reading: number | null = null) =>
     issues.push({ stage, reading, severity, message });
+
+  // ── 2. Monitoring data QA/QC: source ──────────────────────────────────────
+  const provenance = checkProvenance(
+    plant.plantId,
+    readings,
+    metering.deviceAddress as Address | undefined,
+    signature as Hex | undefined,
+  );
+  switch (provenance.status) {
+    case "unregistered":
+      add("integrity", "info", "No meter key in the metering record: the batch cannot be traced to its source");
+      break;
+    case "missing":
+      add("integrity", "reject", `The batch is not signed by the registered meter ${provenance.device}`);
+      break;
+    case "invalid":
+      add(
+        "integrity",
+        "reject",
+        `The meter signature does not match these readings: they changed after ${provenance.device} signed them, or another key signed`,
+      );
+      break;
+    case "signed":
+      add("integrity", "info", `Signed at the source by the registered meter ${provenance.device}`);
+      break;
+  }
 
   // ── 2. Monitoring data QA/QC: timeline ────────────────────────────────────
   const spans = readings.map((r, index) => {
@@ -425,7 +464,7 @@ export function verifyReadings(
 
   const summaries: Record<Stage, string> = {
     applicability: `${METHODOLOGIES[plant.methodology].id}; ${pd.basis}; crediting year ${(emissions?.creditingYear ?? 0) + 1}`,
-    integrity: `${(completenessBps / 100).toFixed(1)}% of the period covered, ${fmt(gapMinutes, 0)} min of gaps, ${checkMeterDiscrepancies} meter discrepancies`,
+    integrity: `${PROVENANCE_SUMMARY[provenance.status]}; ${(completenessBps / 100).toFixed(1)}% of the period covered, ${fmt(gapMinutes, 0)} min of gaps, ${checkMeterDiscrepancies} meter discrepancies`,
     physics: `${intervals.length - excludedIntervals.length}/${intervals.length} intervals within nameplate and ρ·g·Q·H·η_max`,
     quantification: emissions
       ? `ER = ${fmt(emissions.reductionG / 1e6, 3)} t CO2e from ${fmt(emissions.egProjectWh / 1e6, 3)} MWh EG_PJ`
@@ -443,6 +482,7 @@ export function verifyReadings(
     periodStart,
     periodEnd,
     readingCount: readings.length,
+    provenance,
     decision,
     reasoning,
     completenessBps,

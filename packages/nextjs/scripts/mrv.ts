@@ -4,10 +4,17 @@
  *   yarn mrv:create-topic          create the HCS audit topic (prints HCS_TOPIC_ID)
  *   yarn mrv:attest [scenario] [plantId]
  *                                  verify sample monitoring data, anchor it on HCS and attest on-chain
+ *   yarn mrv:meter-key             generate a key for a plant's data logger (its address goes in the metering record)
+ *   yarn mrv:sign <request.json>   sign the readings in a verify request with METER_PRIVATE_KEY, as the meter would
  */
-import { existsSync } from "fs";
+import { existsSync, readFileSync, writeFileSync } from "fs";
+import { resolve } from "path";
+import type { Hex } from "viem";
+import { generatePrivateKey, privateKeyToAddress } from "viem/accounts";
 import { DEMO_PLANTS, findDemoPlant } from "~~/services/mrv/demo";
+import { signReadings } from "~~/services/mrv/provenance";
 import { SCENARIO_NAMES, type ScenarioName, generateScenario, lastWholeHour } from "~~/services/mrv/scenarios";
+import { verifyRequestSchema } from "~~/services/mrv/schema";
 
 // Server modules read env at import time, so load .env.local first and import them dynamically below.
 if (existsSync(".env.local")) process.loadEnvFile(".env.local");
@@ -55,16 +62,37 @@ async function attest(scenario: ScenarioName, plantId: string) {
   }
 }
 
+function meterKey() {
+  const key = generatePrivateKey();
+  console.log(`Meter address (put it in the metering record as deviceAddress): ${privateKeyToAddress(key)}`);
+  console.log(`Private key (keep it on the data logger only, never in this repository):\n${key}`);
+}
+
+/** Signs in place, so a data logger (or its gateway) can run exactly this step before uploading a batch. */
+function sign(file: string | undefined) {
+  if (!file) throw new Error("Usage: yarn mrv:sign <request.json>");
+  const key = process.env.METER_PRIVATE_KEY as Hex | undefined;
+  if (!key) throw new Error("Set METER_PRIVATE_KEY to the data logger's key (yarn mrv:meter-key creates one)");
+  const path = resolve(process.env.INIT_CWD ?? process.cwd(), file);
+  const request = verifyRequestSchema.parse(JSON.parse(readFileSync(path, "utf8")));
+  const plantId = request.plant?.plantId ?? DEMO_PLANTS[0].plantId;
+  const signature = signReadings(key, plantId, request.readings);
+  writeFileSync(path, `${JSON.stringify({ ...request, signature }, null, 2)}\n`);
+  console.log(`Signed ${request.readings.length} readings for ${plantId} as ${privateKeyToAddress(key)}`);
+}
+
 async function main() {
   const [command, arg, plantArg] = process.argv.slice(2);
   if (command === "create-topic") return createTopic();
+  if (command === "meter-key") return meterKey();
+  if (command === "sign") return sign(arg);
   if (command === "attest") {
     const scenario = (arg ?? "healthy") as ScenarioName;
     if (!SCENARIO_NAMES.includes(scenario))
       throw new Error(`Unknown scenario. Use one of: ${SCENARIO_NAMES.join(", ")}`);
     return attest(scenario, plantArg ?? DEMO_PLANTS[0].plantId);
   }
-  console.log("Usage: mrv.ts create-topic | attest [scenario] [plantId]");
+  console.log("Usage: mrv.ts create-topic | attest [scenario] [plantId] | meter-key | sign <request.json>");
   process.exitCode = 1;
 }
 

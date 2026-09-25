@@ -8,7 +8,9 @@ import {
   AcademicCapIcon,
   Bars3Icon,
   BeakerIcon,
+  BriefcaseIcon,
   BugAntIcon,
+  BuildingOffice2Icon,
   DocumentMagnifyingGlassIcon,
   ShoppingBagIcon,
 } from "@heroicons/react/24/outline";
@@ -37,9 +39,19 @@ export const menuLinks: HeaderMenuLink[] = [
     icon: <BeakerIcon className="h-4 w-4" />,
   },
   {
+    label: "Plants",
+    href: "/plants",
+    icon: <BuildingOffice2Icon className="h-4 w-4" />,
+  },
+  {
     label: "Market",
     href: "/market",
     icon: <ShoppingBagIcon className="h-4 w-4" />,
+  },
+  {
+    label: "Portfolio",
+    href: "/portfolio",
+    icon: <BriefcaseIcon className="h-4 w-4" />,
   },
   {
     label: "Audit",
@@ -47,34 +59,37 @@ export const menuLinks: HeaderMenuLink[] = [
     icon: <DocumentMagnifyingGlassIcon className="h-4 w-4" />,
   },
   {
-    label: "Debug Contracts",
+    label: "Debug",
     href: "/debug",
     icon: <BugAntIcon className="h-4 w-4" />,
   },
 ];
 
-export const HeaderMenuLinks = () => {
+/** The desktop bar skips "Home": the logo next to it links home, and the bar needs the room. */
+export const HeaderMenuLinks = ({ withHome = true }: { withHome?: boolean }) => {
   const pathname = usePathname();
 
   return (
     <>
-      {menuLinks.map(({ label, href, icon }) => {
-        const isActive = pathname === href;
-        return (
-          <li key={href}>
-            <Link
-              href={href}
-              passHref
-              className={`${
-                isActive ? "bg-primary/10 text-primary font-semibold" : "hover:bg-primary/5"
-              } py-1.5 px-3 text-sm rounded-full gap-2 grid grid-flow-col transition-colors`}
-            >
-              {icon}
-              <span>{label}</span>
-            </Link>
-          </li>
-        );
-      })}
+      {menuLinks
+        .filter(({ href }) => withHome || href !== "/")
+        .map(({ label, href, icon }) => {
+          const isActive = pathname === href;
+          return (
+            <li key={href}>
+              <Link
+                href={href}
+                passHref
+                className={`${
+                  isActive ? "bg-primary/10 text-primary font-semibold" : "hover:bg-primary/5"
+                } py-1.5 px-3 text-sm rounded-full gap-2 grid grid-flow-col transition-colors`}
+              >
+                {icon}
+                <span>{label}</span>
+              </Link>
+            </li>
+          );
+        })}
     </>
   );
 };
@@ -89,10 +104,10 @@ export const Header = () => {
   });
 
   return (
-    <div className="print:hidden sticky lg:static top-0 navbar bg-base-100 min-h-0 shrink-0 justify-between z-20 shadow-sm border-b border-base-300 px-0 sm:px-2">
-      <div className="navbar-start w-auto lg:w-1/2">
+    <div className="print:hidden sticky xl:static top-0 navbar bg-base-100 min-h-0 shrink-0 justify-between z-20 shadow-sm border-b border-base-300 px-0 sm:px-2">
+      <div className="navbar-start w-auto xl:w-1/2">
         <details className="dropdown" ref={burgerMenuRef}>
-          <summary className="ml-1 btn btn-ghost lg:hidden hover:bg-transparent">
+          <summary className="ml-1 btn btn-ghost xl:hidden hover:bg-transparent">
             <Bars3Icon className="h-1/2" />
           </summary>
           <ul
@@ -104,7 +119,7 @@ export const Header = () => {
             <HeaderMenuLinks />
           </ul>
         </details>
-        <Link href="/" passHref className="hidden lg:flex items-center gap-3 ml-4 mr-6 shrink-0">
+        <Link href="/" passHref className="hidden xl:flex items-center gap-3 ml-4 mr-4 shrink-0">
           <div className="flex relative w-9 h-9">
             <Image alt="Hedera icon" className="cursor-pointer dark:hidden" fill src="/Hedera-Icon-Dark.svg" />
             <Image alt="Hedera icon" className="cursor-pointer hidden dark:block" fill src="/Hedera-Icon-White.svg" />
@@ -116,8 +131,8 @@ export const Header = () => {
             </span>
           </div>
         </Link>
-        <ul className="hidden lg:flex lg:flex-nowrap menu menu-horizontal px-1 gap-2">
-          <HeaderMenuLinks />
+        <ul className="hidden xl:flex xl:flex-nowrap menu menu-horizontal px-1 gap-1">
+          <HeaderMenuLinks withHome={false} />
         </ul>
       </div>
       <div className="navbar-end grow mr-4">

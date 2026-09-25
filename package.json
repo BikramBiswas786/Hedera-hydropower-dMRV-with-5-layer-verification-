@@ -41,6 +41,8 @@
     "lint-staged": "lint-staged",
     "mrv:attest": "yarn workspace @sh/nextjs mrv:attest",
     "mrv:create-topic": "yarn workspace @sh/nextjs mrv:create-topic",
+    "mrv:meter-key": "yarn workspace @sh/nextjs mrv:meter-key",
+    "mrv:sign": "yarn workspace @sh/nextjs mrv:sign",
     "next:build": "yarn workspace @sh/nextjs build",
     "next:check-types": "yarn workspace @sh/nextjs check-types",
     "next:dev": "yarn workspace @sh/nextjs dev",
