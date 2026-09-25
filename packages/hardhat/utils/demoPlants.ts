@@ -1,7 +1,7 @@
 /**
  * The demo plants registered by `deploy/01_setup_hydro_registry.ts`. These integers are the output of the
  * methodology engine for the designs in `packages/nextjs/services/mrv/demo.ts` (VMR0017 v1.0 with ACM0002 v22.0,
- * TOOL07 combined margin, TOOL03 diesel coefficient, crediting periods); `designHash` is the SHA-256 of each design
+ * VT0011 combined margin, TOOL03 diesel coefficient, crediting periods); `designHash` is the SHA-256 of each design
  * document. A vitest test in
  * the nextjs package recomputes all of them and fails if they drift, so regenerate them rather than editing.
  */
@@ -37,13 +37,13 @@ export const DEMO_PLANTS: DemoPlant[] = [
       baselineCapacityKw: 0,
       reservoirAreaM2: 0,
       baselineReservoirAreaM2: 0,
-      efGridGPerMwh: 615_447,
+      efGridGPerMwh: 573_378,
       fuelCoefGPerTonne: 3_238_840,
       baselineWh: 0,
       baselineEndsAt: 0,
       creditingStart: 1_767_225_600,
       creditingEnd: 1_987_977_600,
-      designHash: "0x476866da1400cb120c94a6af3e0a33c58c9786da37938cbbc885dab91b80fe47",
+      designHash: "0x4e49cf6d78fcc1e42a1a0e0839a5210801e41613c0e2620672893e91983f26cf",
     },
   },
   {
@@ -56,13 +56,13 @@ export const DEMO_PLANTS: DemoPlant[] = [
       baselineCapacityKw: 0,
       reservoirAreaM2: 1_800_000,
       baselineReservoirAreaM2: 0,
-      efGridGPerMwh: 538_535,
+      efGridGPerMwh: 524_404,
       fuelCoefGPerTonne: 3_238_840,
       baselineWh: 0,
       baselineEndsAt: 0,
       creditingStart: 1_772_323_200,
       creditingEnd: 1_993_075_200,
-      designHash: "0x542bb47410fab12b624fba4f4a81564bf535a80c67a8934945f7abaa4e7bf9ac",
+      designHash: "0xfeeb57c92e8f179888fef2f1e8ee8d34e6af56b9ccdc5ad59b1558a8d399ea22",
     },
   },
 ];

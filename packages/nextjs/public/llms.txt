@@ -69,8 +69,11 @@ Buying as an agent: `list_open_listings` → `prepare_purchase { listingId, amou
   intervals, main/check meter disagreement, efficiency outliers or safeguard exceedances; otherwise APPROVED.
 - Units: energy in Wh, emissions in g CO2e, grid EF in g CO2/MWh, fuel in g, COEF in g CO2 per tonne of fuel.
   BE rounds down, PE rounds up; sub-kg remainders and deficits carry to the plant's next period.
-- VMR0017 (methodology 1 on-chain): hydro ≤ 15 MW in LDCs, VT0008 additionality evidence, EF_Res 100 kg CO2e/MWh,
-  leakage = embodied emissions 21 g CO2e/kWh of EG_facility (greenfield) or EG_PJ_Add (capacity addition).
+- VMR0017 (methodology 1 on-chain): hydro ≤ 15 MW in LDCs, VT0008 additionality evidence (IRR below the benchmark
+  with a sensitivity analysis; common practice when F > 20% and N_all − N_diff > 3), EF_Res 100 kg CO2e/MWh,
+  leakage = embodied emissions 21 g CO2e/kWh of EG_facility (greenfield) or EG_PJ_Add (capacity addition), and the
+  grid factor by VT0011 (BM over all units incl. VCS/CDM ones, hydro weights 0.4/0.6 then 0.25/0.75). The grid-factor
+  tool takes `tool: "TOOL07" | "VT0011"`.
 - HCS: `hydro-dmrv/readings@4` (readings + meter signature + plant + metering + ledger, up to 20 chunks) then `hydro-dmrv/report@4`
   (monitored inputs, emissions, `data: { hash, sequence }`). The contract stores sha256(report) and its sequence.
 - Prices: listings in US cents per tonne; quotes in the EVM's native unit (tinybar on Hedera); `prepare_purchase`

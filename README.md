@@ -44,7 +44,9 @@ Deployed with `yarn deploy --network hederaTestnet` and attested with `yarn mrv:
 [`deployedContracts.ts`](packages/nextjs/contracts/deployedContracts.ts), so a fresh scaffold reads this deployment.
 The app at [hydro-dmrv.vercel.app](https://hydro-dmrv.vercel.app) runs against it with no server keys, so it can
 read, verify, audit and prepare purchases but never attest; open [`/audit`](https://hydro-dmrv.vercel.app/audit) and
-press **Check evidence** to reproduce the attestations below from HCS in your browser.
+press **Check evidence** to reproduce the attestations below from HCS in your browser. This deployment predates
+VMR0017 support: its demo plants are registered under the CDM rules with the TOOL07 grid factor, and a redeploy
+registers them under VMR0017 with VT0011.
 
 | What | Hashscan |
 | --- | --- |
@@ -114,10 +116,10 @@ Each plant is registered on-chain under one of two rule sets, and the contract a
 | --- | --- | --- |
 | Base | "Must be used with ACM0002, v22.0"; ACM0002 applies unless VMR0017 changes it | AMS-I.D up to 15 MW, ACM0002 above |
 | Hydro eligibility | 15 MW or less (rated or authorized), Least Developed Countries only (Table 1) | any size, any host country |
-| Additionality | VT0008: regulatory surplus, investment analysis, common practice (no barrier analysis, no TOOL32) | TOOL01 / TOOL02 at validation |
+| Additionality | VT0008: regulatory surplus, benchmark analysis on project or equity IRR with a sensitivity analysis, common practice (no barrier analysis, no TOOL32) | TOOL01 / TOOL02 at validation |
 | EF_Res (reservoirs) | 100 kg CO₂e/MWh (§9.1) | 90 kg CO₂e/MWh |
 | Leakage | embodied emissions, 21 g CO₂e/kWh of EG_facility (greenfield) or EG_PJ_Add (capacity addition); none for retrofits (§8.3) | 0 |
-| Grid emission factor | VT0011 (replaces TOOL07; see [limitations](#security-model-and-limitations)) | TOOL07 |
+| Grid emission factor | VT0011 v1.0 with TOOL07 v7.0: BM over all units including VCS and CDM ones, hydro weights 0.4 / 0.6, then 0.25 / 0.75 | TOOL07 v7.0 |
 
 Verra inactivates ACM0002 and AMS-I.D as standalone methodologies on 1 January 2027, so new projects register under
 VMR0017. The CDM path stays for existing registrations and for comparison. The **Methodology** page (`/methodology`) shows all of it on the demo
@@ -153,13 +155,13 @@ EG_facility = export − import at the grid meter, after QA/QC;  TEG = gross gen
 | --- | --- | --- |
 | Methodology | registered per plant: VMR0017 (0/1 on-chain) or CDM (AMS-I.D up to 15 MW, ACM0002 above) | engine **and contract** |
 | VMR0017 Table 1 | hydro 15 MW or less (contract reverts `MethodologyNotApplicable`); host country on the UN LDC list at the crediting start (`methodology/ldc.ts`, 44 countries, with the 2026 graduations) | contract · engine |
-| VMR0017 additionality | VT0008 evidence recorded in the design document (hashed on-chain): regulatory surplus, indicator without carbon revenue below the benchmark, not common practice | engine (a VVB determines it) |
+| VMR0017 additionality | VT0008 evidence recorded in the design document (hashed on-chain): regulatory surplus; IRR without carbon revenue below the benchmark, confirmed by the sensitivity analysis; not common practice (F = 1 − N_diff / N_all > 20% **and** N_all − N_diff > 3 fails). Whether the CCP conditions (decisive increase, IRR with credits reaching the benchmark) are met is recorded, as VMR0017 §7 asks | engine (a VVB determines it) |
 | Reservoir power density `PD = (Cap_PJ − Cap_BL) / (A_PJ − A_BL)` | PD ≤ 4 W/m² not eligible; 4 < PD ≤ 10 → PE_HP; PD > 10 or no new area → 0 | engine **and contract** |
 | Project type | greenfield has no baseline; retrofits need Cap_BL, EG_historical + σ and DATE_BaselineRetrofit; additions must add capacity | engine **and contract** |
 | Leakage | VMR0017: embodied emissions computed by the contract; AMS-I.D with transferred equipment needs a leakage assessment: refused | engine **and contract** |
 | Crediting period | 7 years (renewable twice, weights change) or 10 fixed, in 365-day years; periods inside it and inside one crediting year | engine **and contract** |
 
-### Grid emission factor (TOOL07, ex-ante)
+### Grid emission factor (TOOL07 and VT0011, ex-ante)
 
 ```
 EF_grid,CM = w_OM × EF_grid,OM + w_BM × EF_grid,BM
@@ -172,11 +174,20 @@ EF_grid,CM = w_OM × EF_grid,OM + w_BM × EF_grid,BM
   units supplying ≥ 20% of generation (CDM units excluded); if that set holds units older than 10 years, drop them,
   add CDM units, then older units, up to 20%.
 - **Weights**: hydro 0.5 / 0.5 in the first crediting period and 0.25 / 0.75 after renewal; wind and solar 0.75 / 0.25.
+- **VT0011** (VMR0017 plants) changes TOOL07 where it matters for the number: the BM sample is the larger of the
+  two sets over *all* units, those registered under the VCS or any other GHG program included, with steps (d)–(f)
+  removed (¶75); a sample unit older than 10 years must use option A2 with its TOOL09 Table 2 default efficiency
+  (`tool09Efficiency`, refused without it, ¶79); a unit with generation data only counts as 0 t/MWh (option A3,
+  ¶50); and the weights are 0.4 / 0.6 for hydro in the first crediting period and 0.25 / 0.75 after it (¶86; wind and
+  solar 0.5 / 0.5, 0.4 / 0.6, 0.3 / 0.7). The optional ¶90 (w_OM = 1 in an LDC) and ¶91 (default BM) are not offered:
+  ¶90 would raise the factor.
 - **IPCC defaults**: the **lower** 95% bound for the baseline (TOOL07) and the **upper** bound for project emissions
   (TOOL03), so neither side can inflate credits. A combined margin published by a DNA can be registered instead.
 
-The demo plants sit on an **illustrative** 13-unit grid (coal, gas, oil, hydro, wind, solar, one CDM unit): simple OM
-0.769 t/MWh, BM 0.462 t/MWh, so CM 0.615 t/MWh in a first crediting period and 0.539 t/MWh after renewal.
+The demo plants sit on an **illustrative** 13-unit grid (coal, gas, oil, hydro, wind, solar, one CDM unit). Under
+VT0011: simple OM 0.769 t/MWh, BM 0.443 t/MWh, so CM 0.573 t/MWh in a first crediting period and 0.524 t/MWh after
+renewal. TOOL07 would give BM 0.462 and CM 0.615 / 0.539 on the same grid; its 0.5 / 0.5 weights and the exclusion of
+the CDM solar unit from the BM overstate the factor by about 7% for a first-period plant.
 
 ### Monitoring QA/QC
 
@@ -433,9 +444,9 @@ Scenarios on the run-of-river demo plant (500 kW, day ending at midnight UTC):
 
 | Scenario | What it simulates | Outcome |
 | --- | --- | --- |
-| `healthy` | 24 h of normal operation, main and check meters agree | APPROVED · ER 5.338 t CO₂e |
-| `diesel-backup` | 3 h grid outage, diesel generator for auxiliaries | APPROVED · PE_FF 0.240 t, ER 4.410 t |
-| `calibration-overdue` | main meter's calibration expired | APPROVED · export −0.2% (MPE), ER 5.328 t |
+| `healthy` | 24 h of normal operation, main and check meters agree | APPROVED · BE 4.973 t, LE 0.182 t, ER 4.791 t CO₂e |
+| `diesel-backup` | 3 h grid outage, diesel generator for auxiliaries | APPROVED · PE_FF 0.240 t, ER 3.933 t |
+| `calibration-overdue` | main meter's calibration expired | APPROVED · export −0.2% (MPE), ER 4.782 t |
 | `meter-drift` | main meter reads 1.5% above the check meter for 6 h | FLAGGED · lower reading used |
 | `data-gaps` | 4 h missing | FLAGGED · 83.3% coverage, gaps credited as zero |
 | `spikes` | 3 intervals above the hydraulic potential | FLAGGED · those intervals credited as zero |
@@ -445,8 +456,8 @@ Scenarios on the run-of-river demo plant (500 kW, day ending at midnight UTC):
 | `tampered` | main and check meter raised 1% in six hours *after* the meter signed: meters agree, physics is plausible | REJECTED (signature) |
 
 The storage demo plant (12 MW, new 1.8 km² reservoir, PD 6.67 W/m², second crediting period) shows reservoir
-emissions: under VMR0017 a healthy day is about 208 MWh net, BE 112.1 t, PE_HP 21.1 t (EF_Res 100 kg/MWh), LE 4.4 t
-(embodied emissions), ER 86.6 t.
+emissions: under VMR0017 a healthy day is about 208 MWh net, BE 109.2 t, PE_HP 21.1 t (EF_Res 100 kg/MWh), LE 4.4 t
+(embodied emissions), ER 83.7 t.
 
 ## Public re-verification on HCS
 
@@ -682,14 +693,15 @@ template.json                            create-scaffold-hbar manifest
   engine is deterministic and the contract recomputes the credits. The trust that remains is in the *telemetry
   source* and in the *design registration*: production deployments need device-signed readings, several verifiers,
   and a VVB validating the design before `registerPlant`.
-- **Not a certification.** This implements the equations of VMR0017 v1.0 with ACM0002 v22.0, AMS-I.D, TOOL07 and
-  TOOL03 as described above. It records VT0008 additionality evidence and checks it for completeness, but the
+- **Not a certification.** This implements the equations of VMR0017 v1.0 with ACM0002 v22.0, AMS-I.D, VT0011,
+  TOOL07 and TOOL03 as described above. It records VT0008 additionality evidence and checks it for completeness, but the
   determination, stakeholder consultation, the monitoring plan and verification remain the job of a VVB and a
   registry (Verra, Gold Standard).
-- **VT0011 is not implemented separately.** VMR0017 replaces TOOL07 with Verra's VT0011; the engine applies TOOL07's
-  procedure. Before validating a VMR0017 project, compare it with VT0011 or register a published combined margin
-  (`grid.source: "published"`). VMR0017's battery, pumped-storage and fire-suppression emission terms are not
-  implemented (plain hydro does not need them). Credits here are not issued by a standard; avoid double claiming with RECs or any
+- **Grid factor scope.** VT0011 and TOOL07 are implemented ex-ante with option A per-unit data and the simple,
+  simple adjusted or average OM; the dispatch-data OM, option B, ex-post vintages and the annual BM update (VT0011
+  ¶72 option 2) are not. Register a published combined margin (`grid.source: "published"`) for those.
+  VMR0017's battery, pumped-storage and fire-suppression emission terms are not implemented (plain hydro does not
+  need them). Credits here are not issued by a standard; avoid double claiming with RECs or any
   other instrument for the same generation.
 - **Registry custody** means the contract holds credits and undelivered certificates for accounts. The contract is not
   upgradeable and has no admin path to move anyone's balance.

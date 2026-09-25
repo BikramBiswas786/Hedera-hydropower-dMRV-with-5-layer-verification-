@@ -6,7 +6,7 @@ see the "For AI agents" section of `README.md`.
 
 This is **Hydro dMRV**, a Scaffold-HBAR template: Next.js App Router frontend and API in `packages/nextjs`, Hardhat
 contracts in `packages/hardhat`, Yarn 3 workspaces. It quantifies emission reductions of grid-connected hydropower
-under Verra VMR0017 v1.0 with ACM0002 v22.0, or CDM AMS-I.D / ACM0002 (TOOL07 grid factor, TOOL03 fuel), anchors readings and reports on HCS, and issues HTS
+under Verra VMR0017 v1.0 with ACM0002 v22.0 (VT0011 grid factor, VT0008 additionality), or CDM AMS-I.D / ACM0002 (TOOL07 grid factor), with TOOL03 for fuel, anchors readings and reports on HCS, and issues HTS
 carbon credits through `HydroCreditRegistry`, which recomputes ER = BE − PE − LE on-chain from the plant's registered
 design. Credits are priced through `ResilientHbarUsdFeed` (Chainlink with a Supra fallback), and every retirement
 mints an HTS NFT certificate. Raw readings are on HCS too, so anyone can reproduce every figure.
@@ -43,7 +43,7 @@ yarn hardhat:test:fork            # contract tests against Hedera's HTS emulatio
 | Local test doubles | `packages/hardhat/contracts/mocks/` (HTS mock at `0x167` incl. NFTs, Chainlink and Supra mocks) |
 | Deploy + idempotent setup | `packages/hardhat/deploy/00_*.ts`, `01_*.ts`; demo plant integers in `utils/demoPlants.ts` |
 | Per-network feeds, units, staleness | `packages/hardhat/utils/hydroNetworkConfig.ts` |
-| Methodology (pure): VMR0017 / CDM rules, TOOL07, TOOL03, LDC list, design assessment, integer quantification | `packages/nextjs/services/mrv/methodology/` |
+| Methodology (pure): VMR0017 / CDM rules, TOOL07 and VT0011, TOOL03, LDC list, VT0008 checks, design assessment, integer quantification | `packages/nextjs/services/mrv/methodology/` |
 | Verification engine (pure): 5 stages, QA/QC, report | `packages/nextjs/services/mrv/engine.ts`, `schema.ts` |
 | Meter signatures (pure): batch digest, sign, recover | `packages/nextjs/services/mrv/provenance.ts` |
 | Demo grid, designs, plants, scenarios | `packages/nextjs/services/mrv/demo.ts`, `scenarios.ts` |
@@ -71,7 +71,8 @@ yarn hardhat:test:fork            # contract tests against Hedera's HTS emulatio
   holds the same constants and the LDC and VT0008 checks. Change a factor in both, and add a vector.
 - **Conservative by default.** Every QA/QC adjustment and every rounding goes toward fewer credits: gaps count as
   zero, the lower of main and check meter, MPE deductions after calibration expiry, IPCC lower bounds for the
-  baseline (TOOL07) and upper bounds for project emissions (TOOL03). Do not add a path that credits more.
+  baseline (TOOL07 / VT0011) and upper bounds for project emissions (TOOL03). VT0011's optional LDC weights
+  (w_OM = 1) are deliberately not offered. Do not add a path that credits more.
 - **HBAR units.** `msg.value` inside the EVM is tinybar (1e8) on Hedera but wei (1e18) on a local chain.
   `HydroCreditRegistry.NATIVE_UNITS_PER_HBAR` records which. `quote()` returns that unit; the UI converts with
   `quoteToTxValue` in `services/mrv/pricing.ts`. Never hardcode 1e8 or 1e18 elsewhere.

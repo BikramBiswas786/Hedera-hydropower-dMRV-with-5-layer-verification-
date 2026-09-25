@@ -7,6 +7,7 @@ import {
   VMR0017_EMBODIED_HYDRO_G_PER_MWH,
   VMR0017_RESERVOIR_EF_G_PER_MWH,
   assessProject,
+  commonPracticeOf,
   powerDensity,
 } from "./project";
 import { fuelCoefficient } from "./tool03";
@@ -141,10 +142,11 @@ describe("assessProject", () => {
     ).toBe(712_345);
   });
 
-  it("the demo plants are eligible and use the TOOL07 weights of their crediting period", () => {
+  it("the demo plants are eligible and use the VT0011 hydro weights of their crediting period", () => {
     for (const assessment of DEMO_ASSESSMENTS) expect(assessment.failures).toEqual([]);
     const [first, renewed] = DEMO_ASSESSMENTS;
-    expect(first.grid.tool07?.weights).toEqual({ operatingMargin: 0.5, buildMargin: 0.5 });
+    expect(first.grid.tool07?.tool).toBe("VT0011");
+    expect(first.grid.tool07?.weights).toEqual({ operatingMargin: 0.4, buildMargin: 0.6 });
     expect(renewed.grid.tool07?.weights).toEqual({ operatingMargin: 0.25, buildMargin: 0.75 });
     expect(renewed.powerDensity.peHpGPerMwh).toBe(VMR0017_RESERVOIR_EF_G_PER_MWH);
     expect(DEMO_DESIGNS.map(d => d.plantId)).toEqual(["HYDRO-DEMO-01", "HYDRO-DEMO-02"]);
@@ -156,8 +158,16 @@ describe("VMR0017 v1.0 (with ACM0002 v22.0)", () => {
   const evidence: NonNullable<ProjectDesign["additionality"]> = {
     tool: "VT0008",
     regulatorySurplus: true,
-    investment: { indicator: "IRR", projectValuePct: 8, benchmarkPct: 11 },
-    commonPractice: { isCommonPractice: false, basis: "test" },
+    investment: {
+      analysis: "benchmark",
+      irr: "project",
+      irrWithoutCreditsPct: 8,
+      irrWithCreditsPct: 12,
+      benchmarkPct: 11,
+      sensitivityConfirms: true,
+      decisiveIncrease: true,
+    },
+    commonPractice: { nAll: 12, nDiff: 10, basis: "test" },
   };
   const vmr = (overrides: Partial<ProjectDesign> = {}) =>
     assessProject(design({ methodology: "VMR0017", hostCountry: "UG", additionality: evidence, ...overrides }));
@@ -198,13 +208,51 @@ describe("VMR0017 v1.0 (with ACM0002 v22.0)", () => {
     expect(vmr({ additionality: { ...evidence, regulatorySurplus: false } }).failures.join()).toMatch(
       /regulatory surplus/,
     );
-    const attractive = {
+    const investment = (changes: Partial<typeof evidence.investment>) => ({
       ...evidence,
-      investment: { indicator: "IRR" as const, projectValuePct: 12, benchmarkPct: 11 },
-    };
-    expect(vmr({ additionality: attractive }).failures.join()).toMatch(/not below the benchmark/);
-    const common = { ...evidence, commonPractice: { isCommonPractice: true, basis: "test" } };
-    expect(vmr({ additionality: common }).failures.join()).toMatch(/common practice/);
+      investment: { ...evidence.investment, ...changes },
+    });
+    expect(vmr({ additionality: investment({ irrWithoutCreditsPct: 11 }) }).failures.join()).toMatch(
+      /project IRR without carbon credit revenue \(11%\) must be below the benchmark \(11%\)/,
+    );
+    expect(vmr({ additionality: investment({ sensitivityConfirms: false }) }).failures.join()).toMatch(
+      /sensitivity analysis/,
+    );
+    expect(vmr({ additionality: investment({ irrWithCreditsPct: 7 }) }).failures.join()).toMatch(
+      /cannot be below the IRR without it/,
+    );
+    const counts = { ...evidence, commonPractice: { nAll: 3, nDiff: 4, basis: "test" } };
+    expect(vmr({ additionality: counts }).failures.join()).toMatch(/N_diff cannot exceed N_all/);
+  });
+
+  it("VT0008 Step 4b: common practice when F > 20% and N_all − N_diff > 3", () => {
+    expect(commonPracticeOf({ nAll: 10, nDiff: 2 })).toEqual({ factor: 0.8, commonPractice: true });
+    // F = 60% but only three similar projects without essential distinctions (footnote 17).
+    expect(commonPracticeOf({ nAll: 5, nDiff: 2 }).commonPractice).toBe(false);
+    // Exactly 20% is not above the threshold.
+    expect(commonPracticeOf({ nAll: 20, nDiff: 16 })).toEqual({ factor: 0.2, commonPractice: false });
+    expect(commonPracticeOf({ nAll: 0, nDiff: 0 })).toEqual({ factor: 0, commonPractice: false });
+
+    const common = vmr({ additionality: { ...evidence, commonPractice: { nAll: 10, nDiff: 2, basis: "test" } } });
+    expect(common.failures.join()).toMatch(/common practice \(F = 80\.0% > 20% and N_all − N_diff = 8 > 3\)/);
+    const passing = vmr();
+    expect(passing.additionality.commonPracticeFactor).toBeCloseTo(1 / 6);
+    expect(passing.additionality.basis).toMatch(/F = 16\.7%, not common practice/);
+  });
+
+  it("records whether the CCP investment conditions §5.4.2(2)(b)–(c) are met without failing the plant", () => {
+    expect(vmr().additionality.ccpInvestmentConditions).toBe(true);
+    const belowBenchmark = vmr({
+      additionality: { ...evidence, investment: { ...evidence.investment, irrWithCreditsPct: 10 } },
+    });
+    expect(belowBenchmark.failures).toEqual([]);
+    expect(belowBenchmark.additionality.ccpInvestmentConditions).toBe(false);
+    expect(belowBenchmark.additionality.basis).toMatch(/may not be CCP-eligible/);
+    const notDecisive = vmr({
+      additionality: { ...evidence, investment: { ...evidence.investment, decisiveIncrease: false } },
+    });
+    expect(notDecisive.additionality.ccpInvestmentConditions).toBe(false);
+    expect(assessProject(design({})).additionality.ccpInvestmentConditions).toBeNull();
   });
 
   it("has no embodied-emission equation for retrofits", () => {

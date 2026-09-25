@@ -20,13 +20,14 @@ Each plant is registered on-chain under one of two rule sets:
 - **Verra VMR0017 v${METHODOLOGIES.VMR0017.version}** (23 April 2026), applied with **ACM0002 v${METHODOLOGIES.ACM0002.version}** as it requires. The
   demo plants use it. For hydro it changes ACM0002 as follows: hydroelectric projects of ${VMR0017_MAX_HYDRO_KW / 1_000} MW or less (rated or
   authorized capacity, whichever is higher) in Least Developed Countries only (Table 1; ${LDC_COUNT} LDCs as of ${LDC_LIST_AS_OF});
-  additionality by VT0008 (regulatory surplus, investment analysis, common practice; no barrier analysis, no TOOL32);
+  additionality by VT0008 (regulatory surplus, benchmark analysis on project or equity IRR with a sensitivity analysis,
+  common practice; no barrier analysis, no TOOL32);
   EF_Res = ${VMR0017_RESERVOIR_EF_G_PER_MWH / 1_000} kg CO2e/MWh; leakage from embodied emissions, ${VMR0017_EMBODIED_HYDRO_G_PER_MWH / 1_000} g CO2e/kWh for hydro (§8.3); TOOL07
-  replaced by VT0011. Verra inactivates ACM0002 and AMS-I.D as standalone methodologies on 1 January 2027.
+  replaced by VT0011 v1.0. Verra inactivates ACM0002 and AMS-I.D as standalone methodologies on 1 January 2027.
 - **CDM ${METHODOLOGIES["AMS-I.D"].id} v${METHODOLOGIES["AMS-I.D"].version}** (up to ${SMALL_SCALE_LIMIT_KW / 1_000} MW) and **${METHODOLOGIES.ACM0002.id} v${METHODOLOGIES.ACM0002.version}** (above).
 
-Both use **TOOL03** for fossil fuel combustion; the grid emission factor follows TOOL07's procedure (see "Not implemented"
-for VT0011). The contract \`HydroCreditRegistry\` recomputes every figure below from the registered design and methodology,
+Both use **TOOL03** for fossil fuel combustion. The grid emission factor follows TOOL07 v7.0 for CDM plants and
+Verra's VT0011 v1.0 revision of it for VMR0017 plants. The contract \`HydroCreditRegistry\` recomputes every figure below from the registered design and methodology,
 so a verifier cannot mint more than the equations allow. 1 credit = 1 t CO2e; 1 token base unit = 1 kg CO2e.
 
 ## Emission reductions
@@ -54,12 +55,15 @@ so a verifier cannot mint more than the equations allow. 1 credit = 1 t CO2e; 1 
   no added reservoir area means PE_HP = 0.
 - AMS-I.D ≤ ${SMALL_SCALE_LIMIT_KW / 1_000} MW; transferred equipment under AMS-I.D needs a leakage assessment (refused).
 - VMR0017: hydro ≤ ${VMR0017_MAX_HYDRO_KW / 1_000} MW (contract reverts above), host country on the UN LDC list at the crediting start,
-  and complete VT0008 evidence: regulatory surplus, the project's financial indicator without carbon revenue below the
-  benchmark, not common practice. The engine checks the recorded evidence; the VVB makes the determination.
+  and complete VT0008 evidence: regulatory surplus; the project or equity IRR without carbon revenue below the
+  benchmark, confirmed by a sensitivity analysis (§5.4.2); not common practice, which it is when F = 1 − N_diff / N_all
+  > 20% and N_all − N_diff > 3 (Step 4b). Whether the CCP conditions (b)–(c) hold (the credit revenue is decisive and
+  lifts the IRR to the benchmark) is recorded, not required. The engine checks the recorded evidence; the VVB makes the
+  determination.
 - Crediting period: 7 years (renewable twice) or 10 years fixed, counted in 365-day years; a monitoring period must stay
   inside the crediting period and inside one crediting year (contract checks both).
 
-## Grid emission factor (TOOL07, ex-ante)
+## Grid emission factor (TOOL07 and VT0011, ex-ante)
 
     EF_grid,CM = w_OM × EF_grid,OM + w_BM × EF_grid,BM
 
@@ -69,6 +73,11 @@ so a verifier cannot mint more than the equations allow. 1 credit = 1 t CO2e; 1 
 - BM: sample group per step 5 — the larger of the 5 most recent units and the most recent units supplying ≥ 20% of
   generation (CDM units excluded); if that set holds units older than 10 years, drop them and add CDM units, then older units, up to 20%.
 - Weights: hydro 0.5 / 0.5 in the first crediting period, 0.25 / 0.75 after renewal; wind and solar 0.75 / 0.25.
+- VT0011 (VMR0017 plants): BM sample = the larger of the two sets over ALL units, VCS and other GHG-program units
+  included, steps (d)–(f) removed (¶75); a sample unit older than 10 years uses option A2 with its TOOL09 Table 2
+  default efficiency (¶79); a unit with generation data only counts as 0 t/MWh (option A3, ¶50); weights hydro
+  0.4 / 0.6 in the first crediting period and 0.25 / 0.75 after it, wind and solar 0.5 / 0.5, 0.4 / 0.6, 0.3 / 0.7 (¶86).
+  The optional ¶90 (w_OM = 1 in an LDC, which would raise the factor) and ¶91 (default BM) are not offered.
 - IPCC 2006 defaults use the **lower** 95% bound for the baseline (TOOL07) and the **upper** bound for project
   emissions (TOOL03), so both sides err toward fewer credits.
 - A combined margin published by a DNA can be registered instead, with its reference.
@@ -100,8 +109,7 @@ ${Object.values(FUELS)
 
 ## Not implemented
 
-VT0011 as a separate tool (the grid factor follows TOOL07's procedure; register a DNA- or Verra-published combined margin
-where VT0011 differs), battery and pumped storage and BESS fire suppression (VMR0017 PE_BESS, PE_PSP, PE_FSS),
+VT0011 ¶72 option 2 (annual BM update), battery and pumped storage and BESS fire suppression (VMR0017 PE_BESS, PE_PSP, PE_FSS),
 TOOL07 option B and dispatch-data OM, ex-post OM vintage, off-grid plants and imports in the grid factor, integrated
 hydro projects (several reservoirs), battery storage and geothermal emission sources, TOOL05 for grid electricity
 consumed by the project (net metering covers imports at the plant). A VVB must still validate the design and verify

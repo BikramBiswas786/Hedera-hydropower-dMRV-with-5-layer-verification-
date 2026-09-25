@@ -2,14 +2,26 @@ import { MethodologyError } from "./errors";
 import { FUELS, type FuelType, co2EmissionFactorTPerGj, netCalorificValue } from "./fuels";
 
 /**
- * TOOL07 — "Tool to calculate the emission factor for an electricity system", ex-ante option.
+ * TOOL07 v7.0 — "Tool to calculate the emission factor for an electricity system", ex-ante option — and Verra's
+ * VT0011 v1.0 revision of it (13 February 2025), which VMR0017 requires in place of TOOL07.
  *
  *   EF_grid,CM,y = w_OM × EF_grid,OM,y + w_BM × EF_grid,BM,y
  *
  * Operating margin (OM): simple, simple adjusted or average, from per-unit data (option A), as a 3-year
- * generation-weighted average. Build margin (BM): the sample group of units selected by TOOL07 step 5 (a)–(f).
+ * generation-weighted average. Build margin (BM): the sample group of units selected by step 5.
  * Fuel data without plant-specific values uses the IPCC LOWER 95% bounds, the conservative side for a baseline.
+ *
+ * VT0011 changes, for projects that supply electricity to the grid:
+ *   ¶50 A3   a unit with generation data only counts as 0 t CO2/MWh (TOOL07 has no such option: refused)
+ *   ¶75      BM sample = the larger of SET_5-units and SET_≥20% over ALL units, including units registered under
+ *            the VCS or any other GHG program; steps (d)–(f) are removed
+ *   ¶79      BM units older than 10 years use option A2 with the TOOL09 Table 2 default efficiency
+ *   ¶86      weights, first / second / third crediting period: wind and solar 0.5/0.5, 0.4/0.6, 0.3/0.7;
+ *            all other projects (hydro) 0.4/0.6, then 0.25/0.75
+ * VT0011 ¶90 (LDC: w_OM = 1) and ¶91 (non-LDC default BM) are optional and not offered: ¶90 would credit more.
  */
+
+export type GridEmissionFactorTool = "TOOL07" | "VT0011";
 
 export type GenerationSource = FuelType | "hydro" | "wind" | "solar" | "geothermal" | "nuclear" | "biomass";
 
@@ -22,10 +34,12 @@ export type PowerUnit = {
   source: GenerationSource;
   /** Year the unit started to supply electricity to the grid. */
   commissioned: number;
-  /** Registered as a CDM project activity: left out of the BM sample until TOOL07 step 5(d). */
+  /** Registered as a CDM (or other GHG program) project: left out of the TOOL07 BM sample until step 5(d). */
   cdm?: boolean;
   /** Net electrical efficiency, for option A2 when fuel consumption is not reported. */
   efficiency?: number;
+  /** VT0011 ¶79: the TOOL09 Table 2 default efficiency, required if the unit is in the BM sample and > 10 years old. */
+  tool09Efficiency?: number;
 };
 
 export type UnitGeneration = {
@@ -52,9 +66,11 @@ export type Tool07Input = {
   /** LCMR share of total generation in each of the five most recent years. */
   lowCostMustRunShare: number[];
   operatingMargin: OperatingMarginMethod;
-  /** Wind and solar get w_OM = 0.75; every other technology (hydro included) 0.5, then 0.25 after renewal. */
+  /** Selects the CM weights (see `combinedMarginWeights`). */
   projectKind: "hydro" | "wind-solar";
   creditingPeriod: 1 | 2 | 3;
+  /** Defaults to TOOL07; VMR0017 requires VT0011. */
+  tool?: GridEmissionFactorTool;
 };
 
 export type UnitFactor = {
@@ -65,12 +81,17 @@ export type UnitFactor = {
   mwh: number;
   /** EF_EL,m,y in t CO2/MWh. */
   efTPerMwh: number;
-  option: "A1" | "A2" | "LCMR";
+  option: "A1" | "A2" | "A3" | "LCMR";
 };
 
-export type BuildMarginStep = "5(c) SET_sample" | "5(d) SET_sample-CDM" | "5(f) SET_sample-CDM->10yrs";
+export type BuildMarginStep =
+  | "5(c) SET_sample"
+  | "5(d) SET_sample-CDM"
+  | "5(f) SET_sample-CDM->10yrs"
+  | "VT0011 ¶75(c) SET_sample";
 
 export type Tool07Result = {
+  tool: GridEmissionFactorTool;
   system: string;
   operatingMargin: {
     method: OperatingMarginMethod;
@@ -101,8 +122,15 @@ const weightedAverage = (items: { mwh: number; efTPerMwh: number }[]) => {
   return total === 0 ? 0 : sum(items.map(i => i.mwh * i.efTPerMwh)) / total;
 };
 
-/** EF_EL,m,y: option A1 from fuel burnt, option A2 from efficiency; LCMR units emit nothing at the margin. */
-export function unitEmissionFactor(unit: PowerUnit, data: UnitGeneration): UnitFactor {
+/**
+ * EF_EL,m,y: option A1 from fuel burnt, option A2 from efficiency; LCMR units emit nothing at the margin. Under
+ * VT0011 a unit with generation data only takes option A3 (0 t CO2/MWh for a project supplying the grid).
+ */
+export function unitEmissionFactor(
+  unit: PowerUnit,
+  data: UnitGeneration,
+  tool: GridEmissionFactorTool = "TOOL07",
+): UnitFactor {
   const base = { id: unit.id, source: unit.source, commissioned: unit.commissioned, cdm: !!unit.cdm, mwh: data.mwh };
   if (isLowCostMustRun(unit.source)) return { ...base, efTPerMwh: 0, option: "LCMR" };
 
@@ -120,6 +148,7 @@ export function unitEmissionFactor(unit: PowerUnit, data: UnitGeneration): UnitF
     // A2: EF_EL = EF_CO2 × 3.6 / η   (3.6 GJ per MWh)
     return { ...base, efTPerMwh: (ef * 3.6) / unit.efficiency, option: "A2" };
   }
+  if (tool === "VT0011") return { ...base, efTPerMwh: 0, option: "A3" };
   throw new MethodologyError(
     `Unit ${unit.id} (${FUELS[fuel].label}): option A needs fuel consumption (A1) or net efficiency (A2)`,
   );
@@ -128,7 +157,7 @@ export function unitEmissionFactor(unit: PowerUnit, data: UnitGeneration): UnitF
 function factorsForYear(input: Tool07Input, year: GridYear): UnitFactor[] {
   return input.units
     .filter(unit => (year.units[unit.id]?.mwh ?? 0) > 0)
-    .map(unit => unitEmissionFactor(unit, year.units[unit.id]));
+    .map(unit => unitEmissionFactor(unit, year.units[unit.id], input.tool));
 }
 
 function operatingMargin(input: Tool07Input) {
@@ -189,6 +218,33 @@ function buildMargin(input: Tool07Input) {
   const mwhOf = (set: UnitFactor[]) => sum(set.map(u => u.mwh));
   const isOld = (u: UnitFactor) => referenceYear - u.commissioned > 10;
 
+  if (input.tool === "VT0011") {
+    // ¶75 (a)–(c) over all connected units, GHG-program units included; (d)–(f) are removed.
+    const totalMwh = mwhOf(byRecency);
+    const set5 = byRecency.slice(0, 5);
+    const set20 = fillTo([], byRecency, 0.2 * totalMwh);
+    const sample = (mwhOf(set5) > mwhOf(set20) ? set5 : set20).map(u => {
+      if (!isOld(u) || u.option === "LCMR") return u;
+      // ¶79: units older than 10 years only through option A2 with the TOOL09 default efficiency.
+      const unit = input.units.find(candidate => candidate.id === u.id) as PowerUnit;
+      if (unit.tool09Efficiency === undefined) {
+        throw new MethodologyError(
+          `VT0011 ¶79: ${u.id} is in the build margin sample and older than 10 years; give its TOOL09 Table 2 default efficiency (tool09Efficiency)`,
+        );
+      }
+      return unitEmissionFactor({ ...unit, efficiency: unit.tool09Efficiency }, { mwh: u.mwh }, "VT0011");
+    });
+    return {
+      efTPerMwh: weightedAverage(sample),
+      referenceYear,
+      step: "VT0011 ¶75(c) SET_sample" as BuildMarginStep,
+      totalMwh,
+      set5Mwh: mwhOf(set5),
+      set20Mwh: mwhOf(set20),
+      sample,
+    };
+  }
+
   // (a) five most recent units, (b) most recent units supplying ≥ 20% of AEG_total, both excluding CDM units.
   const totalMwh = mwhOf(nonCdm);
   const target = 0.2 * totalMwh;
@@ -229,7 +285,27 @@ function buildMargin(input: Tool07Input) {
   };
 }
 
-export function combinedMarginWeights(projectKind: Tool07Input["projectKind"], creditingPeriod: 1 | 2 | 3) {
+/**
+ * TOOL07: wind and solar 0.75/0.25; everything else 0.5/0.5, then 0.25/0.75 after renewal.
+ * VT0011 ¶86 (Case 1): wind and solar 0.5/0.5, 0.4/0.6, 0.3/0.7; everything else 0.4/0.6, then 0.25/0.75.
+ */
+export function combinedMarginWeights(
+  projectKind: Tool07Input["projectKind"],
+  creditingPeriod: 1 | 2 | 3,
+  tool: GridEmissionFactorTool = "TOOL07",
+) {
+  if (tool === "VT0011") {
+    if (projectKind === "wind-solar") {
+      return [
+        { operatingMargin: 0.5, buildMargin: 0.5 },
+        { operatingMargin: 0.4, buildMargin: 0.6 },
+        { operatingMargin: 0.3, buildMargin: 0.7 },
+      ][creditingPeriod - 1];
+    }
+    return creditingPeriod === 1
+      ? { operatingMargin: 0.4, buildMargin: 0.6 }
+      : { operatingMargin: 0.25, buildMargin: 0.75 };
+  }
   if (projectKind === "wind-solar") return { operatingMargin: 0.75, buildMargin: 0.25 };
   return creditingPeriod === 1
     ? { operatingMargin: 0.5, buildMargin: 0.5 }
@@ -258,9 +334,11 @@ export function calculateGridEmissionFactor(input: Tool07Input): Tool07Result {
   validate(input);
   const om = operatingMargin(input);
   const bm = buildMargin(input);
-  const weights = combinedMarginWeights(input.projectKind, input.creditingPeriod);
+  const tool = input.tool ?? "TOOL07";
+  const weights = combinedMarginWeights(input.projectKind, input.creditingPeriod, tool);
   const efTPerMwh = weights.operatingMargin * om.efTPerMwh + weights.buildMargin * bm.efTPerMwh;
   return {
+    tool,
     system: input.system,
     operatingMargin: om,
     buildMargin: bm,

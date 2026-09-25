@@ -17,9 +17,10 @@ import { getAttestation, getAttestations, getOpenListings, getPlant, getRegistry
 import { McpServer } from "@modelcontextprotocol/server";
 import { z } from "zod";
 
-const INSTRUCTIONS = `Hydro dMRV: carbon-credit MRV for grid-connected hydropower on Hedera, following CDM AMS-I.D / ACM0002 with
-TOOL07 (grid emission factor) and TOOL03 (fossil fuel). ER = BE - PE - LE, computed by the engine and recomputed on-chain.
-Design: assess_project (applicability, power density, baseline, TOOL07 combined margin) -> registration integers.
+const INSTRUCTIONS = `Hydro dMRV: carbon-credit MRV for grid-connected hydropower on Hedera, following Verra VMR0017 v1.0 with
+ACM0002 v22.0 (demo plants; VT0011 grid factor, VT0008 additionality, embodied-emission leakage) or CDM AMS-I.D /
+ACM0002 (TOOL07 grid factor), with TOOL03 for fossil fuel. ER = BE - PE - LE, computed by the engine and recomputed on-chain.
+Design: assess_project (applicability, power density, baseline, TOOL07 or VT0011 combined margin, VT0008 additionality) -> registration integers.
 Monitoring: generate_sample_telemetry (or real readings) -> verify_telemetry (5 stages: applicability, QA/QC, physics,
 quantification, safeguards). Only APPROVED periods can be attested. Raw readings and reports live on HCS;
 reproduce_attestation re-runs the engine on the published data and compares every figure with the contract.
@@ -127,7 +128,7 @@ export function buildMcpServer({ canWrite }: { canWrite: boolean }): McpServer {
     {
       title: "Assess a project design",
       description:
-        "Check a hydro project design against AMS-I.D / ACM0002: applicability, reservoir power density and PE_HP rate, baseline (EG_historical + σ for retrofits), TOOL07 combined margin, TOOL03 fuel coefficient, leakage and crediting period. Returns the integers registerPlant expects and the design hash.",
+        "Check a hydro project design against VMR0017 (with ACM0002) or AMS-I.D / ACM0002: applicability (VMR0017: ≤ 15 MW, LDC host country, VT0008 additionality evidence), reservoir power density and PE_HP rate, baseline (EG_historical + σ for retrofits), combined margin (VT0011 for VMR0017, TOOL07 otherwise), TOOL03 fuel coefficient, leakage and crediting period. Returns the integers registerPlant expects and the design hash.",
       inputSchema: projectDesignSchema,
       annotations: { readOnlyHint: true },
     },
@@ -137,9 +138,9 @@ export function buildMcpServer({ canWrite }: { canWrite: boolean }): McpServer {
   server.registerTool(
     "calculate_grid_emission_factor",
     {
-      title: "TOOL07 grid emission factor",
+      title: "Grid emission factor (TOOL07 / VT0011)",
       description:
-        "Ex-ante combined margin from per-unit grid data: simple / simple adjusted / average OM (options A1 and A2, 3-year weighted), BM sample group per TOOL07 step 5, weights by technology and crediting period. IPCC lower bounds apply where plant data is missing.",
+        'Ex-ante combined margin from per-unit grid data: simple / simple adjusted / average OM (options A1 and A2, 3-year weighted), BM sample group and weights by technology and crediting period. tool: "TOOL07" (default) or "VT0011" (Verra; BM over all units incl. VCS/CDM, TOOL09 efficiency for old BM units, hydro weights 0.4/0.6). IPCC lower bounds apply where plant data is missing.',
       inputSchema: gridEmissionFactorRequestSchema,
       annotations: { readOnlyHint: true },
     },
