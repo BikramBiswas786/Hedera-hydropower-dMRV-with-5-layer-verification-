@@ -41,7 +41,7 @@ describe("OpenAPI description", () => {
       properties: Record<string, unknown>;
       required: string[];
     };
-    expect(Object.keys(verify.properties)).toEqual(["readings", "plant", "metering", "ledger", "signature"]);
+    expect(Object.keys(verify.properties)).toEqual(["readings", "plant", "metering", "ledger", "signature", "domain"]);
     expect(verify.required).toEqual(["readings"]);
   });
 

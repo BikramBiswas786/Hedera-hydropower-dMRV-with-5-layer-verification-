@@ -2,12 +2,14 @@
  * The demo plants registered by `deploy/01_setup_hydro_registry.ts`. These integers are the output of the
  * methodology engine for the designs in `packages/nextjs/services/mrv/demo.ts` (VMR0017 v1.0 with ACM0002 v22.0,
  * VT0011 combined margin, TOOL03 diesel coefficient, crediting periods); `designHash` is the SHA-256 of each design
- * document. A vitest test in
+ * document; `meter` is the address of the plant's demo data-logger key, which is public so anyone can generate
+ * signed sample telemetry (a real plant's meter key never leaves its device). A vitest test in
  * the nextjs package recomputes all of them and fails if they drift, so regenerate them rather than editing.
  */
 export type DemoPlant = {
   plantId: string;
   name: string;
+  meter: string;
   design: {
     projectType: number;
     /** 0 = CDM (ACM0002 / AMS-I.D), 1 = VMR0017 v1.0. */
@@ -30,6 +32,7 @@ export const DEMO_PLANTS: DemoPlant[] = [
   {
     plantId: "HYDRO-DEMO-01",
     name: "Demo run-of-river plant",
+    meter: "0x34bD8f8fb9a722adD4688fdcB35bd8DA4FB97De9",
     design: {
       projectType: 0,
       methodology: 1,
@@ -49,6 +52,7 @@ export const DEMO_PLANTS: DemoPlant[] = [
   {
     plantId: "HYDRO-DEMO-02",
     name: "Demo storage plant, renewed crediting period",
+    meter: "0xcd479173da7f6708391A1d6011b475c1525b63C8",
     design: {
       projectType: 0,
       methodology: 1,

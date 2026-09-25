@@ -1,7 +1,7 @@
 import { DEMO_PLANT } from "../demo";
 import type { VerificationReport } from "../engine";
 import type { RegisteredDesign } from "../methodology/project";
-import { hashscan, isLiveHederaChain } from "../network";
+import { HYDRO_CHAIN_ID, hashscan, isLiveHederaChain } from "../network";
 import { prepareAnchors } from "../pipeline";
 import { buildHcsMessage } from "../report";
 import type { VerifyRequest } from "../schema";
@@ -58,7 +58,22 @@ export async function attestReadings(request: VerifyRequest): Promise<AttestOutc
     throw new ApiError(`Plant profile differs from the registered design: ${mismatches.join("; ")}`, 409);
   }
 
-  const { report, data, preview } = prepareAnchors({ ...request, plant: profile, ledger: registered.ledger });
+  const registeredMeter = registered.meter;
+  const device = request.metering?.deviceAddress;
+  if (registeredMeter && device && registeredMeter.toLowerCase() !== device.toLowerCase()) {
+    throw new ApiError(
+      `The metering record names meter ${device}, but the plant's registered meter is ${registeredMeter}`,
+      409,
+    );
+  }
+
+  // The meter statement must be signed for this registry, which is also what the contract checks.
+  const { report, data, preview } = prepareAnchors({
+    ...request,
+    plant: profile,
+    ledger: registered.ledger,
+    domain: { chainId: HYDRO_CHAIN_ID, registry: address },
+  });
   const anchors = (message: string, reportHash: string): Anchors => ({
     hcsMessage: message,
     reportHash,
@@ -67,6 +82,14 @@ export async function attestReadings(request: VerifyRequest): Promise<AttestOutc
   });
   if (report.decision !== "APPROVED" || !report.emissions) {
     return { status: "not-eligible", report, ...anchors(preview.message, preview.reportHash) };
+  }
+
+  const signature = request.signature;
+  if (registeredMeter && (report.provenance.status !== "signed" || !signature)) {
+    throw new ApiError(
+      `The registry only accepts batches whose statement is signed by the plant's meter ${registeredMeter} for registry ${address} on chain ${HYDRO_CHAIN_ID}`,
+      409,
+    );
   }
 
   const operator = readOperatorConfig();
@@ -90,6 +113,14 @@ export async function attestReadings(request: VerifyRequest): Promise<AttestOutc
     reportHash: preview.reportHash,
     hcsTopicNum: 0n,
     hcsSequence: 0n,
+    // What the meter signed; the contract accepts the figures above only if they are at least this conservative.
+    meter: {
+      grossEnergyWh: BigInt(report.meterStatement.grossWh),
+      netEnergyWh: BigInt(report.meterStatement.netWh),
+      fuelG: BigInt(report.meterStatement.fuelG),
+      readingsDigest: report.meterStatement.readingsDigest,
+      signature: signature ?? "0x",
+    },
   };
 
   // Dry-run first so role, period, capacity and completeness errors surface before anything reaches HCS, and

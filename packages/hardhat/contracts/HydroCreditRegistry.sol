@@ -3,6 +3,7 @@ pragma solidity ^0.8.28;
 
 import { AccessControl } from "@openzeppelin/contracts/access/AccessControl.sol";
 import { ReentrancyGuard } from "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
+import { ECDSA } from "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
 import { AggregatorV3Interface } from "./interfaces/AggregatorV3Interface.sol";
 import { HederaTokenLib } from "./lib/HederaTokenLib.sol";
 
@@ -11,8 +12,9 @@ import { HederaTokenLib } from "./lib/HederaTokenLib.sol";
 /// (small scale), or Verra VMR0017 v1.0 applied with ACM0002 v22.0. Each plant is registered with its methodology
 /// and validated design: project type, reservoir areas, the ex-ante
 /// TOOL07 grid emission factor, the TOOL03 fuel coefficient, the retrofit baseline and the crediting period.
-/// Verifiers attest monitored quantities for a period, with the full report and raw readings anchored on HCS,
-/// and the contract itself computes
+/// Verifiers attest monitored quantities for a period, with the full report and raw readings anchored on HCS.
+/// Each period carries a statement signed by the plant's registered meter; the verifier's figures may only be more
+/// conservative than what the meter signed, so a verifier key alone cannot mint. The contract itself computes
 ///
 ///     ER_y = BE_y − PE_y − LE_y,   BE_y = EG_PJ,y × EF_grid,CM,y,   PE_y = PE_FF,y + PE_HP,y
 ///
@@ -52,6 +54,8 @@ contract HydroCreditRegistry is AccessControl, ReentrancyGuard {
     uint32 public constant MAX_GRID_EF_G_PER_MWH = 2_000_000;
     uint256 private constant WH_PER_MWH = 1e6;
     uint256 private constant G_PER_TONNE = 1e6;
+    /// @notice Domain tag of the meter statement; the signed hash also binds the chain id and this registry.
+    bytes32 public constant METER_STATEMENT_TAG = keccak256("hydro-dmrv/meter-statement@1");
 
     /// @notice HBAR/USD feed used to convert USD listing prices into HBAR.
     AggregatorV3Interface public immutable HBAR_USD_FEED;
@@ -97,6 +101,8 @@ contract HydroCreditRegistry is AccessControl, ReentrancyGuard {
     struct Plant {
         string name;
         address operator;
+        /// @dev Key of the plant's data logger; every attestation must carry its signature over the raw totals.
+        address meter;
         bool active;
         PlantDesign design;
         /// @dev PE_HP rate derived from the power density and methodology at registration: 0 or EF_Res.
@@ -112,6 +118,16 @@ contract HydroCreditRegistry is AccessControl, ReentrancyGuard {
         uint64 lastPeriodEnd;
         int128 totalNetWh;
         uint128 issuedUnits;
+    }
+
+    /// @notice What the plant's meter signed for the period: raw totals, before any QA/QC, and the SHA-256 of the
+    /// readings batch published on HCS. `signature` is an EIP-191 signature over `meterStatementHash`.
+    struct MeterStatement {
+        uint64 grossEnergyWh;
+        int64 netEnergyWh;
+        uint64 fuelG;
+        bytes32 readingsDigest;
+        bytes signature;
     }
 
     struct AttestationInput {
@@ -133,6 +149,7 @@ contract HydroCreditRegistry is AccessControl, ReentrancyGuard {
         bytes32 reportHash;
         uint64 hcsTopicNum;
         uint64 hcsSequence;
+        MeterStatement meter;
     }
 
     struct Attestation {
@@ -227,6 +244,8 @@ contract HydroCreditRegistry is AccessControl, ReentrancyGuard {
         bytes32 designHash
     );
     event PlantStatusChanged(bytes32 indexed plantId, bool active);
+    event PlantMeterChanged(bytes32 indexed plantId, address indexed meter);
+    event MeterStatementAccepted(uint256 indexed attestationId, address indexed meter, bytes32 readingsDigest);
     event MinCompletenessChanged(uint16 minCompletenessBps);
     event MaxPriceAgeChanged(uint32 maxPriceAge);
     event AttestationSubmitted(
@@ -271,6 +290,8 @@ contract HydroCreditRegistry is AccessControl, ReentrancyGuard {
     error NetExceedsGross(int64 netEnergyWh, uint64 grossEnergyWh);
     error FuelNotRegistered();
     error EmptyReportHash();
+    error InvalidMeterSignature(address signer, address meter);
+    error NotMetered(uint64 grossEnergyWh, int64 netEnergyWh, uint64 fuelG);
     error ZeroAmount();
     error InsufficientCustody(uint256 requested, uint256 available);
     error InvalidListing(uint256 listingId);
@@ -352,15 +373,18 @@ contract HydroCreditRegistry is AccessControl, ReentrancyGuard {
         bytes32 plantId,
         string calldata name,
         address operator,
+        address meter,
         PlantDesign calldata design
     ) external onlyRole(DEFAULT_ADMIN_ROLE) {
         if (plantId == bytes32(0) || operator == address(0)) revert InvalidPlant(plantId);
+        if (meter == address(0)) revert ZeroAddress();
         if (_plants[plantId].operator != address(0)) revert PlantAlreadyRegistered(plantId);
         uint32 reservoirRate = _validateDesign(design);
 
         Plant storage plant = _plants[plantId];
         plant.name = name;
         plant.operator = operator;
+        plant.meter = meter;
         plant.active = true;
         plant.design = design;
         plant.reservoirGPerMwh = reservoirRate;
@@ -376,6 +400,14 @@ contract HydroCreditRegistry is AccessControl, ReentrancyGuard {
             reservoirRate,
             design.designHash
         );
+        emit PlantMeterChanged(plantId, meter);
+    }
+
+    /// @notice Replaces a plant's meter key, e.g. after the data logger is swapped and re-validated on site.
+    function setPlantMeter(bytes32 plantId, address meter) external onlyRole(DEFAULT_ADMIN_ROLE) {
+        if (meter == address(0)) revert ZeroAddress();
+        _existingPlant(plantId).meter = meter;
+        emit PlantMeterChanged(plantId, meter);
     }
 
     /// @notice Starts a renewed crediting period with an updated grid emission factor (TOOL07 requires the BM to
@@ -485,6 +517,26 @@ contract HydroCreditRegistry is AccessControl, ReentrancyGuard {
             input.hcsTopicNum,
             input.hcsSequence
         );
+        emit MeterStatementAccepted(attestationId, plant.meter, input.meter.readingsDigest);
+    }
+
+    /// @notice The hash the plant's meter signs (EIP-191 `personal_sign` over these 32 bytes) for a period.
+    function meterStatementHash(bytes32 plantId, AttestationInput calldata input) public view returns (bytes32) {
+        return
+            keccak256(
+                abi.encode(
+                    METER_STATEMENT_TAG,
+                    block.chainid,
+                    address(this),
+                    plantId,
+                    input.periodStart,
+                    input.periodEnd,
+                    input.meter.grossEnergyWh,
+                    input.meter.netEnergyWh,
+                    input.meter.fuelG,
+                    input.meter.readingsDigest
+                )
+            );
     }
 
     /// @notice ACM0002 / AMS-I.D quantification of a monitoring period against the plant's current ledger,
@@ -761,6 +813,21 @@ contract HydroCreditRegistry is AccessControl, ReentrancyGuard {
             revert NetExceedsGross(input.netEnergyWh, input.grossEnergyWh);
         }
         if (input.fuelG > 0 && design.fuelCoefGPerTonne == 0) revert FuelNotRegistered();
+
+        // The meter's signature fixes the raw totals. QA/QC may only lower net export and raise fuel; gross generation
+        // (the PE_HP basis) is the metered value, capped only by what the nameplate can produce in the period.
+        address signer = ECDSA.recover(
+            // EIP-191 personal_sign prefix, inlined: OpenZeppelin's MessageHashUtils needs a Cancun EVM (mcopy).
+            keccak256(abi.encodePacked("\x19Ethereum Signed Message:\n32", meterStatementHash(input.plantId, input))),
+            input.meter.signature
+        );
+        if (signer != plant.meter) revert InvalidMeterSignature(signer, plant.meter);
+        uint256 meteredGross = input.meter.grossEnergyWh;
+        if (
+            input.netEnergyWh > input.meter.netEnergyWh ||
+            input.fuelG < input.meter.fuelG ||
+            input.grossEnergyWh != (meteredGross < maxEnergyWh ? meteredGross : maxEnergyWh)
+        ) revert NotMetered(input.grossEnergyWh, input.netEnergyWh, input.fuelG);
     }
 
     function _existingPlant(bytes32 plantId) private view returns (Plant storage plant) {

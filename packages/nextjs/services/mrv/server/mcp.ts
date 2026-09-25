@@ -50,7 +50,7 @@ const readOnly = { readOnlyHint: true, openWorldHint: true } as const;
 async function reproduce(attestationId: number) {
   const attestation = await getAttestation(attestationId);
   const plant = await getPlant(plantIdToBytes32(attestation.plantId));
-  return reproduceAttestation(attestation, fetch, plant?.design);
+  return reproduceAttestation(attestation, fetch, plant?.design, plant?.meter);
 }
 
 /** One server per request (stateless). `canWrite` is true only for requests carrying the MRV_API_KEY bearer token. */

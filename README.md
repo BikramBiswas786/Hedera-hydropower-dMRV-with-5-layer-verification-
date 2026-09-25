@@ -193,7 +193,7 @@ the CDM solar unit from the BM overstate the factor by about 7% for a first-peri
 
 | Data | Treatment |
 | --- | --- |
-| Source | when the metering record names a meter key (`deviceAddress`), the batch must carry that key's signature; missing, wrong key or any reading edited after signing → **REJECTED** |
+| Source | when the metering record names a meter key (`deviceAddress`), the batch must carry that key's signed meter statement; missing, wrong key, another registry or any reading edited after signing → **REJECTED**. The contract checks the same signature against the meter registered with the plant |
 | Timestamps | duplicates, out-of-order or overlapping intervals → **REJECTED** (double counting) |
 | Gaps | credited as zero; coverage < 90% → FLAGGED; the contract refuses < 90% too |
 | Main vs check meter | disagreement beyond their combined accuracy → lower reading used, FLAGGED |
@@ -205,22 +205,52 @@ the CDM solar unit from the BM overstate the factor by about 7% for a first-peri
 | Fuel | burnt on site with no fuel registered → **REJECTED** (PE_FF cannot be computed) |
 | Water quality | pH, turbidity, temperature out of range → FLAGGED for environmental review; quantity unchanged |
 
-### Meter-signed data
+### Meter-signed data, enforced on-chain
 
 QA/QC and physics catch readings that are implausible; they cannot catch readings that are plausible but were changed
-on the way from the meter. So the plant's data logger holds a secp256k1 key and signs each batch at the source
-(`services/mrv/provenance.ts`): an EIP-191 `personal_sign` over the SHA-256 of the plant id and the readings, in the
-same row encoding as the HCS data message. The meter's address is part of the metering record, validated on site like
-a calibration certificate. The engine checks the signature in the QA/QC stage; the signature and the address are
-published to HCS with the readings, so every reproduction checks it again.
+on the way from the meter, or a verifier who reports more than the meter measured. So the plant's data logger holds a
+secp256k1 key, registered on-chain with the plant (`registerPlant(.., meter, ..)`, replaceable only by the admin with
+`setPlantMeter`), and signs a **meter statement** for every batch (`services/mrv/provenance.ts`):
+
+```
+keccak256(abi.encode("hydro-dmrv/meter-statement@1" tag, chainId, registry, plantId,
+                     periodStart, periodEnd, grossWh, netWh, fuelG, sha256(readings)))   → EIP-191 personal_sign
+```
+
+The totals are raw, before any QA/QC. Two independent checks use the same signature:
+
+| Where | Check |
+| --- | --- |
+| Engine (QA/QC stage, and every reproduction from HCS) | the statement matches the readings and was signed by the metering record's key for this registry |
+| `HydroCreditRegistry.submitAttestation` | the signer is the plant's registered meter; EG_facility ≤ the metered net export; FC ≥ the metered fuel; TEG = the metered gross, capped only at what the nameplate can produce in the period |
+
+QA/QC may only make figures more conservative, and the contract enforces that direction. A stolen or misbehaving
+verifier key alone cannot mint anything: it cannot invent a period the meter did not sign, inflate export, hide fuel,
+understate TEG to shrink reservoir emissions, or replay a statement on another chain or registry.
 
 ```bash
-yarn mrv:meter-key                                   # new meter key; its address goes in metering.deviceAddress
-METER_PRIVATE_KEY=0x… yarn mrv:sign request.json     # sign a verify request's readings in place, as the logger would
+yarn mrv:meter-key                                   # new meter key; register its address with the plant
+METER_PRIVATE_KEY=0x… yarn mrv:sign request.json     # sign the batch's statement in place, as the logger would
 ```
 
 Any Ethereum library, hardware wallet or secure element can be the signer. The demo meters' keys are derived from the
 plant id and are public on purpose, so sample data is signed; on `/verify`, edit any value and watch QA/QC reject it.
+A real meter's key never leaves its device.
+
+### Keys and roles
+
+| Key | Can | Cannot | Keep it |
+| --- | --- | --- | --- |
+| Meter (per plant) | sign what it measured | mint, or change a registration | in the data logger / secure element |
+| Verifier (`VERIFIER_ROLE`) | attest periods the meter signed, never more generous | register plants, change meters, move anyone's credits | on the attesting server |
+| Admin (`DEFAULT_ADMIN_ROLE`) | register plants and meters, renew crediting periods, grant roles | move anyone's credits, mint without a meter statement | a Hedera account with a threshold key, e.g. 2 of 3 |
+| Buyers and agents | buy, retire, withdraw with their own wallet | anything else | their own wallet; the app never asks for it |
+
+`yarn deploy` does the split when `VERIFIER_ADDRESS` and `ADMIN_ADDRESS` are set: the verifier gets
+`VERIFIER_ROLE` and the deployer loses it, then `ADMIN_ADDRESS` (an EVM address or a Hedera account id such as
+`0.0.12345`) gets `DEFAULT_ADMIN_ROLE` and the deployer renounces it. A Hedera account whose key is a threshold
+`KeyList` needs several signatures on every admin transaction (HAPI `ContractExecuteTransaction`), so no single
+person can register a plant or swap a meter.
 
 ### How this compares with Guardian's digitised policies
 
@@ -406,7 +436,8 @@ Nothing is required to browse the app or use the engine. Copy the `.env.example`
 | Variable | Notes |
 | --- | --- |
 | `DEPLOYER_PRIVATE_KEY_ENCRYPTED` | Written by `yarn hardhat:account:import` / `:generate`. |
-| `VERIFIER_ADDRESS` | Extra address to grant `VERIFIER_ROLE` (the deployer always has it). |
+| `VERIFIER_ADDRESS` | The attesting server's address: gets `VERIFIER_ROLE`, and the deployer loses it. |
+| `ADMIN_ADDRESS` | Admin after setup (EVM address or `0.0.<num>`, ideally a threshold-key account): gets `DEFAULT_ADMIN_ROLE`, and the deployer renounces it. |
 | `PLANT_OPERATOR_ADDRESS` | Receives the demo plants' credits; defaults to the deployer. |
 | `CREDIT_TOKEN_CREATE_FEE_HBAR` · `CERTIFICATE_TOKEN_CREATE_FEE_HBAR` | HBAR sent to cover each HTS creation fee (default 20). Unused change can be swept. |
 | `MAX_PRICE_AGE_SECONDS` | Oracle staleness bound for each source and for settlement (default 90000 = 25 h). |
@@ -467,7 +498,7 @@ Two message types go to the audit topic (`services/mrv/report.ts`):
 
 | Message | Schema | Contents | Size |
 | --- | --- | --- | --- |
-| Data | `hydro-dmrv/readings@4` | Every reading, the meter's signature over them, the plant profile (registered design + hydraulics), metering data including the meter's address, the plant's ledger before the period, engine version. The plant profile carries the registered methodology. `readings@2` (before meter signatures) and `readings@3` (before VMR0017) are still reproduced. | 4 chunks for a day, 16 for a week; HCS caps a message at 20 |
+| Data | `hydro-dmrv/readings@5` | Every reading, the meter's signed statement and the registry it was signed for (`domain`), the plant profile (registered design + hydraulics), metering data including the meter's address, the plant's ledger before the period, engine version. `readings@2` (before meter signatures), `readings@3` (before VMR0017) and `readings@4` (batch signatures) are still reproduced. | 4 chunks for a day, 16 for a week; HCS caps a message at 20 |
 | Report | `hydro-dmrv/report@4` | Decision, coverage, monitored inputs (EG_facility, TEG, FC, LE), EG_PJ, BE, PE_HP, PE_FF, LE (with VMR0017 embodied emissions), ER, credits, parameters, `plantSequence`, and `data: { hash, sequence }` | 1 chunk (~700 bytes) |
 
 `reproduceAttestation` (`services/mrv/audit.ts`) runs these checks:
@@ -477,7 +508,8 @@ Two message types go to the audit topic (`services/mrv/report.ts`):
 2. **Data vs report.** Reassemble the chunked data message (matched by initial transaction id, ordered by chunk
    number, so interleaved messages cannot corrupt it) and check its hash against `report.data.hash`.
 3. **Design vs registration.** The plant design inside the data message must equal the on-chain registration, so a
-   verifier cannot quantify with a flattering grid factor.
+   verifier cannot quantify with a flattering grid factor, and the meter in the metering record must be the plant's
+   registered meter.
 4. **Figures vs data.** Re-run the engine and compare decision, coverage, EG_facility, TEG, fuel, EG_PJ, BE, PE, ER and
    credits with the report. The re-run checks the meter's signature too, so readings edited after the meter signed
    them fail reproduction even when the report was computed from the edited values.
@@ -619,8 +651,13 @@ What the tests pin down:
   diesel emissions and a deficit; a retrofit across crediting years and past DATE_BaselineRetrofit) is asserted by the
   contract suite *and* the TypeScript suite, gram for gram.
 - **Meter provenance**: signatures interoperate with standard EIP-191 wallets both ways; wrong key, missing signature,
-  any edited reading and replay against another plant are rejected; edits after signing fail reproduction, and
-  `readings@2` attestations still reproduce.
+  any edited reading and replay against another plant, chain or registry are rejected; edits after signing fail
+  reproduction, and `readings@2`–`@4` attestations still reproduce. A shared vector
+  (`test/fixtures/meterStatementVector.ts`) pins the statement hash in both suites.
+- **Meter statements on-chain**: only the registered meter's signature is accepted; net above, fuel below or gross
+  different from the statement revert (`NotMetered`); a statement signed for another registry reverts; only the admin
+  can swap a meter. For every scenario on both demo plants the engine's figures are at least as conservative as the
+  statement, which is what the contract requires.
 - **Engine**: every scenario on both plants; net metering; lower-of-two-meters; MPE after calibration expiry; gaps;
   replays; export capped at generation; physics exclusions; reservoir emissions from TEG; safeguards never changing
   the quantity; determinism.
@@ -691,10 +728,17 @@ template.json                            create-scaffold-hbar manifest
 
 ## Security model and limitations
 
-- **The verifier cannot hide its work, or mint beyond the equations.** Readings, reports and hashes are public, the
-  engine is deterministic and the contract recomputes the credits. The trust that remains is in the *telemetry
-  source* and in the *design registration*: production deployments need device-signed readings, several verifiers,
-  and a VVB validating the design before `registerPlant`.
+- **The verifier cannot hide its work, or mint beyond what the meter signed.** Readings, reports and hashes are
+  public, the engine is deterministic, the contract recomputes the credits and only accepts figures at least as
+  conservative as the registered meter's signed statement. The trust that remains is in the *meter hardware* (a
+  meter key that is extracted, or a sensor that is physically manipulated, can still sign false numbers; physics
+  checks bound how far) and in the *registration*: an admin can register a plant with a meter it controls, so hold
+  `DEFAULT_ADMIN_ROLE` in a threshold-key account and have a VVB validate the design and the meter before
+  `registerPlant`.
+- **Nobody shares a private key.** Buyers and agents sign with their own wallets (`prepare_purchase` returns unsigned
+  transactions); the public deployment holds no server keys; the burner wallet is offered only on a local chain.
+- **Public API.** Read and verify endpoints are unauthenticated and bounded by input limits (2 000 readings per
+  batch); put a rate limit in front of a public deployment (e.g. a Vercel Firewall rule on `/api/*`).
 - **Not a certification.** This implements the equations of VMR0017 v1.0 with ACM0002 v22.0, AMS-I.D, VT0011,
   TOOL07 and TOOL03 as described above. It records VT0008 additionality evidence and checks it for completeness, but the
   determination, stakeholder consultation, the monitoring plan and verification remain the job of a VVB and a

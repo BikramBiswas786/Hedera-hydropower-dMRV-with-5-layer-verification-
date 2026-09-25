@@ -4,15 +4,17 @@
  *   yarn mrv:create-topic          create the HCS audit topic (prints HCS_TOPIC_ID)
  *   yarn mrv:attest [scenario] [plantId]
  *                                  verify sample monitoring data, anchor it on HCS and attest on-chain
- *   yarn mrv:meter-key             generate a key for a plant's data logger (its address goes in the metering record)
- *   yarn mrv:sign <request.json>   sign the readings in a verify request with METER_PRIVATE_KEY, as the meter would
+ *   yarn mrv:meter-key             generate a key for a plant's data logger (its address is registered with the plant)
+ *   yarn mrv:sign <request.json>   sign the batch's meter statement with METER_PRIVATE_KEY, as the meter would, for
+ *                                  this app's registry (or the request's `domain`)
  */
 import { existsSync, readFileSync, writeFileSync } from "fs";
 import { resolve } from "path";
 import type { Hex } from "viem";
 import { generatePrivateKey, privateKeyToAddress } from "viem/accounts";
 import { DEMO_PLANTS, findDemoPlant } from "~~/services/mrv/demo";
-import { signReadings } from "~~/services/mrv/provenance";
+import { defaultMeterDomain } from "~~/services/mrv/network";
+import { signMeterStatement } from "~~/services/mrv/provenance";
 import { SCENARIO_NAMES, type ScenarioName, generateScenario, lastWholeHour } from "~~/services/mrv/scenarios";
 import { verifyRequestSchema } from "~~/services/mrv/schema";
 
@@ -64,7 +66,9 @@ async function attest(scenario: ScenarioName, plantId: string) {
 
 function meterKey() {
   const key = generatePrivateKey();
-  console.log(`Meter address (put it in the metering record as deviceAddress): ${privateKeyToAddress(key)}`);
+  console.log(
+    `Meter address (register it with the plant and put it in the metering record as deviceAddress): ${privateKeyToAddress(key)}`,
+  );
   console.log(`Private key (keep it on the data logger only, never in this repository):\n${key}`);
 }
 
@@ -76,9 +80,12 @@ function sign(file: string | undefined) {
   const path = resolve(process.env.INIT_CWD ?? process.cwd(), file);
   const request = verifyRequestSchema.parse(JSON.parse(readFileSync(path, "utf8")));
   const plantId = request.plant?.plantId ?? DEMO_PLANTS[0].plantId;
-  const signature = signReadings(key, plantId, request.readings);
-  writeFileSync(path, `${JSON.stringify({ ...request, signature }, null, 2)}\n`);
-  console.log(`Signed ${request.readings.length} readings for ${plantId} as ${privateKeyToAddress(key)}`);
+  const domain = request.domain ?? defaultMeterDomain();
+  const signature = signMeterStatement(key, domain, plantId, request.readings);
+  writeFileSync(path, `${JSON.stringify({ ...request, domain, signature }, null, 2)}\n`);
+  console.log(
+    `Signed the statement for ${request.readings.length} readings of ${plantId} as ${privateKeyToAddress(key)}, for registry ${domain.registry} on chain ${domain.chainId}`,
+  );
 }
 
 async function main() {

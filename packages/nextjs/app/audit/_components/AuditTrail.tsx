@@ -6,10 +6,10 @@ import { usePublicClient } from "wagmi";
 import { ExternalLink, NotDeployedNotice, formatPeriod, shortHash } from "~~/components/hydro/ui";
 import { useDeployedContractInfo, useScaffoldReadContract, useTargetNetwork } from "~~/hooks/scaffold-hbar";
 import { type AuditCheck, type ReproductionResult, reproduceAttestation } from "~~/services/mrv/audit";
-import type { RegisteredDesign } from "~~/services/mrv/methodology/project";
 import { hashscan } from "~~/services/mrv/network";
 import {
   type AttestationView,
+  type PlantView,
   type RawAttestation,
   type RawPlant,
   type RawRetirement,
@@ -77,15 +77,16 @@ const EvidenceOutcome = ({ result }: { result: ReproductionResult }) => {
   );
 };
 
-type ReadDesign = (plantId: string) => Promise<RegisteredDesign | undefined>;
+type ReadDesign = (plantId: string) => Promise<Pick<PlantView, "design" | "meter"> | undefined>;
 
 const AttestationRow = ({ attestation, readDesign }: { attestation: AttestationView; readDesign: ReadDesign }) => {
   const [result, setResult] = useState<ReproductionResult | "pending">();
 
   const check = async () => {
     setResult("pending");
-    // Also proves the published data used the plant's registered EF, fuel coefficient and baseline.
-    setResult(await reproduceAttestation(attestation, fetch, await readDesign(attestation.plantId)));
+    // Also proves the published data used the plant's registered EF, fuel coefficient, baseline and meter.
+    const plant = await readDesign(attestation.plantId);
+    setResult(await reproduceAttestation(attestation, fetch, plant?.design, plant?.meter));
   };
 
   return (
@@ -154,7 +155,7 @@ export const AuditTrail = () => {
       functionName: "getPlant",
       args: [id],
     });
-    return toPlantView(id, raw as RawPlant).design;
+    return toPlantView(id, raw as RawPlant);
   };
 
   const rawAttestations: readonly RawAttestation[] = page ?? [];

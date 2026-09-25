@@ -1,6 +1,7 @@
 import { expect } from "chai";
 import { ethers } from "hardhat";
 import { loadFixture, time } from "@nomicfoundation/hardhat-network-helpers";
+import { METER_STATEMENT_VECTOR } from "./fixtures/meterStatementVector";
 import { QUANTIFICATION_VECTORS } from "./fixtures/quantificationVectors";
 import { ensureHts, mockHts } from "./helpers/hts";
 import {
@@ -9,6 +10,7 @@ import {
   HOUR,
   REPORT_HASH,
   type DesignInput,
+  METER,
   attestationInput,
   plantDesign,
 } from "./helpers/registry";
@@ -65,7 +67,13 @@ async function deployFixture() {
 async function readyFixture() {
   const ctx = await deployFixture();
   await ctx.registry.createCreditToken("Hydro dMRV Carbon Credit", "HYCC", { value: ethers.parseEther("20") });
-  await ctx.registry.registerPlant(PLANT_ID, "Demo run-of-river", ctx.operator.address, await plantDesign());
+  await ctx.registry.registerPlant(
+    PLANT_ID,
+    "Demo run-of-river",
+    ctx.operator.address,
+    METER.address,
+    await plantDesign(),
+  );
   const token = new ethers.Contract(await ctx.registry.creditToken(), HTS_TOKEN_ABI, ethers.provider);
   return { ...ctx, token };
 }
@@ -73,7 +81,7 @@ async function readyFixture() {
 async function attestedFixture() {
   const ctx = await readyFixture();
   // 450 kWh net at 1 t CO2/MWh = 450 kg CO2e = 450 base units
-  await ctx.registry.submitAttestation(await attestationInput(PLANT_ID));
+  await ctx.registry.submitAttestation(await attestationInput(ctx.registry, PLANT_ID));
   return ctx;
 }
 
@@ -147,6 +155,7 @@ describe("HydroCreditRegistry", function () {
           id,
           label,
           operator.address,
+          METER.address,
           await plantDesign({ capacityKw: 12_000, reservoirAreaM2 }),
         );
         return (await registry.getPlant(id)).reservoirGPerMwh;
@@ -161,7 +170,7 @@ describe("HydroCreditRegistry", function () {
       const { registry, operator } = await loadFixture(readyFixture);
       const vmr = { methodology: METHODOLOGY.Vmr0017, capacityKw: 12_000, reservoirAreaM2: 1_800_000 };
       const id = ethers.encodeBytes32String("VMR0017");
-      await registry.registerPlant(id, "vmr", operator.address, await plantDesign(vmr));
+      await registry.registerPlant(id, "vmr", operator.address, METER.address, await plantDesign(vmr));
       const plant = await registry.getPlant(id);
       expect(plant.design.methodology).to.equal(METHODOLOGY.Vmr0017);
       expect(plant.reservoirGPerMwh).to.equal(100_000);
@@ -169,12 +178,24 @@ describe("HydroCreditRegistry", function () {
       expect((await registry.getPlant(PLANT_ID)).embodiedGPerMwh).to.equal(0);
 
       await expect(
-        registry.registerPlant(other, "x", operator.address, await plantDesign({ ...vmr, capacityKw: 15_001 })),
+        registry.registerPlant(
+          other,
+          "x",
+          operator.address,
+          METER.address,
+          await plantDesign({ ...vmr, capacityKw: 15_001 }),
+        ),
       )
         .to.be.revertedWithCustomError(registry, "MethodologyNotApplicable")
         .withArgs(METHODOLOGY.Vmr0017, 15_001);
       // The CDM path (ACM0002) has no such limit.
-      await registry.registerPlant(other, "x", operator.address, await plantDesign({ capacityKw: 15_001 }));
+      await registry.registerPlant(
+        other,
+        "x",
+        operator.address,
+        METER.address,
+        await plantDesign({ capacityKw: 15_001 }),
+      );
     });
 
     it("refuses reservoirs with PD ≤ 4 W/m² or smaller than the baseline", async function () {
@@ -185,6 +206,7 @@ describe("HydroCreditRegistry", function () {
           other,
           "x",
           operator.address,
+          METER.address,
           await plantDesign({ capacityKw: 12_000, reservoirAreaM2: 3_000_000 }),
         ),
       )
@@ -195,6 +217,7 @@ describe("HydroCreditRegistry", function () {
           other,
           "x",
           operator.address,
+          METER.address,
           await plantDesign({ reservoirAreaM2: 10, baselineReservoirAreaM2: 20 }),
         ),
       ).to.be.revertedWithCustomError(registry, "ReservoirBelowBaseline");
@@ -205,16 +228,17 @@ describe("HydroCreditRegistry", function () {
       const retrofit = { projectType: PROJECT.Retrofit, baselineCapacityKw: 400, baselineWh: 10n ** 9n };
 
       await expect(
-        registry.registerPlant(other, "x", operator.address, await plantDesign({ ...retrofit })),
+        registry.registerPlant(other, "x", operator.address, METER.address, await plantDesign({ ...retrofit })),
       ).to.be.revertedWithCustomError(registry, "InvalidBaseline"); // DATE_BaselineRetrofit missing
       await expect(
-        registry.registerPlant(other, "x", operator.address, await plantDesign({ baselineWh: 1n })),
+        registry.registerPlant(other, "x", operator.address, METER.address, await plantDesign({ baselineWh: 1n })),
       ).to.be.revertedWithCustomError(registry, "InvalidBaseline");
       await expect(
         registry.registerPlant(
           other,
           "x",
           operator.address,
+          METER.address,
           await plantDesign({
             projectType: PROJECT.CapacityAddition,
             baselineCapacityKw: 500,
@@ -227,6 +251,7 @@ describe("HydroCreditRegistry", function () {
         other,
         "x",
         operator.address,
+        METER.address,
         await plantDesign({ ...retrofit, baselineEndsAt: 1n }),
       );
     });
@@ -235,14 +260,20 @@ describe("HydroCreditRegistry", function () {
       const { registry, operator } = await loadFixture(readyFixture);
 
       await expect(
-        registry.registerPlant(other, "x", operator.address, await plantDesign({ efGridGPerMwh: 2_000_001 })),
+        registry.registerPlant(
+          other,
+          "x",
+          operator.address,
+          METER.address,
+          await plantDesign({ efGridGPerMwh: 2_000_001 }),
+        ),
       ).to.be.revertedWithCustomError(registry, "GridEmissionFactorOutOfRange");
       await expect(
-        registry.registerPlant(other, "x", operator.address, await plantDesign({ efGridGPerMwh: 0 })),
+        registry.registerPlant(other, "x", operator.address, METER.address, await plantDesign({ efGridGPerMwh: 0 })),
       ).to.be.revertedWithCustomError(registry, "GridEmissionFactorOutOfRange");
       const design = await plantDesign();
       await expect(
-        registry.registerPlant(other, "x", operator.address, {
+        registry.registerPlant(other, "x", operator.address, METER.address, {
           ...design,
           creditingEnd: design.creditingStart + BigInt(10 * CREDITING_YEAR + 1),
         }),
@@ -253,17 +284,15 @@ describe("HydroCreditRegistry", function () {
       const { registry, operator } = await loadFixture(readyFixture);
       const design = await plantDesign();
 
-      await expect(registry.registerPlant(PLANT_ID, "dup", operator.address, design)).to.be.revertedWithCustomError(
-        registry,
-        "PlantAlreadyRegistered",
-      );
       await expect(
-        registry.registerPlant(ethers.ZeroHash, "x", operator.address, design),
+        registry.registerPlant(PLANT_ID, "dup", operator.address, METER.address, design),
+      ).to.be.revertedWithCustomError(registry, "PlantAlreadyRegistered");
+      await expect(
+        registry.registerPlant(ethers.ZeroHash, "x", operator.address, METER.address, design),
       ).to.be.revertedWithCustomError(registry, "InvalidPlant");
-      await expect(registry.registerPlant(other, "x", ethers.ZeroAddress, design)).to.be.revertedWithCustomError(
-        registry,
-        "InvalidPlant",
-      );
+      await expect(
+        registry.registerPlant(other, "x", ethers.ZeroAddress, METER.address, design),
+      ).to.be.revertedWithCustomError(registry, "InvalidPlant");
     });
 
     it("renews the crediting period with a new EF and restarts the crediting-year count", async function () {
@@ -287,7 +316,7 @@ describe("HydroCreditRegistry", function () {
   describe("attestations (on-chain ER = BE − PE − LE)", function () {
     it("mints credits for the computed emission reductions and records the HCS anchor", async function () {
       const { registry, token, operator } = await loadFixture(readyFixture);
-      const input = await attestationInput(PLANT_ID);
+      const input = await attestationInput(registry, PLANT_ID);
 
       await expect(registry.submitAttestation(input))
         .to.emit(registry, "AttestationSubmitted")
@@ -311,7 +340,7 @@ describe("HydroCreditRegistry", function () {
     it("subtracts TOOL03 fuel emissions and leakage, and carries sub-kg remainders", async function () {
       const { registry, operator } = await loadFixture(readyFixture);
       // BE 450 000 g − PE_FF ⌈75 000 g × 3.23884⌉ = 242 913 g − LE 87 g = 207 000 g
-      await registry.submitAttestation(await attestationInput(PLANT_ID, { fuelG: 75_000n, leakageG: 87n }));
+      await registry.submitAttestation(await attestationInput(registry, PLANT_ID, { fuelG: 75_000n, leakageG: 87n }));
       const stored = await registry.getAttestation(0);
       expect(stored.fossilFuelG).to.equal(242_913);
       expect(stored.reductionG).to.equal(207_000);
@@ -319,7 +348,7 @@ describe("HydroCreditRegistry", function () {
 
       await time.increase(HOUR);
       await registry.submitAttestation(
-        await attestationInput(PLANT_ID, { plantSequence: 1, netEnergyWh: 1_600n, grossEnergyWh: 1_700n }),
+        await attestationInput(registry, PLANT_ID, { plantSequence: 1, netEnergyWh: 1_600n, grossEnergyWh: 1_700n }),
       );
       expect(await registry.custodyBalanceOf(operator.address)).to.equal(208);
       expect((await registry.getPlant(PLANT_ID)).balanceG).to.equal(600);
@@ -328,11 +357,13 @@ describe("HydroCreditRegistry", function () {
     it("carries a deficit forward instead of ignoring it", async function () {
       const { registry, operator } = await loadFixture(readyFixture);
       // An hour of import only: EG_facility = −10 kWh → ER = −10 000 g
-      await registry.submitAttestation(await attestationInput(PLANT_ID, { netEnergyWh: -10_000n, grossEnergyWh: 0n }));
+      await registry.submitAttestation(
+        await attestationInput(registry, PLANT_ID, { netEnergyWh: -10_000n, grossEnergyWh: 0n }),
+      );
       expect((await registry.getPlant(PLANT_ID)).balanceG).to.equal(-10_000);
 
       await time.increase(HOUR);
-      await registry.submitAttestation(await attestationInput(PLANT_ID, { plantSequence: 1 }));
+      await registry.submitAttestation(await attestationInput(registry, PLANT_ID, { plantSequence: 1 }));
       expect(await registry.custodyBalanceOf(operator.address)).to.equal(440);
     });
 
@@ -351,10 +382,10 @@ describe("HydroCreditRegistry", function () {
           creditingEnd: start + BigInt(7 * CREDITING_YEAR),
           designHash: ethers.id(vector.name),
         };
-        await registry.registerPlant(plantId, vector.name, operator.address, design);
+        await registry.registerPlant(plantId, vector.name, operator.address, METER.address, design);
 
         for (const [sequence, p] of vector.periods.entries()) {
-          const input = await attestationInput(plantId, {
+          const input = await attestationInput(registry, plantId, {
             plantSequence: sequence,
             periodStart: start + BigInt(p.startDay * DAY),
             periodEnd: start + BigInt((p.startDay + 1) * DAY),
@@ -387,19 +418,21 @@ describe("HydroCreditRegistry", function () {
       const { registry } = await loadFixture(readyFixture);
       const maxWh = 500 * 1_000; // one hour at full capacity
 
-      await expect(registry.submitAttestation(await attestationInput(PLANT_ID, { grossEnergyWh: BigInt(maxWh + 1) })))
+      await expect(
+        registry.submitAttestation(await attestationInput(registry, PLANT_ID, { grossEnergyWh: BigInt(maxWh + 1) })),
+      )
         .to.be.revertedWithCustomError(registry, "EnergyExceedsCapacity")
         .withArgs(maxWh + 1, maxWh);
       await expect(
-        registry.submitAttestation(await attestationInput(PLANT_ID, { netEnergyWh: 460_001n })),
+        registry.submitAttestation(await attestationInput(registry, PLANT_ID, { netEnergyWh: 460_001n })),
       ).to.be.revertedWithCustomError(registry, "NetExceedsGross");
     });
 
     it("keeps periods inside the crediting period and within one crediting year", async function () {
       const { registry, operator } = await loadFixture(readyFixture);
       const late = ethers.encodeBytes32String("LATE");
-      await registry.registerPlant(late, "late", operator.address, await plantDesign({}, -1)); // starts tomorrow
-      await expect(registry.submitAttestation(await attestationInput(late))).to.be.revertedWithCustomError(
+      await registry.registerPlant(late, "late", operator.address, METER.address, await plantDesign({}, -1)); // starts tomorrow
+      await expect(registry.submitAttestation(await attestationInput(registry, late))).to.be.revertedWithCustomError(
         registry,
         "OutsideCreditingPeriod",
       );
@@ -407,11 +440,11 @@ describe("HydroCreditRegistry", function () {
       const now = BigInt(await time.latest());
       const year = ethers.encodeBytes32String("YEAR");
       const design = await plantDesign({ creditingStart: now - BigInt(CREDITING_YEAR) - 1_800n });
-      await registry.registerPlant(year, "year", operator.address, {
+      await registry.registerPlant(year, "year", operator.address, METER.address, {
         ...design,
         creditingEnd: design.creditingStart + BigInt(7 * CREDITING_YEAR),
       });
-      await expect(registry.submitAttestation(await attestationInput(year))).to.be.revertedWithCustomError(
+      await expect(registry.submitAttestation(await attestationInput(registry, year))).to.be.revertedWithCustomError(
         registry,
         "PeriodCrossesCreditingYear",
       );
@@ -421,7 +454,7 @@ describe("HydroCreditRegistry", function () {
       const { registry } = await loadFixture(attestedFixture);
       await time.increase(HOUR);
 
-      await expect(registry.submitAttestation(await attestationInput(PLANT_ID, { plantSequence: 0 })))
+      await expect(registry.submitAttestation(await attestationInput(registry, PLANT_ID, { plantSequence: 0 })))
         .to.be.revertedWithCustomError(registry, "StaleLedger")
         .withArgs(1, 0);
     });
@@ -430,7 +463,7 @@ describe("HydroCreditRegistry", function () {
       const { registry } = await loadFixture(attestedFixture);
 
       await expect(
-        registry.submitAttestation(await attestationInput(PLANT_ID, { plantSequence: 1 })),
+        registry.submitAttestation(await attestationInput(registry, PLANT_ID, { plantSequence: 1 })),
       ).to.be.revertedWithCustomError(registry, "PeriodOverlapsPrevious");
     });
 
@@ -438,39 +471,43 @@ describe("HydroCreditRegistry", function () {
       const { registry, operator } = await loadFixture(readyFixture);
       const now = BigInt(await time.latest());
 
-      await expect(registry.submitAttestation(await attestationInput(PLANT_ID, { completenessBps: 8_999 })))
+      await expect(registry.submitAttestation(await attestationInput(registry, PLANT_ID, { completenessBps: 8_999 })))
         .to.be.revertedWithCustomError(registry, "CompletenessTooLow")
         .withArgs(8_999, MIN_COMPLETENESS_BPS);
       await expect(
-        registry.submitAttestation(await attestationInput(PLANT_ID, { periodEnd: now + 1_000n })),
+        registry.submitAttestation(await attestationInput(registry, PLANT_ID, { periodEnd: now + 1_000n })),
       ).to.be.revertedWithCustomError(registry, "InvalidPeriod");
       await expect(
-        registry.submitAttestation(await attestationInput(PLANT_ID, { reportHash: ethers.ZeroHash })),
+        registry.submitAttestation(await attestationInput(registry, PLANT_ID, { reportHash: ethers.ZeroHash })),
       ).to.be.revertedWithCustomError(registry, "EmptyReportHash");
 
       const noFuel = ethers.encodeBytes32String("NOFUEL");
-      await registry.registerPlant(noFuel, "no fuel", operator.address, await plantDesign({ fuelCoefGPerTonne: 0 }));
+      await registry.registerPlant(
+        noFuel,
+        "no fuel",
+        operator.address,
+        METER.address,
+        await plantDesign({ fuelCoefGPerTonne: 0 }),
+      );
       await expect(
-        registry.submitAttestation(await attestationInput(noFuel, { fuelG: 1n })),
+        registry.submitAttestation(await attestationInput(registry, noFuel, { fuelG: 1n })),
       ).to.be.revertedWithCustomError(registry, "FuelNotRegistered");
 
       await registry.setPlantActive(PLANT_ID, false);
-      await expect(registry.submitAttestation(await attestationInput(PLANT_ID))).to.be.revertedWithCustomError(
-        registry,
-        "PlantInactive",
-      );
+      await expect(
+        registry.submitAttestation(await attestationInput(registry, PLANT_ID)),
+      ).to.be.revertedWithCustomError(registry, "PlantInactive");
     });
 
     it("only accepts attestations from verifiers once the token exists", async function () {
       const { registry, stranger } = await loadFixture(deployFixture);
-      await expect(registry.submitAttestation(await attestationInput(PLANT_ID))).to.be.revertedWithCustomError(
-        registry,
-        "TokenNotCreated",
-      );
+      await expect(
+        registry.submitAttestation(await attestationInput(registry, PLANT_ID)),
+      ).to.be.revertedWithCustomError(registry, "TokenNotCreated");
 
       const { registry: ready } = await loadFixture(readyFixture);
       await expect(
-        ready.connect(stranger).submitAttestation(await attestationInput(PLANT_ID)),
+        ready.connect(stranger).submitAttestation(await attestationInput(ready, PLANT_ID)),
       ).to.be.revertedWithCustomError(ready, "AccessControlUnauthorizedAccount");
     });
 
@@ -480,6 +517,162 @@ describe("HydroCreditRegistry", function () {
       expect(await registry.attestationCount()).to.equal(1);
       expect(await registry.getAttestations(0, 10)).to.have.length(1);
       expect(await registry.getAttestations(5, 10)).to.have.length(0);
+    });
+  });
+
+  describe("meter statements (the verifier cannot out-report the meter)", function () {
+    it("hashes the statement with the chain id and the registry address", async function () {
+      const { registry } = await loadFixture(readyFixture);
+      const input = await attestationInput(registry, PLANT_ID, { fuelG: 12n }, { netEnergyWh: 451_000n });
+      const { chainId } = await ethers.provider.getNetwork();
+      const expected = ethers.keccak256(
+        ethers.AbiCoder.defaultAbiCoder().encode(
+          ["bytes32", "uint256", "address", "bytes32", "uint64", "uint64", "uint64", "int64", "uint64", "bytes32"],
+          [
+            ethers.id("hydro-dmrv/meter-statement@1"),
+            chainId,
+            await registry.getAddress(),
+            PLANT_ID,
+            input.periodStart,
+            input.periodEnd,
+            input.meter.grossEnergyWh,
+            input.meter.netEnergyWh,
+            input.meter.fuelG,
+            input.meter.readingsDigest,
+          ],
+        ),
+      );
+      expect(await registry.meterStatementHash(PLANT_ID, input)).to.equal(expected);
+    });
+
+    it("matches the shared statement vector the TypeScript engine signs", async function () {
+      const { domain, plantId, statement, hash } = METER_STATEMENT_VECTOR;
+      const encoded = ethers.AbiCoder.defaultAbiCoder().encode(
+        ["bytes32", "uint256", "address", "bytes32", "uint64", "uint64", "uint64", "int64", "uint64", "bytes32"],
+        [
+          await (await loadFixture(deployFixture)).registry.METER_STATEMENT_TAG(),
+          domain.chainId,
+          domain.registry,
+          ethers.encodeBytes32String(plantId),
+          statement.periodStart,
+          statement.periodEnd,
+          statement.grossWh,
+          statement.netWh,
+          statement.fuelG,
+          statement.readingsDigest,
+        ],
+      );
+      expect(ethers.keccak256(encoded)).to.equal(hash);
+    });
+
+    it("accepts the registered meter's statement and records its readings digest", async function () {
+      const { registry } = await loadFixture(readyFixture);
+      const input = await attestationInput(registry, PLANT_ID);
+      await expect(registry.submitAttestation(input))
+        .to.emit(registry, "MeterStatementAccepted")
+        .withArgs(0, METER.address, input.meter.readingsDigest);
+      expect((await registry.getPlant(PLANT_ID)).meter).to.equal(METER.address);
+    });
+
+    it("rejects a statement signed by any other key, or edited after signing", async function () {
+      const { registry } = await loadFixture(readyFixture);
+      const impostor = new ethers.Wallet(ethers.id("not the meter"));
+      await expect(registry.submitAttestation(await attestationInput(registry, PLANT_ID, {}, {}, impostor)))
+        .to.be.revertedWithCustomError(registry, "InvalidMeterSignature")
+        .withArgs(impostor.address, METER.address);
+
+      const signed = await attestationInput(registry, PLANT_ID);
+      const edited = { ...signed, meter: { ...signed.meter, netEnergyWh: signed.meter.netEnergyWh + 1_000n } };
+      await expect(
+        registry.submitAttestation({ ...edited, netEnergyWh: edited.meter.netEnergyWh }),
+      ).to.be.revertedWithCustomError(registry, "InvalidMeterSignature");
+      await expect(
+        registry.submitAttestation({ ...signed, periodStart: signed.periodStart - 60n }),
+      ).to.be.revertedWithCustomError(registry, "InvalidMeterSignature");
+    });
+
+    it("does not accept a statement signed for another registry", async function () {
+      const { registry, feed, admin } = await loadFixture(readyFixture);
+      const other = await ethers.deployContract("HydroCreditRegistry", [
+        admin.address,
+        await feed.getAddress(),
+        NATIVE_PER_HBAR,
+        MIN_COMPLETENESS_BPS,
+        MAX_PRICE_AGE,
+      ]);
+      await other.registerPlant(PLANT_ID, "twin", admin.address, METER.address, await plantDesign());
+      const forOther = await attestationInput(other, PLANT_ID);
+      await expect(registry.submitAttestation(forOther)).to.be.revertedWithCustomError(
+        registry,
+        "InvalidMeterSignature",
+      );
+    });
+
+    it("lets QA/QC lower net export and raise fuel, never the reverse", async function () {
+      const { registry } = await loadFixture(readyFixture);
+      const up = (overrides: Parameters<typeof attestationInput>[2], metered: Parameters<typeof attestationInput>[3]) =>
+        attestationInput(registry, PLANT_ID, overrides, metered);
+
+      await expect(
+        registry.submitAttestation(await up({ netEnergyWh: 450_001n }, { netEnergyWh: 450_000n })),
+      ).to.be.revertedWithCustomError(registry, "NotMetered");
+      await expect(
+        registry.submitAttestation(await up({ fuelG: 999n }, { fuelG: 1_000n })),
+      ).to.be.revertedWithCustomError(registry, "NotMetered");
+      await expect(
+        registry.submitAttestation(await up({ grossEnergyWh: 459_000n }, { grossEnergyWh: 460_000n })),
+      ).to.be.revertedWithCustomError(registry, "NotMetered"); // PE_HP basis cannot be understated
+
+      await registry.submitAttestation(await up({ netEnergyWh: 440_000n, fuelG: 1_200n }, { fuelG: 1_000n }));
+      const [attestation] = await registry.getAttestations(0, 1);
+      expect(attestation.netEnergyWh).to.equal(440_000n);
+      expect(attestation.fuelG).to.equal(1_200n);
+    });
+
+    it("caps metered gross generation at what the nameplate can produce in the period", async function () {
+      const { registry } = await loadFixture(readyFixture);
+      const cap = (500n * BigInt(HOUR) * 1_000n) / 3_600n; // 500 kW for one hour
+      await expect(
+        registry.submitAttestation(
+          await attestationInput(registry, PLANT_ID, { grossEnergyWh: cap - 1n }, { grossEnergyWh: cap + 50_000n }),
+        ),
+      ).to.be.revertedWithCustomError(registry, "NotMetered");
+      await registry.submitAttestation(
+        await attestationInput(registry, PLANT_ID, { grossEnergyWh: cap }, { grossEnergyWh: cap + 50_000n }),
+      );
+    });
+
+    it("requires a meter at registration and lets only the admin replace it", async function () {
+      const { registry, operator, stranger } = await loadFixture(attestedFixture);
+      await expect(
+        registry.registerPlant(
+          ethers.encodeBytes32String("NOMETER"),
+          "x",
+          operator.address,
+          ethers.ZeroAddress,
+          await plantDesign(),
+        ),
+      ).to.be.revertedWithCustomError(registry, "ZeroAddress");
+
+      const replacement = new ethers.Wallet(ethers.id("replacement meter"));
+      await expect(
+        registry.connect(stranger).setPlantMeter(PLANT_ID, replacement.address),
+      ).to.be.revertedWithCustomError(registry, "AccessControlUnauthorizedAccount");
+      await expect(registry.setPlantMeter(PLANT_ID, ethers.ZeroAddress)).to.be.revertedWithCustomError(
+        registry,
+        "ZeroAddress",
+      );
+      await expect(registry.setPlantMeter(PLANT_ID, replacement.address))
+        .to.emit(registry, "PlantMeterChanged")
+        .withArgs(PLANT_ID, replacement.address);
+
+      await time.increase(HOUR);
+      await expect(
+        registry.submitAttestation(await attestationInput(registry, PLANT_ID, { plantSequence: 1 })),
+      ).to.be.revertedWithCustomError(registry, "InvalidMeterSignature");
+      await registry.submitAttestation(
+        await attestationInput(registry, PLANT_ID, { plantSequence: 1 }, {}, replacement),
+      );
     });
   });
 

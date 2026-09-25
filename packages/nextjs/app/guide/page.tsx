@@ -171,8 +171,9 @@ const GuidePage: NextPage = async () => {
             plants by <code>yarn deploy</code>). From then on the contract refuses anything that breaks it.
           </Step>
           <Step n={3} title="Give the meter a key">
-            <code>yarn mrv:meter-key</code> creates a key for the data logger; its address goes in the metering record.
-            The logger signs every batch (<code>yarn mrv:sign</code> or any Ethereum library).
+            <code>yarn mrv:meter-key</code> creates a key for the data logger; its address is registered with the plant.
+            The logger signs every batch&apos;s totals (<code>yarn mrv:sign</code> or any Ethereum library), and the
+            contract never mints more than the meter signed.
           </Step>
           <Step n={4} title="Attest and sell">
             <code>yarn mrv:attest</code> (or <code>POST /api/mrv/attest</code> with your API key) verifies a period,

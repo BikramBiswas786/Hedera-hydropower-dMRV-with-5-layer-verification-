@@ -93,7 +93,7 @@ describe("ResilientHbarUsdFeed", function () {
     const { chainlink, supra, feed } = await loadFixture(feedFixture);
     const [admin, operator, buyer] = await ethers.getSigners();
     const { ensureHts } = await import("./helpers/hts");
-    const { attestationInput, plantDesign } = await import("./helpers/registry");
+    const { METER, attestationInput, plantDesign } = await import("./helpers/registry");
     await ensureHts();
 
     const registry = await ethers.deployContract("HydroCreditRegistry", [
@@ -105,8 +105,8 @@ describe("ResilientHbarUsdFeed", function () {
     ]);
     await registry.createCreditToken("Hydro dMRV Carbon Credit", "HYCC");
     const plantId = ethers.encodeBytes32String("PLANT");
-    await registry.registerPlant(plantId, "Plant", operator.address, await plantDesign());
-    await registry.submitAttestation(await attestationInput(plantId, { netEnergyWh: 400_000n }));
+    await registry.registerPlant(plantId, "Plant", operator.address, METER.address, await plantDesign());
+    await registry.submitAttestation(await attestationInput(registry, plantId, { netEnergyWh: 400_000n }));
     await registry.connect(operator).createListing(400, 1_250);
 
     await chainlink.setUpdatedAt(0);
