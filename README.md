@@ -27,7 +27,7 @@ gives each kind of user a path:
 | Just looking | [/verify](https://hydro-dmrv.vercel.app/verify): watch `healthy` pass and `inflated` / `tampered` get rejected; [/audit](https://hydro-dmrv.vercel.app/audit): **Check evidence** re-runs a real testnet issuance in your browser | 5 min, no wallet |
 | Buying credits | Testnet ECDSA account from [portal.hedera.com](https://portal.hedera.com) in MetaMask → [/market](https://hydro-dmrv.vercel.app/market) **Buy & retire** → NFT certificate → [/portfolio](https://hydro-dmrv.vercel.app/portfolio) CSV | 10 min |
 | Running a plant | `assess_project` → `registerPlant` → `yarn mrv:meter-key` → `yarn mrv:attest` → **List for sale** on /market | an afternoon |
-| Building on it | `npm create scaffold-hbar@latest --template …` (above), then [Quick start](#quick-start) | 15 min |
+| Building on it | `npm create scaffold-hbar@latest --template …` (above), then [Quick start](#quick-start). Local chain has no faucet. | follow Quick start |
 | An AI agent | `claude mcp add --transport http hydro-dmrv https://hydro-dmrv.vercel.app/api/mcp` ([For AI agents](#for-ai-agents)) | 1 command |
 
 | | |
@@ -44,9 +44,9 @@ Deployed with `yarn deploy --network hederaTestnet` and attested with `yarn mrv:
 [`deployedContracts.ts`](packages/nextjs/contracts/deployedContracts.ts), so a fresh scaffold reads this deployment.
 The app at [hydro-dmrv.vercel.app](https://hydro-dmrv.vercel.app) runs against it with no server keys, so it can
 read, verify, audit and prepare purchases but never attest; open [`/audit`](https://hydro-dmrv.vercel.app/audit) and
-press **Check evidence** to reproduce the attestations below from HCS in your browser. This deployment predates
-VMR0017 support: its demo plants are registered under the CDM rules with the TOOL07 grid factor, and a redeploy
-registers them under VMR0017 with VT0011.
+press **Check evidence** to reproduce the attestations below from HCS in your browser. This Hashscan deploy is CDM
+(demo plants registered under CDM + TOOL07). Source demo plants in this git tree are VMR0017; a redeploy will match.
+Do not mix live CDM numbers with the VMR0017 engine in this checkout.
 
 | What | Hashscan |
 | --- | --- |
