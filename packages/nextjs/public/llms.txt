@@ -9,7 +9,7 @@
 > 1 kg), sells them at USD prices settled in HBAR through Chainlink HBAR/USD cross-checked against a Supra fallback,
 > and on retirement burns them and mints an HTS NFT certificate.
 
-Live testnet at this origin may still be the pre-VMR0017 registry (CDM plants). Call `get_registry_overview` / `get_plant` and trust `design.methodology` on-chain (0 = CDM, 1 = VMR0017). Do not assume demo plants on Hashscan are VMR0017 until they are.
+Registry methodology is on-chain; demo plants are VMR0017.
 
 Everything below is relative to this site's origin. Read-only access needs no credentials. The server never holds a
 buyer's key: purchases are returned as unsigned transactions. The REST API is described in OpenAPI 3.1 at
