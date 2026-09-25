@@ -1,3 +1,4 @@
+import type { Wallet } from "ethers";
 import { ethers } from "hardhat";
 import { time } from "@nomicfoundation/hardhat-network-helpers";
 import type { HydroCreditRegistry } from "../../typechain-types";
@@ -84,7 +85,7 @@ export async function attestationInput(
   plantId: string,
   overrides: Partial<Omit<AttestationFields, "meter">> = {},
   metered: Partial<Omit<MeterFields, "signature">> = {},
-  signer: ethers.Wallet = METER,
+  signer: Wallet = METER,
 ): Promise<AttestationFields> {
   const now = BigInt(await time.latest());
   const fields = {
