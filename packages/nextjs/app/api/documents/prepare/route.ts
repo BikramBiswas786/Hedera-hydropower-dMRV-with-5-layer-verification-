@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
-import { prepareDocument } from "~~/services/mrv/documents/server";
 import { prepareDocumentSchema } from "~~/services/mrv/documents/schema";
+import { prepareDocument } from "~~/services/mrv/documents/server";
 import { parseJsonBody, toErrorResponse } from "~~/services/mrv/server/http";
 
 /** Returns the exact hash and message a wallet must sign. Writes nothing. */

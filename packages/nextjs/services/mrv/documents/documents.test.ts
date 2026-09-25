@@ -31,7 +31,7 @@ describe("document trust chain", () => {
         role: "proponent",
         sections: { "1": "wrong role" },
         previousHash: null,
-        issuer: account.address,
+        issuer: account.address as `0x${string}`,
       },
       account,
     );

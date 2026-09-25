@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
-import { listDocuments, publishDocument } from "~~/services/mrv/documents/server";
 import { publishDocumentSchema } from "~~/services/mrv/documents/schema";
+import { listDocuments, publishDocument } from "~~/services/mrv/documents/server";
 import { isAuthorized, writesEnabled } from "~~/services/mrv/server/config";
 import { parseJsonBody, toErrorResponse } from "~~/services/mrv/server/http";
 

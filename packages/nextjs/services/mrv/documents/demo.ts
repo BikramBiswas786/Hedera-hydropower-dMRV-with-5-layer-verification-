@@ -64,7 +64,7 @@ export async function demoDocuments(subjectId: string, creditsKg: number): Promi
         role,
         sections,
         previousHash,
-        issuer: account.address,
+        issuer: account.address as `0x${string}`,
       },
       account,
     );

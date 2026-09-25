@@ -65,7 +65,7 @@ export function documentHash(doc: Document): Hex {
 export async function sealDocument(doc: Document, account: PrivateKeyAccount): Promise<Document> {
   const hash = documentHash(doc);
   const signature = await account.signMessage({ message: documentMessage(hash) });
-  return { ...doc, issuer: account.address, hash, signature };
+  return { ...doc, issuer: account.address as Hex, hash, signature };
 }
 
 export async function documentIsIntact(doc: Document): Promise<boolean> {

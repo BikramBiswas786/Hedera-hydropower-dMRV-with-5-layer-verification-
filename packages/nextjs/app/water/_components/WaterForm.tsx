@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, type FormEvent } from "react";
+import { type FormEvent, useState } from "react";
 import { useAccount, useSignMessage } from "wagmi";
 
 export function WaterForm() {
@@ -73,11 +73,24 @@ export function WaterForm() {
     <form className="flex flex-col gap-3 bg-base-100 border border-base-300 rounded-2xl p-5" onSubmit={onSubmit}>
       <label className="flex flex-col gap-1 text-sm">
         People
-        <input className="input input-bordered" type="number" min={0} value={people} onChange={event => setPeople(Number(event.target.value))} />
+        <input
+          className="input input-bordered"
+          type="number"
+          min={0}
+          value={people}
+          onChange={event => setPeople(Number(event.target.value))}
+        />
       </label>
       <label className="flex flex-col gap-1 text-sm">
         Appliances passing, of 100
-        <input className="input input-bordered" type="number" min={0} max={100} value={passed} onChange={event => setPassed(Number(event.target.value))} />
+        <input
+          className="input input-bordered"
+          type="number"
+          min={0}
+          max={100}
+          value={passed}
+          onChange={event => setPassed(Number(event.target.value))}
+        />
       </label>
       <div className="flex flex-wrap gap-2">
         <button className="btn btn-primary" type="submit">

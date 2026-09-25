@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
-import { checkSignedDocument } from "~~/services/mrv/documents/server";
 import { publishDocumentSchema } from "~~/services/mrv/documents/schema";
+import { checkSignedDocument } from "~~/services/mrv/documents/server";
 import { parseJsonBody, toErrorResponse } from "~~/services/mrv/server/http";
 
 /** Confirms a wallet signature. Does not store the document and does not mint. */

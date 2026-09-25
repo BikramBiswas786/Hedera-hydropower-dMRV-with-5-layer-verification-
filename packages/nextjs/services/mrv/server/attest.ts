@@ -34,6 +34,8 @@ export type AttestOutcome =
       } | null;
       /** `url` is a Hashscan link on Hedera networks and `null` on a local chain. */
       transaction: { hash: string; url: string | null };
+      /** Unsigned monitoring report for the caller to sign. Not a second mint. */
+      monitoringDocument: ReturnType<typeof monitoringDocumentDraft>;
     } & Anchors);
 
 function designMismatches(profile: RegisteredDesign, onChain: RegisteredDesign): string[] {
@@ -203,7 +205,7 @@ export async function attestReadings(request: VerifyRequest): Promise<AttestOutc
       profile.plantId,
       `Minted ${Number(event.args.unitsMinted)} kg. Report hash ${final.reportHash}.`,
       null,
-      account.address,
+      account.address as `0x${string}`,
     ),
   };
 }

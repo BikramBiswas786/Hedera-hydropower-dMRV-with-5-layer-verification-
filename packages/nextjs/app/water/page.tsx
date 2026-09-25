@@ -1,8 +1,8 @@
+import { WaterForm } from "./_components/WaterForm";
 import type { NextPage } from "next";
 import { PageHeader } from "~~/components/hydro/ui";
 import { DEMO_WATER, quantifySafeWater } from "~~/services/mrv/water/vmr0015";
 import { getMetadata } from "~~/utils/scaffold-hbar/getMetadata";
-import { WaterForm } from "./_components/WaterForm";
 
 export const metadata = getMetadata({
   title: "Safe water",

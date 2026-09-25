@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, type FormEvent } from "react";
+import { type FormEvent, useState } from "react";
 import { useAccount, useSignMessage } from "wagmi";
 
 const TYPES = [
@@ -72,7 +72,11 @@ export function SealForm() {
       </label>
       <label className="flex flex-col gap-1 text-sm">
         Subject
-        <input className="input input-bordered" value={subjectId} onChange={event => setSubjectId(event.target.value)} />
+        <input
+          className="input input-bordered"
+          value={subjectId}
+          onChange={event => setSubjectId(event.target.value)}
+        />
       </label>
       <label className="flex flex-col gap-1 text-sm">
         Section
