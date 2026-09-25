@@ -15,8 +15,8 @@ const MarketPage: NextPage = () => (
         Each credit is one tonne of CO₂e reduced, computed on-chain from the plant&apos;s registered design and its
         verified monitoring data. Sellers price credits in USD per tonne. At purchase the contract converts that price
         to HBAR using <strong>Chainlink HBAR/USD</strong>, cross-checked against <strong>Supra</strong> and falling back
-        to it when Chainlink is unavailable. Retiring burns the HTS tokens and mints an HTS NFT certificate to the
-        buyer.
+        to it when Chainlink is unavailable. This page will not build that purchase if the SaucerSwap WHBAR/USDC pool
+        is more than 3% away. Retiring burns the HTS tokens and mints an HTS NFT certificate to the buyer.
       </p>
     </PageHeader>
     <Marketplace />

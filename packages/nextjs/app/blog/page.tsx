@@ -13,8 +13,8 @@ const BlogPage: NextPage = () => (
     <h1 className="text-4xl font-bold m-0">Check one tonne before you trust the story</h1>
     <p className="text-lg m-0">
       This template is a hydropower worked example of a pattern any Hedera app can reuse: a contract that holds the
-      credits, two price feeds that have to agree, and a public log you can recompute. The methodology is not the
-      pattern. The pattern is the part worth copying.
+      credits, two price feeds that have to agree, a DEX pool the purchase builder also requires, and a public log you
+      can recompute. The methodology is not the pattern. The pattern is the part worth copying.
     </p>
 
     <section className="flex flex-col gap-3">
@@ -29,8 +29,8 @@ const BlogPage: NextPage = () => (
           <code>@3</code> messages still reproduce; they are not what the screen writes today.
         </li>
         <li>
-          <Link href="/market">Market</Link> shows the Chainlink price and the Supra fallback. A retirement is supposed
-          to mint an NFT. The collection exists. Its supply is still zero until someone buys and retires.
+          <Link href="/market">Market</Link> shows Chainlink, Supra, and the SaucerSwap WHBAR/USDC spot. A buy is refused
+          when that pool is more than 3% from the settlement price. Retirements minted HYRET serial 1 and serial 2.
         </li>
       </ol>
     </section>

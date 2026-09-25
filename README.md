@@ -1,6 +1,6 @@
 # Hydro dMRV — a Scaffold-HBAR template
 
-**The pattern:** a contract that holds the asset, two price feeds that have to agree, and a public log anyone can recompute. Hydropower carbon credits are the worked example, not a second product.
+**The pattern:** a contract that holds the asset, two price feeds that have to agree, a SaucerSwap pool that has to agree before this template will build the sale, and a public log anyone can recompute. Hydropower carbon credits are the worked example, not a second product.
 
 ## 90 seconds
 
@@ -316,7 +316,9 @@ flowchart LR
   REG -- latestRoundData --> FEED
   FEED --> CL
   FEED --> SUP
-  Buyer((Buyer / agent)) -- buy · retire --> REG
+  Buyer((Buyer / agent)) -- prepare_purchase --> API
+  API -- reserves within 3% --> SS[(SaucerSwap V1<br/>WHBAR/USDC mainnet)]
+  API -- buy · retire --> REG
   Auditor((Auditor / agent)) -- reproduce --> MIRROR
   MIRROR -. readings + report .-> Auditor
 ```
@@ -334,8 +336,7 @@ The sequence for one day of monitoring:
    which commits to them by SHA-256 and sequence number.
 5. **Issue.** `submitAttestation` records the monitored inputs (EG_facility, TEG, fuel, leakage, completeness), recomputes
    EG_PJ, BE, PE_HP, PE_FF and ER, carries the remainder or deficit, and mints credits into the operator's custody.
-6. **Trade and retire.** Sellers list in USD per tonne; buyers pay HBAR at the oracle price; retiring burns the credits
-   and mints an NFT certificate.
+6. **Trade and retire.** Sellers list in USD per tonne. The purchase builder reads the SaucerSwap WHBAR/USDC reserves and returns no transaction if that spot is more than 3% from the settlement price. The contract then charges HBAR at the oracle price. Retiring burns the credits and mints an NFT certificate.
 7. **Reproduce.** **Check evidence** fetches both messages from the mirror node, verifies both hashes, checks the data
    used the registered design, re-runs the engine and compares every figure with the chain.
 
@@ -346,6 +347,7 @@ The sequence for one day of monitoring:
 | **HCS readings + report** | The quantification becomes an unverifiable claim. With both on HCS, a verifier who approves bad data, or uses a flattering grid factor, is caught by anyone who re-runs the engine. |
 | **Contract quantification + HTS** | Credits would be whatever the verifier typed. Because the contract recomputes ER and is the only supply key, nothing can be minted outside the registered design and the equations. |
 | **Chainlink + Supra** | USD-denominated settlement is impossible on-chain. With one feed, a single outage halts the market and a single bad answer misprices it. Two providers that must agree remove both failure modes. |
+| **SaucerSwap WHBAR/USDC** | `prepare_purchase` and `get_dex_price` stop. The template's market, the agent tools and the UI will not build a buy. A direct call to the registry still settles on the two oracles; that bypass is documented under limitations. |
 
 ## Quick start
 
@@ -632,7 +634,7 @@ claude mcp add --transport http hydro-dmrv https://hydro-dmrv.vercel.app/api/mcp
 | `get_registry_overview` | public | Totals in kg CO₂e, plants with design and ledger, tokens, both oracle sources |
 | `list_attestations` | public | Attestations with monitored inputs, EG_PJ, BE, PE, LE, ER, credits and HCS anchors |
 | `audit_attestation` · `reproduce_attestation` | public | Report vs chain · full reproduction from HCS including the registered design |
-| `list_open_listings` · `prepare_purchase` | public | Listings with HBAR quotes · unsigned `buy` / `buyAndRetire` (to, data, value) for the agent's own wallet |
+| `get_dex_price` · `list_open_listings` · `prepare_purchase` | public | SaucerSwap spot vs the settlement price · listings with HBAR quotes · unsigned `buy` / `buyAndRetire`. Refuses above a 3% gap |
 | `get_plant` | public | One plant: design, power density, ledger, lifetime EG / BE / PE / ER / credits, coverage, credits per MWh, attestations with HCS links |
 | `get_retirement_certificate` · `get_portfolio` | public | Retirement record and its NFT certificate · everything an account or a beneficiary retired, with totals |
 | `submit_attestation` | bearer `MRV_API_KEY` | Verify → contract agreement check → HCS → mint. Only listed for authenticated requests |
@@ -640,7 +642,7 @@ claude mcp add --transport http hydro-dmrv https://hydro-dmrv.vercel.app/api/mcp
 An autonomous buyer needs no special permissions:
 
 ```
-list_open_listings → prepare_purchase { listingId, amountKg, beneficiary } → sign & send with its own key
+get_dex_price → list_open_listings → prepare_purchase { listingId, amountKg, beneficiary } → sign & send with its own key
 → get_retirement_certificate
 ```
 
@@ -773,6 +775,9 @@ template.json                            create-scaffold-hbar manifest
   upgradeable and has no admin path to move anyone's balance.
 - **Oracle risk** is bounded by two independent providers, a deviation guard, staleness checks and the
   seller-favouring round-up. Tune `MAX_PRICE_AGE_SECONDS` and `MAX_ORACLE_DEVIATION_BPS` to the feeds' heartbeats.
+  The template's purchase builder also refuses when the SaucerSwap V1 WHBAR/USDC spot (mainnet pair `0.0.1462797`)
+  is more than 3% from that settlement price. The registry contract does not read the pool, so a caller who skips
+  `prepare_purchase` is not covered by the DEX check.
 - **Write endpoints** are disabled unless `MRV_API_KEY` is set and use a constant-time comparison. Put them behind
   your own authentication before exposing them publicly. Purchases never touch the server: agents sign their own.
 - **Not audited.** This is a starting point, not production-ready code.

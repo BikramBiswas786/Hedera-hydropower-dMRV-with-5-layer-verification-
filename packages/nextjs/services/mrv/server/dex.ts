@@ -5,6 +5,7 @@ import {
   SAUCERSWAP_PAIR_ID,
   SAUCERSWAP_USDC,
   deviationBps,
+  dexAccepted,
   hbarUsd8FromReserves,
 } from "../saucerswap";
 import { ApiError } from "./errors";
@@ -87,6 +88,6 @@ export async function readDexCheck(): Promise<DexCheck> {
     oraclePrice: Number(oracle8) / 1e8,
     deviationBps: Number(bps),
     maxDeviationBps: Number(SAUCERSWAP_MAX_DEVIATION_BPS),
-    accepted: bps <= SAUCERSWAP_MAX_DEVIATION_BPS,
+    accepted: dexAccepted(oracle8, dex8),
   };
 }

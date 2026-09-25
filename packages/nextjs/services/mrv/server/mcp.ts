@@ -36,9 +36,11 @@ Monitoring: generate_sample_telemetry (or real readings) -> verify_telemetry (5 
 quantification, safeguards). Only APPROVED periods can be attested. Raw readings and reports live on HCS;
 reproduce_attestation re-runs the engine on the published data and compares every figure with the contract.
 Credits are HTS tokens (1 token = 1 t CO2e, 1 unit = 1 kg) priced in USD per tonne and settled in HBAR through
-Chainlink HBAR/USD with a Supra fallback. Agents buy with their own wallet: list_open_listings -> prepare_purchase ->
-sign and send; retiring mints an HTS NFT certificate. get_plant and get_portfolio summarise a plant's issuance or a
-buyer's retirements for reporting. Registry tools read chain ${HYDRO_CHAIN_ID}.`;
+Chainlink HBAR/USD with a Supra fallback. prepare_purchase also reads SaucerSwap V1 WHBAR/USDC on mainnet (pair
+0.0.1462797) and returns no transaction if that spot is more than 3% from the settlement price. Agents buy with
+their own wallet: get_dex_price -> list_open_listings -> prepare_purchase -> sign and send; retiring mints an HTS
+NFT certificate. get_plant and get_portfolio summarise a plant's issuance or a buyer's retirements for reporting.
+Registry tools read chain ${HYDRO_CHAIN_ID}.`;
 
 function ok(data: unknown) {
   return { content: [{ type: "text" as const, text: JSON.stringify(data, null, 2) }] };

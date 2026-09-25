@@ -143,7 +143,8 @@ const GuidePage: NextPage = async () => {
             </Link>
             , pick a listing, enter how many tonnes and the name to put on the certificate (for example your company),
             and choose <strong>Buy &amp; retire</strong>. Prices are in US dollars per tonne and paid in HBAR at the
-            live Chainlink rate, cross-checked with Supra. Retiring burns the credits so nobody can sell them again.
+            live Chainlink rate, cross-checked with Supra. The buy is not built if SaucerSwap's WHBAR/USDC pool is
+            more than 3% from that rate. Retiring burns the credits so nobody can sell them again.
           </Step>
           <Step n={3} title="Keep the proof">
             You receive an NFT certificate. On{" "}
@@ -256,7 +257,7 @@ yarn start                       # terminal 3: http://localhost:3000`}</Code>
             ],
             [
               "Why is this needed if Guardian already digitizes the policy?",
-              "Guardian runs the methodology: forms, roles, an off-chain calculation, and a mint for the number that calculation returns. This template does not replace that. The contract recomputes the tonne and refuses a different integer, two price feeds must agree before a sale, and anyone can rerun the figure from HCS without a Guardian server.",
+              "Guardian runs the methodology: forms, roles, an off-chain calculation, and a mint for the number that calculation returns. This template does not replace that. The contract recomputes the tonne and refuses a different integer, two price feeds must agree before a sale, the purchase builder also requires the SaucerSwap pool within 3%, and anyone can rerun the figure from HCS without a Guardian server.",
             ],
             [
               "Why should I trust the numbers?",

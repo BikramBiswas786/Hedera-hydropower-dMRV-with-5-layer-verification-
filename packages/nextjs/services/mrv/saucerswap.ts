@@ -23,3 +23,8 @@ export function deviationBps(a: bigint, b: bigint): bigint {
   const low = a > b ? b : a;
   return ((high - low) * 10_000n) / low;
 }
+
+/** True when the two 8-decimal prices are within the feed's own band, including the exact bound. */
+export function dexAccepted(oracle8: bigint, dex8: bigint, maxBps: bigint = SAUCERSWAP_MAX_DEVIATION_BPS): boolean {
+  return deviationBps(oracle8, dex8) <= maxBps;
+}
