@@ -16,6 +16,19 @@ npm create scaffold-hbar@latest --template BikramBiswas786/Hedera-hydropower-dMR
 **Live on Hedera testnet: [hydro-dmrv.vercel.app](https://hydro-dmrv.vercel.app)** (read-only; MCP at
 `https://hydro-dmrv.vercel.app/api/mcp`, OpenAPI at [`/api/openapi.json`](https://hydro-dmrv.vercel.app/api/openapi.json)).
 
+### Start here
+
+New to it? The in-app guide at [**/guide**](https://hydro-dmrv.vercel.app/guide) explains the idea in plain words and
+gives each kind of user a path:
+
+| You are | Do this | Time |
+| --- | --- | --- |
+| Just looking | [/verify](https://hydro-dmrv.vercel.app/verify): watch `healthy` pass and `inflated` / `tampered` get rejected; [/audit](https://hydro-dmrv.vercel.app/audit): **Check evidence** re-runs a real testnet issuance in your browser | 5 min, no wallet |
+| Buying credits | Testnet ECDSA account from [portal.hedera.com](https://portal.hedera.com) in MetaMask → [/market](https://hydro-dmrv.vercel.app/market) **Buy & retire** → NFT certificate → [/portfolio](https://hydro-dmrv.vercel.app/portfolio) CSV | 10 min |
+| Running a plant | `assess_project` → `registerPlant` → `yarn mrv:meter-key` → `yarn mrv:attest` → **List for sale** on /market | an afternoon |
+| Building on it | `npm create scaffold-hbar@latest --template …` (above), then [Quick start](#quick-start) | 15 min |
+| An AI agent | `claude mcp add --transport http hydro-dmrv https://hydro-dmrv.vercel.app/api/mcp` ([For AI agents](#for-ai-agents)) | 1 command |
+
 | | |
 | --- | --- |
 | Methodology | CDM AMS-I.D v18.0 / ACM0002 v22.0 · TOOL07 (OM simple, simple adjusted, average; BM sample group; CM weights) · TOOL03 (NCV × EF) · IPCC 2006 defaults with conservative bounds |

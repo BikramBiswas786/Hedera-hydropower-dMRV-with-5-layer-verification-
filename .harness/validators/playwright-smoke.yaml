@@ -10,6 +10,8 @@ defaults:
 routes:
   - name: home
     path: /
+  - name: guide
+    path: /guide
   - name: methodology
     path: /methodology
   - name: verify

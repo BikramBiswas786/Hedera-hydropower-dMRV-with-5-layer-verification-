@@ -42,6 +42,7 @@
       "packages/nextjs/app/methodology/page.tsx",
       "packages/nextjs/app/plants/page.tsx",
       "packages/nextjs/app/portfolio/page.tsx",
+      "packages/nextjs/app/guide/page.tsx",
       "packages/nextjs/services/mrv/provenance.ts",
       "packages/nextjs/services/mrv/provenance.test.ts"
     ],
