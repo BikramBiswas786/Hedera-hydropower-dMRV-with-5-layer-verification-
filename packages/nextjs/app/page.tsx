@@ -17,7 +17,7 @@ const STEPS = [
   {
     title: "Verify",
     service: "5-stage engine",
-    body: "Applicability, QA/QC with conservative deductions, physics cross-checks, then ER = BE − PE − LE per AMS-I.D / ACM0002.",
+    body: "Applicability, QA/QC with conservative deductions, physics cross-checks, then ER = BE − PE − LE for the plant's registered methodology.",
   },
   {
     title: "Anchor",
@@ -38,9 +38,8 @@ const Home: NextPage = () => (
         <span className="uppercase tracking-widest text-sm text-white/70">Scaffold-HBAR template</span>
         <h1 className="text-4xl md:text-5xl font-bold m-0 leading-tight">Hydro dMRV</h1>
         <p className="text-lg text-white/85 m-0 max-w-2xl">
-          Digital measurement, reporting and verification for grid-connected hydropower under the CDM methodologies
-          AMS-I.D and ACM0002. Metered generation becomes carbon credits whose every gram (baseline, project emissions,
-          leakage) is recomputed on-chain and reproducible from public data on Hedera.
+          The contract holds the credit. Two HBAR/USD feeds must agree before a sale. Anyone can recompute the tonne
+          from the public log.
         </p>
         <div className="flex flex-wrap gap-3 mt-2">
           <Link href="/guide" className="btn bg-white text-hedera-indigo border-none hover:bg-white/90">
