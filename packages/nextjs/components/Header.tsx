@@ -10,7 +10,6 @@ import {
   BeakerIcon,
   BookOpenIcon,
   BriefcaseIcon,
-  BugAntIcon,
   BuildingOffice2Icon,
   DocumentMagnifyingGlassIcon,
   ShoppingBagIcon,
@@ -63,11 +62,6 @@ export const menuLinks: HeaderMenuLink[] = [
     label: "Audit",
     href: "/audit",
     icon: <DocumentMagnifyingGlassIcon className="h-4 w-4" />,
-  },
-  {
-    label: "Debug",
-    href: "/debug",
-    icon: <BugAntIcon className="h-4 w-4" />,
   },
 ];
 
