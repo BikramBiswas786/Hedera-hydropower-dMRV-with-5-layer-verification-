@@ -4,10 +4,12 @@ import { time } from "@nomicfoundation/hardhat-network-helpers";
 export const DAY = 86_400;
 export const HOUR = 3_600;
 export const CREDITING_YEAR = 365 * DAY;
-export const REPORT_HASH = ethers.sha256(ethers.toUtf8Bytes('{"schema":"hydro-dmrv/report@3"}'));
+export const REPORT_HASH = ethers.sha256(ethers.toUtf8Bytes('{"schema":"hydro-dmrv/report@4"}'));
 
 export type DesignInput = {
   projectType: number;
+  /** 0 = CDM (ACM0002 / AMS-I.D), 1 = VMR0017 v1.0. */
+  methodology: number;
   capacityKw: number;
   baselineCapacityKw: number;
   reservoirAreaM2: number;
@@ -29,6 +31,7 @@ export async function plantDesign(overrides: Partial<DesignInput> = {}, startedD
   const creditingStart = BigInt((await time.latest()) - startedDaysAgo * DAY);
   return {
     projectType: 0,
+    methodology: 0,
     capacityKw: 500,
     baselineCapacityKw: 0,
     reservoirAreaM2: 0,

@@ -8,12 +8,15 @@ import { HederaTokenLib } from "./lib/HederaTokenLib.sol";
 
 /// @title HydroCreditRegistry
 /// @notice Carbon-credit registry for grid-connected hydropower under CDM ACM0002 (large scale) and AMS-I.D
-/// (small scale). Each plant is registered with its validated design: project type, reservoir areas, the ex-ante
+/// (small scale), or Verra VMR0017 v1.0 applied with ACM0002 v22.0. Each plant is registered with its methodology
+/// and validated design: project type, reservoir areas, the ex-ante
 /// TOOL07 grid emission factor, the TOOL03 fuel coefficient, the retrofit baseline and the crediting period.
 /// Verifiers attest monitored quantities for a period, with the full report and raw readings anchored on HCS,
 /// and the contract itself computes
 ///
 ///     ER_y = BE_y − PE_y − LE_y,   BE_y = EG_PJ,y × EF_grid,CM,y,   PE_y = PE_FF,y + PE_HP,y
+///
+/// where VMR0017 raises EF_Res to 100 kg CO2e/MWh and adds embodied emissions to LE_y (§8.3, §9.1).
 ///
 /// and mints Hedera Token Service credits (1 token = 1 t CO2e, 1 base unit = 1 kg CO2e). Credits are sold at a USD
 /// price settled in HBAR through an HBAR/USD feed, or retired with an HTS NFT certificate.
@@ -34,8 +37,14 @@ contract HydroCreditRegistry is AccessControl, ReentrancyGuard {
     /// @notice Crediting-period years are 365-day blocks counted from the crediting start.
     uint256 public constant CREDITING_YEAR = 365 days;
     uint256 public constant MAX_CREDITING_YEARS = 10;
-    /// @notice EF_Res, the default emission factor for reservoir emissions: 90 kg CO2e/MWh.
+    /// @notice EF_Res, the default emission factor for reservoir emissions: 90 kg CO2e/MWh (ACM0002 / AMS-I.D).
     uint32 public constant RESERVOIR_EF_G_PER_MWH = 90_000;
+    /// @notice VMR0017 §9.1: EF_Res = 100 kg CO2e/MWh.
+    uint32 public constant VMR0017_RESERVOIR_EF_G_PER_MWH = 100_000;
+    /// @notice VMR0017 §9.1: EF_embodied for hydropower, 21 g CO2e/kWh.
+    uint32 public constant VMR0017_EMBODIED_HYDRO_G_PER_MWH = 21_000;
+    /// @notice VMR0017 Table 1: hydroelectric project activities of 15 MW or less.
+    uint32 public constant VMR0017_MAX_HYDRO_KW = 15_000;
     /// @notice Reservoir power density thresholds in W/m².
     uint256 public constant MIN_POWER_DENSITY = 4;
     uint256 public constant RESERVOIR_EMISSIONS_POWER_DENSITY = 10;
@@ -55,10 +64,17 @@ contract HydroCreditRegistry is AccessControl, ReentrancyGuard {
         CapacityAddition
     }
 
+    /// @notice Rule set applied to a plant: CDM ACM0002 / AMS-I.D, or Verra VMR0017 v1.0 with ACM0002 v22.0.
+    enum Methodology {
+        Cdm,
+        Vmr0017
+    }
+
     /// @notice The validated, ex-ante parameters of a plant. `designHash` commits to the full design document
     /// (TOOL07 dataset, historical generation, hydraulics) from which these integers were derived.
     struct PlantDesign {
         ProjectType projectType;
+        Methodology methodology;
         /// @dev Cap_PJ and Cap_BL in kW.
         uint32 capacityKw;
         uint32 baselineCapacityKw;
@@ -83,8 +99,10 @@ contract HydroCreditRegistry is AccessControl, ReentrancyGuard {
         address operator;
         bool active;
         PlantDesign design;
-        /// @dev PE_HP rate derived from the power density at registration: 0 or RESERVOIR_EF_G_PER_MWH.
+        /// @dev PE_HP rate derived from the power density and methodology at registration: 0 or EF_Res.
         uint32 reservoirGPerMwh;
+        /// @dev EF_embodied for LE_y: VMR0017_EMBODIED_HYDRO_G_PER_MWH under VMR0017, 0 under the CDM.
+        uint32 embodiedGPerMwh;
         /// @dev Ledger: attestation count, current crediting year and its accumulated EG_facility.
         uint32 attestations;
         uint32 creditingYear;
@@ -108,7 +126,8 @@ contract HydroCreditRegistry is AccessControl, ReentrancyGuard {
         uint64 grossEnergyWh;
         /// @dev FC: fossil fuel burnt on site, in grams.
         uint64 fuelG;
-        /// @dev LE: leakage, zero under ACM0002 and under AMS-I.D without transferred equipment.
+        /// @dev Leakage assessed outside the methodology's equations, normally zero. VMR0017 embodied emissions
+        /// are computed here and added to it.
         uint64 leakageG;
         uint16 completenessBps;
         bytes32 reportHash;
@@ -164,6 +183,8 @@ contract HydroCreditRegistry is AccessControl, ReentrancyGuard {
         int256 baselineG;
         uint256 reservoirG;
         uint256 fossilFuelG;
+        /// @dev LE_y: the input leakage plus VMR0017 embodied emissions.
+        uint256 leakageG;
         int256 reductionG;
         uint256 units;
         int256 balanceG;
@@ -238,6 +259,7 @@ contract HydroCreditRegistry is AccessControl, ReentrancyGuard {
     error InvalidBaseline(ProjectType projectType);
     error ReservoirBelowBaseline(uint64 reservoirAreaM2, uint64 baselineReservoirAreaM2);
     error PowerDensityTooLow(uint256 addedCapacityW, uint256 addedAreaM2);
+    error MethodologyNotApplicable(Methodology methodology, uint32 capacityKw);
     error InvalidPeriod(uint64 periodStart, uint64 periodEnd);
     error PeriodOverlapsPrevious(uint64 periodStart, uint64 lastPeriodEnd);
     error OutsideCreditingPeriod(uint64 periodStart, uint64 periodEnd);
@@ -342,6 +364,7 @@ contract HydroCreditRegistry is AccessControl, ReentrancyGuard {
         plant.active = true;
         plant.design = design;
         plant.reservoirGPerMwh = reservoirRate;
+        plant.embodiedGPerMwh = design.methodology == Methodology.Vmr0017 ? VMR0017_EMBODIED_HYDRO_G_PER_MWH : 0;
         _plantIds.push(plantId);
 
         emit PlantRegistered(
@@ -437,7 +460,7 @@ contract HydroCreditRegistry is AccessControl, ReentrancyGuard {
         record.baselineG = int64(q.baselineG);
         record.reservoirG = uint64(q.reservoirG);
         record.fossilFuelG = uint64(q.fossilFuelG);
-        record.leakageG = input.leakageG;
+        record.leakageG = uint64(q.leakageG);
         record.reductionG = int64(q.reductionG);
         record.unitsMinted = uint64(q.units);
         record.completenessBps = input.completenessBps;
@@ -469,6 +492,8 @@ contract HydroCreditRegistry is AccessControl, ReentrancyGuard {
     ///   EG_PJ = EG_facility (greenfield) or the crediting year's excess over EG_historical + σ (retrofit,
     ///           capacity addition) until DATE_BaselineRetrofit;
     ///   BE = ⌊EG_PJ × EF_grid,CM⌋;  PE_HP = ⌈TEG × EF_Res⌉ when 4 < PD ≤ 10;  PE_FF = ⌈FC × COEF⌉;
+    ///   LE = input leakage + ⌈EG × EF_embodied⌉ (VMR0017: EG_facility for greenfield, EG_PJ_Add for capacity
+    ///   additions, never below 0; none for retrofits);
     ///   ER = BE − PE_HP − PE_FF − LE; credits = ⌊(ledger balance + ER) / 1 kg⌋.
     function quantify(bytes32 plantId, AttestationInput calldata input) public view returns (Quantification memory q) {
         Plant storage plant = _plants[plantId];
@@ -491,7 +516,16 @@ contract HydroCreditRegistry is AccessControl, ReentrancyGuard {
         q.baselineG = _floorDiv(q.projectEnergyWh * int256(uint256(design.efGridGPerMwh)), WH_PER_MWH);
         q.reservoirG = _ceilDiv(uint256(input.grossEnergyWh) * plant.reservoirGPerMwh, WH_PER_MWH);
         q.fossilFuelG = _ceilDiv(uint256(input.fuelG) * design.fuelCoefGPerTonne, G_PER_TONNE);
-        q.reductionG = q.baselineG - int256(q.reservoirG) - int256(q.fossilFuelG) - int256(uint256(input.leakageG));
+        // A period that imports more than it exports carries no embodied emissions rather than negative ones.
+        int256 embodiedBasisWh = design.projectType == ProjectType.Greenfield
+            ? int256(input.netEnergyWh)
+            : design.projectType == ProjectType.CapacityAddition
+                ? q.projectEnergyWh
+                : int256(0);
+        q.leakageG =
+            uint256(input.leakageG) +
+            _ceilDiv(uint256(_positive(embodiedBasisWh)) * plant.embodiedGPerMwh, WH_PER_MWH);
+        q.reductionG = q.baselineG - int256(q.reservoirG) - int256(q.fossilFuelG) - int256(q.leakageG);
 
         int256 balance = int256(plant.balanceG) + q.reductionG;
         q.units = balance > 0 ? uint256(balance) / G_PER_UNIT : 0;
@@ -658,6 +692,9 @@ contract HydroCreditRegistry is AccessControl, ReentrancyGuard {
     /// @dev Returns the PE_HP rate implied by the power density PD = (Cap_PJ − Cap_BL) / (A_PJ − A_BL).
     function _validateDesign(PlantDesign calldata design) private pure returns (uint32 reservoirRate) {
         if (design.capacityKw == 0) revert InvalidBaseline(design.projectType);
+        if (design.methodology == Methodology.Vmr0017 && design.capacityKw > VMR0017_MAX_HYDRO_KW) {
+            revert MethodologyNotApplicable(design.methodology, design.capacityKw);
+        }
         if (design.efGridGPerMwh == 0 || design.efGridGPerMwh > MAX_GRID_EF_G_PER_MWH) {
             revert GridEmissionFactorOutOfRange(design.efGridGPerMwh);
         }
@@ -685,7 +722,8 @@ contract HydroCreditRegistry is AccessControl, ReentrancyGuard {
             ? (uint256(design.capacityKw) - design.baselineCapacityKw) * 1_000
             : 0;
         if (addedW <= MIN_POWER_DENSITY * addedArea) revert PowerDensityTooLow(addedW, addedArea);
-        return addedW <= RESERVOIR_EMISSIONS_POWER_DENSITY * addedArea ? RESERVOIR_EF_G_PER_MWH : 0;
+        if (addedW > RESERVOIR_EMISSIONS_POWER_DENSITY * addedArea) return 0;
+        return design.methodology == Methodology.Vmr0017 ? VMR0017_RESERVOIR_EF_G_PER_MWH : RESERVOIR_EF_G_PER_MWH;
     }
 
     function _validateCrediting(uint64 creditingStart, uint64 creditingEnd) private pure {

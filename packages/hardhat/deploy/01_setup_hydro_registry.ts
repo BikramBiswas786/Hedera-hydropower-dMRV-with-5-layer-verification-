@@ -59,7 +59,10 @@ const setupHydroRegistry: DeployFunction = async function (hre: HardhatRuntimeEn
     if (registered.has(plantId)) continue;
     const tx = await registry.registerPlant(plantId, plant.name, operator, plant.design, { gasLimit: 600_000 });
     await tx.wait();
-    console.log(`Registered plant ${plant.plantId} (operator ${operator}): ${hashscanTx(config, tx.hash)}`);
+    const methodology = plant.design.methodology === 1 ? "VMR0017 v1.0 + ACM0002 v22.0" : "CDM ACM0002 / AMS-I.D";
+    console.log(
+      `Registered plant ${plant.plantId} under ${methodology} (operator ${operator}): ${hashscanTx(config, tx.hash)}`,
+    );
   }
 };
 

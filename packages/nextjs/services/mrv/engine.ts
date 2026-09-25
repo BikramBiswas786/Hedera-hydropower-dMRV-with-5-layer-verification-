@@ -1,5 +1,12 @@
 import { MethodologyError } from "./methodology/errors";
-import { METHODOLOGIES, powerDensity } from "./methodology/project";
+import {
+  METHODOLOGIES,
+  METHODOLOGY_CODE,
+  embodiedEfGPerMwh,
+  methodologyCodeOf,
+  powerDensity,
+  reservoirEfGPerMwh,
+} from "./methodology/project";
 import {
   EMPTY_LEDGER,
   type PlantLedger,
@@ -28,7 +35,7 @@ import type { Address, Hex } from "viem";
  * Pure and deterministic (no I/O, no clock), so anyone can re-run it on the readings published to HCS.
  */
 
-export const ENGINE_VERSION = "hydro-dmrv-engine@2.1.0";
+export const ENGINE_VERSION = "hydro-dmrv-engine@3.0.0";
 
 /** P (kW) = ρ·g·Q·H·η / 1000 with ρ = 1000 kg/m³ and g = 9.81 m/s². */
 const KW_PER_M4_S = 9.81;
@@ -89,6 +96,8 @@ export type Emissions = {
   reservoirG: number;
   fossilFuelG: number;
   projectG: number;
+  /** VMR0017 embodied emissions, included in leakageG. */
+  embodiedG: number;
   leakageG: number;
   reductionG: number;
   unitsMinted: number;
@@ -415,7 +424,14 @@ export function verifyReadings(
   const leakageG = 0;
 
   // ── 1. Applicability ──────────────────────────────────────────────────────
-  const pd = powerDensity(design);
+  const pd = powerDensity(design, reservoirEfGPerMwh(design.methodology));
+  if (methodologyCodeOf(plant.methodology) !== design.methodology) {
+    add(
+      "applicability",
+      "reject",
+      `The plant profile says ${plant.methodology} but the registered design uses another methodology`,
+    );
+  }
   if (!pd.eligible) add("applicability", "reject", pd.basis);
   const periodViolation = creditingPeriodViolation(design, periodStart, periodEnd);
   if (periodViolation) add("applicability", "reject", periodViolation);
@@ -448,6 +464,7 @@ export function verifyReadings(
     reservoirG: Number(quantification.reservoirG),
     fossilFuelG: Number(quantification.fossilFuelG),
     projectG: Number(quantification.reservoirG + quantification.fossilFuelG),
+    embodiedG: Number(quantification.embodiedG),
     leakageG: Number(quantification.leakageG),
     reductionG: Number(quantification.reductionG),
     unitsMinted: Number(quantification.unitsMinted),
@@ -463,7 +480,7 @@ export function verifyReadings(
   }
 
   const summaries: Record<Stage, string> = {
-    applicability: `${METHODOLOGIES[plant.methodology].id}; ${pd.basis}; crediting year ${(emissions?.creditingYear ?? 0) + 1}`,
+    applicability: `${methodologyLabel(plant.methodology)}; ${pd.basis}; crediting year ${(emissions?.creditingYear ?? 0) + 1}`,
     integrity: `${PROVENANCE_SUMMARY[provenance.status]}; ${(completenessBps / 100).toFixed(1)}% of the period covered, ${fmt(gapMinutes, 0)} min of gaps, ${checkMeterDiscrepancies} meter discrepancies`,
     physics: `${intervals.length - excludedIntervals.length}/${intervals.length} intervals within nameplate and ρ·g·Q·H·η_max`,
     quantification: emissions
@@ -478,7 +495,7 @@ export function verifyReadings(
   return {
     engine: ENGINE_VERSION,
     plantId: plant.plantId,
-    methodology: `${METHODOLOGIES[plant.methodology].id} v${METHODOLOGIES[plant.methodology].version}`,
+    methodology: methodologyLabel(plant.methodology),
     periodStart,
     periodEnd,
     readingCount: readings.length,
@@ -514,6 +531,11 @@ export function verifyReadings(
     ledger: { before: ledgerJson, after: quantification && toLedgerJson(quantification.ledger) },
     equations: equationsFor(plant, netWh, grossWh, fuelG, emissions, reservoirGPerMwh),
   };
+}
+
+function methodologyLabel(id: PlantProfile["methodology"]) {
+  const m = METHODOLOGIES[id];
+  return id === "VMR0017" ? `VMR0017 v${m.version} with ACM0002 v22.0` : `${m.id} v${m.version}`;
 }
 
 function stageResult(stage: Stage, issues: Issue[], summary: string): StageResult {
@@ -559,7 +581,10 @@ function equationsFor(
     { symbol: "TEG", expression: "Σ gross generation", value: grossWh / 1e6, unit: "MWh" },
     {
       symbol: "EF_grid,CM",
-      expression: "TOOL07: w_OM × EF_OM + w_BM × EF_BM",
+      expression:
+        design.methodology === METHODOLOGY_CODE.VMR0017
+          ? "w_OM × EF_OM + w_BM × EF_BM (TOOL07 procedure; VMR0017 names VT0011)"
+          : "TOOL07: w_OM × EF_OM + w_BM × EF_BM",
       value: design.efGridGPerMwh / 1e6,
       unit: "t CO2/MWh",
     },
@@ -576,7 +601,9 @@ function equationsFor(
     { symbol: "BE", expression: "EG_PJ × EF_grid,CM", value: emissions.baselineG / 1e6, unit: "t CO2e" },
     {
       symbol: "PE_HP",
-      expression: reservoirGPerMwh ? "EF_Res (90 kg/MWh) × TEG" : "0 (no reservoir emissions: PD > 10 or no new area)",
+      expression: reservoirGPerMwh
+        ? `EF_Res (${reservoirGPerMwh / 1_000} kg/MWh) × TEG`
+        : "0 (no reservoir emissions: PD > 10 or no new area)",
       value: emissions.reservoirG / 1e6,
       unit: "t CO2e",
     },
@@ -587,7 +614,16 @@ function equationsFor(
       unit: "t CO2e",
     },
     { symbol: "PE", expression: "PE_FF + PE_HP", value: emissions.projectG / 1e6, unit: "t CO2e" },
-    { symbol: "LE", expression: "0 (leakage not applicable)", value: emissions.leakageG / 1e6, unit: "t CO2e" },
+    {
+      symbol: "LE",
+      expression: embodiedEfGPerMwh(design.methodology)
+        ? design.projectType === 1
+          ? "0 (VMR0017 §8.3 has no embodied-emission equation for a retrofit)"
+          : `${design.projectType === 0 ? "EG_facility" : "EG_PJ_Add"} × EF_embodied (${embodiedEfGPerMwh(design.methodology) / 1_000} g CO2e/kWh), VMR0017 §8.3`
+        : "0 (leakage not applicable)",
+      value: emissions.leakageG / 1e6,
+      unit: "t CO2e",
+    },
     { symbol: "ER", expression: "BE − PE − LE", value: emissions.reductionG / 1e6, unit: "t CO2e" },
   );
   return steps;

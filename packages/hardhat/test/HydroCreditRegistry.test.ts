@@ -20,6 +20,7 @@ const FEED_DECIMALS = 8;
 const HBAR_USD = 25_000_000n; // $0.25 with 8 decimals
 const NATIVE_PER_HBAR = 10n ** 18n; // local Hardhat EVM uses 18-decimal wei
 const PROJECT = { Greenfield: 0, Retrofit: 1, CapacityAddition: 2 };
+const METHODOLOGY = { Cdm: 0, Vmr0017: 1 };
 
 /** What every HTS fungible token exposes at its EVM address: the ERC-20 facade plus HIP-719 `associate()`. */
 const HTS_TOKEN_ABI = [
@@ -154,6 +155,26 @@ describe("HydroCreditRegistry", function () {
       expect(await register("PD-6.67", 1_800_000)).to.equal(90_000);
       expect(await register("PD-10", 1_200_000)).to.equal(90_000);
       expect(await register("PD-12", 1_000_000)).to.equal(0);
+    });
+
+    it("applies VMR0017's EF_Res (100 kg/MWh) and embodied factor (21 g/kWh), and the 15 MW hydro limit", async function () {
+      const { registry, operator } = await loadFixture(readyFixture);
+      const vmr = { methodology: METHODOLOGY.Vmr0017, capacityKw: 12_000, reservoirAreaM2: 1_800_000 };
+      const id = ethers.encodeBytes32String("VMR0017");
+      await registry.registerPlant(id, "vmr", operator.address, await plantDesign(vmr));
+      const plant = await registry.getPlant(id);
+      expect(plant.design.methodology).to.equal(METHODOLOGY.Vmr0017);
+      expect(plant.reservoirGPerMwh).to.equal(100_000);
+      expect(plant.embodiedGPerMwh).to.equal(21_000);
+      expect((await registry.getPlant(PLANT_ID)).embodiedGPerMwh).to.equal(0);
+
+      await expect(
+        registry.registerPlant(other, "x", operator.address, await plantDesign({ ...vmr, capacityKw: 15_001 })),
+      )
+        .to.be.revertedWithCustomError(registry, "MethodologyNotApplicable")
+        .withArgs(METHODOLOGY.Vmr0017, 15_001);
+      // The CDM path (ACM0002) has no such limit.
+      await registry.registerPlant(other, "x", operator.address, await plantDesign({ capacityKw: 15_001 }));
     });
 
     it("refuses reservoirs with PD ≤ 4 W/m² or smaller than the baseline", async function () {
@@ -350,12 +371,14 @@ describe("HydroCreditRegistry", function () {
             baselineG: Number(stored.baselineG),
             reservoirG: Number(stored.reservoirG),
             fossilFuelG: Number(stored.fossilFuelG),
+            leakageG: Number(stored.leakageG),
             reductionG: Number(stored.reductionG),
             unitsMinted: Number(stored.unitsMinted),
             balanceG: Number((await registry.getPlant(plantId)).balanceG),
           };
           expect(actual, `day ${p.startDay}`).to.deep.equal(p.expected);
           expect(preview.reductionG).to.equal(p.expected.reductionG);
+          expect(preview.leakageG).to.equal(p.expected.leakageG);
         }
       });
     }

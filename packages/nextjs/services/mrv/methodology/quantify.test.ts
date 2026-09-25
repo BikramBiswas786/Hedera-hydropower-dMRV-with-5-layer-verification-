@@ -15,6 +15,7 @@ const DAY = 86_400;
 
 const greenfield: RegisteredDesign = {
   projectType: PROJECT_TYPE_CODE.greenfield,
+  methodology: 0,
   capacityKw: 12_000,
   baselineCapacityKw: 0,
   reservoirAreaM2: 0,
@@ -171,6 +172,7 @@ describe("shared vectors (the contract test asserts the same numbers)", () => {
           baselineG: Number(q.baselineG),
           reservoirG: Number(q.reservoirG),
           fossilFuelG: Number(q.fossilFuelG),
+          leakageG: Number(q.leakageG),
           reductionG: Number(q.reductionG),
           unitsMinted: Number(q.unitsMinted),
           balanceG: Number(q.ledger.balanceG),

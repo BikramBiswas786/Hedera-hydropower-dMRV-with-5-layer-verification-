@@ -54,6 +54,8 @@ export const signatureSchema = z.string().regex(/^0x[0-9a-fA-F]{130}$/, "Expecte
 /** The integers `HydroCreditRegistry.registerPlant` stores (see `methodology/project.ts`). */
 export const registeredDesignSchema = z.object({
   projectType: z.number().int().min(0).max(2),
+  /** 0 = CDM (ACM0002 / AMS-I.D), 1 = VMR0017 v1.0; absent in data messages published before VMR0017. */
+  methodology: z.number().int().min(0).max(1).default(0),
   capacityKw: safeInt(1),
   baselineCapacityKw: safeInt(),
   reservoirAreaM2: safeInt(),
@@ -70,7 +72,7 @@ export const registeredDesignSchema = z.object({
 export const plantProfileSchema = z.object({
   plantId: z.string().min(1).max(31),
   name: z.string().max(80),
-  methodology: z.enum(["ACM0002", "AMS-I.D"]),
+  methodology: z.enum(["ACM0002", "AMS-I.D", "VMR0017"]),
   design: registeredDesignSchema,
   hydraulics: z.object({
     maxFlowM3s: z.number().positive(),
