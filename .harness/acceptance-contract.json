@@ -37,7 +37,7 @@
       "route": "/verify",
       "severity": "major",
       "statement": "An APPROVED report shows the exact HCS message with its monitored inputs and emission figures, and publishing requires an operator API key.",
-      "howToVerify": "With 'healthy' selected, find the '3. HCS anchors' card: it shows JSON with schema 'hydro-dmrv/report@3' containing 'monitored' and 'emissions', a 0x-prefixed reportHash, and an 'Anchor & attest' button that stays disabled until a key is typed.",
+      "howToVerify": "With 'healthy' selected, find the '3. HCS anchors' card: it shows JSON with schema 'hydro-dmrv/report@4' containing 'monitored' and 'emissions', a 0x-prefixed reportHash, and an 'Anchor & attest' button that stays disabled until a key is typed.",
       "walletRequired": false,
       "verifiableWithoutCredentials": true
     },
