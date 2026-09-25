@@ -2,7 +2,14 @@ import { ENGINE_VERSION, type VerificationReport, verifyReadings } from "./engin
 import type { RegisteredDesign } from "./methodology/project";
 import { fetchChunkedMessage, fetchTopicMessage } from "./mirror";
 import { hashscan } from "./network";
-import { type HcsReportMessage, REPORT_SCHEMA, base64ToBytes, decodeMessage, parseDataMessage } from "./report";
+import {
+  type HcsReportMessage,
+  LEGACY_REPORT_SCHEMAS,
+  REPORT_SCHEMA,
+  base64ToBytes,
+  decodeMessage,
+  parseDataMessage,
+} from "./report";
 import type { AttestationView } from "./views";
 import type { Hex } from "viem";
 
@@ -58,7 +65,8 @@ export async function auditAttestation(
   let report: HcsReportMessage | null = null;
   try {
     const parsed = JSON.parse(text) as HcsReportMessage;
-    if (parsed.schema === REPORT_SCHEMA) report = parsed;
+    const known: string[] = [REPORT_SCHEMA, ...LEGACY_REPORT_SCHEMAS];
+    if (known.includes(parsed.schema)) report = parsed;
   } catch {
     report = null;
   }
@@ -74,7 +82,8 @@ export async function auditAttestation(
     check("EG_facility (netWh)", attestation.netEnergyWh, report?.monitored.netWh),
     check("TEG (grossWh)", attestation.grossEnergyWh, report?.monitored.grossWh),
     check("FC (fuelG)", attestation.fuelG, report?.monitored.fuelG),
-    check("LE (leakageG)", attestation.leakageG, report?.monitored.leakageG),
+    // From report@4 the contract stores LE_y (monitored + embodied); report@3 had monitored leakage only.
+    check("LE (leakageG)", attestation.leakageG, e?.leakageG ?? report?.monitored.leakageG),
     check("EG_PJ (Wh)", attestation.projectEnergyWh, e?.egProjectWh),
     check("BE (g)", attestation.baselineG, e?.baselineG),
     check("PE_HP (g)", attestation.reservoirG, e?.reservoirG),
@@ -169,6 +178,7 @@ export async function reproduceAttestation(
     check("BE (g)", e?.baselineG ?? null, r?.baselineG ?? null),
     check("PE_HP (g)", e?.reservoirG ?? null, r?.reservoirG ?? null),
     check("PE_FF (g)", e?.fossilFuelG ?? null, r?.fossilFuelG ?? null),
+    ...(e?.leakageG === undefined ? [] : [check("LE (g)", e.leakageG, r?.leakageG ?? null)]),
     check("ER (g)", e?.reductionG ?? null, r?.reductionG ?? null),
     check("credits (kg)", e?.unitsMinted ?? null, r?.unitsMinted ?? null),
     check("EF_grid,CM (g/MWh)", report.parameters.efGridGPerMwh, recomputed.parameters.efGridGPerMwh),

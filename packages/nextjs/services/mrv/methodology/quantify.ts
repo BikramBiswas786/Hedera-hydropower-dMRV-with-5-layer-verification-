@@ -1,5 +1,12 @@
 import { MethodologyError } from "./errors";
-import { CREDITING_YEAR_SECONDS, PROJECT_TYPE_CODE, type RegisteredDesign, powerDensity } from "./project";
+import {
+  CREDITING_YEAR_SECONDS,
+  PROJECT_TYPE_CODE,
+  type RegisteredDesign,
+  embodiedEfGPerMwh,
+  powerDensity,
+  reservoirEfGPerMwh,
+} from "./project";
 
 /**
  * Emission reductions for one monitoring period, in integers, exactly as `HydroCreditRegistry.submitAttestation`
@@ -11,7 +18,10 @@ import { CREDITING_YEAR_SECONDS, PROJECT_TYPE_CODE, type RegisteredDesign, power
  *   BE_y    = EG_PJ,y × EF_grid,CM,y                                          rounded down
  *   PE_y    = PE_FF,y + PE_HP,y                                               rounded up
  *             PE_FF,y = FC_y × COEF (TOOL03)      PE_HP,y = EF_Res × TEG_y when 4 < PD ≤ 10
- *   LE_y    = 0                                                               (ACM0002; AMS-I.D without transfer)
+ *             EF_Res = 90 kg CO2e/MWh (CDM) or 100 (VMR0017 §9.1)
+ *   LE_y    = 0                                                               CDM (ACM0002; AMS-I.D w/o transfer)
+ *   LE_y    = EG × EF_embodied, 21 g CO2e/kWh for hydro                       VMR0017 §8.3, rounded up; EG is
+ *             EG_facility,y (greenfield) or EG_PJ_Add,y (capacity addition), never below 0; 0 for a retrofit
  *   ER_y    = BE_y − PE_y − LE_y
  *
  * Units: energy in Wh, emissions in g CO2e, EF in g CO2/MWh, fuel in g, COEF in g CO2/t fuel.
@@ -44,7 +54,7 @@ export type MonitoredQuantities = {
   grossWh: bigint;
   /** FC: on-site fossil fuel burnt. */
   fuelG: bigint;
-  /** LE: leakage, zero under ACM0002 and under AMS-I.D without transferred equipment. */
+  /** Leakage assessed outside the methodology's equations (e.g. transferred equipment); normally zero. */
   leakageG: bigint;
 };
 
@@ -54,6 +64,9 @@ export type Quantification = {
   baselineG: bigint;
   reservoirG: bigint;
   fossilFuelG: bigint;
+  /** VMR0017 embodied emissions (LE_embodied); 0 under the CDM. */
+  embodiedG: bigint;
+  /** LE_y: the monitored leakage plus the embodied emissions. */
   leakageG: bigint;
   reductionG: bigint;
   unitsMinted: bigint;
@@ -78,7 +91,7 @@ export function creditingPeriodViolation(design: RegisteredDesign, periodStart: 
 }
 
 export function reservoirRateGPerMwh(design: RegisteredDesign): bigint {
-  return BigInt(powerDensity(design).peHpGPerMwh);
+  return BigInt(powerDensity(design, reservoirEfGPerMwh(design.methodology)).peHpGPerMwh);
 }
 
 export function quantifyPeriod(
@@ -111,7 +124,16 @@ export function quantifyPeriod(
   const baselineG = floorDiv(egProjectWh * BigInt(design.efGridGPerMwh), WH_PER_MWH);
   const reservoirG = ceilDiv(monitored.grossWh * reservoirRateGPerMwh(design), WH_PER_MWH);
   const fossilFuelG = ceilDiv(monitored.fuelG * BigInt(design.fuelCoefGPerTonne), G_PER_TONNE);
-  const reductionG = baselineG - reservoirG - fossilFuelG - monitored.leakageG;
+  // A period that imports more than it exports carries no embodied emissions rather than negative ones.
+  const embodiedBasisWh =
+    design.projectType === PROJECT_TYPE_CODE.greenfield
+      ? max0(monitored.netWh)
+      : design.projectType === PROJECT_TYPE_CODE["capacity-addition"]
+        ? max0(egProjectWh)
+        : 0n;
+  const embodiedG = ceilDiv(embodiedBasisWh * BigInt(embodiedEfGPerMwh(design.methodology)), WH_PER_MWH);
+  const leakageG = monitored.leakageG + embodiedG;
+  const reductionG = baselineG - reservoirG - fossilFuelG - leakageG;
 
   const balance = ledger.balanceG + reductionG;
   const unitsMinted = balance > 0n ? balance / G_PER_UNIT : 0n;
@@ -122,7 +144,8 @@ export function quantifyPeriod(
     baselineG,
     reservoirG,
     fossilFuelG,
-    leakageG: monitored.leakageG,
+    embodiedG,
+    leakageG,
     reductionG,
     unitsMinted,
     ledger: {

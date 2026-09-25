@@ -187,9 +187,17 @@ describe("verifyReadings — quantification", () => {
     expect(value("PE")).toBeCloseTo(value("PE_FF") + value("PE_HP"), 9);
   });
 
-  it("uses TEG, not net export, for reservoir emissions", () => {
+  it("uses TEG, not net export, for reservoir emissions (VMR0017 EF_Res 100 kg/MWh)", () => {
     const { report } = run("healthy", DEMO_PLANTS[1]);
-    expect(report.emissions?.reservoirG).toBe(Math.ceil((report.monitored.grossWh * 90_000) / 1e6));
+    expect(report.emissions?.reservoirG).toBe(Math.ceil((report.monitored.grossWh * 100_000) / 1e6));
+  });
+
+  it("charges VMR0017 embodied emissions on EG_facility as leakage", () => {
+    const { report } = run("healthy");
+    expect(report.emissions?.embodiedG).toBe(Math.ceil((report.monitored.netWh * 21_000) / 1e6));
+    expect(report.emissions?.leakageG).toBe(report.emissions?.embodiedG);
+    const value = (symbol: string) => report.equations.find(e => e.symbol === symbol);
+    expect(value("LE")?.expression).toMatch(/EF_embodied \(21 g CO2e\/kWh\), VMR0017/);
   });
 
   it("does not quantify a period outside the crediting period", () => {

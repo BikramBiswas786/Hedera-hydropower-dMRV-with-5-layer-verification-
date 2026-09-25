@@ -1,4 +1,9 @@
-import { type ProjectAssessment, type ProjectDesign, assessProject } from "./methodology/project";
+import {
+  type AdditionalityEvidence,
+  type ProjectAssessment,
+  type ProjectDesign,
+  assessProject,
+} from "./methodology/project";
 import type { GenerationSource, GridYear, PowerUnit, Tool07Input } from "./methodology/tool07";
 import type { Metering, PlantProfile } from "./schema";
 import { type Hex, keccak256, stringToBytes } from "viem";
@@ -51,10 +56,32 @@ export const DEMO_GRID: Omit<Tool07Input, "projectKind" | "creditingPeriod"> = {
   operatingMargin: "simple",
 };
 
+/**
+ * ILLUSTRATIVE VT0008 evidence, standing in for what a VVB validates from the investment analysis and common-practice
+ * study. Real projects cite their validation report here.
+ */
+const DEMO_ADDITIONALITY: AdditionalityEvidence = {
+  tool: "VT0008",
+  regulatorySurplus: true,
+  investment: { indicator: "IRR", projectValuePct: 8.1, benchmarkPct: 11.5 },
+  commonPractice: {
+    isCommonPractice: false,
+    basis: "Illustrative: grid-connected small hydro supplies under 20% of comparable capacity in the host country",
+  },
+  assessedBy: "Illustrative demo data, not validated",
+};
+
+/**
+ * Both demo plants use Verra VMR0017 v1.0 with ACM0002 v22.0. Its Table 1 limits hydro to 15 MW or less in Least
+ * Developed Countries, so the host country is set to Uganda (an LDC); the grid data above stays illustrative.
+ */
 export const DEMO_DESIGNS: ProjectDesign[] = [
   {
     plantId: "HYDRO-DEMO-01",
     name: "Demo run-of-river plant",
+    methodology: "VMR0017",
+    hostCountry: "UG",
+    additionality: DEMO_ADDITIONALITY,
     projectType: "greenfield",
     capacityKw: 500,
     baselineCapacityKw: 0,
@@ -69,6 +96,9 @@ export const DEMO_DESIGNS: ProjectDesign[] = [
   {
     plantId: "HYDRO-DEMO-02",
     name: "Demo storage plant, renewed crediting period",
+    methodology: "VMR0017",
+    hostCountry: "UG",
+    additionality: DEMO_ADDITIONALITY,
     projectType: "greenfield",
     capacityKw: 12_000,
     baselineCapacityKw: 0,

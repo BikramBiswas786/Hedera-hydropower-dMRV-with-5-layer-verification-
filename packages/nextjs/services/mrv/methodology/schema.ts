@@ -45,7 +45,26 @@ const wholeNumber = z.number().int().min(0).max(Number.MAX_SAFE_INTEGER);
 export const projectDesignSchema = z.object({
   plantId: z.string().min(1).max(31),
   name: z.string().min(1).max(80),
-  methodology: z.enum(["ACM0002", "AMS-I.D"]).optional(),
+  methodology: z.enum(["ACM0002", "AMS-I.D", "VMR0017"]).optional(),
+  hostCountry: z
+    .string()
+    .regex(/^[A-Za-z]{2}$/, "ISO 3166-1 alpha-2 country code")
+    .optional(),
+  authorizedCapacityKw: wholeNumber.optional(),
+  additionality: z
+    .object({
+      tool: z.literal("VT0008"),
+      regulatorySurplus: z.boolean(),
+      investment: z.object({
+        indicator: z.enum(["IRR", "NPV-ratio"]),
+        projectValuePct: z.number(),
+        benchmarkPct: z.number(),
+      }),
+      commonPractice: z.object({ isCommonPractice: z.boolean(), basis: z.string().min(1).max(500) }),
+      assessedBy: z.string().max(120).optional(),
+      reportUri: z.string().max(300).optional(),
+    })
+    .optional(),
   projectType: z.enum(PROJECT_TYPES),
   capacityKw: wholeNumber.min(1),
   baselineCapacityKw: wholeNumber,

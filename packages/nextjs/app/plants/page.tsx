@@ -2,7 +2,7 @@ import Link from "next/link";
 import type { NextPage } from "next";
 import { NetworkErrorNotice, NotDeployedNotice, PageHeader, StatCard } from "~~/components/hydro/ui";
 import scaffoldConfig from "~~/scaffold.config";
-import { SMALL_SCALE_LIMIT_KW } from "~~/services/mrv/methodology/project";
+import { registeredMethodologyLabel } from "~~/services/mrv/methodology/project";
 import { listPlants } from "~~/services/mrv/server/insights";
 import { RegistryNotDeployedError } from "~~/services/mrv/server/registry";
 import { formatTonnes, formatWhAsMwh } from "~~/services/mrv/views";
@@ -53,9 +53,7 @@ const PlantsPage: NextPage = async () => {
             >
               <div className="flex flex-wrap items-center gap-2">
                 <span className="font-mono text-sm text-base-content/60">{plant.plantId}</span>
-                <span className="badge badge-outline badge-sm">
-                  {plant.design.capacityKw > SMALL_SCALE_LIMIT_KW ? "ACM0002" : "AMS-I.D"}
-                </span>
+                <span className="badge badge-outline badge-sm">{registeredMethodologyLabel(plant.design)}</span>
                 {!plant.active && <span className="badge badge-warning badge-sm">inactive</span>}
               </div>
               <h2 className="text-xl font-bold m-0">{plant.name}</h2>

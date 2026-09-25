@@ -15,7 +15,8 @@ import { getMetadata } from "~~/utils/scaffold-hbar/getMetadata";
 
 export const metadata = getMetadata({
   title: "Methodology",
-  description: "CDM AMS-I.D / ACM0002 with TOOL07 and TOOL03 as implemented by the engine and the contract",
+  description:
+    "Verra VMR0017 v1.0 with ACM0002 v22.0, and CDM AMS-I.D / ACM0002, as implemented by the engine and the contract",
 });
 
 const Card = ({ title, children }: { title: string; children: ReactNode }) => (
@@ -40,11 +41,15 @@ const MethodologyPage: NextPage = () => (
   <div className="flex flex-col gap-6 px-5 py-8 max-w-6xl w-full mx-auto">
     <PageHeader title="Methodology">
       <p className="mt-2">
-        Quantification follows CDM <strong>{METHODOLOGIES["AMS-I.D"].id}</strong> v{METHODOLOGIES["AMS-I.D"].version} (≤
-        15 MW) and <strong>{METHODOLOGIES.ACM0002.id}</strong> v{METHODOLOGIES.ACM0002.version}, with{" "}
-        <strong>TOOL07</strong> for the grid emission factor and <strong>TOOL03</strong> for fossil fuel burnt on site.
-        The same integer arithmetic runs in this app, in the MCP server and inside the <code>HydroCreditRegistry</code>{" "}
-        contract, and shared test vectors keep them identical.
+        Each plant is registered under one of two rule sets. <strong>Verra VMR0017</strong> v
+        {METHODOLOGIES.VMR0017.version} (23 April 2026), the demo plants&apos; methodology, is applied with{" "}
+        <strong>{METHODOLOGIES.ACM0002.id}</strong> v{METHODOLOGIES.ACM0002.version} as it requires: hydro of 15 MW or
+        less in Least Developed Countries, VT0008 additionality, EF_Res 100 kg CO₂e/MWh and embodied-emission leakage.
+        The <strong>CDM</strong> rules (AMS-I.D v{METHODOLOGIES["AMS-I.D"].version} up to 15 MW, ACM0002 above) remain
+        available; Verra inactivates them as standalone methodologies on 1 January 2027. <strong>TOOL03</strong> prices
+        fossil fuel burnt on site and the grid factor follows <strong>TOOL07</strong>&apos;s procedure (VMR0017 names
+        VT0011 for it). The same integer arithmetic runs in this app, in the MCP server and inside the{" "}
+        <code>HydroCreditRegistry</code> contract, and shared test vectors keep them identical.
       </p>
     </PageHeader>
 
@@ -56,8 +61,10 @@ BE_y  = EG_PJ,y × EF_grid,CM,y          rounded down
 PE_y  = PE_FF,y + PE_HP,y               rounded up
 PE_FF = Σ FC × NCV × EF_CO2             TOOL03, IPCC upper bounds
 PE_HP = EF_Res × TEG_y                  if ${MIN_POWER_DENSITY} < PD ≤ ${RESERVOIR_EMISSIONS_POWER_DENSITY} W/m², else 0
-                                        EF_Res = 90 kg CO2e/MWh
-LE_y  = 0                               ACM0002; AMS-I.D w/o transfer`}</Eq>
+                                        EF_Res = 100 kg CO2e/MWh (VMR0017), 90 (CDM)
+LE_y  = EG × EF_embodied                VMR0017 §8.3, 21 g CO2e/kWh for hydro,
+                                        EG_facility (greenfield) or EG_PJ_Add (addition)
+LE_y  = 0                               CDM; VMR0017 retrofit`}</Eq>
           <Eq>{`EG_PJ,y = EG_facility,y                        greenfield
 EG_PJ,y = EG_facility,y − (EG_historical + σ)  retrofit, addition
           per crediting year, cumulatively; 0 after DATE_BaselineRetrofit
@@ -247,6 +254,7 @@ EG_facility = export − import at the grid meter, after QA/QC`}</Eq>
           <li>Baseline fields per project type, grid EF range, crediting period of at most 10 × 365 days.</li>
           <li>Periods inside the crediting period, inside one crediting year, never overlapping.</li>
           <li>Gross generation within nameplate × duration; net export never above gross.</li>
+          <li>VMR0017 plants: at most 15 MW; EF_Res and EF_embodied fixed by the registered methodology.</li>
           <li>
             BE, PE_HP, PE_FF, LE and ER recomputed from monitored inputs; credits minted from the carried balance.
           </li>
@@ -256,9 +264,11 @@ EG_facility = export − import at the grid meter, after QA/QC`}</Eq>
           </li>
         </ul>
         <p className="text-sm text-base-content/70 m-0">
-          Not implemented: TOOL07 option B, dispatch-data and ex-post OM, off-grid plants and imports, integrated hydro
-          projects, storage and geothermal sources. A VVB still validates the design; this is a digital implementation
-          of the equations, not a certification.
+          Not implemented: VT0011 as a separate tool (the grid factor follows TOOL07, which VMR0017 replaces with
+          VT0011; register a published combined margin if they differ), TOOL07 option B, dispatch-data and ex-post OM,
+          off-grid plants and imports, integrated hydro projects, battery and pumped storage, geothermal sources. The
+          LDC and VT0008 conditions are checked at design assessment from recorded evidence; a VVB validates the design
+          and the additionality, and this is a digital implementation of the equations, not a certification.
         </p>
       </Card>
     </div>

@@ -1,6 +1,7 @@
 # Hydro dMRV
 
-> Carbon-credit MRV for grid-connected hydropower on Hedera, following CDM AMS-I.D (≤ 15 MW) and ACM0002 with TOOL07
+> Carbon-credit MRV for grid-connected hydropower on Hedera, following Verra VMR0017 v1.0 applied with ACM0002 v22.0
+> (per plant; the demo plants) or CDM AMS-I.D (≤ 15 MW) and ACM0002, with TOOL07
 > (grid emission factor) and TOOL03 (fossil fuel combustion). A deterministic 5-stage engine verifies monitoring data
 > and quantifies ER = BE − PE − LE. Raw readings and reports are published on the Hedera Consensus Service (HCS), so
 > any agent can reproduce every figure. The HydroCreditRegistry contract stores each plant's validated design,
@@ -68,7 +69,9 @@ Buying as an agent: `list_open_listings` → `prepare_purchase { listingId, amou
   intervals, main/check meter disagreement, efficiency outliers or safeguard exceedances; otherwise APPROVED.
 - Units: energy in Wh, emissions in g CO2e, grid EF in g CO2/MWh, fuel in g, COEF in g CO2 per tonne of fuel.
   BE rounds down, PE rounds up; sub-kg remainders and deficits carry to the plant's next period.
-- HCS: `hydro-dmrv/readings@3` (readings + meter signature + plant + metering + ledger, up to 20 chunks) then `hydro-dmrv/report@3`
+- VMR0017 (methodology 1 on-chain): hydro ≤ 15 MW in LDCs, VT0008 additionality evidence, EF_Res 100 kg CO2e/MWh,
+  leakage = embodied emissions 21 g CO2e/kWh of EG_facility (greenfield) or EG_PJ_Add (capacity addition).
+- HCS: `hydro-dmrv/readings@4` (readings + meter signature + plant + metering + ledger, up to 20 chunks) then `hydro-dmrv/report@4`
   (monitored inputs, emissions, `data: { hash, sequence }`). The contract stores sha256(report) and its sequence.
 - Prices: listings in US cents per tonne; quotes in the EVM's native unit (tinybar on Hedera); `prepare_purchase`
   returns `value` already scaled to 18-decimal weibar with a 1% buffer that the contract refunds.

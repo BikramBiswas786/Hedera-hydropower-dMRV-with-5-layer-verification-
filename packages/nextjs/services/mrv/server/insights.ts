@@ -1,4 +1,4 @@
-import { METHODOLOGIES, PROJECT_TYPES, SMALL_SCALE_LIMIT_KW, powerDensity } from "../methodology/project";
+import { PROJECT_TYPES, powerDensity, registeredMethodologyLabel, reservoirEfGPerMwh } from "../methodology/project";
 import { hashscan, isLiveHederaChain } from "../network";
 import {
   type AttestationView,
@@ -115,11 +115,10 @@ export async function getPlantDetail(plantId: string): Promise<PlantDetail> {
       reportUrl: a.hcsTopicId && isLiveHederaChain() ? hashscan.topicMessage(a.hcsTopicId, a.hcsSequence) : null,
       auditUrl: `/api/registry/attestations/${a.id}/reproduce`,
     }));
-  const pd = powerDensity(plant.design);
-  const methodology = plant.design.capacityKw > SMALL_SCALE_LIMIT_KW ? METHODOLOGIES.ACM0002 : METHODOLOGIES["AMS-I.D"];
+  const pd = powerDensity(plant.design, reservoirEfGPerMwh(plant.design.methodology));
   return {
     plant,
-    methodology: `${methodology.id} v${methodology.version}`,
+    methodology: registeredMethodologyLabel(plant.design),
     projectType: PROJECT_TYPES[plant.design.projectType] ?? "unknown",
     powerDensity: { wPerM2: pd.wPerM2, basis: pd.basis },
     totals: plantTotals(attestations),

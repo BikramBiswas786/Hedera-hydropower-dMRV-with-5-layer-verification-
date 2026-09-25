@@ -1,12 +1,19 @@
 import { MethodologyError } from "./errors";
+import { isLeastDevelopedCountry } from "./ldc";
 import { type FuelCoefficient, type OnSiteFuel, fuelCoefficient } from "./tool03";
 import { type Tool07Input, type Tool07Result, calculateGridEmissionFactor } from "./tool07";
 
 /**
- * Project-level (ex-ante) part of ACM0002 / AMS-I.D for hydropower: applicability, the reservoir power-density rule,
- * the baseline scenario for greenfield, retrofit and capacity-addition plants, the grid emission factor (TOOL07),
- * the fuel coefficient for project emissions (TOOL03) and the crediting period. The result is what a VVB validates
+ * Project-level (ex-ante) part of the methodology for hydropower: applicability, the reservoir power-density rule,
+ * the baseline scenario for greenfield, retrofit and capacity-addition plants, the grid emission factor, the fuel
+ * coefficient for project emissions (TOOL03), leakage and the crediting period. The result is what a VVB validates
  * and what `registerPlant` stores on-chain.
+ *
+ * Two methodology versions are supported and registered per plant:
+ *   - CDM: ACM0002 v22.0 (large scale) or AMS-I.D v18.0 (up to 15 MW), as issued under the CDM.
+ *   - VMR0017 v1.0 (Verra, 23 April 2026), which "must be used with ACM0002, v22.0" and changes, for hydro: the
+ *     applicability (15 MW or less, LDC host countries only, Table 1), additionality (VT0008), EF_Res (100 instead of
+ *     90 kg CO2e/MWh, §9.1), leakage (embodied emissions, §8.3) and the grid emission factor tool (VT0011).
  */
 
 export const METHODOLOGIES = {
@@ -16,16 +23,44 @@ export const METHODOLOGIES = {
     title: "Grid-connected electricity generation from renewable sources",
   },
   "AMS-I.D": { id: "AMS-I.D", version: "18.0", title: "Grid connected renewable electricity generation" },
+  VMR0017: {
+    id: "VMR0017",
+    version: "1.0",
+    title: "Grid-connected electricity generation from renewable sources (ACM0002 revision), with ACM0002 v22.0",
+  },
 } as const;
 export type MethodologyId = keyof typeof METHODOLOGIES;
 
-/** AMS-I.D (small scale) applies up to 15 MW of installed capacity. */
+/** `HydroCreditRegistry.Methodology`: which rule set the contract applies to a plant. */
+export const METHODOLOGY_CODE = { CDM: 0, VMR0017: 1 } as const;
+export type MethodologyCode = (typeof METHODOLOGY_CODE)[keyof typeof METHODOLOGY_CODE];
+export const methodologyCodeOf = (id: MethodologyId): MethodologyCode =>
+  id === "VMR0017" ? METHODOLOGY_CODE.VMR0017 : METHODOLOGY_CODE.CDM;
+
+/** AMS-I.D (small scale) applies up to 15 MW of installed capacity; VMR0017 limits hydro to the same. */
 export const SMALL_SCALE_LIMIT_KW = 15_000;
+export const VMR0017_MAX_HYDRO_KW = 15_000;
 /** Power density thresholds (W/m²) for new or enlarged reservoirs. */
 export const MIN_POWER_DENSITY = 4;
 export const RESERVOIR_EMISSIONS_POWER_DENSITY = 10;
-/** EF_Res: default emission factor for reservoir emissions, 90 kg CO2e/MWh = 90 000 g CO2e/MWh. */
+/** EF_Res, the default emission factor for reservoir emissions: 90 kg CO2e/MWh under ACM0002 / AMS-I.D. */
 export const RESERVOIR_EF_G_PER_MWH = 90_000;
+/** VMR0017 §9.1: EF_Res = 100 kg CO2e/MWh (Hydropower Sustainability Standard and Guidelines). */
+export const VMR0017_RESERVOIR_EF_G_PER_MWH = 100_000;
+/** VMR0017 §9.1: EF_embodied for hydropower, 21 g CO2e/kWh (NREL 2021) = 21 000 g CO2e/MWh. */
+export const VMR0017_EMBODIED_HYDRO_G_PER_MWH = 21_000;
+
+/** Label for a registered plant: VMR0017 plants apply ACM0002 v22.0 at any size; CDM plants split at 15 MW. */
+export function registeredMethodologyLabel(design: { methodology: number; capacityKw: number }): string {
+  if (design.methodology === METHODOLOGY_CODE.VMR0017) return "VMR0017 v1.0 + ACM0002 v22.0";
+  const m = design.capacityKw > SMALL_SCALE_LIMIT_KW ? METHODOLOGIES.ACM0002 : METHODOLOGIES["AMS-I.D"];
+  return `${m.id} v${m.version}`;
+}
+
+export const reservoirEfGPerMwh = (code: number) =>
+  code === METHODOLOGY_CODE.VMR0017 ? VMR0017_RESERVOIR_EF_G_PER_MWH : RESERVOIR_EF_G_PER_MWH;
+export const embodiedEfGPerMwh = (code: number) =>
+  code === METHODOLOGY_CODE.VMR0017 ? VMR0017_EMBODIED_HYDRO_G_PER_MWH : 0;
 /** Sanity ceiling the contract enforces: 2 t CO2/MWh is above any real grid's combined margin. */
 export const MAX_GRID_EF_G_PER_MWH = 2_000_000;
 /** Crediting-period years are 365-day blocks, here and in the contract. */
@@ -50,11 +85,34 @@ export type Hydraulics = {
   maxEfficiency: number;
 };
 
+/**
+ * VT0008 additionality evidence as validated by the VVB (VMR0017 §7): regulatory surplus, investment analysis
+ * (benchmark, Step 3) and common practice (Step 4). Barrier analysis is not applicable under VMR0017. The engine
+ * checks that the evidence is complete and consistent; the determination itself is the VVB's.
+ */
+export type AdditionalityEvidence = {
+  tool: "VT0008";
+  regulatorySurplus: boolean;
+  /** Step 3, benchmark analysis: the project's financial indicator without carbon revenue vs the benchmark. */
+  investment: { indicator: "IRR" | "NPV-ratio"; projectValuePct: number; benchmarkPct: number };
+  /** Step 4: whether the activity is common practice in the host country and sector. */
+  commonPractice: { isCommonPractice: boolean; basis: string };
+  /** Validation/verification body and the report the evidence comes from. */
+  assessedBy?: string;
+  reportUri?: string;
+};
+
 export type ProjectDesign = {
   plantId: string;
   name: string;
-  /** Defaults to AMS-I.D up to 15 MW and ACM0002 above. */
+  /** CDM defaults to AMS-I.D up to 15 MW and ACM0002 above; VMR0017 applies ACM0002 v22.0 with Verra's changes. */
   methodology?: MethodologyId;
+  /** ISO 3166-1 alpha-2 host country. VMR0017 limits hydro to Least Developed Countries. */
+  hostCountry?: string;
+  /** Capacity in the activity approval, when it differs from the rated capacity (VMR0017 Table 1 uses the higher). */
+  authorizedCapacityKw?: number;
+  /** VT0008 evidence; required under VMR0017. */
+  additionality?: AdditionalityEvidence;
   projectType: ProjectType;
   /** Cap_PJ and Cap_BL: installed capacity after and before the project (kW; 0 before a greenfield plant). */
   capacityKw: number;
@@ -75,9 +133,11 @@ export type ProjectDesign = {
   hydraulics: Hydraulics;
 };
 
-/** Integers stored by `HydroCreditRegistry.registerPlant`; the contract derives PE_HP from the areas itself. */
+/** Integers stored by `HydroCreditRegistry.registerPlant`; the contract derives PE_HP and LE rates itself. */
 export type RegisteredDesign = {
   projectType: number;
+  /** `METHODOLOGY_CODE`: 0 = CDM (ACM0002 / AMS-I.D), 1 = VMR0017 v1.0. */
+  methodology: number;
   capacityKw: number;
   baselineCapacityKw: number;
   reservoirAreaM2: number;
@@ -123,7 +183,8 @@ export type ProjectAssessment = {
     endsAt: number;
   };
   projectEmissions: { fuel: FuelCoefficient | null; reservoir: string };
-  leakage: { basis: string };
+  leakage: { basis: string; embodiedGPerMwh: number };
+  additionality: { basis: string; evidence: AdditionalityEvidence | null };
   crediting: { start: number; end: number; years: number; period: number };
   registration: RegisteredDesign;
 };
@@ -143,9 +204,11 @@ const toUnix = (iso: string) => {
 /**
  * PE_HP applicability, mirrored bit for bit by the contract with integers:
  * no added area → 0; PD ≤ 4 → not eligible; 4 < PD ≤ 10 → EF_Res; PD > 10 → 0.
+ * `efRes` is the methodology's EF_Res (90 kg/MWh under the CDM, 100 under VMR0017).
  */
 export function powerDensity(
   design: Pick<ProjectDesign, "capacityKw" | "baselineCapacityKw" | "reservoirAreaM2" | "baselineReservoirAreaM2">,
+  efRes: number = RESERVOIR_EF_G_PER_MWH,
 ): PowerDensity & { eligible: boolean } {
   const addedArea = design.reservoirAreaM2 - design.baselineReservoirAreaM2;
   const addedW = (design.capacityKw - design.baselineCapacityKw) * 1_000;
@@ -172,9 +235,9 @@ export function powerDensity(
   if (addedW <= RESERVOIR_EMISSIONS_POWER_DENSITY * addedArea) {
     return {
       wPerM2,
-      peHpGPerMwh: RESERVOIR_EF_G_PER_MWH,
+      peHpGPerMwh: efRes,
       eligible: true,
-      basis: `${MIN_POWER_DENSITY} < PD = ${wPerM2.toFixed(2)} W/m² ≤ ${RESERVOIR_EMISSIONS_POWER_DENSITY}: PE_HP,y = EF_Res × TEG_y`,
+      basis: `${MIN_POWER_DENSITY} < PD = ${wPerM2.toFixed(2)} W/m² ≤ ${RESERVOIR_EMISSIONS_POWER_DENSITY}: PE_HP,y = EF_Res (${efRes / 1_000} kg/MWh) × TEG_y`,
     };
   }
   return {
@@ -182,6 +245,38 @@ export function powerDensity(
     peHpGPerMwh: 0,
     eligible: true,
     basis: `PD = ${wPerM2.toFixed(2)} W/m² > ${RESERVOIR_EMISSIONS_POWER_DENSITY}: PE_HP,y = 0`,
+  };
+}
+
+/** VMR0017 §7: all three VT0008 steps must support additionality; the engine checks completeness and consistency. */
+function additionalityOf(
+  design: ProjectDesign,
+  vmr0017: boolean,
+  failures: string[],
+): ProjectAssessment["additionality"] {
+  const evidence = design.additionality ?? null;
+  if (!vmr0017) {
+    return {
+      basis: "CDM: additionality per TOOL01/TOOL02 is part of validation and is not recorded here",
+      evidence,
+    };
+  }
+  if (!evidence) {
+    failures.push(
+      "VMR0017 §7: VT0008 additionality evidence (regulatory surplus, investment analysis, common practice) is required",
+    );
+    return { basis: "VT0008 evidence missing", evidence: null };
+  }
+  if (!evidence.regulatorySurplus) failures.push("VT0008: the project must demonstrate regulatory surplus");
+  if (evidence.investment.projectValuePct >= evidence.investment.benchmarkPct) {
+    failures.push(
+      `VT0008 Step 3: the project ${evidence.investment.indicator} without carbon revenue (${evidence.investment.projectValuePct}%) is not below the benchmark (${evidence.investment.benchmarkPct}%)`,
+    );
+  }
+  if (evidence.commonPractice.isCommonPractice) failures.push("VT0008 Step 4: the project activity is common practice");
+  return {
+    basis: `VT0008: regulatory surplus, ${evidence.investment.indicator} ${evidence.investment.projectValuePct}% below the ${evidence.investment.benchmarkPct}% benchmark without carbon revenue, not common practice${evidence.assessedBy ? `; assessed by ${evidence.assessedBy}` : ""}`,
+    evidence,
   };
 }
 
@@ -204,7 +299,10 @@ function gridFactor(design: ProjectDesign): ProjectAssessment["grid"] {
     source: "tool07",
     efTPerMwh: tool07.combinedMargin.efTPerMwh,
     efGPerMwh: tool07.combinedMargin.efGPerMwh,
-    reference: `TOOL07 ex-ante combined margin for ${tool07.system}`,
+    reference:
+      design.methodology === "VMR0017"
+        ? `TOOL07 ex-ante combined margin for ${tool07.system}. VMR0017 replaces TOOL07 with VT0011; this engine applies TOOL07's procedure, so check it against VT0011 (or register a published CM) before validation`
+        : `TOOL07 ex-ante combined margin for ${tool07.system}`,
     tool07,
   };
 }
@@ -250,28 +348,53 @@ export function assessProject(design: ProjectDesign): ProjectAssessment {
 
   const methodologyId =
     design.methodology ?? (design.capacityKw <= SMALL_SCALE_LIMIT_KW ? "AMS-I.D" : ("ACM0002" as const));
-  const scale = methodologyId === "AMS-I.D" ? "small" : "large";
+  const code = methodologyCodeOf(methodologyId);
+  const vmr0017 = code === METHODOLOGY_CODE.VMR0017;
+  const scale = design.capacityKw <= SMALL_SCALE_LIMIT_KW ? "small" : "large";
   if (methodologyId === "AMS-I.D" && design.capacityKw > SMALL_SCALE_LIMIT_KW) {
     failures.push(`AMS-I.D is limited to ${SMALL_SCALE_LIMIT_KW / 1_000} MW; use ACM0002`);
-  }
-
-  const pd = powerDensity(design);
-  if (!pd.eligible) failures.push(pd.basis);
-
-  // ACM0002 neglects leakage outright; AMS-I.D only when no equipment is transferred from another activity.
-  let leakageBasis =
-    methodologyId === "ACM0002"
-      ? "ACM0002: no leakage emissions are considered (LE_y = 0)"
-      : "AMS-I.D: equipment is not transferred from another activity, so LE_y = 0";
-  if (methodologyId === "AMS-I.D" && design.equipmentTransferred) {
-    failures.push("AMS-I.D: equipment transferred from another activity requires a leakage assessment");
-    leakageBasis = "Leakage from transferred equipment must be assessed; not supported";
   }
 
   const { years, period } = design.crediting;
   if (years === 10 && period !== 1) failures.push("A fixed 10-year crediting period cannot be renewed");
   const creditingStart = toUnix(design.crediting.start);
   const creditingEnd = creditingStart + years * CREDITING_YEAR_SECONDS;
+
+  if (vmr0017) {
+    // Table 1: hydroelectric, 15 MW or less by rated or authorized capacity (whichever is higher), LDCs only.
+    const capacity = Math.max(design.capacityKw, design.authorizedCapacityKw ?? 0);
+    if (capacity > VMR0017_MAX_HYDRO_KW) {
+      failures.push(
+        `VMR0017 Table 1: hydroelectric projects must be ${VMR0017_MAX_HYDRO_KW / 1_000} MW or less (rated or authorized capacity)`,
+      );
+    }
+    if (!design.hostCountry) {
+      failures.push("VMR0017 Table 1: the host country is required (hydroelectric: LDC countries only)");
+    } else if (!isLeastDevelopedCountry(design.hostCountry, creditingStart)) {
+      failures.push(
+        `VMR0017 Table 1: hydroelectric projects are eligible in LDC countries only; ${design.hostCountry} is not an LDC at the crediting start`,
+      );
+    }
+  }
+
+  const pd = powerDensity(design, reservoirEfGPerMwh(code));
+  if (!pd.eligible) failures.push(pd.basis);
+
+  // ACM0002 neglects leakage; AMS-I.D only without transferred equipment; VMR0017 §8.3 adds embodied emissions.
+  let leakageBasis =
+    methodologyId === "ACM0002"
+      ? "ACM0002: no leakage emissions are considered (LE_y = 0)"
+      : "AMS-I.D: equipment is not transferred from another activity, so LE_y = 0";
+  if (vmr0017) {
+    leakageBasis =
+      design.projectType === "retrofit"
+        ? "VMR0017 §8.3 gives embodied-emission equations for greenfield plants and capacity additions only: LE_y = 0 for a retrofit"
+        : `VMR0017 §8.3: LE_y = ${design.projectType === "greenfield" ? "EG_facility,y" : "EG_PJ_Add,y"} × EF_embodied (${VMR0017_EMBODIED_HYDRO_G_PER_MWH / 1_000} g CO2e/kWh for hydropower)`;
+  } else if (methodologyId === "AMS-I.D" && design.equipmentTransferred) {
+    failures.push("AMS-I.D: equipment transferred from another activity requires a leakage assessment");
+    leakageBasis = "Leakage from transferred equipment must be assessed; not supported";
+  }
+  const additionality = additionalityOf(design, vmr0017, failures);
 
   const baseline = baselineOf(design, failures);
   const grid = gridFactor(design);
@@ -293,10 +416,12 @@ export function assessProject(design: ProjectDesign): ProjectAssessment {
       fuel,
       reservoir: pd.basis,
     },
-    leakage: { basis: leakageBasis },
+    leakage: { basis: leakageBasis, embodiedGPerMwh: embodiedEfGPerMwh(code) },
+    additionality,
     crediting: { start: creditingStart, end: creditingEnd, years, period },
     registration: {
       projectType: PROJECT_TYPE_CODE[design.projectType],
+      methodology: code,
       ...integers,
       efGridGPerMwh: grid.efGPerMwh,
       fuelCoefGPerTonne: fuel?.coefGPerTonne ?? 0,

@@ -1,8 +1,9 @@
 # Hydro dMRV — a Scaffold-HBAR template
 
 **Carbon credits for grid-connected hydropower whose every gram is computed by the methodology, recomputed on-chain
-and reproducible from public data.** A deterministic engine implements CDM **AMS-I.D** (≤ 15 MW) and **ACM0002**
-with **TOOL07** (grid emission factor) and **TOOL03** (fossil fuel combustion): `ER = BE − PE − LE`, with project
+and reproducible from public data.** A deterministic engine implements Verra **VMR0017 v1.0** (April 2026) applied with
+**ACM0002 v22.0**, and the CDM rules (**AMS-I.D** ≤ 15 MW, **ACM0002**), with **TOOL07** (grid emission factor) and
+**TOOL03** (fossil fuel combustion): `ER = BE − PE − LE`, with project
 emissions, leakage, retrofit baselines, the reservoir power-density rule and conservative QA/QC. Monitoring data and
 reports are published on the **Hedera Consensus Service**. The `HydroCreditRegistry` contract stores each plant's
 validated design, recomputes the emission reductions itself and mints **Hedera Token Service** credits
@@ -31,7 +32,7 @@ gives each kind of user a path:
 
 | | |
 | --- | --- |
-| Methodology | CDM AMS-I.D v18.0 / ACM0002 v22.0 · TOOL07 (OM simple, simple adjusted, average; BM sample group; CM weights) · TOOL03 (NCV × EF) · IPCC 2006 defaults with conservative bounds |
+| Methodology | Verra VMR0017 v1.0 + ACM0002 v22.0 (per plant; demo plants) or CDM AMS-I.D v18.0 / ACM0002 v22.0 · TOOL07 (OM simple, simple adjusted, average; BM sample group; CM weights) · TOOL03 (NCV × EF) · IPCC 2006 defaults with conservative bounds |
 | Hedera services | **HCS**: chunked monitoring-data messages and reports · **HTS**: fungible credit token and NFT certificate collection, both created, minted and burned by the contract · **Smart contracts**: on-chain quantification registry and oracle aggregator |
 | Ecosystem integration | **Chainlink** Data Feeds (primary) and **Supra** push oracle (fallback and cross-check), testnet and mainnet |
 | Stack | Next.js 15 · Hardhat · Yarn workspaces · Node ≥ 20.18.3 |
@@ -105,7 +106,21 @@ and the conservative treatment of bad or missing data. This template wires the w
 ## Methodology
 
 The same code runs in the browser, the REST API, the MCP server and the tests (`packages/nextjs/services/mrv/methodology/`),
-and the contract mirrors the quantification step. The **Methodology** page (`/methodology`) shows all of it on the demo
+and the contract mirrors the quantification step.
+
+Each plant is registered on-chain under one of two rule sets, and the contract applies that plant's factors:
+
+| | **VMR0017 v1.0** (Verra, 23 April 2026; demo plants) | **CDM** (AMS-I.D v18.0 / ACM0002 v22.0) |
+| --- | --- | --- |
+| Base | "Must be used with ACM0002, v22.0"; ACM0002 applies unless VMR0017 changes it | AMS-I.D up to 15 MW, ACM0002 above |
+| Hydro eligibility | 15 MW or less (rated or authorized), Least Developed Countries only (Table 1) | any size, any host country |
+| Additionality | VT0008: regulatory surplus, investment analysis, common practice (no barrier analysis, no TOOL32) | TOOL01 / TOOL02 at validation |
+| EF_Res (reservoirs) | 100 kg CO₂e/MWh (§9.1) | 90 kg CO₂e/MWh |
+| Leakage | embodied emissions, 21 g CO₂e/kWh of EG_facility (greenfield) or EG_PJ_Add (capacity addition); none for retrofits (§8.3) | 0 |
+| Grid emission factor | VT0011 (replaces TOOL07; see [limitations](#security-model-and-limitations)) | TOOL07 |
+
+Verra inactivates ACM0002 and AMS-I.D as standalone methodologies on 1 January 2027, so new projects register under
+VMR0017. The CDM path stays for existing registrations and for comparison. The **Methodology** page (`/methodology`) shows all of it on the demo
 data, and the MCP resource `hydro-dmrv://methodology` gives it to agents.
 
 ### Emission reductions
@@ -115,8 +130,10 @@ ER_y  = BE_y − PE_y − LE_y
 BE_y  = EG_PJ,y × EF_grid,CM,y                        rounded down
 PE_y  = PE_FF,y + PE_HP,y                             rounded up
 PE_FF = Σ FC × COEF,  COEF = NCV × EF_CO2             TOOL03 option B, IPCC upper 95% bounds
-PE_HP = EF_Res × TEG_y  if 4 < PD ≤ 10 W/m², else 0   EF_Res = 90 kg CO2e/MWh
-LE_y  = 0                                             ACM0002; AMS-I.D without transferred equipment
+PE_HP = EF_Res × TEG_y  if 4 < PD ≤ 10 W/m², else 0   EF_Res = 100 kg CO2e/MWh (VMR0017), 90 (CDM)
+LE_y  = EG × EF_embodied                              VMR0017: 21 g CO2e/kWh; EG_facility (greenfield) or
+                                                      EG_PJ_Add (addition), never negative; 0 for retrofits
+LE_y  = 0                                             CDM: ACM0002; AMS-I.D without transferred equipment
 
 EG_PJ,y = EG_facility,y                               greenfield
 EG_PJ,y = EG_facility,y − (EG_historical + σ)         retrofit, capacity addition; 0 after DATE_BaselineRetrofit
@@ -134,10 +151,12 @@ EG_facility = export − import at the grid meter, after QA/QC;  TEG = gross gen
 
 | Condition | Rule | Enforced by |
 | --- | --- | --- |
-| Methodology | AMS-I.D up to 15 MW, ACM0002 above | engine |
+| Methodology | registered per plant: VMR0017 (0/1 on-chain) or CDM (AMS-I.D up to 15 MW, ACM0002 above) | engine **and contract** |
+| VMR0017 Table 1 | hydro 15 MW or less (contract reverts `MethodologyNotApplicable`); host country on the UN LDC list at the crediting start (`methodology/ldc.ts`, 44 countries, with the 2026 graduations) | contract · engine |
+| VMR0017 additionality | VT0008 evidence recorded in the design document (hashed on-chain): regulatory surplus, indicator without carbon revenue below the benchmark, not common practice | engine (a VVB determines it) |
 | Reservoir power density `PD = (Cap_PJ − Cap_BL) / (A_PJ − A_BL)` | PD ≤ 4 W/m² not eligible; 4 < PD ≤ 10 → PE_HP; PD > 10 or no new area → 0 | engine **and contract** |
 | Project type | greenfield has no baseline; retrofits need Cap_BL, EG_historical + σ and DATE_BaselineRetrofit; additions must add capacity | engine **and contract** |
-| Leakage | AMS-I.D with equipment transferred from another activity needs a leakage assessment: refused | engine |
+| Leakage | VMR0017: embodied emissions computed by the contract; AMS-I.D with transferred equipment needs a leakage assessment: refused | engine **and contract** |
 | Crediting period | 7 years (renewable twice, weights change) or 10 fixed, in 365-day years; periods inside it and inside one crediting year | engine **and contract** |
 
 ### Grid emission factor (TOOL07, ex-ante)
@@ -426,7 +445,8 @@ Scenarios on the run-of-river demo plant (500 kW, day ending at midnight UTC):
 | `tampered` | main and check meter raised 1% in six hours *after* the meter signed: meters agree, physics is plausible | REJECTED (signature) |
 
 The storage demo plant (12 MW, new 1.8 km² reservoir, PD 6.67 W/m², second crediting period) shows reservoir
-emissions: a healthy day is about 208 MWh net, BE 112.1 t, PE_HP 19.0 t, ER 93.1 t.
+emissions: under VMR0017 a healthy day is about 208 MWh net, BE 112.1 t, PE_HP 21.1 t (EF_Res 100 kg/MWh), LE 4.4 t
+(embodied emissions), ER 86.6 t.
 
 ## Public re-verification on HCS
 
@@ -434,8 +454,8 @@ Two message types go to the audit topic (`services/mrv/report.ts`):
 
 | Message | Schema | Contents | Size |
 | --- | --- | --- | --- |
-| Data | `hydro-dmrv/readings@3` | Every reading, the meter's signature over them, the plant profile (registered design + hydraulics), metering data including the meter's address, the plant's ledger before the period, engine version. `readings@2` (before meter signatures) is still reproduced. | 4 chunks for a day, 16 for a week; HCS caps a message at 20 |
-| Report | `hydro-dmrv/report@3` | Decision, coverage, monitored inputs (EG_facility, TEG, FC, LE), EG_PJ, BE, PE_HP, PE_FF, ER, credits, parameters, `plantSequence`, and `data: { hash, sequence }` | 1 chunk (~700 bytes) |
+| Data | `hydro-dmrv/readings@4` | Every reading, the meter's signature over them, the plant profile (registered design + hydraulics), metering data including the meter's address, the plant's ledger before the period, engine version. The plant profile carries the registered methodology. `readings@2` (before meter signatures) and `readings@3` (before VMR0017) are still reproduced. | 4 chunks for a day, 16 for a week; HCS caps a message at 20 |
+| Report | `hydro-dmrv/report@4` | Decision, coverage, monitored inputs (EG_facility, TEG, FC, LE), EG_PJ, BE, PE_HP, PE_FF, LE (with VMR0017 embodied emissions), ER, credits, parameters, `plantSequence`, and `data: { hash, sequence }` | 1 chunk (~700 bytes) |
 
 `reproduceAttestation` (`services/mrv/audit.ts`) runs these checks:
 
@@ -662,9 +682,14 @@ template.json                            create-scaffold-hbar manifest
   engine is deterministic and the contract recomputes the credits. The trust that remains is in the *telemetry
   source* and in the *design registration*: production deployments need device-signed readings, several verifiers,
   and a VVB validating the design before `registerPlant`.
-- **Not a certification.** This implements the equations of AMS-I.D / ACM0002, TOOL07 and TOOL03 as described
-  above; additionality, stakeholder consultation, the monitoring plan and verification remain the job of a VVB and a
-  registry (Verra, Gold Standard). Credits here are not issued by a standard; avoid double claiming with RECs or any
+- **Not a certification.** This implements the equations of VMR0017 v1.0 with ACM0002 v22.0, AMS-I.D, TOOL07 and
+  TOOL03 as described above. It records VT0008 additionality evidence and checks it for completeness, but the
+  determination, stakeholder consultation, the monitoring plan and verification remain the job of a VVB and a
+  registry (Verra, Gold Standard).
+- **VT0011 is not implemented separately.** VMR0017 replaces TOOL07 with Verra's VT0011; the engine applies TOOL07's
+  procedure. Before validating a VMR0017 project, compare it with VT0011 or register a published combined margin
+  (`grid.source: "published"`). VMR0017's battery, pumped-storage and fire-suppression emission terms are not
+  implemented (plain hydro does not need them). Credits here are not issued by a standard; avoid double claiming with RECs or any
   other instrument for the same generation.
 - **Registry custody** means the contract holds credits and undelivered certificates for accounts. The contract is not
   upgradeable and has no admin path to move anyone's balance.

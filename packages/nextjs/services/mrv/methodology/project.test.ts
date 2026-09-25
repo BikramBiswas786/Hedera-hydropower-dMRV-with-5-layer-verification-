@@ -1,8 +1,11 @@
 import { DEMO_ASSESSMENTS, DEMO_DESIGNS } from "../demo";
 import {
   CREDITING_YEAR_SECONDS,
+  METHODOLOGY_CODE,
   type ProjectDesign,
   RESERVOIR_EF_G_PER_MWH,
+  VMR0017_EMBODIED_HYDRO_G_PER_MWH,
+  VMR0017_RESERVOIR_EF_G_PER_MWH,
   assessProject,
   powerDensity,
 } from "./project";
@@ -143,7 +146,75 @@ describe("assessProject", () => {
     const [first, renewed] = DEMO_ASSESSMENTS;
     expect(first.grid.tool07?.weights).toEqual({ operatingMargin: 0.5, buildMargin: 0.5 });
     expect(renewed.grid.tool07?.weights).toEqual({ operatingMargin: 0.25, buildMargin: 0.75 });
-    expect(renewed.powerDensity.peHpGPerMwh).toBe(90_000);
+    expect(renewed.powerDensity.peHpGPerMwh).toBe(VMR0017_RESERVOIR_EF_G_PER_MWH);
     expect(DEMO_DESIGNS.map(d => d.plantId)).toEqual(["HYDRO-DEMO-01", "HYDRO-DEMO-02"]);
+    expect(DEMO_ASSESSMENTS.map(a => a.registration.methodology)).toEqual([1, 1]);
+  });
+});
+
+describe("VMR0017 v1.0 (with ACM0002 v22.0)", () => {
+  const evidence: NonNullable<ProjectDesign["additionality"]> = {
+    tool: "VT0008",
+    regulatorySurplus: true,
+    investment: { indicator: "IRR", projectValuePct: 8, benchmarkPct: 11 },
+    commonPractice: { isCommonPractice: false, basis: "test" },
+  };
+  const vmr = (overrides: Partial<ProjectDesign> = {}) =>
+    assessProject(design({ methodology: "VMR0017", hostCountry: "UG", additionality: evidence, ...overrides }));
+
+  it("registers under methodology code 1 with EF_Res 100 kg/MWh and embodied leakage", () => {
+    const a = vmr({ reservoirAreaM2: 1_800_000 });
+    expect(a.failures).toEqual([]);
+    expect(a.registration.methodology).toBe(METHODOLOGY_CODE.VMR0017);
+    expect(a.powerDensity.peHpGPerMwh).toBe(100_000);
+    expect(a.leakage.embodiedGPerMwh).toBe(VMR0017_EMBODIED_HYDRO_G_PER_MWH);
+    expect(a.leakage.basis).toMatch(/EG_facility,y × EF_embodied \(21 g CO2e\/kWh/);
+  });
+
+  it("keeps the CDM factors for CDM plants", () => {
+    const a = assessProject(design({ reservoirAreaM2: 1_800_000 }));
+    expect(a.registration.methodology).toBe(METHODOLOGY_CODE.CDM);
+    expect(a.powerDensity.peHpGPerMwh).toBe(RESERVOIR_EF_G_PER_MWH);
+    expect(a.leakage.embodiedGPerMwh).toBe(0);
+  });
+
+  it("limits hydro to 15 MW by the higher of rated and authorized capacity (Table 1)", () => {
+    expect(vmr({ capacityKw: 15_000 }).failures).toEqual([]);
+    expect(vmr({ capacityKw: 15_001 }).failures.join()).toMatch(/15 MW or less/);
+    expect(vmr({ capacityKw: 12_000, authorizedCapacityKw: 16_000 }).failures.join()).toMatch(/15 MW or less/);
+  });
+
+  it("accepts Least Developed Countries only, as of the crediting start", () => {
+    expect(vmr({ hostCountry: "IN" }).failures.join()).toMatch(/LDC countries only; IN/);
+    expect(vmr({ hostCountry: undefined }).failures.join()).toMatch(/host country is required/);
+    // Nepal graduates on 24 November 2026.
+    expect(vmr({ hostCountry: "NP" }).failures).toEqual([]);
+    const afterGraduation = { start: "2026-12-01T00:00:00Z", years: 7 as const, period: 1 as const };
+    expect(vmr({ hostCountry: "NP", crediting: afterGraduation }).failures.join()).toMatch(/NP is not an LDC/);
+  });
+
+  it("requires complete, consistent VT0008 additionality evidence", () => {
+    expect(vmr({ additionality: undefined }).failures.join()).toMatch(/VT0008 additionality evidence/);
+    expect(vmr({ additionality: { ...evidence, regulatorySurplus: false } }).failures.join()).toMatch(
+      /regulatory surplus/,
+    );
+    const attractive = {
+      ...evidence,
+      investment: { indicator: "IRR" as const, projectValuePct: 12, benchmarkPct: 11 },
+    };
+    expect(vmr({ additionality: attractive }).failures.join()).toMatch(/not below the benchmark/);
+    const common = { ...evidence, commonPractice: { isCommonPractice: true, basis: "test" } };
+    expect(vmr({ additionality: common }).failures.join()).toMatch(/common practice/);
+  });
+
+  it("has no embodied-emission equation for retrofits", () => {
+    const a = vmr({
+      projectType: "retrofit",
+      baselineCapacityKw: 8_000,
+      historicalGenerationMwh: [40_000, 41_000, 39_500, 40_200, 40_800],
+      baselineRetrofitDate: "2031-01-01T00:00:00Z",
+    });
+    expect(a.failures).toEqual([]);
+    expect(a.leakage.basis).toMatch(/LE_y = 0 for a retrofit/);
   });
 });

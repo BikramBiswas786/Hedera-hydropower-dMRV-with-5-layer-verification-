@@ -96,6 +96,8 @@ export function toAttestationView(raw: RawAttestation, id: number): AttestationV
 
 type RawDesign = {
   projectType: number;
+  /** Absent on registries deployed before VMR0017, which only knew the CDM rules. */
+  methodology?: number;
   capacityKw: number;
   baselineCapacityKw: number;
   reservoirAreaM2: bigint;
@@ -148,6 +150,7 @@ export function toPlantView(id: Hex, raw: RawPlant): PlantView {
     active: raw.active,
     design: {
       projectType: d.projectType,
+      methodology: d.methodology ?? 0,
       capacityKw: d.capacityKw,
       baselineCapacityKw: d.baselineCapacityKw,
       reservoirAreaM2: Number(d.reservoirAreaM2),

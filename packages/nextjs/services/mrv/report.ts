@@ -14,10 +14,12 @@ import {
 import { type Hex, sha256, stringToBytes } from "viem";
 import { z } from "zod";
 
-export const REPORT_SCHEMA = "hydro-dmrv/report@3";
-export const DATA_SCHEMA = "hydro-dmrv/readings@3";
-/** Published before meter signatures; still parsed so earlier attestations stay reproducible. */
-export const LEGACY_DATA_SCHEMAS = ["hydro-dmrv/readings@2"] as const;
+export const REPORT_SCHEMA = "hydro-dmrv/report@4";
+/** report@3 predates VMR0017: no computed leakage in `emissions`. Still audited. */
+export const LEGACY_REPORT_SCHEMAS = ["hydro-dmrv/report@3"] as const;
+export const DATA_SCHEMA = "hydro-dmrv/readings@4";
+/** readings@2 predates meter signatures, readings@3 the plant's registered methodology; both still reproduce. */
+export const LEGACY_DATA_SCHEMAS = ["hydro-dmrv/readings@2", "hydro-dmrv/readings@3"] as const;
 export const PROJECT_SCHEMA = "hydro-dmrv/project@1";
 
 /** HCS splits messages into 1024-byte chunks and accepts at most 20 per message. */
@@ -135,7 +137,7 @@ export function parseDataMessage(text: string) {
 // ─── Report message: the verdict and the numbers the contract recomputes ─────
 
 export type HcsReportMessage = {
-  schema: typeof REPORT_SCHEMA;
+  schema: typeof REPORT_SCHEMA | (typeof LEGACY_REPORT_SCHEMAS)[number];
   engine: string;
   methodology: string;
   plantId: string;
@@ -149,12 +151,14 @@ export type HcsReportMessage = {
   excluded: number;
   /** EG_facility, TEG, FC and LE: the monitored inputs `submitAttestation` receives. */
   monitored: { netWh: number; grossWh: number; fuelG: number; leakageG: number };
-  /** EG_PJ, BE, PE_HP, PE_FF, ER and credits: what the contract must compute from them. */
+  /** EG_PJ, BE, PE_HP, PE_FF, LE, ER and credits: what the contract must compute from them. */
   emissions: {
     egProjectWh: number;
     baselineG: number;
     reservoirG: number;
     fossilFuelG: number;
+    /** LE_y including VMR0017 embodied emissions (absent before report@4). */
+    leakageG?: number;
     reductionG: number;
     unitsMinted: number;
   } | null;
@@ -192,6 +196,7 @@ export function buildHcsMessage(report: VerificationReport, data: HcsReportMessa
       baselineG: emissions.baselineG,
       reservoirG: emissions.reservoirG,
       fossilFuelG: emissions.fossilFuelG,
+      leakageG: emissions.leakageG,
       reductionG: emissions.reductionG,
       unitsMinted: emissions.unitsMinted,
     },
