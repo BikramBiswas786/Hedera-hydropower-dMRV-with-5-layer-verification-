@@ -30,6 +30,10 @@ gives each kind of user a path:
 | Building on it | `npm create scaffold-hbar@latest --template …` (above), then [Quick start](#quick-start). Local chain has no faucet. | follow Quick start |
 | An AI agent | `claude mcp add --transport http hydro-dmrv https://hydro-dmrv.vercel.app/api/mcp` ([For AI agents](#for-ai-agents)) | 1 command |
 
+A short audit note, for people rather than agents, is at [**/blog**](https://hydro-dmrv.vercel.app/blog): what to click, what the testnet shows, and what not to “fix” in the engine.
+
+Public, no key: [**/documents**](https://hydro-dmrv.vercel.app/documents) (hash-linked VCS sections for the two demo plants), [**/work**](https://hydro-dmrv.vercel.app/work) (the five-step job, also `GET /api/work`), and [**/water**](https://hydro-dmrv.vercel.app/water) (illustrative VMR0015, not a hydro credit). Agents use `list_documents`, `get_trust_chain`, `prepare_document`, `run_public_work` and `quantify_safe_water`. `publish_document` needs the operator key. A successful `submit_attestation` also returns a monitoring-report draft to sign; it does not mint a second token.
+
 | | |
 | --- | --- |
 | Methodology | Verra VMR0017 v1.0 + ACM0002 v22.0 (per plant; demo plants) or CDM AMS-I.D v18.0 / ACM0002 v22.0 · TOOL07 (OM simple, simple adjusted, average; BM sample group; CM weights) · TOOL03 (NCV × EF) · IPCC 2006 defaults with conservative bounds |

@@ -12,6 +12,9 @@ import {
   BriefcaseIcon,
   BuildingOffice2Icon,
   DocumentMagnifyingGlassIcon,
+  DocumentTextIcon,
+  NewspaperIcon,
+  QueueListIcon,
   ShoppingBagIcon,
 } from "@heroicons/react/24/outline";
 import { RainbowKitCustomConnectButton } from "~~/components/scaffold-hbar";
@@ -59,9 +62,29 @@ export const menuLinks: HeaderMenuLink[] = [
     icon: <BriefcaseIcon className="h-4 w-4" />,
   },
   {
+    label: "Documents",
+    href: "/documents",
+    icon: <DocumentTextIcon className="h-4 w-4" />,
+  },
+  {
+    label: "Work",
+    href: "/work",
+    icon: <QueueListIcon className="h-4 w-4" />,
+  },
+  {
+    label: "Water",
+    href: "/water",
+    icon: <BeakerIcon className="h-4 w-4" />,
+  },
+  {
     label: "Audit",
     href: "/audit",
     icon: <DocumentMagnifyingGlassIcon className="h-4 w-4" />,
+  },
+  {
+    label: "Notes",
+    href: "/blog",
+    icon: <NewspaperIcon className="h-4 w-4" />,
   },
 ];
 

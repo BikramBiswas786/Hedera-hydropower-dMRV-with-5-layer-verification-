@@ -6,6 +6,7 @@ import { prepareAnchors } from "../pipeline";
 import { buildHcsMessage } from "../report";
 import type { VerifyRequest } from "../schema";
 import { plantIdToBytes32 } from "../views";
+import { monitoringDocumentDraft } from "../documents/server";
 import { readOperatorConfig, readVerifierKey } from "./config";
 import { ApiError, revertReason } from "./errors";
 import { publishMessage } from "./hcs";
@@ -198,5 +199,11 @@ export async function attestReadings(request: VerifyRequest): Promise<AttestOutc
           }
         : null,
     transaction: { hash, url: isLiveHederaChain() ? hashscan.transaction(hash) : null },
+    monitoringDocument: monitoringDocumentDraft(
+      profile.plantId,
+      `Minted ${Number(event.args.unitsMinted)} kg. Report hash ${final.reportHash}.`,
+      null,
+      account.address,
+    ),
   };
 }

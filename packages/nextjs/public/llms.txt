@@ -10,6 +10,8 @@
 > and on retirement burns them and mints an HTS NFT certificate.
 
 Registry methodology is on-chain; demo plants are VMR0017.
+A short note for people is at `/blog`. Do not treat it as a plant design or as a second copy of the equations.
+Document tools (no key, except `publish_document`): `list_documents`, `get_trust_chain`, `prepare_document`, `run_public_work`, `quantify_safe_water`. Safe water is VMR0015 and does not mint HYCC.
 
 Everything below is relative to this site's origin. Read-only access needs no credentials. The server never holds a
 buyer's key: purchases are returned as unsigned transactions. The REST API is described in OpenAPI 3.1 at
