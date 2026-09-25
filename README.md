@@ -341,7 +341,9 @@ settable Chainlink and Supra mocks priced near $0.25/HBAR and registers both dem
 `packages/nextjs/.env.local` with `MRV_API_KEY=local-dev-key`, and set `VERIFIER_PRIVATE_KEY` to the private key of
 **Account #0**, which `yarn chain:offline` prints when it starts. That well-known test account deployed the contracts,
 so it already holds the verifier role. Then publish from **Verify** with the key `local-dev-key`, or run
-`yarn mrv:attest`. The burner wallet in the header lets you buy, retire and claim certificates immediately.
+`yarn mrv:attest`. The burner wallet in the header lets you buy, retire and claim certificates immediately. It is
+offered only while a local chain is first in `targetNetworks`: it keeps a raw private key in the browser, so a
+deployment that targets Hedera shows real wallets only.
 
 Prefer real HTS semantics locally? `yarn chain` starts a Hedera-forked node through
 [`@hashgraph/system-contracts-forking`](https://github.com/hashgraph/hedera-forking), which emulates HTS against
