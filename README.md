@@ -44,24 +44,23 @@ Deployed with `yarn deploy --network hederaTestnet` and attested with `yarn mrv:
 [`deployedContracts.ts`](packages/nextjs/contracts/deployedContracts.ts), so a fresh scaffold reads this deployment.
 The app at [hydro-dmrv.vercel.app](https://hydro-dmrv.vercel.app) runs against it with no server keys, so it can
 read, verify, audit and prepare purchases but never attest; open [`/audit`](https://hydro-dmrv.vercel.app/audit) and
-press **Check evidence** to reproduce the attestations below from HCS in your browser. This Hashscan deploy is CDM
-(demo plants registered under CDM + TOOL07). Source demo plants in this git tree are VMR0017; a redeploy will match.
-Do not mix live CDM numbers with the VMR0017 engine in this checkout.
+press **Check evidence** to reproduce the attestations below from HCS in your browser. Live demo plants are
+**VMR0017** (`design.methodology = 1`). HYRET supply is still 0 until one `buyAndRetire`.
 
 | What | Hashscan |
 | --- | --- |
-| `HydroCreditRegistry` | [0x7Da5C616…6D888993](https://hashscan.io/testnet/contract/0x7Da5C616f478c4111cF9173102298b2B6D888993) |
+| `HydroCreditRegistry` | [0xAEA76b83…AF8Ce746](https://hashscan.io/testnet/contract/0xAEA76b83ea8e71621d443053A5Ee20D7AF8Ce746) |
 | `ResilientHbarUsdFeed` (Chainlink + Supra) | [0x5A07AE62…6b897A591](https://hashscan.io/testnet/contract/0x5A07AE6219509948fBdab08cc65ccd1b6897A591) |
-| HTS credit token 0.0.10704144, created by the contract | [creation](https://hashscan.io/testnet/transaction/0xd1103d9b18908074f400905c2001d83257c52002f4ece5869c1f713f49ac4d1b) · [token](https://hashscan.io/testnet/token/0.0.10704144) |
-| HTS NFT certificate collection 0.0.10704145 | [creation](https://hashscan.io/testnet/transaction/0xa32ec2e0cc51eb8e60ec7be45e087eebde1b7ecedb5283861ad15c3ef605362a) · [token](https://hashscan.io/testnet/token/0.0.10704145) |
-| Plant registrations (design, TOOL07 grid factor, design hash) | [HYDRO-DEMO-01](https://hashscan.io/testnet/transaction/0xae2f7932755027bc002ff3953b47f1112fc9e5e1b5f2c9ef96d114b56dd30e08) · [HYDRO-DEMO-02](https://hashscan.io/testnet/transaction/0xaaeef0a7e37d591aa45edca15ef58dfababd5c6f3e9f4a9abb4e6a538c23515d) |
-| HCS audit topic | [0.0.10704510](https://hashscan.io/testnet/topic/0.0.10704510) |
-| Attestation #0 — HYDRO-DEMO-01, `healthy`: BE 5.338351 t, PE 0, ER 5.338351 t → **5.338 t minted** | [contract call](https://hashscan.io/testnet/transaction/0x41ef3017f34984128746bf46f41d0f72c86093b41b6920ff6d78b3286cdd0fb5) · [HCS readings](https://hashscan.io/testnet/topic/0.0.10704510/message/1) · [HCS report](https://hashscan.io/testnet/topic/0.0.10704510/message/4) |
-| Attestation #1 — HYDRO-DEMO-02, `diesel-backup`: BE 97.323162 t, PE_HP 16.512338 t, PE_FF 0.239577 t, ER 80.571247 t → **80.571 t minted** | [contract call](https://hashscan.io/testnet/transaction/0x1ca5192d2b157dd8b6cedd249187d24e1de13a3421b08cc3591e8f1536016ad2) · [HCS readings](https://hashscan.io/testnet/topic/0.0.10704510/message/9) · [HCS report](https://hashscan.io/testnet/topic/0.0.10704510/message/12) |
+| HTS credit token 0.0.10718574 (HYCC), created by the contract | [creation](https://hashscan.io/testnet/transaction/0x223fb823267ffa2683b876932a6f1f307aecb3d02e85cac27d4d5804d0a71229) · [token](https://hashscan.io/testnet/token/0.0.10718574) |
+| HTS NFT certificate collection 0.0.10718577 (HYRET) | [creation](https://hashscan.io/testnet/transaction/0x3a9d6cddd39739ce2cd46e24ecfdf932e7b54cec126e0ab17eff793b1f6137ac) · [token](https://hashscan.io/testnet/token/0.0.10718577) |
+| Plant registrations (VMR0017 + ACM0002, design hash) | [HYDRO-DEMO-01](https://hashscan.io/testnet/transaction/0x62bd9fa95fe0c9853915577cf0a23db8c63842be05920edf1d59232f4b470845) · [HYDRO-DEMO-02](https://hashscan.io/testnet/transaction/0xf34c9a13b8020f73c75de6db319b77de0482767f01928df5b35318928dbe92dd) |
+| HCS audit topic (attestations #0/#1 on this topic) | [0.0.10704510](https://hashscan.io/testnet/topic/0.0.10704510) |
+| Attestation #0 — HYDRO-DEMO-01, `healthy`: BE 4.973561 t, PE 0, LE 0.182157 t, ER 4.791404 t → **4.791 t minted** | [contract call](https://hashscan.io/testnet/transaction/0xeaac039c94ecfc3020887abe3d70ab96e1e9b4403cd4a180157f0978aa00806f) · [HCS readings](https://hashscan.io/testnet/topic/0.0.10704510/message/13) · [HCS report](https://hashscan.io/testnet/topic/0.0.10704510/message/17) |
+| Attestation #1 — HYDRO-DEMO-02, `diesel-backup`: BE 94.772051 t, PE 18.587126 t, LE 3.795191 t, ER 72.389734 t → **72.389 t minted** | [contract call](https://hashscan.io/testnet/transaction/0x7040ae195ee457f2d9d2717e68f01fa23caae71640ba1d9a6b0da34d48003d69) · [HCS readings](https://hashscan.io/testnet/topic/0.0.10704510/message/18) · [HCS report](https://hashscan.io/testnet/topic/0.0.10704510/message/22) |
 
-Messages 5–8 on the topic come from one run whose contract call the JSON-RPC relay refused (a gas-price bug since
-fixed in `server/attest.ts`). No attestation points to them, and the audit only follows reports an attestation
-references.
+Messages 1–12 and 5–8 on this topic are the previous CDM registry's history (and one orphaned run). Audit follows
+only the report sequence an attestation stores. Keep `HCS_TOPIC_ID=0.0.10704510` so `/audit` can reproduce #0 and #1.
+Topic `0.0.10719120` exists but has no messages; do not switch the app to it until a later period is attested there.
 
 ---
 
