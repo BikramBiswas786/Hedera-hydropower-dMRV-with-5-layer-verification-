@@ -39,8 +39,8 @@ const BlogPage: NextPage = () => (
       <h2 className="text-2xl font-bold m-0">What the testnet actually shows</h2>
       <p className="m-0">
         The two demo plants on the current registry are VMR0017 (`design.methodology = 1`). Attestations #0 and #1
-        minted the credits. HYRET serial 1 is the retirement certificate. Audit follows the sequence stored on the
-        attestation, not every message on the topic.
+        minted the credits. HYRET serial 1 went to the operator. Serial 2 went to 0.0.10720552, a different account.
+        Audit follows the sequence stored on the attestation, not every message on the topic.
       </p>
       <p className="m-0">
         If a page and Hashscan disagree, believe the contract. Do not edit the engine so the README looks tidy.

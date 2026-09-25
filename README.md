@@ -25,7 +25,7 @@ npm create scaffold-hbar@latest --template BikramBiswas786/Hedera-hydropower-dMR
 
 **Live:** [hydro-dmrv.vercel.app](https://hydro-dmrv.vercel.app). Agents: `https://hydro-dmrv.vercel.app/api/mcp`.
 
-Hedera services in this pattern: **HTS** (the credit token and the certificate collection are created by the contract), **HCS** (raw readings, then the report), **a Solidity registry** that recomputes `ER = BE − PE − LE` before it mints. Settlement uses **Chainlink HBAR/USD** and refuses the price if **Supra** disagrees. Retirement #0 bought 1.000 t and minted **HYRET serial 1**, delivered to `0.0.10015230`.
+Hedera services in this pattern: **HTS** (the credit token and the certificate collection are created by the contract), **HCS** (raw readings, then the report), **a Solidity registry** that recomputes `ER = BE − PE − LE` before it mints. Settlement uses **Chainlink HBAR/USD** and refuses the price if **Supra** disagrees. Retirement #0 was the operator. Retirement #1 was a different account, `0.0.10720552`, and minted **HYRET serial 2**.
 
 ### Start here
 
@@ -59,7 +59,7 @@ Deployed with `yarn deploy --network hederaTestnet` and attested with `yarn mrv:
 The app at [hydro-dmrv.vercel.app](https://hydro-dmrv.vercel.app) runs against it with no server keys, so it can
 read, verify, audit and prepare purchases but never attest; open [`/audit`](https://hydro-dmrv.vercel.app/audit) and
 press **Check evidence** to reproduce the attestations below from HCS in your browser. Live demo plants are
-**VMR0017** (`design.methodology = 1`). HYRET total supply is 1 (retirement #0).
+**VMR0017** (`design.methodology = 1`). HYRET total supply is 2 (retirements #0 and #1).
 
 | What | Hashscan |
 | --- | --- |
@@ -68,6 +68,7 @@ press **Check evidence** to reproduce the attestations below from HCS in your br
 | HTS credit token 0.0.10718574 (HYCC), created by the contract | [creation](https://hashscan.io/testnet/transaction/0x223fb823267ffa2683b876932a6f1f307aecb3d02e85cac27d4d5804d0a71229) · [token](https://hashscan.io/testnet/token/0.0.10718574) |
 | HTS NFT certificate collection 0.0.10718577 (HYRET) | [creation](https://hashscan.io/testnet/transaction/0x3a9d6cddd39739ce2cd46e24ecfdf932e7b54cec126e0ab17eff793b1f6137ac) · [token](https://hashscan.io/testnet/token/0.0.10718577) |
 | Retirement #0 — 1.000 t CO₂e, beneficiary “Scaffold-HBAR template exhibit”, **HYRET serial 1** delivered to 0.0.10015230 | [buyAndRetire](https://hashscan.io/testnet/transaction/0xca804d3d31a3446c2bfa0b544ecb484049e92d4f9bc68c7164f903a1498b75dd) · [serial 1](https://hashscan.io/testnet/token/0.0.10718577/1) |
+| Retirement #1 — 1.000 t CO₂e, beneficiary “Northwind Municipal Utility”, **HYRET serial 2** delivered to 0.0.10720552, not the operator | [buyAndRetire](https://hashscan.io/testnet/transaction/0x2cc68e9bba770042ded66dc772c85bb892ffa1db272c2f20e00ffc0f1048bc36) · [serial 2](https://hashscan.io/testnet/token/0.0.10718577/2) |
 | Plant registrations (VMR0017 + ACM0002, design hash) | [HYDRO-DEMO-01](https://hashscan.io/testnet/transaction/0x62bd9fa95fe0c9853915577cf0a23db8c63842be05920edf1d59232f4b470845) · [HYDRO-DEMO-02](https://hashscan.io/testnet/transaction/0xf34c9a13b8020f73c75de6db319b77de0482767f01928df5b35318928dbe92dd) |
 | HCS audit topic (attestations #0/#1 on this topic) | [0.0.10704510](https://hashscan.io/testnet/topic/0.0.10704510) |
 | Attestation #0 — HYDRO-DEMO-01, `healthy`: BE 4.973561 t, PE 0, LE 0.182157 t, ER 4.791404 t → **4.791 t minted** | [contract call](https://hashscan.io/testnet/transaction/0xeaac039c94ecfc3020887abe3d70ab96e1e9b4403cd4a180157f0978aa00806f) · [HCS readings](https://hashscan.io/testnet/topic/0.0.10704510/message/13) · [HCS report](https://hashscan.io/testnet/topic/0.0.10704510/message/17) |
