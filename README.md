@@ -1,21 +1,25 @@
 # Hydro dMRV — a Scaffold-HBAR template
 
-**Carbon credits for grid-connected hydropower whose every gram is computed by the methodology, recomputed on-chain
-and reproducible from public data.** A deterministic engine implements Verra **VMR0017 v1.0** (April 2026) applied with
-**ACM0002 v22.0**, and the CDM rules (**AMS-I.D** ≤ 15 MW, **ACM0002**), with **TOOL07** (grid emission factor) and
-**TOOL03** (fossil fuel combustion): `ER = BE − PE − LE`, with project
-emissions, leakage, retrofit baselines, the reservoir power-density rule and conservative QA/QC. Monitoring data and
-reports are published on the **Hedera Consensus Service**. The `HydroCreditRegistry` contract stores each plant's
-validated design, recomputes the emission reductions itself and mints **Hedera Token Service** credits
-(1 token = 1 t CO₂e). Sales are priced in USD and settled in HBAR through **Chainlink HBAR/USD**, cross-checked
-against a **Supra** fallback; every retirement mints an **HTS NFT certificate**.
+**The pattern:** a contract that holds the asset, two price feeds that have to agree, and a public log anyone can recompute. Hydropower carbon credits are the worked example, not a second product.
+
+## 90 seconds
+
+No wallet. No faucet.
+
+1. Scaffold: `npm create scaffold-hbar@latest --template BikramBiswas786/Hedera-hydropower-dMRV-with-5-layer-verification-`
+2. `yarn test` — the TypeScript engine and `HydroCreditRegistry.quantify` share one set of integers.
+3. Open [hydro-dmrv.vercel.app/verify](https://hydro-dmrv.vercel.app/verify). `healthy` is approved. `inflated` and `tampered` are not.
+4. Open [/audit](https://hydro-dmrv.vercel.app/audit) and press **Check evidence**. The browser re-reads the Hedera Consensus Service message and matches the mint.
+
+That is the template. The methodology paper is below, for the people who need the equations.
 
 ```bash
 npm create scaffold-hbar@latest --template BikramBiswas786/Hedera-hydropower-dMRV-with-5-layer-verification-
 ```
 
-**Live on Hedera testnet: [hydro-dmrv.vercel.app](https://hydro-dmrv.vercel.app)** (read-only; MCP at
-`https://hydro-dmrv.vercel.app/api/mcp`, OpenAPI at [`/api/openapi.json`](https://hydro-dmrv.vercel.app/api/openapi.json)).
+**Live:** [hydro-dmrv.vercel.app](https://hydro-dmrv.vercel.app). Agents: `https://hydro-dmrv.vercel.app/api/mcp`.
+
+Hedera services in this pattern: **HTS** (the credit token and the certificate collection are created by the contract), **HCS** (raw readings, then the report), **a Solidity registry** that recomputes `ER = BE − PE − LE` before it mints. Settlement uses **Chainlink HBAR/USD** and refuses the price if **Supra** disagrees. The certificate collection is on testnet. A serial is minted only when someone buys and retires; that click has not been made yet, so do not treat a certificate as already issued.
 
 ### Start here
 
