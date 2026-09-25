@@ -1,14 +1,8 @@
 # Hydro dMRV — a Scaffold-HBAR template
 
-**Carbon credits for grid-connected hydropower whose every gram is computed by the methodology, recomputed on-chain
-and reproducible from public data.** A deterministic engine implements Verra **VMR0017 v1.0** (April 2026) applied with
-**ACM0002 v22.0**, and the CDM rules (**AMS-I.D** ≤ 15 MW, **ACM0002**), with **TOOL07** (grid emission factor) and
-**TOOL03** (fossil fuel combustion): `ER = BE − PE − LE`, with project
-emissions, leakage, retrofit baselines, the reservoir power-density rule and conservative QA/QC. Monitoring data and
-reports are published on the **Hedera Consensus Service**. The `HydroCreditRegistry` contract stores each plant's
-validated design, recomputes the emission reductions itself and mints **Hedera Token Service** credits
-(1 token = 1 t CO₂e). Sales are priced in USD and settled in HBAR through **Chainlink HBAR/USD**, cross-checked
-against a **Supra** fallback; every retirement mints an **HTS NFT certificate**.
+The contract holds the credit. Chainlink and Supra must agree on the HBAR price before a sale. Anyone can recompute the tonne from the public HCS log.
+
+Demo plants are Verra **VMR0017 v1.0** with **ACM0002 v22.0**. The equations, the tests, and the Hashscan links are below.
 
 ```bash
 npm create scaffold-hbar@latest --template BikramBiswas786/Hedera-hydropower-dMRV-with-5-layer-verification-
