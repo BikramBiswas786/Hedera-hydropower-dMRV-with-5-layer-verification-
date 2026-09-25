@@ -1,15 +1,25 @@
 # Hydro dMRV — a Scaffold-HBAR template
 
-The contract holds the credit. Chainlink and Supra must agree on the HBAR price before a sale. Anyone can recompute the tonne from the public HCS log.
+**The pattern:** a contract that holds the asset, two price feeds that have to agree, and a public log anyone can recompute. Hydropower carbon credits are the worked example, not a second product.
 
-Demo plants are Verra **VMR0017 v1.0** with **ACM0002 v22.0**. The equations, the tests, and the Hashscan links are below.
+## 90 seconds
+
+No wallet. No faucet.
+
+1. Scaffold: `npm create scaffold-hbar@latest --template BikramBiswas786/Hedera-hydropower-dMRV-with-5-layer-verification-`
+2. `yarn test` — the TypeScript engine and `HydroCreditRegistry.quantify` share one set of integers.
+3. Open [hydro-dmrv.vercel.app/verify](https://hydro-dmrv.vercel.app/verify). `healthy` is approved. `inflated` and `tampered` are not.
+4. Open [/audit](https://hydro-dmrv.vercel.app/audit) and press **Check evidence**. The browser re-reads the Hedera Consensus Service message and matches the mint.
+
+That is the template. The methodology paper is below, for the people who need the equations.
 
 ```bash
 npm create scaffold-hbar@latest --template BikramBiswas786/Hedera-hydropower-dMRV-with-5-layer-verification-
 ```
 
-**Live on Hedera testnet: [hydro-dmrv.vercel.app](https://hydro-dmrv.vercel.app)** (read-only; MCP at
-`https://hydro-dmrv.vercel.app/api/mcp`, OpenAPI at [`/api/openapi.json`](https://hydro-dmrv.vercel.app/api/openapi.json)).
+**Live:** [hydro-dmrv.vercel.app](https://hydro-dmrv.vercel.app). Agents: `https://hydro-dmrv.vercel.app/api/mcp`.
+
+Hedera services in this pattern: **HTS** (the credit token and the certificate collection are created by the contract), **HCS** (raw readings, then the report), **a Solidity registry** that recomputes `ER = BE − PE − LE` before it mints. Settlement uses **Chainlink HBAR/USD** and refuses the price if **Supra** disagrees. Retirement #0 bought 1.000 t and minted **HYRET serial 1**, delivered to `0.0.10015230`.
 
 ### Start here
 
@@ -24,13 +34,17 @@ gives each kind of user a path:
 | Building on it | `npm create scaffold-hbar@latest --template …` (above), then [Quick start](#quick-start). Local chain has no faucet. | follow Quick start |
 | An AI agent | `claude mcp add --transport http hydro-dmrv https://hydro-dmrv.vercel.app/api/mcp` ([For AI agents](#for-ai-agents)) | 1 command |
 
+A short audit note, for people rather than agents, is at [**/blog**](https://hydro-dmrv.vercel.app/blog): what to click, what the testnet shows, and what not to “fix” in the engine.
+
+Public, no key: [**/documents**](https://hydro-dmrv.vercel.app/documents) (hash-linked VCS sections for the two demo plants), [**/work**](https://hydro-dmrv.vercel.app/work) (the five-step job, also `GET /api/work`), and [**/water**](https://hydro-dmrv.vercel.app/water) (illustrative VMR0015, not a hydro credit). Agents use `list_documents`, `get_trust_chain`, `prepare_document`, `check_document`, `run_public_work` and `quantify_safe_water`. `check_document` confirms a wallet signature and stores nothing. `publish_document` needs the operator key and keeps the document only for that server process. A successful `submit_attestation` also returns a monitoring-report draft to sign; it does not mint a second token.
+
 | | |
 | --- | --- |
 | Methodology | Verra VMR0017 v1.0 + ACM0002 v22.0 (per plant; demo plants) or CDM AMS-I.D v18.0 / ACM0002 v22.0 · TOOL07 (OM simple, simple adjusted, average; BM sample group; CM weights) · TOOL03 (NCV × EF) · IPCC 2006 defaults with conservative bounds |
 | Hedera services | **HCS**: chunked monitoring-data messages and reports · **HTS**: fungible credit token and NFT certificate collection, both created, minted and burned by the contract · **Smart contracts**: on-chain quantification registry and oracle aggregator |
 | Ecosystem integration | **Chainlink** Data Feeds (primary) and **Supra** push oracle (fallback and cross-check), testnet and mainnet |
 | Stack | Next.js 15 · Hardhat · Yarn workspaces · Node ≥ 20.18.3 |
-| Agent surface | MCP server at `/api/mcp` (15 public tools, 1 authenticated write tool, a methodology resource), JSON API under `/api`, [`/llms.txt`](packages/nextjs/public/llms.txt), [`AGENTS.md`](AGENTS.md), [Hedera Harness](#testing) recipe |
+| Agent surface | MCP server at `/api/mcp` (21 public tools, 2 authenticated write tools, a methodology resource), JSON API under `/api`, [`/llms.txt`](packages/nextjs/public/llms.txt), [`AGENTS.md`](AGENTS.md), [Hedera Harness](#testing) recipe |
 
 ### Live on Hedera testnet
 

@@ -8,6 +8,16 @@ import { prepareAnchors } from "../pipeline";
 import { SCENARIOS, SCENARIO_NAMES, generateScenario } from "../scenarios";
 import { verifyRequestSchema } from "../schema";
 import { plantIdToBytes32 } from "../views";
+import { prepareDocumentSchema, publishDocumentSchema, waterRequestSchema } from "../documents/schema";
+import {
+  checkSignedDocument,
+  listDocuments,
+  prepareDocument,
+  publishDocument,
+  trustChainFor,
+} from "../documents/server";
+import { runPublicWork } from "../documents/work";
+import { quantifySafeWater } from "../water/vmr0015";
 import { attestReadings } from "./attest";
 import { ApiError } from "./errors";
 import { getPlantDetail, getPortfolio, portfolioQuerySchema } from "./insights";
@@ -267,6 +277,75 @@ export function buildMcpServer({ canWrite }: { canWrite: boolean }): McpServer {
     async query => run(() => getPortfolio(query)),
   );
 
+  server.registerTool(
+    "list_documents",
+    {
+      title: "List sealed documents",
+      description:
+        "VCS-shaped project description, validation, registry decision, monitoring report and verification report for a demo plant. Each later document cites the previous hash. Reading needs no key. These documents do not mint credits.",
+      inputSchema: z.object({ subjectId: z.string().optional() }),
+      annotations: readOnly,
+    },
+    async ({ subjectId }) => run(() => listDocuments(subjectId)),
+  );
+
+  server.registerTool(
+    "get_trust_chain",
+    {
+      title: "Trust chain for a project",
+      description: "Walks the sealed documents in order and reports described, validated, registered, monitoring, issued, or broken.",
+      inputSchema: z.object({ subjectId: z.string().min(1) }),
+      annotations: readOnly,
+    },
+    async ({ subjectId }) => run(() => trustChainFor(subjectId)),
+  );
+
+  server.registerTool(
+    "prepare_document",
+    {
+      title: "Hash a document for wallet signing",
+      description: "Returns the exact message to sign. The caller signs it with their own wallet. Nothing is stored.",
+      inputSchema: prepareDocumentSchema,
+      annotations: readOnly,
+    },
+    async input => run(() => prepareDocument(input)),
+  );
+
+  server.registerTool(
+    "quantify_safe_water",
+    {
+      title: "Illustrative VMR0015 safe-water quantification",
+      description:
+        "AMS-III.AV as revised by VMR0015: 5.5 L/person/day cap, 26% TOOL30 discount, 90% water-quality gate. Not a hydro credit and not a Verra issuance.",
+      inputSchema: waterRequestSchema,
+      annotations: readOnly,
+    },
+    async input => run(() => quantifySafeWater(input)),
+  );
+
+  server.registerTool(
+    "check_document",
+    {
+      title: "Check a signed document",
+      description:
+        "Confirms the hash and the wallet signature. Stores nothing and mints nothing. No operator key.",
+      inputSchema: publishDocumentSchema,
+      annotations: readOnly,
+    },
+    async input => run(() => checkSignedDocument(input)),
+  );
+
+  server.registerTool(
+    "run_public_work",
+    {
+      title: "Public multi-step job",
+      description: "The describe, validate, register, monitor and verify playbook for a subject, with the document chain attached.",
+      inputSchema: z.object({ subjectId: z.string().min(1).default("HYDRO-DEMO-01") }),
+      annotations: readOnly,
+    },
+    async ({ subjectId }) => run(() => runPublicWork(subjectId)),
+  );
+
   if (canWrite) {
     server.registerTool(
       "submit_attestation",
@@ -278,6 +357,18 @@ export function buildMcpServer({ canWrite }: { canWrite: boolean }): McpServer {
         annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: false, openWorldHint: true },
       },
       async request => run(() => attestReadings(request)),
+    );
+
+    server.registerTool(
+      "publish_document",
+      {
+        title: "Store a signed document",
+        description:
+          "Checks the hash and the wallet signature, then keeps the document for this server process. Requires the operator bearer token. Does not mint hydro credits.",
+        inputSchema: publishDocumentSchema,
+        annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: true, openWorldHint: false },
+      },
+      async input => run(() => publishDocument(input)),
     );
   }
 
