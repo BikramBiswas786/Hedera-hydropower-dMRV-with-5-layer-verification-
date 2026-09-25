@@ -31,11 +31,16 @@ export function prepareDocument(input: z.infer<typeof prepareDocumentSchema>) {
   return { document: { ...doc, hash }, message: documentMessage(hash) };
 }
 
-export async function publishDocument(input: z.infer<typeof publishDocumentSchema>) {
+export async function checkSignedDocument(input: z.infer<typeof publishDocumentSchema>) {
   const doc = input as Document;
   if (!(await documentIsIntact(doc))) throw new ApiError("Document hash or signature does not match the signer", 400);
-  published.push(doc);
-  return { stored: true, subjectId: doc.subjectId, hash: doc.hash };
+  return { intact: true, stored: false, subjectId: doc.subjectId, hash: doc.hash, type: doc.type };
+}
+
+export async function publishDocument(input: z.infer<typeof publishDocumentSchema>) {
+  const checked = await checkSignedDocument(input);
+  published.push(input as Document);
+  return { ...checked, stored: true };
 }
 
 export async function trustChainFor(subjectId: string) {

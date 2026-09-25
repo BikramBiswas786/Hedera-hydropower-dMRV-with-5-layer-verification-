@@ -36,7 +36,7 @@ gives each kind of user a path:
 
 A short audit note, for people rather than agents, is at [**/blog**](https://hydro-dmrv.vercel.app/blog): what to click, what the testnet shows, and what not to “fix” in the engine.
 
-Public, no key: [**/documents**](https://hydro-dmrv.vercel.app/documents) (hash-linked VCS sections for the two demo plants), [**/work**](https://hydro-dmrv.vercel.app/work) (the five-step job, also `GET /api/work`), and [**/water**](https://hydro-dmrv.vercel.app/water) (illustrative VMR0015, not a hydro credit). Agents use `list_documents`, `get_trust_chain`, `prepare_document`, `run_public_work` and `quantify_safe_water`. `publish_document` needs the operator key. A successful `submit_attestation` also returns a monitoring-report draft to sign; it does not mint a second token.
+Public, no key: [**/documents**](https://hydro-dmrv.vercel.app/documents) (hash-linked VCS sections for the two demo plants), [**/work**](https://hydro-dmrv.vercel.app/work) (the five-step job, also `GET /api/work`), and [**/water**](https://hydro-dmrv.vercel.app/water) (illustrative VMR0015, not a hydro credit). Agents use `list_documents`, `get_trust_chain`, `prepare_document`, `check_document`, `run_public_work` and `quantify_safe_water`. `check_document` confirms a wallet signature and stores nothing. `publish_document` needs the operator key and keeps the document only for that server process. A successful `submit_attestation` also returns a monitoring-report draft to sign; it does not mint a second token.
 
 | | |
 | --- | --- |
@@ -44,7 +44,7 @@ Public, no key: [**/documents**](https://hydro-dmrv.vercel.app/documents) (hash-
 | Hedera services | **HCS**: chunked monitoring-data messages and reports · **HTS**: fungible credit token and NFT certificate collection, both created, minted and burned by the contract · **Smart contracts**: on-chain quantification registry and oracle aggregator |
 | Ecosystem integration | **Chainlink** Data Feeds (primary) and **Supra** push oracle (fallback and cross-check), testnet and mainnet |
 | Stack | Next.js 15 · Hardhat · Yarn workspaces · Node ≥ 20.18.3 |
-| Agent surface | MCP server at `/api/mcp` (15 public tools, 1 authenticated write tool, a methodology resource), JSON API under `/api`, [`/llms.txt`](packages/nextjs/public/llms.txt), [`AGENTS.md`](AGENTS.md), [Hedera Harness](#testing) recipe |
+| Agent surface | MCP server at `/api/mcp` (21 public tools, 2 authenticated write tools, a methodology resource), JSON API under `/api`, [`/llms.txt`](packages/nextjs/public/llms.txt), [`AGENTS.md`](AGENTS.md), [Hedera Harness](#testing) recipe |
 
 ### Live on Hedera testnet
 
@@ -53,7 +53,7 @@ Deployed with `yarn deploy --network hederaTestnet` and attested with `yarn mrv:
 The app at [hydro-dmrv.vercel.app](https://hydro-dmrv.vercel.app) runs against it with no server keys, so it can
 read, verify, audit and prepare purchases but never attest; open [`/audit`](https://hydro-dmrv.vercel.app/audit) and
 press **Check evidence** to reproduce the attestations below from HCS in your browser. Live demo plants are
-**VMR0017** (`design.methodology = 1`). HYRET total supply is 1.
+**VMR0017** (`design.methodology = 1`). HYRET total supply is 1 (retirement #0).
 
 | What | Hashscan |
 | --- | --- |

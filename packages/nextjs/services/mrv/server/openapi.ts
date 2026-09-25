@@ -253,6 +253,13 @@ export function buildOpenApi(origin: string) {
         parameters: [path("subjectId", "Plant or water project id")],
         responses: ok("Chain status"),
       }),
+      "/api/documents/check": post({
+        operationId: "check_document",
+        tags: ["documents"],
+        summary: "Confirm a wallet signature; stores nothing",
+        requestBody: body(publishDocumentSchema),
+        responses: ok("Intact, not stored"),
+      }),
       "/api/documents/prepare": post({
         operationId: "prepare_document",
         tags: ["documents"],

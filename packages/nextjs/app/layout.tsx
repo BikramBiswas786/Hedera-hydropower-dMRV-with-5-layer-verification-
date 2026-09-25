@@ -8,7 +8,7 @@ import { getMetadata } from "~~/utils/scaffold-hbar/getMetadata";
 export const metadata = getMetadata({
   title: "Hydro dMRV",
   description:
-    "Hydropower carbon credits on Hedera under CDM AMS-I.D / ACM0002: ER = BE − PE − LE recomputed on-chain, HCS-anchored monitoring data, HTS credits, oracle-priced settlement",
+    "The contract holds the hydropower credit. Two HBAR/USD feeds must agree before a sale, and anyone can recompute the tonne from the public Hedera log.",
 });
 
 const ScaffoldHbarApp = ({ children }: { children: React.ReactNode }) => {

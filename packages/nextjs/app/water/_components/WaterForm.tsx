@@ -61,7 +61,12 @@ export function WaterForm() {
       return;
     }
     const signature = await signMessageAsync({ message: body.message });
-    setResult(JSON.stringify({ message: body.message, signature, hash: body.document.hash }, null, 2));
+    const checked = await fetch("/api/documents/check", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ ...body.document, signature }),
+    });
+    setResult(JSON.stringify(await checked.json(), null, 2));
   }
 
   return (

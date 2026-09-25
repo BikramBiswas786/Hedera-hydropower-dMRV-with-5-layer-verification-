@@ -8,8 +8,14 @@ import { prepareAnchors } from "../pipeline";
 import { SCENARIOS, SCENARIO_NAMES, generateScenario } from "../scenarios";
 import { verifyRequestSchema } from "../schema";
 import { plantIdToBytes32 } from "../views";
-import { listDocuments, prepareDocument, publishDocument, trustChainFor } from "../documents/server";
 import { prepareDocumentSchema, publishDocumentSchema, waterRequestSchema } from "../documents/schema";
+import {
+  checkSignedDocument,
+  listDocuments,
+  prepareDocument,
+  publishDocument,
+  trustChainFor,
+} from "../documents/server";
 import { runPublicWork } from "../documents/work";
 import { quantifySafeWater } from "../water/vmr0015";
 import { attestReadings } from "./attest";
@@ -315,6 +321,18 @@ export function buildMcpServer({ canWrite }: { canWrite: boolean }): McpServer {
       annotations: readOnly,
     },
     async input => run(() => quantifySafeWater(input)),
+  );
+
+  server.registerTool(
+    "check_document",
+    {
+      title: "Check a signed document",
+      description:
+        "Confirms the hash and the wallet signature. Stores nothing and mints nothing. No operator key.",
+      inputSchema: publishDocumentSchema,
+      annotations: readOnly,
+    },
+    async input => run(() => checkSignedDocument(input)),
   );
 
   server.registerTool(

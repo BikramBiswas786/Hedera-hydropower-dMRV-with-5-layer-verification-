@@ -3,6 +3,7 @@ import type { NextPage } from "next";
 import { PageHeader } from "~~/components/hydro/ui";
 import { trustChainFor } from "~~/services/mrv/documents/server";
 import { getMetadata } from "~~/utils/scaffold-hbar/getMetadata";
+import { SealForm } from "./_components/SealForm";
 
 export const metadata = getMetadata({
   title: "Documents",
@@ -20,6 +21,7 @@ const DocumentsPage: NextPage = async () => {
         Each cites the hash of the one before it. This does not mint credits. The demo signer is a public Anvil key, not
         an operator.
       </PageHeader>
+      <SealForm />
       {chains.map(chain => (
         <section key={chain.subjectId} className="bg-base-100 border border-base-300 rounded-2xl p-5 flex flex-col gap-2">
           <div className="flex flex-wrap items-baseline justify-between gap-2">
