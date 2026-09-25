@@ -13,6 +13,9 @@ against a **Supra** fallback; every retirement mints an **HTS NFT certificate**.
 npm create scaffold-hbar@latest --template BikramBiswas786/Hedera-hydropower-dMRV-with-5-layer-verification-
 ```
 
+**Live on Hedera testnet: [hydro-dmrv.vercel.app](https://hydro-dmrv.vercel.app)** (read-only; MCP at
+`https://hydro-dmrv.vercel.app/api/mcp`, OpenAPI at [`/api/openapi.json`](https://hydro-dmrv.vercel.app/api/openapi.json)).
+
 | | |
 | --- | --- |
 | Methodology | CDM AMS-I.D v18.0 / ACM0002 v22.0 · TOOL07 (OM simple, simple adjusted, average; BM sample group; CM weights) · TOOL03 (NCV × EF) · IPCC 2006 defaults with conservative bounds |
@@ -25,6 +28,9 @@ npm create scaffold-hbar@latest --template BikramBiswas786/Hedera-hydropower-dMR
 
 Deployed with `yarn deploy --network hederaTestnet` and attested with `yarn mrv:attest`; the addresses are in
 [`deployedContracts.ts`](packages/nextjs/contracts/deployedContracts.ts), so a fresh scaffold reads this deployment.
+The app at [hydro-dmrv.vercel.app](https://hydro-dmrv.vercel.app) runs against it with no server keys, so it can
+read, verify, audit and prepare purchases but never attest; open [`/audit`](https://hydro-dmrv.vercel.app/audit) and
+press **Check evidence** to reproduce the attestations below from HCS in your browser.
 
 | What | Hashscan |
 | --- | --- |
@@ -515,7 +521,7 @@ Agents get the same capabilities as people, without a browser, and act with thei
 2025-era clients):
 
 ```bash
-claude mcp add --transport http hydro-dmrv http://localhost:3000/api/mcp
+claude mcp add --transport http hydro-dmrv https://hydro-dmrv.vercel.app/api/mcp   # or http://localhost:3000/api/mcp
 ```
 
 | Tool | Access | Purpose |
