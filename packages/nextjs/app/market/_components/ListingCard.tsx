@@ -6,7 +6,12 @@ import { HederaAddress } from "~~/components/scaffold-hbar";
 import { useScaffoldReadContract, useScaffoldWriteContract, useTargetNetwork, useTransactor } from "~~/hooks/scaffold-hbar";
 import { formatHbar, tonnesToUnits } from "~~/services/mrv/pricing";
 import { type ListingView, formatTonnes, formatUsdCents } from "~~/services/mrv/views";
-import type { DexGate } from "./Marketplace";
+
+export type DexGate = {
+  accepted: boolean;
+  deviationBps: number;
+  maxDeviationBps: number;
+};
 
 type Prepared = {
   to: `0x${string}`;

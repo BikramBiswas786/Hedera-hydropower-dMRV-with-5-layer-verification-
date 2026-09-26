@@ -2,18 +2,12 @@
 
 import { useEffect, useState } from "react";
 import { AccountPanel } from "./AccountPanel";
-import { ListingCard } from "./ListingCard";
+import { type DexGate, ListingCard } from "./ListingCard";
 import { OraclePanel } from "./OraclePanel";
 import { useAccount } from "wagmi";
 import { NotDeployedNotice } from "~~/components/hydro/ui";
 import { useDeployedContractInfo, useScaffoldReadContract, useTargetNetwork } from "~~/hooks/scaffold-hbar";
 import { type RawListing, toListingView } from "~~/services/mrv/views";
-
-export type DexGate = {
-  accepted: boolean;
-  deviationBps: number;
-  maxDeviationBps: number;
-};
 
 const CLOSED: DexGate = { accepted: false, deviationBps: 10_000, maxDeviationBps: 300 };
 
