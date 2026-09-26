@@ -77,8 +77,12 @@ export const ListingCard = ({ listing, isOwn, nativeUnitsPerHbar, dex }: Props) 
         data: body.data,
         value: BigInt(body.value),
       });
-    } catch {
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "";
       if (!built) setGateError("No purchase transaction was built.");
+      else if (/unsupported method|wallet_sendTransaction|ed25519/i.test(message)) {
+        setGateError("This wallet cannot sign an Ethereum-style purchase. Use MetaMask with an ECDSA testnet account.");
+      } else if (message) setGateError(message);
     } finally {
       setSending(false);
     }
