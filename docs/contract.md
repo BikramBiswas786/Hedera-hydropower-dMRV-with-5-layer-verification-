@@ -141,7 +141,7 @@ addresses were read with `getPool(USDC, WHBAR, fee)` on each factory. Token orde
 
 | Network | Pool | WHBAR | State |
 | --- | --- | --- | --- |
-| Testnet | V2 WHBAR/USDC `0x914B98992d7eD602D1f5d9084ECe8160Fc0e741a` (factory 0.0.1197038, fee 3000) | `0x0000000000000000000000000000000000003aD2` (0.0.15058) | Next deploy enforces it. On 26 Sep 2026 the pool priced HBAR near $2, so sales revert until it is within 3%. The market already deployed does not have this rule |
+| Testnet | V1 pair `0xF98D0dF4eC60d57f24Ce7BD24eAcAdF045219869` on factory 0.0.9959, QUSD `0.0.10729568` / WHBAR. Seeded 26 Sep 2026 at the Chainlink price | `0x0000000000000000000000000000000000003aD2` (0.0.15058) | Next deploy enforces it. The market already deployed does not have this rule |
 | Mainnet | V2 WHBAR/USDC `0xC5B707348dA504E9Be1bD4E21525459830e7B11d` (factory 0.0.3946833, fee 1500) | `0x0000000000000000000000000000000000163B5a` (0.0.1456986) | Enabled, 300 bps. `minLiquidity` ships at 0 (only an empty pool counts as illiquid); raise it with `setPoolGuard` |
 
 A spot price can be moved inside one block. Someone who pushes the pool out of band can block sales (a denial of

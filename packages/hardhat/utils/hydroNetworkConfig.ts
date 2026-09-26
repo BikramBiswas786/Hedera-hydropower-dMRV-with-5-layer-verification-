@@ -62,18 +62,18 @@ const ORACLES: Record<"hederaTestnet" | "hederaMainnet", OracleSources> = {
 // WHBAR 0.0.1456986, 1500). In both pools token0 is USDC, so WHBAR is token1.
 export const POOL_GUARDS: Record<"hederaTestnet" | "hederaMainnet", PoolGuardConfig> = {
   hederaTestnet: {
-    pool: "0x914B98992d7eD602D1f5d9084ECe8160Fc0e741a",
-    isV2: true,
+    pool: "0xF98D0dF4eC60d57f24Ce7BD24eAcAdF045219869",
+    isV2: false,
     whbar: "0x0000000000000000000000000000000000003aD2",
     whbarDecimals: 8,
     usdDecimals: 6,
     maxDeviationBps: 300,
-    minLiquidity: 0n,
-    // The contract refuses setPoolGuard(..., false). Pointing this deploy at the testnet pool enforces it.
-    // On 26 Sep 2026 that pool priced HBAR near $2 against an oracle near $0.09, so every testnet sale reverts
-    // until the pool is within 3%. That is the point of the check. The market already on testnet predates it.
+    minLiquidity: 1_000_000n,
+    // Seeded 26 Sep 2026 on SaucerSwap V1 factory 0.0.9959 with 20 HBAR and QUSD 0.0.10729568.
+    // Reserves imply exactly the Chainlink price (9_397_300 = $0.093973). The canonical V2 WHBAR/USDC
+    // pool was near $2 that day, so it cannot be the guard.
     enabled: true,
-    note: "enforced. The 26 Sep 2026 testnet pool was near $2, so sales revert until it is within 3% of the oracle",
+    note: "SaucerSwap V1 pair seeded at the Chainlink price on 26 Sep 2026; enforced",
   },
   hederaMainnet: {
     pool: "0xC5B707348dA504E9Be1bD4E21525459830e7B11d",
@@ -110,7 +110,7 @@ export function getHydroNetworkConfig(hre: HardhatRuntimeEnvironment): HydroNetw
         nativeUnitsPerHbar: TINYBAR_PER_HBAR,
         maxPriceAgeSeconds,
         hashscanNetwork: "testnet",
-        saucerFactory: "0x00000000000000000000000000000000001243ee", // V2 factory 0.0.1197038
+        saucerFactory: "0x00000000000000000000000000000000000026e7", // V1 factory 0.0.9959
         poolGuard: POOL_GUARDS.hederaTestnet,
       };
     case "hederaMainnet":
