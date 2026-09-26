@@ -1,6 +1,13 @@
 # Hydro dMRV
 
-A Scaffold-HBAR template. The contract recomputes `ER = BE − PE − LE` for grid-connected hydropower and will not mint a different integer. Demo plants are **Verra VMR0017 v1.0** with **ACM0002 v22.0**. The CDM path (AMS-I.D / ACM0002, TOOL07) is still in the engine. This is not a Guardian policy and not a Verra issuance.
+A Scaffold-HBAR template for the part of digital MRV a policy engine leaves off-chain. The contract recomputes `ER = BE − PE − LE` from a registered design and meter-signed totals, and it will not mint a different integer. Issuance is anchored on HCS. Sales settle in HBAR only when Chainlink and Supra agree. `prepare_purchase` also refuses a SaucerSwap spot more than 3% off that price. That pool check is off-chain, and a direct call skips it.
+
+This sits next to [Hedera Guardian](https://github.com/hashgraph/guardian), it does not replace it. Guardian runs roles, verifiable credentials and the methodology library (including ACM0002, AMS-I.D, Tool 03 and Tool 07). A policy can POST a monitoring body to this app from an Http Request Block. The recipe is [docs/GUARDIAN.md](docs/GUARDIAN.md). The worked example is hydropower under **Verra VMR0017 v1.0** with **ACM0002 v22.0**. That is an implementation of the equations, not a certification and not a Verra issuance.
+
+| | Guardian | This template |
+| --- | --- | --- |
+| Roles, VC/DID, methodology library | Yes | No |
+| Contract recomputes the tonne, HCS re-derivation, two-oracle HTS sale | No | Yes |
 
 ## Quick start
 
@@ -89,6 +96,7 @@ get_dex_price → list_open_listings → prepare_purchase { listingId, amountKg,
 | | |
 | --- | --- |
 | Equations, five stages, scenarios, HCS reproduction | [docs/methodology.md](docs/methodology.md) |
+| Calling this from a Guardian policy | [docs/GUARDIAN.md](docs/GUARDIAN.md) |
 | Registry functions, HBAR units, Chainlink and Supra | [docs/contract.md](docs/contract.md) |
 | Tool table | [docs/agents.md](docs/agents.md) |
 | What the tests pin | [docs/testing.md](docs/testing.md) |

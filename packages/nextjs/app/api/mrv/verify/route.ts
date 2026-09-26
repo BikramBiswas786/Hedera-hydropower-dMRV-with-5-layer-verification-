@@ -4,8 +4,8 @@ import { verifyRequestSchema } from "~~/services/mrv/schema";
 import { parseJsonBody, toErrorResponse } from "~~/services/mrv/server/http";
 
 /**
- * Verifies and quantifies a monitoring period (AMS-I.D / ACM0002) and builds both HCS messages without writing
- * anything. No credentials needed.
+ * Verifies and quantifies a monitoring period and builds both HCS messages without writing anything.
+ * No credentials needed. A Guardian Http Request Block can POST this body; see docs/GUARDIAN.md.
  */
 export async function POST(request: Request) {
   try {
