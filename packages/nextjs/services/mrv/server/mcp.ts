@@ -10,6 +10,7 @@ import {
 } from "../documents/server";
 import { runPublicWork } from "../documents/work";
 import { ENGINE_VERSION } from "../engine";
+import { compareGuardianReport, compareReportSchema } from "../guardian/compare";
 import { METHODOLOGY_MARKDOWN } from "../methodology/document";
 import { gridEmissionFactorRequestSchema, projectDesignSchema } from "../methodology/schema";
 import { HYDRO_CHAIN_ID } from "../network";
@@ -255,6 +256,18 @@ export function buildMcpServer({ canWrite }: { canWrite: boolean }): McpServer {
       annotations: readOnly,
     },
     async ({ attestationId }) => run(async () => auditAttestation(await getAttestation(attestationId))),
+  );
+
+  server.registerTool(
+    "compare_guardian_report",
+    {
+      title: "Compare a Guardian figure",
+      description:
+        "Recompute a Guardian VMR0017 monitoring report (field3–7 grid and generation, field24–27 their BE, PE, LE and ER, in tonnes). Returns MATCH, MISMATCH or NOT_COMPARABLE and the tonne difference. Does not mint and does not sign. Use this before treating a Guardian number as the credit.",
+      inputSchema: compareReportSchema,
+      annotations: readOnly,
+    },
+    async input => run(() => compareGuardianReport(input)),
   );
 
   server.registerTool(

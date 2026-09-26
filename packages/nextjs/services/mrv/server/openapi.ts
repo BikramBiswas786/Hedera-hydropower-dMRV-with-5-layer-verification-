@@ -1,5 +1,6 @@
 import { prepareDocumentSchema, publishDocumentSchema, waterRequestSchema } from "../documents/schema";
 import { ENGINE_VERSION } from "../engine";
+import { compareReportSchema } from "../guardian/compare";
 import { gridEmissionFactorRequestSchema, projectDesignSchema } from "../methodology/schema";
 import { HYDRO_CHAIN_ID } from "../network";
 import { SCENARIO_NAMES } from "../scenarios";
@@ -85,6 +86,18 @@ export function buildOpenApi(origin: string) {
       },
     ],
     paths: {
+      "/api/methodology/compare": post({
+        operationId: "compare_guardian_report",
+        tags: ["guardian"],
+        summary: "Recompute a Guardian monitoring figure",
+        description:
+          "Runs a Guardian VMR0017 monitoring report through the same integers the registry uses. Returns MATCH, MISMATCH, or NOT_COMPARABLE, plus the tonne difference. Does not mint and does not sign. No API key.",
+        requestBody: body(compareReportSchema),
+        responses: {
+          ...ok("decision, oursT, theirsT, deltaTonnes, notes"),
+          "422": { $ref: "#/components/responses/Error" },
+        },
+      }),
       "/api/methodology/assess": post({
         operationId: "assess_project",
         tags: ["methodology"],

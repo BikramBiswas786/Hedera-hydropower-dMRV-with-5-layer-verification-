@@ -35,16 +35,15 @@ async function listed() {
   const ctx = await deployReady();
   await submitPeriod(ctx.registry, await periodInput(PROJECT_ID)); // 450 units to the operator
   await ctx.market.connect(ctx.operator).createListing(400, PRICE_CENTS_PER_TONNE);
-  return ctx;
-}
-
-async function withV1Pool() {
-  const ctx = await listed();
   const pair = await ethers.deployContract("MockSaucerSwapV1Pair", [USDC, WHBAR]);
   // 250,000 USDC against 1,000,000 WHBAR: $0.25/HBAR, equal to the oracle.
   await pair.setReserves(250_000n * 10n ** 6n, 1_000_000n * 10n ** 8n);
   await ctx.market.setPoolGuard(await pair.getAddress(), false, WHBAR, 8, 6, 300, 10_000n * 10n ** 6n, true);
   return { ...ctx, pair };
+}
+
+async function withV1Pool() {
+  return listed();
 }
 
 describe("CreditMarket", function () {
@@ -188,18 +187,18 @@ describe("CreditMarket", function () {
       await expect(market.quote(0, 1)).to.be.revertedWithCustomError(market, "PoolIlliquid");
     });
 
-    it("can be disabled by the admin, falling back to the oracle alone", async function () {
-      const { market, pair, buyer, stranger } = await loadFixture(withV1Pool);
+    it("cannot be switched off, even when the pool is far from the oracle", async function () {
+      const { market, pair, stranger } = await loadFixture(withV1Pool);
       await pair.setReserves(2_280_000n * 10n ** 6n, 1_000_000n * 10n ** 8n); // testnet-like $2.28
       await expect(market.quote(0, 1)).to.be.revertedWithCustomError(market, "PoolPriceDeviation");
       await expect(market.connect(stranger).setPoolGuardEnabled(false)).to.be.revertedWithCustomError(
         market,
         "AccessControlUnauthorizedAccount",
       );
-      await expect(market.setPoolGuardEnabled(false)).to.emit(market, "PoolGuardEnabled").withArgs(false);
-      const cost = await market.quote(0, 100);
-      expect(cost).to.equal(ethers.parseEther("6"));
-      await market.connect(buyer).buy(0, 100, { value: cost });
+      await expect(market.setPoolGuardEnabled(false)).to.be.revertedWithCustomError(market, "InvalidPoolGuard");
+      await expect(
+        market.setPoolGuard(await pair.getAddress(), false, WHBAR, 8, 6, 300, 0, false),
+      ).to.be.revertedWithCustomError(market, "InvalidPoolGuard");
     });
 
     it("reads a V2 pool's slot0 with WHBAR as token1 (the testnet and mainnet order)", async function () {
@@ -254,11 +253,13 @@ describe("CreditMarket", function () {
       ).to.be.revertedWithCustomError(market, "AccessControlUnauthorizedAccount");
     });
 
-    it("stays off until configured", async function () {
-      const { market } = await loadFixture(listed);
-      await expect(market.setPoolGuardEnabled(true)).to.be.revertedWithCustomError(market, "InvalidPoolGuard");
-      await expect(market.poolHbarUsd(8)).to.be.revertedWithCustomError(market, "InvalidPoolGuard");
-      expect((await market.poolGuard()).enabled).to.equal(false);
+    it("refuses a quote until a SaucerSwap pool is set", async function () {
+      const ctx = await deployReady();
+      await submitPeriod(ctx.registry, await periodInput(PROJECT_ID));
+      await ctx.market.connect(ctx.operator).createListing(400, PRICE_CENTS_PER_TONNE);
+      await expect(ctx.market.quote(0, 1)).to.be.revertedWithCustomError(ctx.market, "InvalidPoolGuard");
+      await expect(ctx.market.setPoolGuardEnabled(true)).to.be.revertedWithCustomError(ctx.market, "InvalidPoolGuard");
+      await expect(ctx.market.poolHbarUsd(8)).to.be.revertedWithCustomError(ctx.market, "InvalidPoolGuard");
     });
   });
 });

@@ -67,10 +67,11 @@ export const POOL_GUARDS: Record<"hederaTestnet" | "hederaMainnet", PoolGuardCon
     usdDecimals: 6,
     maxDeviationBps: 300,
     minLiquidity: 0n,
-    // On 26 Sep 2026 this pool priced HBAR at about $2.03 (the V1 pair about $2.28) against about $0.094 on the
-    // oracles: testnet liquidity is test money. Enforcing it would block every purchase, so it ships disabled.
-    enabled: process.env.POOL_GUARD_ENABLED === "true",
-    note: "testnet pool is illiquid and far from the market price; stored but not enforced (set POOL_GUARD_ENABLED=true to enforce)",
+    // The contract refuses setPoolGuard(..., false). Pointing this deploy at the testnet pool enforces it.
+    // On 26 Sep 2026 that pool priced HBAR near $2 against an oracle near $0.09, so every testnet sale reverts
+    // until the pool is within 3%. That is the point of the check. The market already on testnet predates it.
+    enabled: true,
+    note: "enforced. The 26 Sep 2026 testnet pool was near $2, so sales revert until it is within 3% of the oracle",
   },
   hederaMainnet: {
     pool: "0xC5B707348dA504E9Be1bD4E21525459830e7B11d",
@@ -80,8 +81,8 @@ export const POOL_GUARDS: Record<"hederaTestnet" | "hederaMainnet", PoolGuardCon
     usdDecimals: 6,
     maxDeviationBps: 300,
     minLiquidity: 0n,
-    enabled: process.env.POOL_GUARD_ENABLED !== "false",
-    note: "mainnet pool tracked the oracle price (about $0.094) on 26 Sep 2026; enforced at 3%",
+    enabled: true,
+    note: "mainnet pool tracked the oracle price (about $0.094) on 26 Sep 2026; the contract will not sell without it",
   },
 };
 

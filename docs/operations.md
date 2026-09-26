@@ -31,7 +31,7 @@ Nothing is required to browse the app or use the engine. Copy the `.env.example`
 | `DEPLOYER_PRIVATE_KEY_ENCRYPTED` | Written by `yarn hardhat:account:import` / `:generate`. |
 | `VERIFIER_ADDRESS` | The VVB's secp256k1 signing address: gets `VERIFIER_ROLE`. Must not be a plant operator (the deploy throws) or a meter (the contract rejects). |
 | `METER_ADDRESSES` | JSON `{ "<plantId>": "0x…" }` of the plants' meter addresses. Otherwise read from `.secrets/meters.<network>.json` (`yarn hardhat:meter-keys`). On Hedera networks the deploy throws if one is missing or equals the public demo derivation. |
-| `POOL_GUARD_ENABLED` | `true` enforces the testnet SaucerSwap pool guard (default off: the testnet pool is mispriced); `false` disables it on mainnet (default on). |
+| `POOL_GUARD_ENABLED` | Ignored. The contract rejects a pool guard that is switched off. |
 | `ADMIN_ADDRESS` | Admin after setup on both `DmrvRegistry` and `CreditMarket` (EVM address or `0.0.<num>`; the 2-of-3 account from `yarn admin:threshold`): gets `DEFAULT_ADMIN_ROLE`, and the deployer renounces it. |
 | `PLANT_OPERATOR_ADDRESS` | Receives the demo plants' credits; defaults to the deployer. |
 | `CREDIT_TOKEN_CREATE_FEE_HBAR` · `CERTIFICATE_TOKEN_CREATE_FEE_HBAR` | HBAR sent to cover each HTS creation fee (default 20). Unused change can be swept. |
@@ -154,19 +154,17 @@ Admin changes after the handover go through the threshold account:
 `yarn admin:exec schedule <CreditMarket 0x…> "setPoolGuardEnabled(bool)" true` by one holder, then
 `yarn admin:exec sign <scheduleId>` by a second.
 
-### SaucerSwap guard: fallback
+### SaucerSwap guard
 
 The on-chain guard compares a SaucerSwap WHBAR/USDC pool with the oracle consensus and reverts beyond 3%.
+`setPoolGuardEnabled(false)` reverts. The admin can repoint the pool only.
 
-- **Hedera testnet: off.** On 26 Sep 2026 the testnet pools priced HBAR at about $2.03 (V2) and $2.28 (V1) against
-  about $0.094. The pool is stored but not enforced; purchases settle on Chainlink/Supra, and only the off-chain
-  mainnet pre-flight in `prepare_purchase` applies. Enforce it with `POOL_GUARD_ENABLED=true` at deploy, or
-  `setPoolGuardEnabled(true)` through the threshold account, if testnet liquidity ever tracks the market.
-- **Mainnet: on.** The V2 WHBAR/USDC pool tracked the oracle price on the same date.
-- **If a pool is drained or manipulated**, purchases revert rather than mis-price. The threshold admin can switch the
-  guard off (`setPoolGuardEnabled(false)`) or repoint it (`setPoolGuard`).
-- **Limits.** A spot price can be moved in one block, so the guard can be used to block sales. It cannot make them
-  cheaper, because payment always uses the oracle price. A TWAP is future work.
+- **This source.** A quote with no pool reverts. The next deploy stores the testnet V2 pool with the check on.
+- **Testnet price.** On 26 Sep 2026 that pool priced HBAR near $2 against an oracle near $0.094, so sales on a new
+  deploy revert until the pool is within 3%. The market already deployed does not have this rule.
+- **Mainnet.** The V2 WHBAR/USDC pool tracked the oracle on the same date.
+- **Limits.** A spot price can be moved in one block, so the guard can block sales. It cannot make them cheaper,
+  because payment uses the oracle price.
 
 ## Security model and limitations
 

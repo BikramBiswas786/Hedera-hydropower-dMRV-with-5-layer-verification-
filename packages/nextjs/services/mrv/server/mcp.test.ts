@@ -25,6 +25,7 @@ const PUBLIC = [
   "list_attestations",
   "audit_attestation",
   "verify_guardian_evidence",
+  "compare_guardian_report",
   "reproduce_attestation",
   "list_open_listings",
   "get_dex_price",

@@ -118,15 +118,15 @@ yet, the NFT waits for `claimCertificate`.
 | --- | --- | --- |
 | `createListing(units, usdCentsPerTonne)` · `cancelListing(id)` | holder | Moves units between registry custody and the market's custody |
 | `quote(listingId, units)` | view | Native cost at the settlement price, rounded up in the seller's favour |
-| `buy` · `buyAndRetire` (payable) | anyone | Settlement price (fresh oracle, then the pool guard when enabled); rejects underpayment; escrows proceeds; refunds excess |
+| `buy` · `buyAndRetire` (payable) | anyone | Settlement price (fresh oracle and a SaucerSwap pool within 3%); rejects underpayment; escrows proceeds; refunds excess |
 | `withdrawProceeds()` | seller | Pull payment |
 | `setMaxPriceAge` · `setPoolGuard(...)` · `setPoolGuardEnabled(bool)` · `sweepHbar(to)` | admin | `sweepHbar` never touches owed proceeds |
 
 ### SaucerSwap pool guard
 
-`settlementPrice()` runs on every quote and purchase. When `poolGuard.enabled` is set, it reads the configured
-SaucerSwap WHBAR/USD-stablecoin pool and reverts `PoolPriceDeviation(poolPrice, oraclePrice, bps)` if the pool is more
-than `maxDeviationBps` (≤ `MAX_POOL_DEVIATION_BPS`) from the Chainlink/Supra consensus. It reverts `PoolIlliquid` below
+`settlementPrice()` runs on every quote and purchase. It reverts `InvalidPoolGuard` when no SaucerSwap pool is
+configured, and `PoolPriceDeviation(poolPrice, oraclePrice, bps)` when the pool is more than 300 bps from the oracle.
+`setPoolGuardEnabled(false)` reverts. The admin can repoint the pool, not remove the check. It reverts `PoolIlliquid` below
 `minLiquidity`.
 
 - **V1 pairs** (Uniswap V2 fork): `getReserves()`. The interface is SaucerSwap's `IUniswapV2Pair`
@@ -141,7 +141,7 @@ addresses were read with `getPool(USDC, WHBAR, fee)` on each factory. Token orde
 
 | Network | Pool | WHBAR | State |
 | --- | --- | --- | --- |
-| Testnet | V2 WHBAR/USDC `0x914B98992d7eD602D1f5d9084ECe8160Fc0e741a` (factory 0.0.1197038, fee 3000) | `0x0000000000000000000000000000000000003aD2` (0.0.15058) | Stored, **disabled**. The pool priced HBAR at about $2.03 on 26 Sep 2026 (the V1 pair about $2.28), against about $0.094 on the market. `POOL_GUARD_ENABLED=true` enforces it anyway |
+| Testnet | V2 WHBAR/USDC `0x914B98992d7eD602D1f5d9084ECe8160Fc0e741a` (factory 0.0.1197038, fee 3000) | `0x0000000000000000000000000000000000003aD2` (0.0.15058) | Next deploy enforces it. On 26 Sep 2026 the pool priced HBAR near $2, so sales revert until it is within 3%. The market already deployed does not have this rule |
 | Mainnet | V2 WHBAR/USDC `0xC5B707348dA504E9Be1bD4E21525459830e7B11d` (factory 0.0.3946833, fee 1500) | `0x0000000000000000000000000000000000163B5a` (0.0.1456986) | Enabled, 300 bps. `minLiquidity` ships at 0 (only an empty pool counts as illiquid); raise it with `setPoolGuard` |
 
 A spot price can be moved inside one block. Someone who pushes the pool out of band can block sales (a denial of

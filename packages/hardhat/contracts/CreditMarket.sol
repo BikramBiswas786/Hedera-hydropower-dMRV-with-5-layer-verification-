@@ -13,11 +13,11 @@ import { DmrvRegistry } from "./DmrvRegistry.sol";
 /// (`ResilientHbarUsdFeed`: Chainlink, with Supra as a checked fallback). Listed credits are escrowed in registry
 /// custody under this contract's address; the market never touches HTS. `buyAndRetire` retires in the same
 /// transaction and the registry mints the certificate NFT.
-/// @dev Optional on-chain cross-check: when the SaucerSwap guard is enabled, every settlement also reads the
-/// WHBAR/USDC pool (V1 `getReserves` or V2 `slot0`) and reverts if the pool's HBAR price is more than
-/// `maxDeviationBps` away from the oracle price, or if the pool is below `minLiquidity`. Settlement always uses
-/// the oracle price. The pool is only a circuit breaker against a wrong oracle; its spot price can be moved inside
-/// one transaction, so an attacker can at most block purchases, never change what a buyer pays.
+/// @dev Every quote and purchase reads the configured SaucerSwap WHBAR/USDC pool (V1 `getReserves` or V2
+/// `slot0`) and reverts if no pool is set, if the pool's HBAR price is more than `maxDeviationBps` from the
+/// oracle, or if the pool is below `minLiquidity`. The admin can repoint the pool. The admin cannot turn the
+/// check off. Settlement still uses the oracle price. The pool is a circuit breaker: its spot can be moved
+/// inside one transaction, so an attacker can block a purchase, not change what the buyer pays.
 contract CreditMarket is AccessControl, ReentrancyGuard {
     uint16 public constant MAX_BPS = 10_000;
     /// @notice The admin cannot loosen the pool bound beyond 20%.
@@ -115,8 +115,7 @@ contract CreditMarket is AccessControl, ReentrancyGuard {
     }
 
     /// @notice Configures the SaucerSwap cross-check. `whbar` must be one of the pool's two tokens; the other is
-    /// the USD stablecoin. Pass `enabled = false` to store the pool without enforcing it (e.g. an illiquid testnet
-    /// pool whose price is nowhere near the market).
+    /// the USD stablecoin. `enabled` must be true. A purchase with no pool, or with this flag cleared, reverts.
     function setPoolGuard(
         address pool,
         bool isV2,
@@ -128,7 +127,7 @@ contract CreditMarket is AccessControl, ReentrancyGuard {
         bool enabled
     ) external onlyRole(DEFAULT_ADMIN_ROLE) {
         if (pool == address(0) || whbar == address(0)) revert ZeroAddress();
-        if (maxDeviationBps == 0 || maxDeviationBps > MAX_POOL_DEVIATION_BPS) revert InvalidPoolGuard();
+        if (!enabled || maxDeviationBps == 0 || maxDeviationBps > MAX_POOL_DEVIATION_BPS) revert InvalidPoolGuard();
         if (whbarDecimals > 18 || usdDecimals > 18) revert InvalidPoolGuard();
         address token0 = ISaucerSwapV1Pair(pool).token0();
         bool whbarIsToken0 = token0 == whbar;
@@ -146,11 +145,11 @@ contract CreditMarket is AccessControl, ReentrancyGuard {
         emit PoolGuardSet(pool, isV2, whbarIsToken0, maxDeviationBps, minLiquidity, enabled);
     }
 
-    /// @notice Switches the pool cross-check on or off without changing its configuration.
+    /// @notice Turns the pool check on. Turning it off reverts: a sale without SaucerSwap is not a sale.
     function setPoolGuardEnabled(bool enabled) external onlyRole(DEFAULT_ADMIN_ROLE) {
-        if (enabled && poolGuard.pool == address(0)) revert InvalidPoolGuard();
-        poolGuard.enabled = enabled;
-        emit PoolGuardEnabled(enabled);
+        if (!enabled || poolGuard.pool == address(0)) revert InvalidPoolGuard();
+        poolGuard.enabled = true;
+        emit PoolGuardEnabled(true);
     }
 
     /// @notice Recovers HBAR that is not owed to sellers.
@@ -230,7 +229,7 @@ contract CreditMarket is AccessControl, ReentrancyGuard {
         return (numerator + denominator - 1) / denominator;
     }
 
-    /// @notice The fresh oracle HBAR/USD price, after the SaucerSwap cross-check when it is enabled.
+    /// @notice The fresh oracle HBAR/USD price, after the SaucerSwap pool agrees within the configured band.
     function settlementPrice() public view returns (uint256 answer, uint8 decimals) {
         (uint80 roundId, int256 rawAnswer, , uint256 updatedAt, uint80 answeredInRound) = HBAR_USD_FEED
             .latestRoundData();
@@ -239,14 +238,12 @@ contract CreditMarket is AccessControl, ReentrancyGuard {
         answer = uint256(rawAnswer);
         decimals = HBAR_USD_FEED.decimals();
         PoolGuard memory g = poolGuard;
-        if (g.enabled) {
-            uint256 poolPrice = poolHbarUsd(decimals);
-            uint256 diff = poolPrice > answer ? poolPrice - answer : answer - poolPrice;
-            uint256 deviationBps = (diff * MAX_BPS) / answer;
-            if (deviationBps > g.maxDeviationBps) revert PoolPriceDeviation(poolPrice, answer, deviationBps);
-        }
+        if (g.pool == address(0) || !g.enabled) revert InvalidPoolGuard();
+        uint256 poolPrice = poolHbarUsd(decimals);
+        uint256 diff = poolPrice > answer ? poolPrice - answer : answer - poolPrice;
+        uint256 deviationBps = (diff * MAX_BPS) / answer;
+        if (deviationBps > g.maxDeviationBps) revert PoolPriceDeviation(poolPrice, answer, deviationBps);
     }
-
     /// @notice HBAR price in USD implied by the configured SaucerSwap pool, scaled to `decimals`.
     /// Reverts when the pool is below the configured liquidity floor.
     function poolHbarUsd(uint8 decimals) public view returns (uint256) {
