@@ -28,12 +28,12 @@ const Home: NextPage = () => (
         <span className="uppercase tracking-widest text-sm text-white/70">Hedera testnet demo</span>
         <h1 className="text-4xl md:text-5xl font-bold m-0 leading-tight">Hydro dMRV</h1>
         <p className="text-lg text-white/85 m-0 max-w-2xl">
-          A practice desk for hydropower carbon credits. Press a scenario and see whether the readings would be allowed
-          to become a credit. The two plants are demos. The tokens have no money value.
+          Guardian calculates a tonne and can mint it. This desk recomputes that tonne and will not agree to a different
+          one. The plants and tokens are a testnet demo, not a registry.
         </p>
         <div className="flex flex-wrap gap-3 mt-2">
-          <Link href="/guide" className="btn bg-white text-hedera-indigo border-none hover:bg-white/90">
-            Start here
+          <Link href="/check" className="btn bg-white text-hedera-indigo border-none hover:bg-white/90">
+            Compare a Guardian figure
           </Link>
           <Link href="/verify" className="btn btn-outline text-white border-white hover:bg-white/10">
             Try the verifier

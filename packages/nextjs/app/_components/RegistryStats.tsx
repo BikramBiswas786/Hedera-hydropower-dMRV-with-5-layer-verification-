@@ -7,25 +7,25 @@ import { formatTonnes } from "~~/services/mrv/views";
 
 export const RegistryStats = () => {
   const { targetNetwork } = useTargetNetwork();
-  const { data: deployment, isLoading } = useDeployedContractInfo({ contractName: "HydroCreditRegistry" });
+  const { data: deployment, isLoading } = useDeployedContractInfo({ contractName: "DmrvRegistry" });
   const { data: issued } = useScaffoldReadContract({
-    contractName: "HydroCreditRegistry",
+    contractName: "DmrvRegistry",
     functionName: "totalIssuedUnits",
   });
   const { data: retired } = useScaffoldReadContract({
-    contractName: "HydroCreditRegistry",
+    contractName: "DmrvRegistry",
     functionName: "totalRetiredUnits",
   });
   const { data: attestations } = useScaffoldReadContract({
-    contractName: "HydroCreditRegistry",
+    contractName: "DmrvRegistry",
     functionName: "attestationCount",
   });
   const { data: plantIds } = useScaffoldReadContract({
-    contractName: "HydroCreditRegistry",
-    functionName: "getPlantIds",
+    contractName: "DmrvRegistry",
+    functionName: "getProjectIds",
   });
   const { data: creditToken } = useScaffoldReadContract({
-    contractName: "HydroCreditRegistry",
+    contractName: "DmrvRegistry",
     functionName: "creditToken",
   });
 

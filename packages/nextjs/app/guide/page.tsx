@@ -137,8 +137,9 @@ const GuidePage: NextPage = async () => {
             </Link>
             , pick a listing, enter how many tonnes and the name to put on the certificate (for example your company),
             and choose <strong>Buy &amp; retire</strong>. Prices are in US dollars per tonne and paid in HBAR at the
-            live Chainlink rate, cross-checked with Supra. The buy is not built if the SaucerSwap WHBAR/USDC pool is
-            more than 3% from that rate. Retiring burns the credits so nobody can sell them again.
+            live Chainlink rate, cross-checked with Supra. The HBAR is swapped on the SaucerSwap pair stored in the
+            market. The buy is not built if that pair is more than 3% from the oracle. Retiring burns the credits so
+            nobody can sell them again.
           </Step>
           <Step n={3} title="Keep the proof">
             You receive an NFT certificate. On{" "}
@@ -164,13 +165,13 @@ const GuidePage: NextPage = async () => {
             factor, reservoir rules and the exact numbers to register on-chain.
           </Step>
           <Step n={2} title="Register it">
-            The registry admin records the validated design on-chain (<code>registerPlant</code>, done for the demo
+            The registry admin records the validated design on-chain (<code>registerProject</code>, done for the demo
             plants by <code>yarn deploy</code>). From then on the contract refuses anything that breaks it.
           </Step>
           <Step n={3} title="Give the meter a key">
             <code>yarn mrv:meter-key</code> creates a key for the data logger; its address is registered with the plant.
-            The logger signs every batch&apos;s totals (<code>yarn mrv:sign</code> or any Ethereum library), and the
-            contract never mints more than the meter signed.
+            The logger signs every batch&apos;s totals (<code>yarn mrv:sign</code> or any Ethereum library), a VVB
+            approves the same statement, and the contract never mints more than the meter signed.
           </Step>
           <Step n={4} title="Attest and sell">
             <code>yarn mrv:attest</code> (or <code>POST /api/mrv/attest</code> with your API key) verifies a period,

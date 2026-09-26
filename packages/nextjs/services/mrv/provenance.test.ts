@@ -20,9 +20,10 @@ const key = generatePrivateKey();
 const meter = privateKeyToAccount(key);
 
 describe("meter statement", () => {
-  it("hashes exactly like HydroCreditRegistry.meterStatementHash (shared vector)", () => {
+  it("hashes exactly like the legacy HydroCreditRegistry.meterStatementHash (shared vector)", () => {
     const { domain, plantId, statement, hash } = METER_STATEMENT_VECTOR;
-    expect(meterStatementHash(domain, plantId, statement)).toBe(hash);
+    // The legacy EIP-191 hash does not cover the interval count; the EIP-712 statement does.
+    expect(meterStatementHash(domain, plantId, { ...statement, intervals: 0, intervalSeconds: 0 })).toBe(hash);
   });
 
   it("carries the raw totals: gross and fuel rounded up, net export rounded down", () => {

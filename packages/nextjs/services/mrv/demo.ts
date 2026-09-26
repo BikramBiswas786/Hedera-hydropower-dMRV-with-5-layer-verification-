@@ -108,6 +108,7 @@ export const DEMO_DESIGNS: ProjectDesign[] = [
     equipmentTransferred: false,
     onSiteFuel: { fuel: "gas-diesel-oil" },
     crediting: { start: "2026-01-01T00:00:00Z", years: 7, period: 1 },
+    registrationRequest: "2026-01-01T00:00:00Z",
     grid: { source: "tool07", input: DEMO_GRID },
     hydraulics: { maxFlowM3s: 1.6, maxHeadM: 45, minEfficiency: 0.7, maxEfficiency: 0.92 },
   },
@@ -126,7 +127,9 @@ export const DEMO_DESIGNS: ProjectDesign[] = [
     equipmentTransferred: false,
     onSiteFuel: { fuel: "gas-diesel-oil" },
     crediting: { start: "2026-03-01T00:00:00Z", years: 7, period: 2 },
+    registrationRequest: "2026-03-01T00:00:00Z",
     renewal: {
+      previousYears: 7,
       baselineValidity: "illustrative TOOL11 reassessment, not a validation report",
       regulatorySurplus: "illustrative: no new law requires the plant",
     },

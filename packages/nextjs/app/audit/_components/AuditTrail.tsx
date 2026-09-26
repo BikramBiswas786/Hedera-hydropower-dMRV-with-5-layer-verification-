@@ -10,16 +10,16 @@ import { hashscan } from "~~/services/mrv/network";
 import {
   type AttestationView,
   type PlantView,
-  type RawAttestation,
-  type RawPlant,
+  type RawDmrvAttestation,
+  type RawProject,
   type RawRetirement,
   formatGramsAsTonnes,
   formatTonnes,
   formatWhAsMwh,
   plantIdToBytes32,
   shortHashOr,
-  toAttestationView,
-  toPlantView,
+  toDmrvAttestationView,
+  toProjectView,
   toRetirementView,
 } from "~~/services/mrv/views";
 
@@ -122,24 +122,24 @@ const AttestationRow = ({ attestation, readDesign }: { attestation: AttestationV
 export const AuditTrail = () => {
   const { targetNetwork } = useTargetNetwork();
   const publicClient = usePublicClient({ chainId: targetNetwork.id });
-  const { data: deployment, isLoading } = useDeployedContractInfo({ contractName: "HydroCreditRegistry" });
+  const { data: deployment, isLoading } = useDeployedContractInfo({ contractName: "DmrvRegistry" });
   const { data: count } = useScaffoldReadContract({
-    contractName: "HydroCreditRegistry",
+    contractName: "DmrvRegistry",
     functionName: "attestationCount",
   });
   const start = count && count > PAGE_SIZE ? count - PAGE_SIZE : 0n;
   const { data: page } = useScaffoldReadContract({
-    contractName: "HydroCreditRegistry",
+    contractName: "DmrvRegistry",
     functionName: "getAttestations",
     args: [start, PAGE_SIZE],
   });
   const { data: retirementCount } = useScaffoldReadContract({
-    contractName: "HydroCreditRegistry",
+    contractName: "DmrvRegistry",
     functionName: "retirementCount",
   });
   const retirementStart = retirementCount && retirementCount > PAGE_SIZE ? retirementCount - PAGE_SIZE : 0n;
   const { data: retirementPage } = useScaffoldReadContract({
-    contractName: "HydroCreditRegistry",
+    contractName: "DmrvRegistry",
     functionName: "getRetirements",
     args: [retirementStart, PAGE_SIZE],
   });
@@ -152,14 +152,14 @@ export const AuditTrail = () => {
     const raw = await publicClient.readContract({
       address: deployment.address,
       abi: deployment.abi,
-      functionName: "getPlant",
+      functionName: "getProject",
       args: [id],
     });
-    return toPlantView(id, raw as RawPlant);
+    return toProjectView(id, raw as RawProject);
   };
 
-  const rawAttestations: readonly RawAttestation[] = page ?? [];
-  const attestations = rawAttestations.map((raw, i) => toAttestationView(raw, Number(start) + i)).reverse();
+  const rawAttestations: readonly RawDmrvAttestation[] = page ?? [];
+  const attestations = rawAttestations.map((raw, i) => toDmrvAttestationView(raw, Number(start) + i)).reverse();
   const rawRetirements: readonly RawRetirement[] = retirementPage ?? [];
   const retirements = rawRetirements.map((raw, i) => toRetirementView(raw, Number(retirementStart) + i)).reverse();
 

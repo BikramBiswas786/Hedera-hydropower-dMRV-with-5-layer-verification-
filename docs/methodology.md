@@ -253,7 +253,7 @@ The sequence for one day of monitoring:
 | **HCS readings + report** | The quantification becomes an unverifiable claim. With both on HCS, a verifier who approves bad data, or uses a flattering grid factor, is caught by anyone who re-runs the engine. |
 | **Contract quantification + HTS** | Credits would be whatever the verifier typed. Because the contract recomputes ER and is the only supply key, nothing can be minted outside the registered design and the equations. |
 | **Chainlink + Supra** | USD-denominated settlement is impossible on-chain. With one feed, a single outage halts the market and a single bad answer misprices it. Two providers that must agree remove both failure modes. |
-| **SaucerSwap WHBAR/USDC** | `prepare_purchase` and `get_dex_price` stop. The template's market, the agent tools and the UI will not build a buy. A direct call to the registry still settles on the two oracles; that bypass is documented under limitations. |
+| **SaucerSwap WHBAR/USDC** | `quote`, `buy` and `buyAndRetire` revert. There is no settlement without a pool within 3% of the oracle. The market already on testnet was deployed before this rule. |
 
 ## The 5-stage verification engine
 

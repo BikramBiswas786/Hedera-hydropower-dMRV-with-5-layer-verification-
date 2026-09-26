@@ -42,7 +42,7 @@ const abi = [
 ] as const;
 
 vi.mock("./registry", () => ({
-  requireDeployment: () => ({
+  requireMarket: () => ({
     address: "0x0000000000000000000000000000000000000001",
     abi,
     client: { readContract, chain: { id: 296 } },
@@ -66,6 +66,8 @@ beforeEach(() => {
   readContract.mockImplementation(async ({ functionName }: { functionName: string }) => {
     if (functionName === "quote") return 1_000_000n;
     if (functionName === "NATIVE_UNITS_PER_HBAR") return 100_000_000n;
+    if (functionName === "poolGuard")
+      return ["0x914B98992d7eD602D1f5d9084ECe8160Fc0e741a", true, false, false, 8, 6, 300, 0n];
     throw new Error(functionName);
   });
 });
@@ -91,6 +93,12 @@ describe("prepare_purchase", () => {
     const prepared = await preparePurchase({ listingId: 4, amountKg: 1000, beneficiary: "Acme" });
     expect(prepared.functionName).toBe("buyAndRetire");
     expect(prepared.dex.accepted).toBe(true);
+    expect(prepared.onChainPoolGuard).toEqual({
+      pool: "0x914B98992d7eD602D1f5d9084ECe8160Fc0e741a",
+      version: "V2",
+      enabled: false,
+      maxDeviationBps: 300,
+    });
     expect(prepared.data).toBe(
       encodeFunctionData({
         abi,

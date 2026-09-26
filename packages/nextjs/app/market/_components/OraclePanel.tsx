@@ -77,7 +77,7 @@ export const OraclePanel = () => {
           <SourceRow name="Supra (fallback)" reading={fallback} active={source === 2} />
           <tr>
             <td className="font-medium">
-              SaucerSwap <span className="badge badge-ghost badge-xs">mainnet pool</span>
+              SaucerSwap <span className="badge badge-ghost badge-xs">settlement pair</span>
             </td>
             <td className="text-right">{dex ? `$${dex.price.toFixed(5)}` : "…"}</td>
             <td className="text-right">

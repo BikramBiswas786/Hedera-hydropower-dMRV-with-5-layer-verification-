@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { PublishPanel } from "./PublishPanel";
+import { zeroAddress } from "viem";
 import { z } from "zod";
 import { ReportView } from "~~/components/hydro/ReportView";
 import { useScaffoldReadContract } from "~~/hooks/scaffold-hbar";
@@ -15,7 +16,7 @@ import {
   generateScenario,
 } from "~~/services/mrv/scenarios";
 import { type LedgerJson, type VerifyRequest, verifyRequestSchema } from "~~/services/mrv/schema";
-import { type RawPlant, plantIdToBytes32, toPlantView } from "~~/services/mrv/views";
+import { type RawProject, plantIdToBytes32, toProjectView } from "~~/services/mrv/views";
 
 function parseRequest(text: string): { request: VerifyRequest } | { error: string } {
   try {
@@ -39,12 +40,15 @@ export const VerifyWorkbench = () => {
   );
 
   // Quantify against the plant's on-chain ledger when the registry is deployed, exactly as attesting would.
-  const { data: rawPlant } = useScaffoldReadContract({
-    contractName: "HydroCreditRegistry",
-    functionName: "getPlant",
+  const { data: rawProject } = useScaffoldReadContract({
+    contractName: "DmrvRegistry",
+    functionName: "getProject",
     args: [plantIdToBytes32(plant.plantId)],
   });
-  const onChain = rawPlant ? toPlantView(plantIdToBytes32(plant.plantId), rawPlant as RawPlant) : null;
+  const onChain =
+    rawProject && rawProject.operator !== zeroAddress
+      ? toProjectView(plantIdToBytes32(plant.plantId), rawProject as RawProject)
+      : null;
   const ledger: LedgerJson | undefined = onChain?.design.capacityKw ? onChain.ledger : undefined;
 
   const parsed = useMemo(() => (text ? parseRequest(text) : null), [text]);

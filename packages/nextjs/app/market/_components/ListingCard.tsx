@@ -38,12 +38,12 @@ export const ListingCard = ({ listing, isOwn, nativeUnitsPerHbar, dex }: Props) 
   const tooMuch = units !== null && units > BigInt(listing.unitsAvailable);
 
   const { data: quote, error: quoteError } = useScaffoldReadContract({
-    contractName: "HydroCreditRegistry",
+    contractName: "CreditMarket",
     functionName: "quote",
     args: [BigInt(listing.id), units ?? 0n],
     query: { enabled: units !== null && !tooMuch },
   });
-  const { writeContractAsync, isMining } = useScaffoldWriteContract({ contractName: "HydroCreditRegistry" });
+  const { writeContractAsync, isMining } = useScaffoldWriteContract({ contractName: "CreditMarket" });
   const writeTx = useTransactor();
 
   const poolOk = dex?.accepted === true;
@@ -135,7 +135,7 @@ export const ListingCard = ({ listing, isOwn, nativeUnitsPerHbar, dex }: Props) 
           />
           <p className="m-0 text-sm min-h-5 text-error">
             {dex === null && "Reading SaucerSwap before a purchase can be built."}
-            {dex && !dex.accepted && `SaucerSwap is ${dex.deviationBps} bps off. Buy stays off.`}
+            {dex && !dex.accepted && `SaucerSwap settlement pair is ${dex.deviationBps} bps off. Buy stays off.`}
             {gateError}
           </p>
           <div className="flex gap-2">

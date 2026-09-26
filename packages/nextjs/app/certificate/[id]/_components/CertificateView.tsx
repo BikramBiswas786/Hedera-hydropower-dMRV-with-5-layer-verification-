@@ -21,23 +21,23 @@ const HRC719_ABI = [
 export const CertificateView = ({ retirementId }: { retirementId: bigint }) => {
   const { targetNetwork } = useTargetNetwork();
   const { address } = useAccount();
-  const { data: deployment, isLoading } = useDeployedContractInfo({ contractName: "HydroCreditRegistry" });
+  const { data: deployment, isLoading } = useDeployedContractInfo({ contractName: "DmrvRegistry" });
   const { data: count } = useScaffoldReadContract({
-    contractName: "HydroCreditRegistry",
+    contractName: "DmrvRegistry",
     functionName: "retirementCount",
   });
   const exists = count !== undefined && retirementId < count;
   const { data: raw } = useScaffoldReadContract({
-    contractName: "HydroCreditRegistry",
+    contractName: "DmrvRegistry",
     functionName: "getRetirement",
     args: [retirementId],
     query: { enabled: exists },
   });
   const { data: certificateToken } = useScaffoldReadContract({
-    contractName: "HydroCreditRegistry",
+    contractName: "DmrvRegistry",
     functionName: "certificateToken",
   });
-  const { writeContractAsync, isMining } = useScaffoldWriteContract({ contractName: "HydroCreditRegistry" });
+  const { writeContractAsync, isMining } = useScaffoldWriteContract({ contractName: "DmrvRegistry" });
   const { writeContractAsync: writeToken } = useWriteContract();
   const transact = useTransactor();
 

@@ -1,6 +1,6 @@
 {
   "name": "hydro-dmrv",
-  "description": "Carbon-credit dMRV for grid-connected hydropower under Verra VMR0017 v1.0 (ACM0002 v22.0). A 5-stage engine and HydroCreditRegistry.quantify share one integer set for ER = BE − PE − LE. Raw readings and reports go to HCS so anyone can reproduce a mint. The contract creates HTS credits (1 token = 1 t CO2e) and NFT retirement certificates. A sale is not built unless Chainlink and Supra agree and the SaucerSwap WHBAR/USDC pool is within 3%. Ships an MCP server so agents can assess designs, verify, reproduce and prepare purchases with their own wallets.",
+  "description": "Carbon-credit dMRV for grid-connected hydropower under Verra VMR0017 v1.0 (ACM0002 v22.0). A 5-stage engine and the DmrvRegistry VMR0017 module share one integer set for ER = BE − PE − LE. Raw readings and reports go to HCS so anyone can reproduce a mint. A mint needs the meter and a VVB signature (EIP-712). The registry creates HTS credits (1 token = 1 t CO2e) and NFT retirement certificates. CreditMarket settles only when Chainlink and Supra agree and the SaucerSwap WHBAR/USDC pool is within 3% on-chain. A sale with no pool reverts. Ships an MCP server so agents can assess designs, verify, reproduce and prepare purchases with their own wallets.",
   "version": "2.1.0",
   "create-scaffold-hbar": {
     "capabilities": {
@@ -39,7 +39,7 @@
               "command": "{run:chain:offline}"
             },
             {
-              "label": "Deploy mocks for HTS, Chainlink and Supra, then HydroCreditRegistry and the demo plants",
+              "label": "Deploy mocks for HTS, Chainlink and Supra, then DmrvRegistry, the VMR0017 module, CreditMarket and the demo plants",
               "command": "{run:deploy} --network localhost"
             },
             {

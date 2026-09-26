@@ -15,17 +15,17 @@ export const Marketplace = () => {
   const { targetNetwork } = useTargetNetwork();
   const { address } = useAccount();
   const [dex, setDex] = useState<DexGate | null>(null);
-  const { data: deployment, isLoading } = useDeployedContractInfo({ contractName: "HydroCreditRegistry" });
+  const { data: deployment, isLoading } = useDeployedContractInfo({ contractName: "CreditMarket" });
   const { data: nativeUnitsPerHbar } = useScaffoldReadContract({
-    contractName: "HydroCreditRegistry",
+    contractName: "CreditMarket",
     functionName: "NATIVE_UNITS_PER_HBAR",
   });
   const { data: listingCount } = useScaffoldReadContract({
-    contractName: "HydroCreditRegistry",
+    contractName: "CreditMarket",
     functionName: "listingCount",
   });
   const { data: listings } = useScaffoldReadContract({
-    contractName: "HydroCreditRegistry",
+    contractName: "CreditMarket",
     functionName: "getListings",
     args: [0n, listingCount ?? 0n],
   });
@@ -68,8 +68,8 @@ export const Marketplace = () => {
         <h2 className="font-semibold text-lg m-0">Open listings ({open.length})</h2>
         {dex && !dex.accepted && (
           <p className="m-0 text-error">
-            SaucerSwap WHBAR/USDC is {dex.deviationBps} bps from the settlement price. Buy is not built until it is
-            inside {dex.maxDeviationBps}.
+            SaucerSwap settlement pair is {dex.deviationBps} bps from the oracle. Buy is not built until it is inside{" "}
+            {dex.maxDeviationBps}.
           </p>
         )}
         {open.length === 0 && (

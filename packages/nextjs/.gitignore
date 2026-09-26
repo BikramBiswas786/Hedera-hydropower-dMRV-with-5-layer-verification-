@@ -35,5 +35,7 @@ yarn-error.log*
 
 # typescript
 *.tsbuildinfo
+# two-step attestation hand-off files (yarn mrv:attest)
+attest-*.json
 # Guardian bridge key written by `yarn guardian:publish-did --generate-key`
 .secrets/

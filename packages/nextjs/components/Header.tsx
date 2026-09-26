@@ -15,6 +15,7 @@ import {
   DocumentTextIcon,
   NewspaperIcon,
   QueueListIcon,
+  ScaleIcon,
   ShoppingBagIcon,
 } from "@heroicons/react/24/outline";
 import { RainbowKitCustomConnectButton } from "~~/components/scaffold-hbar";
@@ -40,6 +41,11 @@ export const menuLinks: HeaderMenuLink[] = [
     label: "Methodology",
     href: "/methodology",
     icon: <AcademicCapIcon className="h-4 w-4" />,
+  },
+  {
+    label: "Compare",
+    href: "/check",
+    icon: <ScaleIcon className="h-4 w-4" />,
   },
   {
     label: "Verify",

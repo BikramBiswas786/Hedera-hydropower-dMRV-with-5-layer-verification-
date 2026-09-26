@@ -4,10 +4,11 @@
 
 ```bash
 yarn test              # contracts + frontend unit tests
-yarn hardhat:test      # 48 contract tests, hermetic (HTS mock at 0x167, oracle mocks)
+yarn hardhat:test      # 154 contract tests, hermetic (HTS mock at 0x167, oracle and SaucerSwap mocks)
 yarn hardhat:test:fork # same suite against Hedera's HTS emulation (HEDERA_FORKING, needs internet)
 yarn hardhat:test:gas  # with a gas report
-yarn next:test         # 122 vitest tests
+yarn next:test         # 238 vitest tests
+yarn hardhat:size      # runtime bytecode per contract; fails above 24,064 B (CI runs it)
 yarn lint && yarn next:build
 ```
 
@@ -31,7 +32,24 @@ What the tests pin down:
 - **Engine**: every scenario on both plants; net metering; lower-of-two-meters; MPE after calibration expiry; gaps;
   replays; export capped at generation; physics exclusions; reservoir emissions from TEG; safeguards never changing
   the quantity; determinism.
-- **HydroCreditRegistry**: registration rules (PD, baselines, EF range, crediting period, renewal), on-chain ER with
+- **DmrvRegistry** (two-signature attestation): a stranger can relay the meter + VVB signatures; submissions without
+  the meter's signature, approvals from keys without `VERIFIER_ROLE`, from the project's operator or meter, or signed
+  before a role revocation are rejected; tampering with either figure set breaks a signature; the VVB may lower net
+  export and raise fuel/leakage but never the reverse; any decision other than approval reverts; signatures for another
+  registry, reused signature pairs, reused periods and reused `evidenceHash` (`evidenceUsed`) revert; completeness is
+  computed from the meter-signed interval count; periods after calibration lapses, outside the crediting window, in the
+  future or without an audit-topic anchor revert; renewal keeps the span; Article 6 metadata is recorded; custody,
+  retirement and certificates. The EIP-712 digests match `services/mrv/fixtures/eip712.json`, which the TypeScript
+  suite also asserts.
+- **HydroVmr0017Module**: 5-year VMR0017 periods for requests from 1 Jan 2027 (a 7-year request at 31 Dec 2026
+  23:59:59 UTC is still accepted), renewals 5→5 and 7→7 only, metering rules, and parity: all 13 frozen outputs of the
+  legacy `HydroCreditRegistry.quantify` reproduce, and a full greenfield flow on the new registry reproduces the legacy
+  registry's 4 791 542 g and 73 386 435 g.
+- **CreditMarket**: escrow in registry custody, oracle-priced settlement, refunds, proceeds, buy-and-retire, and the
+  SaucerSwap guard: V1 `getReserves` and V2 `slot0` (WHBAR as token0 and token1) read in feed decimals, settlement
+  within 3%, blocked beyond 3% in either direction and on an illiquid pool, admin-disableable, config validation.
+- **Contract size**: every deployable contract outside `mocks/` and `legacy/` is covered by the 24,064 B guard.
+- **Legacy HydroCreditRegistry** (kept for evidence): registration rules (PD, baselines, EF range, crediting period, renewal), on-chain ER with
   fuel and leakage, remainders and deficits, crediting-year and stale-ledger guards, nameplate and net ≤ gross,
   completeness, HTS token and NFT creation, mint and burn, association, certificates, oracle-priced quotes, refunds,
   pull-payment proceeds, sweep, and the invariant *treasury balance = custody + listed*.
@@ -48,6 +66,8 @@ What the tests pin down:
 - **HCS and reproduction** (against a fake mirror node that chunks like HCS): message sizes for every scenario,
   round-trips, a forged verdict over honest data, a swapped data message, a non-registered grid factor, interleaved
   chunks and missing data.
+- **Gas**: one two-signature `submitAttestation` on the local Hardhat node used 697 539 gas (26 Sep 2026); the
+  server sends it with a 1 500 000 limit (`ATTEST_GAS`).
 - **Demo registration**: the integers the deploy script registers equal what the engine derives from the demo designs.
 
 The template ships a [Hedera Harness](https://github.com/hedera-dev/hedera-harness) recipe in `.harness/`: static and

@@ -4,9 +4,11 @@ pragma solidity ^0.8.28;
 import { IMethodology, Measurement, ProjectTerms, QuantResult } from "../interfaces/IMethodology.sol";
 
 /// @title HydroVmr0017Module
-/// @notice ACM0002 / AMS-I.D and VMR0017 v1.0 quantification, moved out of `HydroCreditRegistry` so the registry
-/// can stay under Hedera's size limit. The arithmetic is the registry's: baseline rounds down, project emissions
-/// round up. This contract is not wired into the live registry yet. `HydroCreditRegistry` remains the issuer.
+/// @notice ACM0002 / AMS-I.D and VMR0017 v1.0 rules and quantification for `DmrvRegistry`. The arithmetic is the
+/// legacy `HydroCreditRegistry`'s, gram for gram: baseline rounds down, project emissions round up.
+/// It also enforces the metering rules that need the methodology's encoding: the verifier's figures may only be more
+/// conservative than what the meter signed, gross generation is capped by the nameplate, and a period stays inside
+/// one crediting year. The registry checks the signatures over both encodings before it calls `quantify`.
 /// @dev Ledger word, big-endian: `uint32 creditingYear | int112 yearNetWh | int112 balanceG`.
 contract HydroVmr0017Module is IMethodology {
     uint256 public constant CREDITING_YEAR = 365 days;
@@ -57,6 +59,7 @@ contract HydroVmr0017Module is IMethodology {
 
     error InvalidParams();
     error MissingRegistrationRequest();
+    error MissingCalibration();
     error RegistrationInTheFuture(uint64 requestedAt);
     error GridEmissionFactorOutOfRange(uint32 ef);
     error InvalidCreditingPeriod(uint64 start, uint64 end);
@@ -69,6 +72,11 @@ contract HydroVmr0017Module is IMethodology {
     error RenewalSpan();
     error ParamsChanged();
     error StateOverflow();
+    error NotMetered();
+    error EnergyExceedsCapacity(uint64 grossWh, uint256 maxWh);
+    error NetExceedsGross(int64 netWh, uint64 grossWh);
+    error FuelNotRegistered();
+    error PeriodCrossesCreditingYear(uint64 periodStart, uint64 periodEnd);
 
     function methodologyId() external pure returns (bytes32) {
         return keccak256("hydro/acm0002+vmr0017");
@@ -89,6 +97,7 @@ contract HydroVmr0017Module is IMethodology {
         HydroParams memory p = abi.decode(params, (HydroParams));
         _checkDesign(p);
         if (p.registrationRequestedAt == 0) revert MissingRegistrationRequest();
+        if (p.calibrationValidUntil <= p.creditingStart) revert MissingCalibration();
         if (p.registrationRequestedAt > block.timestamp) revert RegistrationInTheFuture(p.registrationRequestedAt);
         _checkSpan(p.methodology, p.registrationRequestedAt, p.creditingStart, p.creditingEnd);
         terms = ProjectTerms({
@@ -137,6 +146,7 @@ contract HydroVmr0017Module is IMethodology {
     ) external pure returns (QuantResult memory result) {
         HydroParams memory p = abi.decode(params, (HydroParams));
         Energy memory energy = abi.decode(m.verified, (Energy));
+        _checkMeasurement(p, m, energy, abi.decode(m.metered, (Energy)));
         (uint32 year, int256 yearBefore, int256 balanceBefore) = _unpack(state);
 
         uint32 creditingYear = uint32((m.periodStart - p.creditingStart) / CREDITING_YEAR);
@@ -196,6 +206,35 @@ contract HydroVmr0017Module is IMethodology {
                 _utoa(p.efGridGPerMwh),
                 "}"
             );
+    }
+
+    /// @dev The meter signed `metered`; the VVB signed `verified`. QA/QC may only lower net export, raise fuel and
+    /// leakage, and cap gross generation (the PE_HP basis) at what the nameplate can produce in the period.
+    function _checkMeasurement(
+        HydroParams memory p,
+        Measurement calldata m,
+        Energy memory v,
+        Energy memory metered
+    ) private pure {
+        if (m.periodStart < p.creditingStart || m.periodEnd <= m.periodStart) {
+            revert PeriodCrossesCreditingYear(m.periodStart, m.periodEnd);
+        }
+        if (
+            (m.periodStart - p.creditingStart) / CREDITING_YEAR != (m.periodEnd - 1 - p.creditingStart) / CREDITING_YEAR
+        ) {
+            revert PeriodCrossesCreditingYear(m.periodStart, m.periodEnd);
+        }
+        uint256 maxWh = (uint256(p.capacityKw) * (m.periodEnd - m.periodStart) * 1_000) / 3_600;
+        if (v.grossWh > maxWh) revert EnergyExceedsCapacity(v.grossWh, maxWh);
+        if (v.netWh > 0 && uint64(v.netWh) > v.grossWh) revert NetExceedsGross(v.netWh, v.grossWh);
+        if (v.fuelG > 0 && p.fuelCoefGPerTonne == 0) revert FuelNotRegistered();
+        uint256 cappedGross = metered.grossWh < maxWh ? metered.grossWh : maxWh;
+        if (
+            v.netWh > metered.netWh ||
+            v.fuelG < metered.fuelG ||
+            v.leakageG < metered.leakageG ||
+            v.grossWh != cappedGross
+        ) revert NotMetered();
     }
 
     function _checkDesign(HydroParams memory p) private pure {
