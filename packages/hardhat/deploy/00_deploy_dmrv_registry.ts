@@ -96,6 +96,7 @@ const deployDmrv: DeployFunction = async function (hre: HardhatRuntimeEnvironmen
       config.nativeUnitsPerHbar,
       config.maxPriceAgeSeconds,
       config.saucerFactory ?? deployer,
+      config.saucerRouter ?? deployer,
     ],
     log: true,
     autoMine: true,

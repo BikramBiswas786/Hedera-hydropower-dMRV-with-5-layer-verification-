@@ -63,23 +63,24 @@ Two registries (plus a superseded, unused parallel deploy listed last), and the 
 
 | | Legacy `HydroCreditRegistry` (phase 0) | `DmrvRegistry` + `CreditMarket` (this deploy) |
 | --- | --- | --- |
-| Address | [`0x9cdB5782…84107a5`](https://hashscan.io/testnet/contract/0x9cdB5782a10c41a103B722d1B8fa9CfaF84107a5) (0.0.10726070), read-only | `DmrvRegistry` [`0xaf9C76B4…9E0129`](https://hashscan.io/testnet/contract/0xaf9C76B48B317cee770ED6AE038D516b269E0129), `CreditMarket` [`0x2c3F315E…9c9a81`](https://hashscan.io/testnet/contract/0x2c3F315E693342C5572b6859A6a8F378691c9a81), 26 Sep 2026 |
+| Address | [`0x9cdB5782…84107a5`](https://hashscan.io/testnet/contract/0x9cdB5782a10c41a103B722d1B8fa9CfaF84107a5) (0.0.10726070), read-only | `DmrvRegistry` [`0xaf9C76B4…9E0129`](https://hashscan.io/testnet/contract/0xaf9C76B48B317cee770ED6AE038D516b269E0129), `CreditMarket` [`0x5aeDe76f…3e5030`](https://hashscan.io/testnet/contract/0x5aeDe76fc6625cfA3227FFf70197D4D7ff3e5030), 26 Sep 2026 |
 | Who can mint | One verifier key | Meter key + VVB key (EIP-712), neither alone |
 | Admin | Deployer | Operator `0.0.10721162` for now. Hand it to a 2-of-3 account with `ADMIN_ADDRESS` |
-| SaucerSwap check | Off-chain only | On-chain, and it cannot be switched off. The pool is the seeded V1 pair below |
+| SaucerSwap check | Off-chain only | The purchase calls the SaucerSwap router. If the swap fails, nothing is sold |
 | Evidence | Legacy table | The mint and the buy-and-retire in the first table |
 
 The app reads this registry (`deployedContracts.ts`, chain 296). Older registries stay readable by address. Link the transactions below, not a contract's full transaction list.
 
 | What (this deploy, 26 Sep 2026) | Where |
 | --- | --- |
-| `DmrvRegistry` · `CreditMarket` · `HydroVmr0017Module` · `ResilientHbarUsdFeed` | [0xaf9C76B4…](https://hashscan.io/testnet/contract/0xaf9C76B48B317cee770ED6AE038D516b269E0129) · [0x2c3F315E…](https://hashscan.io/testnet/contract/0x2c3F315E693342C5572b6859A6a8F378691c9a81) · [0x8D574327…](https://hashscan.io/testnet/contract/0x8D57432792aD39Ef2d2e104904e31b157846261d) · [0x9529A018…](https://hashscan.io/testnet/contract/0x9529A0189654834949cf78f9ce25336be59F8AbB) |
+| `DmrvRegistry` · module · feed | [0xaf9C76B4…](https://hashscan.io/testnet/contract/0xaf9C76B48B317cee770ED6AE038D516b269E0129) · [0x8D574327…](https://hashscan.io/testnet/contract/0x8D57432792aD39Ef2d2e104904e31b157846261d) · [0x9529A018…](https://hashscan.io/testnet/contract/0x9529A0189654834949cf78f9ce25336be59F8AbB) |
+| `CreditMarket` (this one swaps) · earlier market, guard only | [0x5aeDe76f…](https://hashscan.io/testnet/contract/0x5aeDe76fc6625cfA3227FFf70197D4D7ff3e5030) · [0x2c3F315E…](https://hashscan.io/testnet/contract/0x2c3F315E693342C5572b6859A6a8F378691c9a81) |
 | HCS audit topic | [0.0.10729650](https://hashscan.io/testnet/topic/0.0.10729650) |
 | Credits HYCC · certificates HYRET | [0.0.10729677](https://hashscan.io/testnet/token/0.0.10729677) · [0.0.10729678](https://hashscan.io/testnet/token/0.0.10729678) |
 | SaucerSwap V1 pair, reserves at the Chainlink price ($0.093973), guard enforced | [0xF98D0dF4…](https://hashscan.io/testnet/contract/0xF98D0dF4eC60d57f24Ce7BD24eAcAdF045219869) · [set](https://hashscan.io/testnet/transaction/0xa3640f2300cd96e0eae38715285f1ad643aea562d81ce053750fa3d271321135) |
 | HYDRO-DEMO-01 `healthy`: readings, report | HCS [1](https://hashscan.io/testnet/topic/0.0.10729650/message/1), [5](https://hashscan.io/testnet/topic/0.0.10729650/message/5) |
 | Meter + VVB signed mint → 4.791 t | [0x321b6d20…](https://hashscan.io/testnet/transaction/0x321b6d20db7b24eaee672160fcb9643d6fafd357c204934e892446ac6db11b6e) |
-| `buyAndRetire` 0.200 t by `0.0.10015230`, HYRET serial 1 | [0x2a0653eb…](https://hashscan.io/testnet/transaction/0x2a0653ebbc559747423018e8d3d9616e18384336f09608932c3dc9d1c0154d44) |
+| `buyAndRetire` 0.020 t. The HBAR is swapped on SaucerSwap router `0.0.19264`. The seller received the QUSD. HYRET serial 2 | [0x47358084…](https://hashscan.io/testnet/transaction/0x4735808481bde453a2354b4ed395a00ba72112fdcbb0b96c9a1196e4c5753fab) |
 
 The VVB `0x437EB06f434aD8061DEDdfCDd0ecE68Ea435e84F` is a labelled test key, not an accredited verifier. The meter addresses are `0x1a1b0B722a17C34BE6A08FE5efD636Dd54F848A2` and `0x485e9404831A05a072eeE80Aa4BfA05946fd6bF4`. Their private keys are not in the repository.
 
@@ -128,7 +129,7 @@ The server never holds the buyer's key. There are two SaucerSwap checks.
 
 **On-chain, in `CreditMarket.settlementPrice()`.** Every quote and purchase reads a SaucerSwap pool: V1 `getReserves()` or V2 `slot0()` + `liquidity()`, as listed on [SaucerSwap's contract page](https://docs.saucerswap.finance/developers/contracts). The pool's `factory()` must be the SaucerSwap factory baked into the market. No pool, a pool from somewhere else, or a pool more than 300 bps from the Chainlink/Supra price, and the call reverts. The admin can repoint the pool. The admin cannot turn the check off.
 
-The market the app reads, [`0x2c3F315E…`](https://hashscan.io/testnet/contract/0x2c3F315E693342C5572b6859A6a8F378691c9a81), enforces the SaucerSwap V1 pair [`0xF98D0dF4…`](https://hashscan.io/testnet/contract/0xF98D0dF4eC60d57f24Ce7BD24eAcAdF045219869). That pair was seeded on 26 September 2026 so its reserves imply $0.093973 per HBAR, the Chainlink price. The buy above settled through it. The older market [`0xd94157D9…`](https://hashscan.io/testnet/contract/0xd94157D9FEA7c1e572e3674c2854B404a82cf39E) still has its guard off. The canonical testnet WHBAR/USDC pool was near $2, so it is not the guard.
+The market the app reads, [`0x5aeDe76f…`](https://hashscan.io/testnet/contract/0x5aeDe76fc6625cfA3227FFf70197D4D7ff3e5030), does not pay the seller in HBAR. `buy` and `buyAndRetire` send the oracle HBAR amount to the SaucerSwap router (`0.0.19264`) and require the pool to pay the seller the listing's USD, within 3%. The transaction [0x47358084…](https://hashscan.io/testnet/transaction/0x4735808481bde453a2354b4ed395a00ba72112fdcbb0b96c9a1196e4c5753fab) is that swap. The pair is [`0xF98D0dF4…`](https://hashscan.io/testnet/contract/0xF98D0dF4eC60d57f24Ce7BD24eAcAdF045219869), seeded so its reserves match the Chainlink price. The canonical testnet WHBAR/USDC pool was near $2, so it is not the pool. An earlier market at [`0x2c3F315E…`](https://hashscan.io/testnet/contract/0x2c3F315E693342C5572b6859A6a8F378691c9a81) only checked the pool and paid HBAR.
 
 A spot price can be moved within one block. A flash-loan-sized trade could push the pool out of band to block sales (a denial of service), but not to buy cheaper: the settlement price is still the oracle's. A TWAP would be stronger and is future work.
 

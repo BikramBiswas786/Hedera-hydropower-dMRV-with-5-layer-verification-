@@ -37,3 +37,13 @@ interface ISaucerSwapV2Pool {
             bool unlocked
         );
 }
+
+/// @notice SaucerSwap V1 router. A purchase calls `swapExactETHForTokens`; if this reverts, the sale reverts.
+interface ISaucerRouter {
+    function swapExactETHForTokens(
+        uint256 amountOutMin,
+        address[] calldata path,
+        address to,
+        uint256 deadline
+    ) external payable returns (uint256[] memory amounts);
+}

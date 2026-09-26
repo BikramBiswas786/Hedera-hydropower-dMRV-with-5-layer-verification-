@@ -1,7 +1,7 @@
 import { TypedDataEncoder, type Wallet } from "ethers";
 import { ethers } from "hardhat";
 import { time } from "@nomicfoundation/hardhat-network-helpers";
-import type { CreditMarket, DmrvRegistry, HydroVmr0017Module } from "../../typechain-types";
+import type { CreditMarket, DmrvRegistry, HydroVmr0017Module, MockSaucerRouter } from "../../typechain-types";
 import { ensureHts } from "./hts";
 
 export const DAY = 86_400;
@@ -238,6 +238,7 @@ export async function periodInput(projectId: string, o: PeriodOptions = {}): Pro
 export type Ctx = {
   registry: DmrvRegistry;
   market: CreditMarket;
+  router: MockSaucerRouter;
   module: HydroVmr0017Module;
   feed: Awaited<ReturnType<typeof deployFeed>>;
   admin: Awaited<ReturnType<typeof ethers.getSigners>>[number];
@@ -258,6 +259,7 @@ export async function deployCore(): Promise<Ctx> {
   const registry = await ethers.deployContract("DmrvRegistry", [admin.address, MIN_COMPLETENESS_BPS]);
   const module = await ethers.deployContract("HydroVmr0017Module");
   const feed = await deployFeed();
+  const router = await ethers.deployContract("MockSaucerRouter");
   const market = await ethers.deployContract("CreditMarket", [
     admin.address,
     await registry.getAddress(),
@@ -265,8 +267,9 @@ export async function deployCore(): Promise<Ctx> {
     NATIVE_PER_HBAR,
     HOUR,
     SAUCER_FACTORY,
+    await router.getAddress(),
   ]);
-  return { registry, market, module, feed, admin, operator, buyer, stranger, mocked };
+  return { registry, market, module, feed, admin, operator, buyer, stranger, mocked, router };
 }
 
 export const PROJECT_ID = ethers.encodeBytes32String("HYDRO-DEMO-01");

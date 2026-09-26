@@ -5,7 +5,7 @@ import { AccessControl } from "@openzeppelin/contracts/access/AccessControl.sol"
 import { ReentrancyGuard } from "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 import { Math } from "@openzeppelin/contracts/utils/math/Math.sol";
 import { AggregatorV3Interface } from "./interfaces/AggregatorV3Interface.sol";
-import { ISaucerSwapV1Pair, ISaucerSwapV2Pool } from "./interfaces/ISaucerSwap.sol";
+import { ISaucerRouter, ISaucerSwapV1Pair, ISaucerSwapV2Pool } from "./interfaces/ISaucerSwap.sol";
 import { DmrvRegistry } from "./DmrvRegistry.sol";
 
 /// @title CreditMarket
@@ -13,11 +13,9 @@ import { DmrvRegistry } from "./DmrvRegistry.sol";
 /// (`ResilientHbarUsdFeed`: Chainlink, with Supra as a checked fallback). Listed credits are escrowed in registry
 /// custody under this contract's address; the market never touches HTS. `buyAndRetire` retires in the same
 /// transaction and the registry mints the certificate NFT.
-/// @dev Every quote and purchase reads the configured SaucerSwap WHBAR/USDC pool (V1 `getReserves` or V2
-/// `slot0`) and reverts if no pool is set, if the pool's HBAR price is more than `maxDeviationBps` from the
-/// oracle, or if the pool is below `minLiquidity`. The admin can repoint the pool. The admin cannot turn the
-/// check off. Settlement still uses the oracle price. The pool is a circuit breaker: its spot can be moved
-/// inside one transaction, so an attacker can block a purchase, not change what the buyer pays.
+/// @dev A purchase sends the oracle HBAR amount into `ROUTER.swapExactETHForTokens` and requires the
+/// SaucerSwap pool to pay the seller at least the listing's USD minus `SWAP_SLIPPAGE_BPS`. There is no
+/// HBAR payout to the seller. Removing the router, or a pool that cannot fill the order, removes the sale.
 contract CreditMarket is AccessControl, ReentrancyGuard {
     uint16 public constant MAX_BPS = 10_000;
     /// @notice The admin cannot loosen the pool bound beyond 20%.
@@ -30,6 +28,10 @@ contract CreditMarket is AccessControl, ReentrancyGuard {
     AggregatorV3Interface public immutable HBAR_USD_FEED;
     /// @notice SaucerSwap factory. `setPoolGuard` reverts unless the pool's `factory()` is this address.
     address public immutable SAUCER_FACTORY;
+    /// @notice SaucerSwap V1 router. Every purchase swaps through it.
+    address public immutable ROUTER;
+    /// @notice Execution band versus the listing's USD amount. The spot check is separate (`maxDeviationBps`).
+    uint16 public constant SWAP_SLIPPAGE_BPS = 300;
     /// @notice Native units per HBAR as seen by `msg.value`: 1e8 (tinybar) on Hedera, 1e18 on a local Hardhat EVM.
     uint256 public immutable NATIVE_UNITS_PER_HBAR;
 
@@ -89,6 +91,7 @@ contract CreditMarket is AccessControl, ReentrancyGuard {
     error InvalidPoolGuard();
     error PoolIlliquid(address pool, uint256 liquidity, uint128 minLiquidity);
     error PoolPriceDeviation(uint256 poolPrice, uint256 oraclePrice, uint256 deviationBps);
+    error SwapFailed();
 
     constructor(
         address admin,
@@ -96,13 +99,15 @@ contract CreditMarket is AccessControl, ReentrancyGuard {
         AggregatorV3Interface hbarUsdFeed,
         uint256 nativeUnitsPerHbar,
         uint32 maxPriceAge_,
-        address saucerFactory
+        address saucerFactory,
+        address router
     ) {
         if (
             admin == address(0) ||
             address(registry) == address(0) ||
             address(hbarUsdFeed) == address(0) ||
-            saucerFactory == address(0)
+            saucerFactory == address(0) ||
+            router == address(0)
         ) {
             revert ZeroAddress();
         }
@@ -110,6 +115,7 @@ contract CreditMarket is AccessControl, ReentrancyGuard {
         REGISTRY = registry;
         HBAR_USD_FEED = hbarUsdFeed;
         SAUCER_FACTORY = saucerFactory;
+        ROUTER = router;
         NATIVE_UNITS_PER_HBAR = nativeUnitsPerHbar;
         maxPriceAge = maxPriceAge_;
         _grantRole(DEFAULT_ADMIN_ROLE, admin);
@@ -223,6 +229,15 @@ contract CreditMarket is AccessControl, ReentrancyGuard {
 
     // ─── Pricing ─────────────────────────────────────────────────────────────
 
+    /// @notice Minimum USD-token units the seller must receive for `units`, after the swap slippage band.
+    function minUsdOut(uint256 listingId, uint64 units) public view returns (uint256) {
+        Listing storage listing = _activeListing(listingId);
+        uint256 gross = (uint256(listing.priceUsdCentsPerTonne) * units * (10 ** uint256(poolGuard.usdDecimals))) /
+            (UNITS_PER_CREDIT * 100);
+        if (gross == 0) revert ZeroAmount();
+        return (gross * (MAX_BPS - SWAP_SLIPPAGE_BPS)) / MAX_BPS;
+    }
+
     /// @notice Native amount (tinybar on Hedera) required to buy `units` kg from `listingId` at the oracle price.
     function quote(uint256 listingId, uint64 units) public view returns (uint256 nativeCost) {
         Listing storage listing = _activeListing(listingId);
@@ -302,12 +317,29 @@ contract CreditMarket is AccessControl, ReentrancyGuard {
         Listing storage listing = _activeListing(listingId);
         uint256 cost = quote(listingId, units);
         if (msg.value < cost) revert InsufficientPayment(cost, msg.value);
+        uint256 minOut = minUsdOut(listingId, units);
         listing.unitsAvailable -= units;
         if (listing.unitsAvailable == 0) listing.active = false;
-        proceedsOf[listing.seller] += cost;
-        totalProceedsOwed += cost;
+        _swapToSeller(listing.seller, cost, minOut);
         emit Purchased(listingId, msg.sender, units, cost);
         return msg.value - cost;
+    }
+
+    /// @dev Forwards `nativeCost` into the SaucerSwap router. The seller receives the USD token, not HBAR.
+    function _swapToSeller(address seller, uint256 nativeCost, uint256 minOut) private {
+        PoolGuard memory g = poolGuard;
+        address token0 = ISaucerSwapV1Pair(g.pool).token0();
+        address token1 = ISaucerSwapV1Pair(g.pool).token1();
+        address whbar = g.whbarIsToken0 ? token0 : token1;
+        address usd = g.whbarIsToken0 ? token1 : token0;
+        address[] memory path = new address[](2);
+        path[0] = whbar;
+        path[1] = usd;
+        try ISaucerRouter(ROUTER).swapExactETHForTokens{ value: nativeCost }(minOut, path, seller, block.timestamp) returns (
+            uint256[] memory
+        ) {} catch {
+            revert SwapFailed();
+        }
     }
 
     function _activeListing(uint256 listingId) private view returns (Listing storage listing) {

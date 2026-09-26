@@ -7,7 +7,7 @@ import { GenericContractsDeclaration } from "~~/utils/scaffold-hbar/contract";
 const deployedContracts = {
   296: {
     CreditMarket: {
-      address: "0x2c3F315E693342C5572b6859A6a8F378691c9a81",
+      address: "0x5aeDe76fc6625cfA3227FFf70197D4D7ff3e5030",
       abi: [
         {
           inputs: [
@@ -39,6 +39,11 @@ const deployedContracts = {
             {
               internalType: "address",
               name: "saucerFactory",
+              type: "address",
+            },
+            {
+              internalType: "address",
+              name: "router",
               type: "address",
             },
           ],
@@ -213,6 +218,11 @@ const deployedContracts = {
             },
           ],
           name: "StalePrice",
+          type: "error",
+        },
+        {
+          inputs: [],
+          name: "SwapFailed",
           type: "error",
         },
         {
@@ -587,12 +597,38 @@ const deployedContracts = {
         },
         {
           inputs: [],
+          name: "ROUTER",
+          outputs: [
+            {
+              internalType: "address",
+              name: "",
+              type: "address",
+            },
+          ],
+          stateMutability: "view",
+          type: "function",
+        },
+        {
+          inputs: [],
           name: "SAUCER_FACTORY",
           outputs: [
             {
               internalType: "address",
               name: "",
               type: "address",
+            },
+          ],
+          stateMutability: "view",
+          type: "function",
+        },
+        {
+          inputs: [],
+          name: "SWAP_SLIPPAGE_BPS",
+          outputs: [
+            {
+              internalType: "uint16",
+              name: "",
+              type: "uint16",
             },
           ],
           stateMutability: "view",
@@ -864,6 +900,30 @@ const deployedContracts = {
               internalType: "uint32",
               name: "",
               type: "uint32",
+            },
+          ],
+          stateMutability: "view",
+          type: "function",
+        },
+        {
+          inputs: [
+            {
+              internalType: "uint256",
+              name: "listingId",
+              type: "uint256",
+            },
+            {
+              internalType: "uint64",
+              name: "units",
+              type: "uint64",
+            },
+          ],
+          name: "minUsdOut",
+          outputs: [
+            {
+              internalType: "uint256",
+              name: "",
+              type: "uint256",
             },
           ],
           stateMutability: "view",
@@ -1193,7 +1253,7 @@ const deployedContracts = {
         revokeRole: "@openzeppelin/contracts/access/AccessControl.sol",
         supportsInterface: "@openzeppelin/contracts/access/AccessControl.sol",
       },
-      deployedOnBlock: 41009357,
+      deployedOnBlock: 41009828,
     },
     DmrvRegistry: {
       address: "0xaf9C76B48B317cee770ED6AE038D516b269E0129",

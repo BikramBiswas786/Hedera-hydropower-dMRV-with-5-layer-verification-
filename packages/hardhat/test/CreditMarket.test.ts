@@ -86,17 +86,27 @@ describe("CreditMarket", function () {
       expect(await market.quote(0, 250)).to.equal(ethers.parseEther("15"));
     });
 
-    it("delivers credits, refunds overpayment and credits the seller's proceeds", async function () {
-      const { registry, market, buyer, operator } = await loadFixture(listed);
+    it("pays the seller by swapping on the router, and refunds overpayment", async function () {
+      const { registry, market, router, buyer, operator } = await loadFixture(listed);
       const cost = await market.quote(0, 250);
+      const minOut = await market.minUsdOut(0, 250);
       const tx = market.connect(buyer).buy(0, 250, { value: cost + ethers.parseEther("1") });
       await expect(tx).to.changeEtherBalance(buyer, -cost);
       await expect(tx).to.emit(market, "Purchased").withArgs(0, buyer.address, 250, cost);
       expect(await registry.custodyBalanceOf(buyer.address)).to.equal(250);
-      expect(await market.proceedsOf(operator.address)).to.equal(cost);
-      expect(await market.totalProceedsOwed()).to.equal(cost);
-      await expect(market.connect(operator).withdrawProceeds()).to.changeEtherBalance(operator, cost);
-      await expect(market.connect(operator).withdrawProceeds()).to.be.revertedWithCustomError(market, "ZeroAmount");
+      expect(await router.paidUsd(operator.address)).to.equal(minOut);
+      expect(await router.lastValue()).to.equal(cost);
+      expect(await market.proceedsOf(operator.address)).to.equal(0);
+    });
+
+    it("reverts the purchase when the router refuses the swap", async function () {
+      const { market, router, buyer } = await loadFixture(listed);
+      await router.setRevertNext(true);
+      const cost = await market.quote(0, 100);
+      await expect(market.connect(buyer).buy(0, 100, { value: cost })).to.be.revertedWithCustomError(
+        market,
+        "SwapFailed",
+      );
     });
 
     it("buys and retires in one transaction, issuing the certificate to the buyer", async function () {
@@ -139,8 +149,8 @@ describe("CreditMarket", function () {
       await expect(market.quote(0, 1)).to.be.revertedWithCustomError(market, "InvalidPrice");
     });
 
-    it("bounds the staleness window and sweeps only HBAR not owed to sellers", async function () {
-      const { market, buyer, admin, stranger } = await loadFixture(listed);
+    it("bounds the staleness window and keeps no HBAR after a swap", async function () {
+      const { market, router, buyer, admin, stranger } = await loadFixture(listed);
       await expect(market.setMaxPriceAge(0)).to.be.revertedWithCustomError(market, "PriceAgeOutOfRange");
       await expect(market.setMaxPriceAge(2 * 86_400 + 1)).to.be.revertedWithCustomError(market, "PriceAgeOutOfRange");
       await expect(market.connect(stranger).setMaxPriceAge(60)).to.be.revertedWithCustomError(
@@ -149,8 +159,9 @@ describe("CreditMarket", function () {
       );
       const cost = await market.quote(0, 100);
       await market.connect(buyer).buy(0, 100, { value: cost });
+      expect(await router.lastValue()).to.equal(cost);
+      expect(await ethers.provider.getBalance(await market.getAddress())).to.equal(0);
       await expect(market.sweepHbar(admin.address)).to.changeEtherBalance(admin, 0);
-      expect(await ethers.provider.getBalance(await market.getAddress())).to.equal(cost);
     });
   });
 
