@@ -1,0 +1,477 @@
+{
+  "name": "DMRV Cross-Check Result",
+  "description": "Signed by the Hydro dMRV bridge DID. Our integer recomputation of a Guardian VMR0017 Monitoring Report, the report's own BE/PE/LE/ER and the difference. The registry is the issuer of record; this document never mints.",
+  "entity": "VC",
+  "bridgeVersion": "guardian-bridge@1",
+  "note": "Reference only. Import the .xlsx (or recreate these fields) in Guardian; Guardian assigns its own uuid and context URL.",
+  "fields": [
+    {
+      "key": "bridgeVersion",
+      "type": "String",
+      "required": true,
+      "isArray": false,
+      "description": "Bridge protocol version"
+    },
+    {
+      "key": "decision",
+      "type": "Enum",
+      "required": true,
+      "isArray": false,
+      "enum": [
+        "MATCH",
+        "MISMATCH",
+        "NOT_COMPARABLE"
+      ],
+      "description": "Cross-check result"
+    },
+    {
+      "key": "methodologyId",
+      "type": "String",
+      "required": true,
+      "isArray": false,
+      "description": "Methodology module id"
+    },
+    {
+      "key": "moduleVersion",
+      "type": "Integer",
+      "required": true,
+      "isArray": false,
+      "description": "On-chain module version()"
+    },
+    {
+      "key": "sourceVcId",
+      "type": "String",
+      "required": true,
+      "isArray": false,
+      "description": "id of the Monitoring Report VC received"
+    },
+    {
+      "key": "sourceVcHash",
+      "type": "String",
+      "required": true,
+      "isArray": false,
+      "description": "keccak256 of the canonical JSON of the received VC"
+    },
+    {
+      "key": "oursBEt",
+      "type": "Number",
+      "required": true,
+      "isArray": false,
+      "description": "Our baseline emissions BE (t CO2e, 6 dp)"
+    },
+    {
+      "key": "oursPEt",
+      "type": "Number",
+      "required": true,
+      "isArray": false,
+      "description": "Our project emissions PE (t CO2e, 6 dp)"
+    },
+    {
+      "key": "oursLEt",
+      "type": "Number",
+      "required": true,
+      "isArray": false,
+      "description": "Our leakage LE (t CO2e, 6 dp)"
+    },
+    {
+      "key": "oursERt",
+      "type": "Number",
+      "required": true,
+      "isArray": false,
+      "description": "Our emission reductions ER, floored at 0 (t CO2e, 6 dp)"
+    },
+    {
+      "key": "theirsBEt",
+      "type": "Number",
+      "required": true,
+      "isArray": false,
+      "description": "Report BE as received (field24, t CO2e)"
+    },
+    {
+      "key": "theirsPEt",
+      "type": "Number",
+      "required": true,
+      "isArray": false,
+      "description": "Report PE as received (field25, t CO2e)"
+    },
+    {
+      "key": "theirsLEt",
+      "type": "Number",
+      "required": true,
+      "isArray": false,
+      "description": "Report LE as received (field26, t CO2e)"
+    },
+    {
+      "key": "theirsERt",
+      "type": "Number",
+      "required": true,
+      "isArray": false,
+      "description": "Report ER as received (field27, t CO2e)"
+    },
+    {
+      "key": "deltaERg",
+      "type": "Integer",
+      "required": true,
+      "isArray": false,
+      "description": "Our ER minus the report ER, in grams"
+    },
+    {
+      "key": "notes",
+      "type": "String",
+      "required": false,
+      "isArray": true,
+      "description": "Reasons, tolerances and caveats"
+    },
+    {
+      "key": "registryAddress",
+      "type": "String",
+      "required": false,
+      "isArray": false,
+      "description": "Our registry, if the project is registered there"
+    },
+    {
+      "key": "projectId",
+      "type": "String",
+      "required": false,
+      "isArray": false,
+      "description": "bytes32 project id in our registry"
+    },
+    {
+      "key": "attestationIds",
+      "type": "Integer",
+      "required": false,
+      "isArray": true,
+      "description": "On-chain attestations covering the period"
+    },
+    {
+      "key": "issuerOfRecord",
+      "type": "Enum",
+      "required": true,
+      "isArray": false,
+      "enum": [
+        "DMRV"
+      ],
+      "description": "Issuer of record"
+    }
+  ],
+  "document": {
+    "$id": "#5c1d6a3e-0d6b-4c55-9b1e-6d4d6d52a001&1.0.0",
+    "$comment": "{\"@id\":\"schema:5c1d6a3e-0d6b-4c55-9b1e-6d4d6d52a001#5c1d6a3e-0d6b-4c55-9b1e-6d4d6d52a001\",\"term\":\"5c1d6a3e-0d6b-4c55-9b1e-6d4d6d52a001\"}",
+    "title": "DMRV Cross-Check Result",
+    "description": "Signed by the Hydro dMRV bridge DID. Our integer recomputation of a Guardian VMR0017 Monitoring Report, the report's own BE/PE/LE/ER and the difference. The registry is the issuer of record; this document never mints.",
+    "type": "object",
+    "properties": {
+      "@context": {
+        "oneOf": [
+          {
+            "type": "string"
+          },
+          {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        ],
+        "readOnly": true
+      },
+      "type": {
+        "oneOf": [
+          {
+            "type": "string"
+          },
+          {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        ],
+        "readOnly": true
+      },
+      "id": {
+        "type": "string",
+        "readOnly": true
+      },
+      "policyId": {
+        "title": "Policy Id",
+        "description": "Policy Id",
+        "readOnly": true,
+        "type": "string",
+        "$comment": "{\"term\":\"policyId\",\"@id\":\"https://www.schema.org/text\"}"
+      },
+      "ref": {
+        "title": "Relationships",
+        "description": "Relationships",
+        "readOnly": true,
+        "type": "string",
+        "$comment": "{\"term\":\"ref\",\"@id\":\"https://www.schema.org/text\"}"
+      },
+      "guardianVersion": {
+        "title": "Guardian Version",
+        "description": "Guardian Version",
+        "readOnly": true,
+        "type": "string",
+        "$comment": "{\"term\":\"guardianVersion\",\"@id\":\"https://www.schema.org/text\"}"
+      },
+      "bridgeVersion": {
+        "title": "bridgeVersion",
+        "description": "Bridge protocol version",
+        "readOnly": false,
+        "type": "string",
+        "$comment": "{\"term\":\"bridgeVersion\",\"@id\":\"https://www.schema.org/text\",\"orderPosition\":0}"
+      },
+      "decision": {
+        "title": "decision",
+        "description": "Cross-check result",
+        "readOnly": false,
+        "type": "string",
+        "enum": [
+          "MATCH",
+          "MISMATCH",
+          "NOT_COMPARABLE"
+        ],
+        "$comment": "{\"term\":\"decision\",\"@id\":\"https://www.schema.org/text\",\"orderPosition\":1}"
+      },
+      "methodologyId": {
+        "title": "methodologyId",
+        "description": "Methodology module id",
+        "readOnly": false,
+        "type": "string",
+        "$comment": "{\"term\":\"methodologyId\",\"@id\":\"https://www.schema.org/text\",\"orderPosition\":2}"
+      },
+      "moduleVersion": {
+        "title": "moduleVersion",
+        "description": "On-chain module version()",
+        "readOnly": false,
+        "type": "integer",
+        "$comment": "{\"term\":\"moduleVersion\",\"@id\":\"https://www.schema.org/text\",\"orderPosition\":3}"
+      },
+      "sourceVcId": {
+        "title": "sourceVcId",
+        "description": "id of the Monitoring Report VC received",
+        "readOnly": false,
+        "type": "string",
+        "$comment": "{\"term\":\"sourceVcId\",\"@id\":\"https://www.schema.org/text\",\"orderPosition\":4}"
+      },
+      "sourceVcHash": {
+        "title": "sourceVcHash",
+        "description": "keccak256 of the canonical JSON of the received VC",
+        "readOnly": false,
+        "type": "string",
+        "$comment": "{\"term\":\"sourceVcHash\",\"@id\":\"https://www.schema.org/text\",\"orderPosition\":5}"
+      },
+      "oursBEt": {
+        "title": "oursBEt",
+        "description": "Our baseline emissions BE (t CO2e, 6 dp)",
+        "readOnly": false,
+        "type": "number",
+        "$comment": "{\"term\":\"oursBEt\",\"@id\":\"https://www.schema.org/text\",\"orderPosition\":6}"
+      },
+      "oursPEt": {
+        "title": "oursPEt",
+        "description": "Our project emissions PE (t CO2e, 6 dp)",
+        "readOnly": false,
+        "type": "number",
+        "$comment": "{\"term\":\"oursPEt\",\"@id\":\"https://www.schema.org/text\",\"orderPosition\":7}"
+      },
+      "oursLEt": {
+        "title": "oursLEt",
+        "description": "Our leakage LE (t CO2e, 6 dp)",
+        "readOnly": false,
+        "type": "number",
+        "$comment": "{\"term\":\"oursLEt\",\"@id\":\"https://www.schema.org/text\",\"orderPosition\":8}"
+      },
+      "oursERt": {
+        "title": "oursERt",
+        "description": "Our emission reductions ER, floored at 0 (t CO2e, 6 dp)",
+        "readOnly": false,
+        "type": "number",
+        "$comment": "{\"term\":\"oursERt\",\"@id\":\"https://www.schema.org/text\",\"orderPosition\":9}"
+      },
+      "theirsBEt": {
+        "title": "theirsBEt",
+        "description": "Report BE as received (field24, t CO2e)",
+        "readOnly": false,
+        "type": "number",
+        "$comment": "{\"term\":\"theirsBEt\",\"@id\":\"https://www.schema.org/text\",\"orderPosition\":10}"
+      },
+      "theirsPEt": {
+        "title": "theirsPEt",
+        "description": "Report PE as received (field25, t CO2e)",
+        "readOnly": false,
+        "type": "number",
+        "$comment": "{\"term\":\"theirsPEt\",\"@id\":\"https://www.schema.org/text\",\"orderPosition\":11}"
+      },
+      "theirsLEt": {
+        "title": "theirsLEt",
+        "description": "Report LE as received (field26, t CO2e)",
+        "readOnly": false,
+        "type": "number",
+        "$comment": "{\"term\":\"theirsLEt\",\"@id\":\"https://www.schema.org/text\",\"orderPosition\":12}"
+      },
+      "theirsERt": {
+        "title": "theirsERt",
+        "description": "Report ER as received (field27, t CO2e)",
+        "readOnly": false,
+        "type": "number",
+        "$comment": "{\"term\":\"theirsERt\",\"@id\":\"https://www.schema.org/text\",\"orderPosition\":13}"
+      },
+      "deltaERg": {
+        "title": "deltaERg",
+        "description": "Our ER minus the report ER, in grams",
+        "readOnly": false,
+        "type": "integer",
+        "$comment": "{\"term\":\"deltaERg\",\"@id\":\"https://www.schema.org/text\",\"orderPosition\":14}"
+      },
+      "notes": {
+        "title": "notes",
+        "description": "Reasons, tolerances and caveats",
+        "readOnly": false,
+        "type": "array",
+        "items": {
+          "type": "string"
+        },
+        "$comment": "{\"term\":\"notes\",\"@id\":\"https://www.schema.org/text\",\"orderPosition\":15}"
+      },
+      "registryAddress": {
+        "title": "registryAddress",
+        "description": "Our registry, if the project is registered there",
+        "readOnly": false,
+        "type": "string",
+        "$comment": "{\"term\":\"registryAddress\",\"@id\":\"https://www.schema.org/text\",\"orderPosition\":16}"
+      },
+      "projectId": {
+        "title": "projectId",
+        "description": "bytes32 project id in our registry",
+        "readOnly": false,
+        "type": "string",
+        "$comment": "{\"term\":\"projectId\",\"@id\":\"https://www.schema.org/text\",\"orderPosition\":17}"
+      },
+      "attestationIds": {
+        "title": "attestationIds",
+        "description": "On-chain attestations covering the period",
+        "readOnly": false,
+        "type": "array",
+        "items": {
+          "type": "integer"
+        },
+        "$comment": "{\"term\":\"attestationIds\",\"@id\":\"https://www.schema.org/text\",\"orderPosition\":18}"
+      },
+      "issuerOfRecord": {
+        "title": "issuerOfRecord",
+        "description": "Issuer of record",
+        "readOnly": false,
+        "type": "string",
+        "enum": [
+          "DMRV"
+        ],
+        "$comment": "{\"term\":\"issuerOfRecord\",\"@id\":\"https://www.schema.org/text\",\"orderPosition\":19}"
+      }
+    },
+    "required": [
+      "@context",
+      "type",
+      "bridgeVersion",
+      "decision",
+      "methodologyId",
+      "moduleVersion",
+      "sourceVcId",
+      "sourceVcHash",
+      "oursBEt",
+      "oursPEt",
+      "oursLEt",
+      "oursERt",
+      "theirsBEt",
+      "theirsPEt",
+      "theirsLEt",
+      "theirsERt",
+      "deltaERg",
+      "issuerOfRecord"
+    ],
+    "additionalProperties": false,
+    "$defs": {}
+  },
+  "context": {
+    "@context": {
+      "@version": 1.1,
+      "@vocab": "https://w3id.org/traceability/#undefinedTerm",
+      "id": "@id",
+      "type": "@type",
+      "5c1d6a3e-0d6b-4c55-9b1e-6d4d6d52a001": {
+        "@id": "schema:5c1d6a3e-0d6b-4c55-9b1e-6d4d6d52a001#5c1d6a3e-0d6b-4c55-9b1e-6d4d6d52a001",
+        "@context": {
+          "policyId": {
+            "@id": "https://www.schema.org/text"
+          },
+          "ref": {
+            "@id": "https://www.schema.org/text"
+          },
+          "guardianVersion": {
+            "@id": "https://www.schema.org/text"
+          },
+          "bridgeVersion": {
+            "@id": "https://www.schema.org/text"
+          },
+          "decision": {
+            "@id": "https://www.schema.org/text"
+          },
+          "methodologyId": {
+            "@id": "https://www.schema.org/text"
+          },
+          "moduleVersion": {
+            "@id": "https://www.schema.org/text"
+          },
+          "sourceVcId": {
+            "@id": "https://www.schema.org/text"
+          },
+          "sourceVcHash": {
+            "@id": "https://www.schema.org/text"
+          },
+          "oursBEt": {
+            "@id": "https://www.schema.org/text"
+          },
+          "oursPEt": {
+            "@id": "https://www.schema.org/text"
+          },
+          "oursLEt": {
+            "@id": "https://www.schema.org/text"
+          },
+          "oursERt": {
+            "@id": "https://www.schema.org/text"
+          },
+          "theirsBEt": {
+            "@id": "https://www.schema.org/text"
+          },
+          "theirsPEt": {
+            "@id": "https://www.schema.org/text"
+          },
+          "theirsLEt": {
+            "@id": "https://www.schema.org/text"
+          },
+          "theirsERt": {
+            "@id": "https://www.schema.org/text"
+          },
+          "deltaERg": {
+            "@id": "https://www.schema.org/text"
+          },
+          "notes": {
+            "@id": "https://www.schema.org/text"
+          },
+          "registryAddress": {
+            "@id": "https://www.schema.org/text"
+          },
+          "projectId": {
+            "@id": "https://www.schema.org/text"
+          },
+          "attestationIds": {
+            "@id": "https://www.schema.org/text"
+          },
+          "issuerOfRecord": {
+            "@id": "https://www.schema.org/text"
+          }
+        }
+      }
+    }
+  }
+}

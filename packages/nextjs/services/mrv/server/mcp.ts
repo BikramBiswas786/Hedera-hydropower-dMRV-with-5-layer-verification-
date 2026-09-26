@@ -21,6 +21,7 @@ import { quantifySafeWater } from "../water/vmr0015";
 import { attestReadings, prepareApproval } from "./attest";
 import { readDexCheck } from "./dex";
 import { ApiError } from "./errors";
+import { verifyEvidence } from "./guardianBridge";
 import { getPlantDetail, getPortfolio, portfolioQuerySchema } from "./insights";
 import { getRetirementCertificate, preparePurchase, preparePurchaseSchema } from "./market";
 import { assessDesign, getProject, gridEmissionFactor } from "./methodology";
@@ -254,6 +255,24 @@ export function buildMcpServer({ canWrite }: { canWrite: boolean }): McpServer {
       annotations: readOnly,
     },
     async ({ attestationId }) => run(async () => auditAttestation(await getAttestation(attestationId))),
+  );
+
+  server.registerTool(
+    "verify_guardian_evidence",
+    {
+      title: "Verify Guardian evidence",
+      description:
+        "Verify a Hedera Guardian trust chain from the public mirror node and IPFS: pass a VP consensus timestamp, a mint transaction id (0.0.x@secs.nanos, followed through its memo) or nft:<tokenId>:<serial>, plus the policy topic ids. Checks topic, status and every Ed25519 signature, and refuses chains that contain a MintToken VC or a Monitoring Report without a MATCH cross-check.",
+      inputSchema: z.object({
+        ref: z.string().min(1).max(200),
+        topicIds: z
+          .array(z.string().regex(/^\d+\.\d+\.\d+$/))
+          .max(10)
+          .optional(),
+      }),
+      annotations: readOnly,
+    },
+    async ({ ref, topicIds }) => run(() => verifyEvidence(ref, topicIds ?? null)),
   );
 
   server.registerTool(

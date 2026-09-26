@@ -2,7 +2,7 @@
 
 A Scaffold-HBAR template for the part of digital MRV a policy engine leaves off-chain. `DmrvRegistry` mints only when two keys agree: the plant's meter signs an EIP-712 statement of the raw totals, and an accredited VVB signs an approval over that statement's digest. The VVB can only lower the figures. A pluggable methodology module (`HydroVmr0017Module`) recomputes `ER = BE − PE − LE` from the registered design, and the registry will not mint a different integer. Issuance is anchored on HCS. `CreditMarket` settles sales in HBAR only when Chainlink and Supra agree. It can also revert on-chain when the SaucerSwap WHBAR/USDC pool is more than 3% off that price (see [Buying](#buying) for when that check is off).
 
-This sits next to [Hedera Guardian](https://github.com/hashgraph/guardian), it does not replace it. Guardian runs roles, verifiable credentials and the methodology library (including ACM0002, AMS-I.D, Tool 03 and Tool 07). A policy can POST a monitoring body to this app from an Http Request Block. The recipe is [docs/GUARDIAN.md](docs/GUARDIAN.md). The worked example is hydropower under **Verra VMR0017 v1.0** with **ACM0002 v22.0**. That is an implementation of the equations, not a certification and not a Verra issuance.
+This sits next to [Hedera Guardian](https://github.com/hashgraph/guardian), it does not replace it. Guardian runs roles, verifiable credentials and the methodology library (including ACM0002, AMS-I.D, Tool 03 and Tool 07). A policy's Http Request Block can send its Monitoring Report VC to `/api/guardian/v1/cross-check` and get back a result VC signed by this app's own `did:hedera` DID, and `verify_guardian_evidence` checks a Guardian trust chain from the mirror node before our registry relies on it. The policy patch guide is [docs/GUARDIAN.md](docs/GUARDIAN.md). The worked example is hydropower under **Verra VMR0017 v1.0** with **ACM0002 v22.0**. That is an implementation of the equations, not a certification and not a Verra issuance.
 
 | | Guardian | This template |
 | --- | --- | --- |
@@ -175,7 +175,7 @@ get_dex_price → list_open_listings → prepare_purchase { listingId, amountKg,
 | | |
 | --- | --- |
 | Equations, five stages, scenarios, HCS reproduction | [docs/methodology.md](docs/methodology.md) |
-| Calling this from a Guardian policy | [docs/GUARDIAN.md](docs/GUARDIAN.md) |
+| Guardian bridge: cross-check VC, bridge DID, schema, policy patch, evidence | [docs/GUARDIAN.md](docs/GUARDIAN.md) |
 | Registry, module and market functions, EIP-712 types, roles, pool guard | [docs/contract.md](docs/contract.md) |
 | Tool table | [docs/agents.md](docs/agents.md) |
 | What the tests pin | [docs/testing.md](docs/testing.md) |

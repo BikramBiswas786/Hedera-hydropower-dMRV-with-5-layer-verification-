@@ -55,6 +55,14 @@ What the tests pin down:
   pull-payment proceeds, sweep, and the invariant *treasury balance = custody + listed*.
 - **ResilientHbarUsdFeed**: agreement, fallback, disagreement and double staleness, Supra's units, and a purchase
   settled through the fallback during a Chainlink outage.
+- **Guardian bridge** (`services/mrv/guardian/*.test.ts`, `server/guardianBridge.test.ts`): cross-check VCs signed
+  with the exact `@digitalbazaar` versions Guardian 3.7.0 pins and verified through a port of Guardian's `VCJS.verify`,
+  with the bridge DID resolved from a fake mirror node and IPFS the way `RemoteDidLoader` does; tampered values, a
+  wrong key, an unpublished DID and a future issuance date fail; the Monitoring Report field mapping (MATCH, MISMATCH,
+  NOT_COMPARABLE, exact decimal scaling, EF rounding slack, ER floored at 0); the schema and the Excel import layout;
+  evidence acceptance and refusals (MintToken anywhere in the chain, wrong topic, altered IPFS document, unknown DID,
+  revoked, mismatching report, mint memo and NFT metadata resolution); the route's 503, 401, 413, 400, 422, 429 and
+  idempotency.
 - **HCS and reproduction** (against a fake mirror node that chunks like HCS): message sizes for every scenario,
   round-trips, a forged verdict over honest data, a swapped data message, a non-registered grid factor, interleaved
   chunks and missing data.
