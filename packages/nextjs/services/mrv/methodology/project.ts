@@ -194,8 +194,17 @@ export type ProjectDesign = {
    * Second or third crediting period. ACM0002 §5.8 and the CDM baseline-validity tool: the original baseline is
    * reassessed, and regulatory surplus is checked again.
    */
-  renewal?: { baselineValidity: string; regulatorySurplus: string };
-  /** When the registration request is filed. Defaults to the crediting start. VCS Table 8 keys off this date. */
+  renewal?: {
+    baselineValidity: string;
+    regulatorySurplus: string;
+    /** Length of the period being renewed. A renewal keeps the same length (`HydroVmr0017Module.RenewalSpan`). */
+    previousYears?: 5 | 7 | 10;
+  };
+  /**
+   * When the registration request is filed; VCS Table 8 keys off this date. Required for VMR0017 (the module
+   * rejects `registrationRequestedAt = 0`); defaults to the crediting start for the CDM methodologies. Stored
+   * on-chain as `registrationRequestedAt`, so it is not part of `designHash`.
+   */
   registrationRequest?: string;
   grid: GridEmissionFactorSource;
   hydraulics: Hydraulics;
@@ -216,6 +225,8 @@ export type RegisteredDesign = {
   baselineEndsAt: number;
   creditingStart: number;
   creditingEnd: number;
+  /** DmrvRegistry only (unix seconds); absent on the legacy registry. */
+  registrationRequestedAt?: number;
 };
 
 export type PowerDensity = {
@@ -577,10 +588,20 @@ export function assessProject(design: ProjectDesign): ProjectAssessment {
         "A renewed crediting period needs a baseline-validity reference (TOOL11) and a fresh regulatory-surplus check",
       );
     }
+    if (renewal?.previousYears !== undefined && renewal.previousYears !== years) {
+      failures.push(
+        `A renewed crediting period keeps the length of the one it renews (${renewal.previousYears} years, not ${years}); the registry rejects it with RenewalSpan`,
+      );
+    }
   }
   const creditingStart = toUnix(design.crediting.start);
   const creditingEnd = creditingStart + years * CREDITING_YEAR_SECONDS;
   const requestAt = design.registrationRequest ? toUnix(design.registrationRequest) : creditingStart;
+  if (vmr0017 && !design.registrationRequest) {
+    failures.push(
+      "VMR0017 needs the registration request date: VCS Standard v5.0 Table 8 sets the crediting-period length from it, and the registry stores it as registrationRequestedAt",
+    );
+  }
   if (vmr0017 && requestAt >= VCS_FIVE_YEAR_FROM && years !== 5) {
     failures.push(
       "VCS Standard v5.0 Table 8: an E&I registration request on or after 1 January 2027 uses a 5-year crediting period, renewable twice",
@@ -675,6 +696,7 @@ export function assessProject(design: ProjectDesign): ProjectAssessment {
       baselineEndsAt: baseline.endsAt,
       creditingStart,
       creditingEnd,
+      registrationRequestedAt: requestAt,
     },
   };
 }

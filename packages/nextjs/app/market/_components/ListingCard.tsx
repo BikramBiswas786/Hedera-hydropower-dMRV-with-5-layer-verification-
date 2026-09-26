@@ -38,12 +38,12 @@ export const ListingCard = ({ listing, isOwn, nativeUnitsPerHbar, dex }: Props) 
   const tooMuch = units !== null && units > BigInt(listing.unitsAvailable);
 
   const { data: quote, error: quoteError } = useScaffoldReadContract({
-    contractName: "HydroCreditRegistry",
+    contractName: "CreditMarket",
     functionName: "quote",
     args: [BigInt(listing.id), units ?? 0n],
     query: { enabled: units !== null && !tooMuch },
   });
-  const { writeContractAsync, isMining } = useScaffoldWriteContract({ contractName: "HydroCreditRegistry" });
+  const { writeContractAsync, isMining } = useScaffoldWriteContract({ contractName: "CreditMarket" });
   const writeTx = useTransactor();
 
   const poolOk = dex?.accepted === true;

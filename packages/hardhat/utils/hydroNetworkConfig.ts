@@ -16,6 +16,25 @@ export type HydroNetworkConfig = {
   /** Oracle answers older than this cannot be used for settlement. Tune to the feed heartbeat. */
   maxPriceAgeSeconds: number;
   hashscanNetwork?: "testnet" | "mainnet";
+  /** SaucerSwap WHBAR/USDC pool the market cross-checks the oracle against. `undefined` on local chains. */
+  poolGuard?: PoolGuardConfig;
+};
+
+export type PoolGuardConfig = {
+  /** Pool (V2) or pair (V1) EVM address. */
+  pool: string;
+  /** false: SaucerSwap V1 pair (`getReserves`); true: SaucerSwap V2 pool (`slot0`). */
+  isV2: boolean;
+  whbar: string;
+  whbarDecimals: number;
+  usdDecimals: number;
+  maxDeviationBps: number;
+  /** V1: minimum USD-side reserve in base units; V2: minimum in-range `liquidity()`. */
+  minLiquidity: bigint;
+  /** Whether settlement enforces the check. Stored but not enforced while false. */
+  enabled: boolean;
+  /** Why the default is what it is (printed by the deploy). */
+  note: string;
 };
 
 // Chainlink: https://docs.chain.link/data-feeds/price-feeds/addresses?network=hedera
@@ -30,6 +49,39 @@ const ORACLES: Record<"hederaTestnet" | "hederaMainnet", OracleSources> = {
     chainlink: "0xAF685FB45C12b92b5054ccb9313e135525F9b5d5",
     supra: "0xD02cc7a670047b6b012556A88e275c685d25e0c9",
     supraPairId: 75,
+  },
+};
+
+// SaucerSwap. Contract ids: https://docs.saucerswap.finance/developers/contracts . Interfaces:
+// V1 pair getReserves/token0/token1, github.com/saucerswaplabs/saucerswaplabs-core contracts/interfaces/IUniswapV2Pair.sol;
+// V2 pool slot0/liquidity, github.com/saucerswaplabs/saucerswaplabs-v2-core contracts/interfaces/pool/IUniswapV3PoolState.sol.
+// Pool addresses were read on 26 Sep 2026 with eth_call on the factories: testnet V2 factory 0.0.1197038
+// getPool(USDC 0.0.5449, WHBAR 0.0.15058, 3000) and mainnet V2 factory 0.0.3946833 getPool(USDC 0.0.456858,
+// WHBAR 0.0.1456986, 1500). In both pools token0 is USDC, so WHBAR is token1.
+export const POOL_GUARDS: Record<"hederaTestnet" | "hederaMainnet", PoolGuardConfig> = {
+  hederaTestnet: {
+    pool: "0x914b98992D7ed602D1F5D9084ECE8160Fc0E741A",
+    isV2: true,
+    whbar: "0x0000000000000000000000000000000000003aD2",
+    whbarDecimals: 8,
+    usdDecimals: 6,
+    maxDeviationBps: 300,
+    minLiquidity: 0n,
+    // On 26 Sep 2026 this pool priced HBAR at about $2.03 (the V1 pair about $2.28) against about $0.094 on the
+    // oracles: testnet liquidity is test money. Enforcing it would block every purchase, so it ships disabled.
+    enabled: process.env.POOL_GUARD_ENABLED === "true",
+    note: "testnet pool is illiquid and far from the market price; stored but not enforced (set POOL_GUARD_ENABLED=true to enforce)",
+  },
+  hederaMainnet: {
+    pool: "0xc5b707348dA504E9Be1bD4E21525459830e7B11d",
+    isV2: true,
+    whbar: "0x0000000000000000000000000000000000163B5a",
+    whbarDecimals: 8,
+    usdDecimals: 6,
+    maxDeviationBps: 300,
+    minLiquidity: 0n,
+    enabled: process.env.POOL_GUARD_ENABLED !== "false",
+    note: "mainnet pool tracked the oracle price (about $0.094) on 26 Sep 2026; enforced at 3%",
   },
 };
 
@@ -55,6 +107,7 @@ export function getHydroNetworkConfig(hre: HardhatRuntimeEnvironment): HydroNetw
         nativeUnitsPerHbar: TINYBAR_PER_HBAR,
         maxPriceAgeSeconds,
         hashscanNetwork: "testnet",
+        poolGuard: POOL_GUARDS.hederaTestnet,
       };
     case "hederaMainnet":
       return {
@@ -62,6 +115,7 @@ export function getHydroNetworkConfig(hre: HardhatRuntimeEnvironment): HydroNetw
         nativeUnitsPerHbar: TINYBAR_PER_HBAR,
         maxPriceAgeSeconds,
         hashscanNetwork: "mainnet",
+        poolGuard: POOL_GUARDS.hederaMainnet,
       };
     default:
       return { nativeUnitsPerHbar: WEI_PER_ETH, maxPriceAgeSeconds };

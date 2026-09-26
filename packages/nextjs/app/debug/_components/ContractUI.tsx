@@ -37,7 +37,7 @@ export const ContractUI = ({ contractName }: ContractUIProps) => {
     );
   }
 
-  const hidePurchase = contractName === "HydroCreditRegistry";
+  const hidePurchase = contractName === "CreditMarket";
   const contract = hidePurchase
     ? {
         ...deployedContractData,

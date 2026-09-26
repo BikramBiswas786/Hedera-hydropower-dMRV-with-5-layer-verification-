@@ -208,6 +208,7 @@ describe("VMR0017 v1.0 (with ACM0002 v22.0)", () => {
     assessProject(
       design({
         methodology: "VMR0017",
+        registrationRequest: "2026-01-01T00:00:00Z",
         hostCountry: "UG",
         additionality: evidence,
         grid: {
@@ -420,6 +421,28 @@ describe("VMR0017 v1.0 (with ACM0002 v22.0)", () => {
       },
     });
     expect(narrow.failures.join()).toMatch(/at least ±50%/);
+  });
+
+  it("rejects a VMR0017 design without a registration request date (the module needs registrationRequestedAt)", () => {
+    const missing = vmr({ registrationRequest: undefined });
+    expect(missing.eligible).toBe(false);
+    expect(missing.failures.join()).toMatch(/registration request date/);
+    expect(vmr().registration.registrationRequestedAt).toBe(Date.parse("2026-01-01T00:00:00Z") / 1000);
+  });
+
+  it("rejects a renewal whose length differs from the period it renews (RenewalSpan)", () => {
+    const renewal = { baselineValidity: "TOOL11 reassessment", regulatorySurplus: "no new law" };
+    const mismatch = vmr({
+      crediting: { start: "2026-01-01T00:00:00Z", years: 7, period: 2 },
+      renewal: { ...renewal, previousYears: 5 },
+    });
+    expect(mismatch.eligible).toBe(false);
+    expect(mismatch.failures.join()).toMatch(/keeps the length .*RenewalSpan/);
+    const same = vmr({
+      crediting: { start: "2026-01-01T00:00:00Z", years: 7, period: 2 },
+      renewal: { ...renewal, previousYears: 7 },
+    });
+    expect(same.failures).toEqual([]);
   });
 
   it("requires a baseline-validity reference when the crediting period is renewed", () => {

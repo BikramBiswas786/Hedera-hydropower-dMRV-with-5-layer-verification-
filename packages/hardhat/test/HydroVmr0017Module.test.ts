@@ -187,6 +187,138 @@ describe("HydroVmr0017Module", function () {
     }
   });
 
+  describe("frozen parity with HydroCreditRegistry.quantify (spec D-4)", function () {
+    // The 13 outputs of audits/proto-phase1/parity.ts (26 Sep 2026), where the legacy contract and the module
+    // agreed. Frozen here so the check survives deleting the legacy contract; the legacy call runs while it exists.
+    const START = 1_767_225_600;
+    const DESIGNS = [
+      {
+        projectType: 0,
+        methodology: 1,
+        capacityKw: 500,
+        baselineCapacityKw: 0,
+        reservoirAreaM2: 0,
+        efGridGPerMwh: 573_378,
+        fuelCoefGPerTonne: 3_238_840,
+        baselineWh: 0n,
+        baselineEndsAt: 0n,
+      },
+      {
+        projectType: 0,
+        methodology: 1,
+        capacityKw: 12_000,
+        baselineCapacityKw: 0,
+        reservoirAreaM2: 2_000_000,
+        efGridGPerMwh: 611_000,
+        fuelCoefGPerTonne: 0,
+        baselineWh: 0n,
+        baselineEndsAt: 0n,
+      },
+      {
+        projectType: 1,
+        methodology: 0,
+        capacityKw: 20_000,
+        baselineCapacityKw: 15_000,
+        reservoirAreaM2: 0,
+        efGridGPerMwh: 700_000,
+        fuelCoefGPerTonne: 0,
+        baselineWh: 40_000_000_000n,
+        baselineEndsAt: BigInt(START) + 8n * YEAR,
+      },
+      {
+        projectType: 2,
+        methodology: 1,
+        capacityKw: 9_000,
+        baselineCapacityKw: 6_000,
+        reservoirAreaM2: 0,
+        efGridGPerMwh: 650_000,
+        fuelCoefGPerTonne: 0,
+        baselineWh: 20_000_000_000n,
+        baselineEndsAt: BigInt(START) + 8n * YEAR,
+      },
+    ];
+    const INPUTS: [bigint, bigint, bigint, bigint][] = [
+      [100_000_000n, 99_000_000n, 0n, 0n],
+      [3_000_000_000n, 2_950_123_457n, 5_000_000n, 1_234n],
+      [50_000n, -20_000n, 0n, 0n],
+      [7_777_777_777n, 7_700_000_001n, 0n, 99n],
+    ];
+    const FROZEN: (bigint | null)[][] = [
+      [54_685_422n, null, -11_468n, null],
+      [48_410_000n, 1_440_571_605n, -17_220n, 3_765_222_122n],
+      [0n, -1_234n, 0n, -99n],
+      [-693_000n, -20_652_099n, 0n, null],
+    ];
+
+    it("reproduces all 13 frozen outputs, and the legacy contract agrees", async function () {
+      await ensureHts();
+      const [admin] = await ethers.getSigners();
+      const feed = await ethers.deployContract("MockV3Aggregator", [8, 10_000_000n]);
+      const legacy = await ethers.deployContract("HydroCreditRegistry", [
+        admin.address,
+        await feed.getAddress(),
+        10n ** 18n,
+        0,
+        3_600,
+      ]);
+      const module = await ethers.deployContract("HydroVmr0017Module");
+      const periodStart = BigInt(START + 30 * 86_400);
+      const periodEnd = periodStart + 30n * 86_400n;
+      let checked = 0;
+      for (const [i, d] of DESIGNS.entries()) {
+        const design = {
+          ...d,
+          baselineReservoirAreaM2: 0,
+          creditingStart: BigInt(START),
+          creditingEnd: BigInt(START) + 7n * YEAR,
+          designHash: ethers.id(`d${i}`),
+        };
+        const id = ethers.encodeBytes32String(`P${i}`);
+        await legacy.registerPlant(id, `p${i}`, admin.address, ethers.Wallet.createRandom().address, design);
+        const params = paramsFromDesign(design, BigInt(START - 100));
+        for (const [j, [gross, net, fuel, leak]] of INPUTS.entries()) {
+          const expected = FROZEN[i][j];
+          const f = d.fuelCoefGPerTonne === 0 ? 0n : fuel;
+          const e = energy(net, gross, f, leak);
+          const m = { periodStart, periodEnd, metered: e, verified: e };
+          if (expected === null) {
+            await expect(module.quantify(params, ethers.ZeroHash, m)).to.be.revertedWithCustomError(
+              module,
+              "EnergyExceedsCapacity",
+            );
+            continue;
+          }
+          const q = await module.quantify(params, ethers.ZeroHash, m);
+          expect(q.reductionG, `design ${i} input ${j}`).to.equal(expected);
+          const old = await legacy.quantify(id, {
+            plantId: id,
+            plantSequence: 0,
+            periodStart,
+            periodEnd,
+            netEnergyWh: net,
+            grossEnergyWh: gross,
+            fuelG: f,
+            leakageG: leak,
+            completenessBps: 10_000,
+            reportHash: ethers.id("r"),
+            hcsTopicNum: 1,
+            hcsSequence: 1,
+            meter: {
+              grossEnergyWh: gross,
+              netEnergyWh: net,
+              fuelG: f,
+              readingsDigest: ethers.id("x"),
+              signature: "0x",
+            },
+          });
+          expect(old.reductionG, `legacy design ${i} input ${j}`).to.equal(expected);
+          checked++;
+        }
+      }
+      expect(checked).to.equal(13);
+    });
+  });
+
   describe("metering rules", function () {
     const START = 1_700_000_000n;
     async function setup() {
@@ -279,6 +411,74 @@ describe("HydroVmr0017Module", function () {
   });
 
   describe("project validation", function () {
+    it("accepts a 7-year VMR0017 period requested at 31 Dec 2026 23:59:59 UTC, starting in 2027", async function () {
+      const module = await ethers.deployContract("HydroVmr0017Module");
+      await time.increaseTo(FIVE_YEAR_FROM + 86_400n);
+      const start = FIVE_YEAR_FROM + 30n * 86_400n;
+      const design = await plantDesign({ methodology: 1, creditingStart: start, creditingEnd: start + 7n * YEAR });
+      const terms = await module.validateProject(paramsFromDesign(design, FIVE_YEAR_FROM - 1n));
+      expect(terms.creditingEnd - terms.creditingStart).to.equal(7n * YEAR);
+      await expect(module.validateProject(paramsFromDesign(design, FIVE_YEAR_FROM))).to.be.revertedWithCustomError(
+        module,
+        "InvalidCreditingPeriod",
+      );
+    });
+
+    it("rejects VMR0017 above 15 MW and a new reservoir at or below 4 W/m²", async function () {
+      const module = await ethers.deployContract("HydroVmr0017Module");
+      const big = await plantDesign({ methodology: 1, capacityKw: 15_001 });
+      await expect(module.validateProject(paramsFromDesign(big, big.creditingStart))).to.be.revertedWithCustomError(
+        module,
+        "MethodologyNotApplicable",
+      );
+      const flooded = await plantDesign({ methodology: 1, capacityKw: 4_000, reservoirAreaM2: 1_000_000 }); // 4 W/m²
+      await expect(
+        module.validateProject(paramsFromDesign(flooded, flooded.creditingStart)),
+      ).to.be.revertedWithCustomError(module, "PowerDensityTooLow");
+    });
+
+    it("applies the reservoir rate for 4 < PD ≤ 10 W/m² and none above 10 W/m²", async function () {
+      const module = await ethers.deployContract("HydroVmr0017Module");
+      const run = async (reservoirAreaM2: number) => {
+        const d = await plantDesign({ methodology: 1, capacityKw: 12_000, reservoirAreaM2 });
+        const e = energy(1_000_000n, 1_000_000n, 0n, 0n);
+        const q = await module.quantify(paramsFromDesign(d, d.creditingStart), ethers.ZeroHash, {
+          periodStart: d.creditingStart,
+          periodEnd: d.creditingStart + 3_600n,
+          metered: e,
+          verified: e,
+        });
+        return decodeBreakdown(q.breakdown).reservoirG;
+      };
+      expect(await run(1_800_000)).to.equal(100_000n); // 6.67 W/m², 100 kg/MWh × 1 MWh
+      expect(await run(1_000_000)).to.equal(0n); // 12 W/m²
+    });
+
+    it("renews 5→5 and 7→7 but never 5→7, 5→10, 7→5 or 7→10", async function () {
+      const module = await ethers.deployContract("HydroVmr0017Module");
+      for (const [from, to, ok] of [
+        [5n, 5n, true],
+        [7n, 7n, true],
+        [5n, 7n, false],
+        [5n, 10n, false],
+        [7n, 5n, false],
+        [7n, 10n, false],
+      ] as [bigint, bigint, boolean][]) {
+        const d = await plantDesign({ methodology: 1 });
+        const first = { ...d, creditingEnd: d.creditingStart + from * YEAR };
+        const next = { ...d, creditingStart: first.creditingEnd, creditingEnd: first.creditingEnd + to * YEAR };
+        const call = module.validateRenewal(
+          paramsFromDesign(first, d.creditingStart),
+          paramsFromDesign(next, d.creditingStart),
+          first.creditingStart,
+          first.creditingEnd,
+          1,
+        );
+        if (ok) await call;
+        else await expect(call, `${from}→${to}`).to.be.revertedWithCustomError(module, "RenewalSpan");
+      }
+    });
+
     it("requires a registration-request date and a calibration certificate", async function () {
       const module = await ethers.deployContract("HydroVmr0017Module");
       const design = await plantDesign({ methodology: 1 });

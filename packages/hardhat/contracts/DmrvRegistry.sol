@@ -99,8 +99,10 @@ contract DmrvRegistry is AccessControl, ReentrancyGuard {
         bytes32 reportHash;
         bytes32 readingsDigest;
         bytes32 evidenceHash;
-        /// @dev keccak256 of the module's breakdown (emitted in full in `AttestationSubmitted`).
-        bytes32 breakdownHash;
+        /// @dev The module-encoded figures the VVB accepted (hydro: `Energy(netWh, grossWh, fuelG, leakageG)`).
+        bytes verified;
+        /// @dev The module's quantification breakdown, so a reader needs one call to reproduce the period.
+        bytes breakdown;
     }
 
     struct Retirement {
@@ -140,6 +142,7 @@ contract DmrvRegistry is AccessControl, ReentrancyGuard {
     /// @notice Evidence hashes already backing an attestation. One external document cannot back two.
     mapping(bytes32 evidenceHash => bool) public evidenceUsed;
     mapping(bytes32 projectId => Article6) public article6Of;
+    mapping(address verifier => bytes32 accreditationHash) public verifierProfileOf;
     /// @notice Reserved: host-Party corresponding-adjustment status per attestation (0 none, 1 pending, 2 applied).
     mapping(uint256 attestationId => uint8) public correspondingAdjustmentOf;
 
@@ -172,6 +175,7 @@ contract DmrvRegistry is AccessControl, ReentrancyGuard {
     event MinCompletenessChanged(uint16 minCompletenessBps);
     event CalibrationUpdated(bytes32 indexed projectId, uint64 validUntil, bytes32 certificateHash);
     event AuditTopicSet(uint64 topic);
+    event VerifierProfileSet(address indexed verifier, bytes32 accreditationHash);
     event Article6Set(
         bytes32 indexed projectId,
         bytes2 hostParty,
@@ -370,6 +374,13 @@ contract DmrvRegistry is AccessControl, ReentrancyGuard {
         emit AuditTopicSet(topic);
     }
 
+    /// @notice Links a VVB signing key to its accreditation record (e.g. the hash of its Guardian DID document or
+    /// accreditation certificate). Informational; `VERIFIER_ROLE` is what authorises signatures.
+    function setVerifierProfile(address verifier, bytes32 accreditationHash) external onlyRole(DEFAULT_ADMIN_ROLE) {
+        verifierProfileOf[verifier] = accreditationHash;
+        emit VerifierProfileSet(verifier, accreditationHash);
+    }
+
     /// @notice Reserved Article 6.2 metadata for a project. Informational only.
     function setArticle6(bytes32 projectId, Article6 calldata a) external onlyRole(DEFAULT_ADMIN_ROLE) {
         _existing(projectId);
@@ -445,7 +456,8 @@ contract DmrvRegistry is AccessControl, ReentrancyGuard {
                 reportHash: s.reportHash,
                 readingsDigest: s.readingsDigest,
                 evidenceHash: s.evidenceHash,
-                breakdownHash: keccak256(q.breakdown)
+                verified: m.verified,
+                breakdown: q.breakdown
             })
         );
         if (units > 0) {

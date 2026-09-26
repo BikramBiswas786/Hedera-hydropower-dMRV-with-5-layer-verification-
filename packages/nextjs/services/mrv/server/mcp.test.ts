@@ -36,6 +36,7 @@ const PUBLIC = [
   "quantify_safe_water",
   "check_document",
   "run_public_work",
+  "approve_attestation",
 ];
 
 describe("agent tool list", () => {
@@ -58,5 +59,12 @@ describe("agent tool list", () => {
     expect(Object.keys(listed).sort()).toEqual([...PUBLIC, "publish_document", "submit_attestation"].sort());
     expect(listed.submit_attestation.annotations?.readOnlyHint).toBe(false);
     expect(listed.publish_document.annotations?.readOnlyHint).toBe(false);
+  });
+});
+
+describe("approve_attestation", () => {
+  it("is read-only: a VVB previews the typed data, the server never signs it", () => {
+    const tool = tools(false).approve_attestation;
+    expect(tool.annotations?.readOnlyHint).toBe(true);
   });
 });

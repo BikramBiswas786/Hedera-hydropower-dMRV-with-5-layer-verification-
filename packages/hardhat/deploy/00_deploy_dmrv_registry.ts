@@ -48,7 +48,12 @@ async function deployLocalOracles(hre: HardhatRuntimeEnvironment, deployer: stri
   return { chainlink: chainlink.address, supra: supra.address, supraPairId: LOCAL_SUPRA_PAIR_ID };
 }
 
-const deployHydroRegistry: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
+/**
+ * Deploys the phase-1 contracts: the HBAR/USD feed, the hydro methodology module, `DmrvRegistry` (core, the only
+ * contract that touches HTS) and `CreditMarket` (listings and oracle settlement). Wiring and roles are set up by
+ * `01_setup_dmrv_registry.ts`.
+ */
+const deployDmrv: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   const { deployer } = await hre.getNamedAccounts();
   const { deploy } = hre.deployments;
   const config = getHydroNetworkConfig(hre);
@@ -65,18 +70,37 @@ const deployHydroRegistry: DeployFunction = async function (hre: HardhatRuntimeE
     gasPrice,
   });
 
-  const registry = await deploy("HydroCreditRegistry", {
+  const module = await deploy("HydroVmr0017Module", {
     from: deployer,
-    args: [deployer, feed.address, config.nativeUnitsPerHbar, MIN_COMPLETENESS_BPS, config.maxPriceAgeSeconds],
+    log: true,
+    autoMine: true,
+    gasLimit: 2_500_000,
+    gasPrice,
+  });
+
+  const registry = await deploy("DmrvRegistry", {
+    from: deployer,
+    args: [deployer, MIN_COMPLETENESS_BPS],
     log: true,
     autoMine: true,
     gasLimit: 6_000_000,
     gasPrice,
   });
 
+  const market = await deploy("CreditMarket", {
+    from: deployer,
+    args: [deployer, registry.address, feed.address, config.nativeUnitsPerHbar, config.maxPriceAgeSeconds],
+    log: true,
+    autoMine: true,
+    gasLimit: 3_000_000,
+    gasPrice,
+  });
+
   console.log(`ResilientHbarUsdFeed: ${hashscanContract(config, feed.address)}`);
-  console.log(`HydroCreditRegistry: ${hashscanContract(config, registry.address)}`);
+  console.log(`HydroVmr0017Module:   ${hashscanContract(config, module.address)}`);
+  console.log(`DmrvRegistry:         ${hashscanContract(config, registry.address)}`);
+  console.log(`CreditMarket:         ${hashscanContract(config, market.address)}`);
 };
 
-deployHydroRegistry.tags = ["HydroCreditRegistry"];
-export default deployHydroRegistry;
+deployDmrv.tags = ["DmrvRegistry"];
+export default deployDmrv;

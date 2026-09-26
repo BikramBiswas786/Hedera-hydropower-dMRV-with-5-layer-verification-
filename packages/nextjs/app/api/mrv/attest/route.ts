@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { verifyRequestSchema } from "~~/services/mrv/schema";
+import { attestRequestSchema } from "~~/services/mrv/schema";
 import { attestReadings } from "~~/services/mrv/server/attest";
 import { isAuthorized, writesEnabled } from "~~/services/mrv/server/config";
 import { parseJsonBody, toErrorResponse } from "~~/services/mrv/server/http";
@@ -15,7 +15,7 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Missing or invalid bearer token" }, { status: 401 });
   }
   try {
-    return NextResponse.json(await attestReadings(await parseJsonBody(request, verifyRequestSchema)));
+    return NextResponse.json(await attestReadings(await parseJsonBody(request, attestRequestSchema)));
   } catch (error) {
     return toErrorResponse(error);
   }

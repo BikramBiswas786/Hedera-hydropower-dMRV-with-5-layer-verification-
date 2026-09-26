@@ -30,26 +30,45 @@ export function evmToEntityId(address: string): string | null {
 }
 
 type Deployed = typeof deployedContracts;
-type DeployedName = "HydroCreditRegistry" | "ResilientHbarUsdFeed";
+type DeployedName = "DmrvRegistry" | "CreditMarket" | "HydroVmr0017Module" | "ResilientHbarUsdFeed";
 type EntryOf<Name extends DeployedName> = {
   [Id in keyof Deployed]: Deployed[Id] extends Record<Name, infer C> ? C : never;
 }[keyof Deployed];
 /** ABI of whichever chain has the contract deployed, independent of which network is configured first. */
 export type DeployedAbi<Name extends DeployedName> = EntryOf<Name> extends { abi: infer A } ? A : never;
-export type RegistryAbi = DeployedAbi<"HydroCreditRegistry">;
+export type RegistryAbi = DeployedAbi<"DmrvRegistry">;
+export type MarketAbi = DeployedAbi<"CreditMarket">;
+export type ModuleAbi = DeployedAbi<"HydroVmr0017Module">;
 
+/**
+ * A deployed contract on `chainId`, or undefined. An entry whose address is the zero address is an ABI waiting for
+ * its redeploy (`yarn deploy --network hederaTestnet` regenerates the file with the real address).
+ */
 export function getDeployment<Name extends DeployedName>(name: Name, chainId: number = HYDRO_CHAIN_ID) {
   const contract = (deployedContracts as GenericContractsDeclaration)[chainId]?.[name];
-  return contract ? { address: contract.address, abi: contract.abi as DeployedAbi<Name>, chainId } : undefined;
+  if (!contract || contract.address === zeroAddress) return undefined;
+  return { address: contract.address, abi: contract.abi as DeployedAbi<Name>, chainId };
 }
 
 export function getRegistryDeployment(chainId: number = HYDRO_CHAIN_ID) {
-  return getDeployment("HydroCreditRegistry", chainId);
+  return getDeployment("DmrvRegistry", chainId);
 }
 
-/** The registry meter statements are signed for: this app's registry, or the zero address before it is deployed. */
-export function defaultMeterDomain(): MeterDomain {
-  return { chainId: HYDRO_CHAIN_ID, registry: getRegistryDeployment()?.address ?? zeroAddress };
+export function getMarketDeployment(chainId: number = HYDRO_CHAIN_ID) {
+  return getDeployment("CreditMarket", chainId);
+}
+
+export function getModuleDeployment(chainId: number = HYDRO_CHAIN_ID) {
+  return getDeployment("HydroVmr0017Module", chainId);
+}
+
+/**
+ * The registry meter statements are signed for: this app's DmrvRegistry (EIP-712, at ledger `sequence`), or the
+ * zero address before it is deployed. Statements for the zero address verify in the engine but no registry
+ * accepts them.
+ */
+export function defaultMeterDomain(sequence = 0): MeterDomain {
+  return { chainId: HYDRO_CHAIN_ID, registry: getRegistryDeployment()?.address ?? zeroAddress, sequence };
 }
 
 export function isLiveHederaChain(chainId: number = HYDRO_CHAIN_ID): boolean {

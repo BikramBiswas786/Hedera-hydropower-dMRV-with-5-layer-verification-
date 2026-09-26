@@ -1,26 +1,6 @@
 import { auditAttestation, reproduceAttestation } from "../audit";
 import { DEMO_PLANTS, demoMeteringFor, findDemoPlant } from "../demo";
-import { ENGINE_VERSION } from "../engine";
-import { METHODOLOGY_MARKDOWN } from "../methodology/document";
-import {
-  gridEmissionFactorRequestSchema,
-  projectDesignSchema,
-} from "../methodology/schema";
-import { HYDRO_CHAIN_ID } from "../network";
-import { prepareAnchors } from "../pipeline";
-import {
-  PREVIEW_METER_DOMAIN,
-  SCENARIOS,
-  SCENARIO_NAMES,
-  generateScenario,
-} from "../scenarios";
-import { verifyRequestSchema } from "../schema";
-import { plantIdToBytes32 } from "../views";
-import {
-  prepareDocumentSchema,
-  publishDocumentSchema,
-  waterRequestSchema,
-} from "../documents/schema";
+import { prepareDocumentSchema, publishDocumentSchema, waterRequestSchema } from "../documents/schema";
 import {
   checkSignedDocument,
   listDocuments,
@@ -29,16 +9,20 @@ import {
   trustChainFor,
 } from "../documents/server";
 import { runPublicWork } from "../documents/work";
+import { ENGINE_VERSION } from "../engine";
+import { METHODOLOGY_MARKDOWN } from "../methodology/document";
+import { gridEmissionFactorRequestSchema, projectDesignSchema } from "../methodology/schema";
+import { HYDRO_CHAIN_ID } from "../network";
+import { prepareAnchors } from "../pipeline";
+import { PREVIEW_METER_DOMAIN, SCENARIOS, SCENARIO_NAMES, generateScenario } from "../scenarios";
+import { attestRequestSchema, verifyRequestSchema } from "../schema";
+import { plantIdToBytes32 } from "../views";
 import { quantifySafeWater } from "../water/vmr0015";
-import { attestReadings } from "./attest";
+import { attestReadings, prepareApproval } from "./attest";
 import { readDexCheck } from "./dex";
 import { ApiError } from "./errors";
 import { getPlantDetail, getPortfolio, portfolioQuerySchema } from "./insights";
-import {
-  getRetirementCertificate,
-  preparePurchase,
-  preparePurchaseSchema,
-} from "./market";
+import { getRetirementCertificate, preparePurchase, preparePurchaseSchema } from "./market";
 import { assessDesign, getProject, gridEmissionFactor } from "./methodology";
 import {
   getAttestation,
@@ -46,6 +30,7 @@ import {
   getOpenListings,
   getPlant,
   getRegistryOverview,
+  registryAt,
 } from "./registry";
 import { McpServer } from "@modelcontextprotocol/server";
 import { z } from "zod";
@@ -59,7 +44,10 @@ quantification, safeguards). Only APPROVED periods can be attested. Raw readings
 reproduce_attestation re-runs the engine on the published data and compares every figure with the contract.
 Credits are HTS tokens (1 token = 1 t CO2e, 1 unit = 1 kg) priced in USD per tonne and settled in HBAR through
 Chainlink HBAR/USD with a Supra fallback. prepare_purchase also reads SaucerSwap V1 WHBAR/USDC on mainnet (pair
-0.0.1462797) and returns no transaction if that spot is more than 3% from the settlement price. Agents buy with
+0.0.1462797) and returns no transaction if that spot is more than 3% from the settlement price; CreditMarket can
+also enforce a SaucerSwap pool check on-chain (reported as onChainPoolGuard). Attestations need two signatures: the
+plant's meter (EIP-712 MeterStatement) and an accredited VVB (VerifierApproval); approve_attestation returns the typed
+data a VVB signs, and the server never holds the VVB key. Agents buy with
 their own wallet: get_dex_price -> list_open_listings -> prepare_purchase -> sign and send; retiring mints an HTS
 NFT certificate. get_plant and get_portfolio summarise a plant's issuance or a buyer's retirements for reporting.
 Registry tools read chain ${HYDRO_CHAIN_ID}.`;
@@ -87,18 +75,16 @@ async function run(action: () => unknown) {
 
 const readOnly = { readOnlyHint: true, openWorldHint: true } as const;
 
-async function reproduce(attestationId: number) {
-  const attestation = await getAttestation(attestationId);
-  const plant = await getPlant(plantIdToBytes32(attestation.plantId));
-  return reproduceAttestation(attestation, fetch, plant?.design, plant?.meter);
+async function reproduce(attestationId: number, registryAddress?: string) {
+  const registry = registryAt(registryAddress);
+  const attestation = await getAttestation(attestationId, registry);
+  const plant = await getPlant(plantIdToBytes32(attestation.plantId), registry);
+  return { registry, ...(await reproduceAttestation(attestation, fetch, plant?.design, plant?.meter)) };
 }
 
 /** One server per request (stateless). `canWrite` is true only for requests carrying the MRV_API_KEY bearer token. */
 export function buildMcpServer({ canWrite }: { canWrite: boolean }): McpServer {
-  const server = new McpServer(
-    { name: "hydro-dmrv", version: "2.0.0" },
-    { instructions: INSTRUCTIONS },
-  );
+  const server = new McpServer({ name: "hydro-dmrv", version: "2.0.0" }, { instructions: INSTRUCTIONS });
 
   server.registerResource(
     "methodology",
@@ -107,7 +93,7 @@ export function buildMcpServer({ canWrite }: { canWrite: boolean }): McpServer {
       title: `Methodology as implemented (${ENGINE_VERSION})`,
       mimeType: "text/markdown",
     },
-    async (uri) => ({
+    async uri => ({
       contents: [
         {
           uri: uri.href,
@@ -129,12 +115,7 @@ export function buildMcpServer({ canWrite }: { canWrite: boolean }): McpServer {
     async () =>
       ok({
         plants: DEMO_PLANTS,
-        metering: Object.fromEntries(
-          DEMO_PLANTS.map((plant) => [
-            plant.plantId,
-            demoMeteringFor(plant.plantId),
-          ]),
-        ),
+        metering: Object.fromEntries(DEMO_PLANTS.map(plant => [plant.plantId, demoMeteringFor(plant.plantId)])),
         scenarios: SCENARIOS,
       }),
   );
@@ -177,7 +158,7 @@ export function buildMcpServer({ canWrite }: { canWrite: boolean }): McpServer {
       inputSchema: verifyRequestSchema,
       annotations: { readOnlyHint: true },
     },
-    async (request) =>
+    async request =>
       run(() => {
         const { report, data, preview } = prepareAnchors(request);
         return {
@@ -199,7 +180,7 @@ export function buildMcpServer({ canWrite }: { canWrite: boolean }): McpServer {
       inputSchema: projectDesignSchema,
       annotations: { readOnlyHint: true },
     },
-    async (design) => run(() => assessDesign(design)),
+    async design => run(() => assessDesign(design)),
   );
 
   server.registerTool(
@@ -211,7 +192,7 @@ export function buildMcpServer({ canWrite }: { canWrite: boolean }): McpServer {
       inputSchema: gridEmissionFactorRequestSchema,
       annotations: { readOnlyHint: true },
     },
-    async (input) => run(() => gridEmissionFactor(input)),
+    async input => run(() => gridEmissionFactor(input)),
   );
 
   server.registerTool(
@@ -253,8 +234,7 @@ export function buildMcpServer({ canWrite }: { canWrite: boolean }): McpServer {
     "list_attestations",
     {
       title: "List attestations",
-      description:
-        "Paginated on-chain attestations: monitored inputs, EG_PJ, BE, PE, LE, ER, credits and HCS anchors.",
+      description: "Paginated on-chain attestations: monitored inputs, EG_PJ, BE, PE, LE, ER, credits and HCS anchors.",
       inputSchema: z.object({
         start: z.number().int().min(0).default(0),
         count: z.number().int().min(1).max(100).default(20),
@@ -273,8 +253,7 @@ export function buildMcpServer({ canWrite }: { canWrite: boolean }): McpServer {
       inputSchema: z.object({ attestationId: z.number().int().min(0) }),
       annotations: readOnly,
     },
-    async ({ attestationId }) =>
-      run(async () => auditAttestation(await getAttestation(attestationId))),
+    async ({ attestationId }) => run(async () => auditAttestation(await getAttestation(attestationId))),
   );
 
   server.registerTool(
@@ -283,10 +262,17 @@ export function buildMcpServer({ canWrite }: { canWrite: boolean }): McpServer {
       title: "Reproduce attestation",
       description:
         "Strongest check available: audit the report, fetch the raw readings it commits to from HCS (reassembling chunks), verify their hash, confirm they were quantified with the registered design, re-run the engine and compare decision, coverage, EG_facility, TEG, fuel, EG_PJ, BE, PE, ER and credits. 'reproduced' means the issuance follows from public data alone.",
-      inputSchema: z.object({ attestationId: z.number().int().min(0) }),
+      inputSchema: z.object({
+        attestationId: z.number().int().min(0),
+        registry: z
+          .string()
+          .regex(/^0x[0-9a-fA-F]{40}$/)
+          .optional()
+          .describe("Registry address; pass the legacy HydroCreditRegistry to reproduce pre-phase-1 evidence"),
+      }),
       annotations: readOnly,
     },
-    async ({ attestationId }) => run(() => reproduce(attestationId)),
+    async ({ attestationId, registry }) => run(() => reproduce(attestationId, registry)),
   );
 
   server.registerTool(
@@ -320,7 +306,7 @@ export function buildMcpServer({ canWrite }: { canWrite: boolean }): McpServer {
       inputSchema: preparePurchaseSchema,
       annotations: readOnly,
     },
-    async (request) => run(() => preparePurchase(request)),
+    async request => run(() => preparePurchase(request)),
   );
 
   server.registerTool(
@@ -332,8 +318,7 @@ export function buildMcpServer({ canWrite }: { canWrite: boolean }): McpServer {
       inputSchema: z.object({ retirementId: z.number().int().min(0) }),
       annotations: readOnly,
     },
-    async ({ retirementId }) =>
-      run(() => getRetirementCertificate(retirementId)),
+    async ({ retirementId }) => run(() => getRetirementCertificate(retirementId)),
   );
 
   server.registerTool(
@@ -345,7 +330,7 @@ export function buildMcpServer({ canWrite }: { canWrite: boolean }): McpServer {
       inputSchema: portfolioQuerySchema,
       annotations: readOnly,
     },
-    async (query) => run(() => getPortfolio(query)),
+    async query => run(() => getPortfolio(query)),
   );
 
   server.registerTool(
@@ -376,12 +361,11 @@ export function buildMcpServer({ canWrite }: { canWrite: boolean }): McpServer {
     "prepare_document",
     {
       title: "Hash a document for wallet signing",
-      description:
-        "Returns the exact message to sign. The caller signs it with their own wallet. Nothing is stored.",
+      description: "Returns the exact message to sign. The caller signs it with their own wallet. Nothing is stored.",
       inputSchema: prepareDocumentSchema,
       annotations: readOnly,
     },
-    async (input) => run(() => prepareDocument(input)),
+    async input => run(() => prepareDocument(input)),
   );
 
   server.registerTool(
@@ -393,19 +377,18 @@ export function buildMcpServer({ canWrite }: { canWrite: boolean }): McpServer {
       inputSchema: waterRequestSchema,
       annotations: readOnly,
     },
-    async (input) => run(() => quantifySafeWater(input)),
+    async input => run(() => quantifySafeWater(input)),
   );
 
   server.registerTool(
     "check_document",
     {
       title: "Check a signed document",
-      description:
-        "Confirms the hash and the wallet signature. Stores nothing and mints nothing. No operator key.",
+      description: "Confirms the hash and the wallet signature. Stores nothing and mints nothing. No operator key.",
       inputSchema: publishDocumentSchema,
       annotations: readOnly,
     },
-    async (input) => run(() => checkSignedDocument(input)),
+    async input => run(() => checkSignedDocument(input)),
   );
 
   server.registerTool(
@@ -422,14 +405,26 @@ export function buildMcpServer({ canWrite }: { canWrite: boolean }): McpServer {
     async ({ subjectId }) => run(() => runPublicWork(subjectId)),
   );
 
+  server.registerTool(
+    "approve_attestation",
+    {
+      title: "Preview the VVB approval for an attestation",
+      description:
+        "For a VVB: re-derive, from the readings and the step-1 anchor (reportHash, hcsTopicNum, hcsSequence, dataSequence), the exact EIP-712 VerifierApproval that DmrvRegistry will check, plus the report it covers. Holds no key and writes nothing; sign the typed data with your own secp256k1 key and pass it to submit_attestation as verifierSignature.",
+      inputSchema: attestRequestSchema,
+      annotations: readOnly,
+    },
+    async request => run(() => prepareApproval(request)),
+  );
+
   if (canWrite) {
     server.registerTool(
       "submit_attestation",
       {
         title: "Verify, anchor and attest",
         description:
-          "Verify readings against the plant's registered design and on-chain ledger; if APPROVED and the contract's own quantify() agrees, publish readings and report to HCS and call HydroCreditRegistry.submitAttestation, minting credits to the plant operator. Returns Hashscan links.",
-        inputSchema: verifyRequestSchema,
+          "Two-step, two-signature attestation on DmrvRegistry. Without verifierSignature it refuses (409, nothing published) unless publishForApproval is true: then it verifies the readings against the registered design and on-chain ledger, checks the methodology module's preview() agrees, publishes readings and report to HCS and returns the VerifierApproval typed data and anchor. Call again with anchor + verifierSignature (from an accredited VVB) to relay submitAttestation and mint to the plant operator. Returns Hashscan links.",
+        inputSchema: attestRequestSchema,
         annotations: {
           readOnlyHint: false,
           destructiveHint: false,
@@ -437,7 +432,7 @@ export function buildMcpServer({ canWrite }: { canWrite: boolean }): McpServer {
           openWorldHint: true,
         },
       },
-      async (request) => run(() => attestReadings(request)),
+      async request => run(() => attestReadings(request)),
     );
 
     server.registerTool(
@@ -454,7 +449,7 @@ export function buildMcpServer({ canWrite }: { canWrite: boolean }): McpServer {
           openWorldHint: false,
         },
       },
-      async (input) => run(() => publishDocument(input)),
+      async input => run(() => publishDocument(input)),
     );
   }
 

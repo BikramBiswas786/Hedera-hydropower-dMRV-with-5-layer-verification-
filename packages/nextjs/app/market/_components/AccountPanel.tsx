@@ -21,22 +21,27 @@ export const AccountPanel = ({ address, nativeUnitsPerHbar }: { address?: Addres
   const [beneficiary, setBeneficiary] = useState("");
 
   const { data: custody } = useScaffoldReadContract({
-    contractName: "HydroCreditRegistry",
+    contractName: "DmrvRegistry",
     functionName: "custodyBalanceOf",
     args: [address],
     query: { enabled: Boolean(address) },
   });
+  // Sale proceeds and listings live on CreditMarket; custody, retirement and withdrawal stay on the registry.
   const { data: proceeds } = useScaffoldReadContract({
-    contractName: "HydroCreditRegistry",
+    contractName: "CreditMarket",
     functionName: "proceedsOf",
     args: [address],
     query: { enabled: Boolean(address) },
   });
   const { data: creditToken } = useScaffoldReadContract({
-    contractName: "HydroCreditRegistry",
+    contractName: "DmrvRegistry",
     functionName: "creditToken",
   });
-  const { writeContractAsync, isMining } = useScaffoldWriteContract({ contractName: "HydroCreditRegistry" });
+  const { writeContractAsync, isMining: registryMining } = useScaffoldWriteContract({ contractName: "DmrvRegistry" });
+  const { writeContractAsync: writeMarket, isMining: marketMining } = useScaffoldWriteContract({
+    contractName: "CreditMarket",
+  });
+  const isMining = registryMining || marketMining;
   const { writeContractAsync: writeToken } = useWriteContract();
   const transact = useTransactor();
 
@@ -57,7 +62,7 @@ export const AccountPanel = ({ address, nativeUnitsPerHbar }: { address?: Addres
   const submit = async () => {
     if (!ready) return;
     if (action === "sell" && cents !== null) {
-      await writeContractAsync({ functionName: "createListing", args: [units, cents] });
+      await writeMarket({ functionName: "createListing", args: [units, cents] });
     } else if (action === "retire") {
       await writeContractAsync({ functionName: "retire", args: [units, beneficiary] });
     } else if (action === "withdraw") {
@@ -83,7 +88,7 @@ export const AccountPanel = ({ address, nativeUnitsPerHbar }: { address?: Addres
             <button
               className="btn btn-xs btn-primary"
               disabled={isMining}
-              onClick={() => writeContractAsync({ functionName: "withdrawProceeds" })}
+              onClick={() => writeMarket({ functionName: "withdrawProceeds" })}
             >
               Claim
             </button>

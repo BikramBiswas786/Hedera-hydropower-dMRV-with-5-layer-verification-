@@ -3,10 +3,11 @@ import { defaultMeterDomain } from "./network";
 import { type MeterDomain, signMeterStatement } from "./provenance";
 import type { Metering, PlantProfile, Reading } from "./schema";
 
-/** Public samples are signed for this domain. The live registry will not accept them. */
+/** Public samples are signed (EIP-712, sequence 0) for this domain. No registry will accept them. */
 export const PREVIEW_METER_DOMAIN: MeterDomain = {
   chainId: 1,
   registry: "0x0000000000000000000000000000000000000000",
+  sequence: 0,
 };
 
 export const SCENARIOS = {

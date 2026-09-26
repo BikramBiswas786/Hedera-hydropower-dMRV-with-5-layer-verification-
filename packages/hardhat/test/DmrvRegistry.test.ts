@@ -12,6 +12,7 @@ import {
   YEAR,
   deployCore,
   deployReady,
+  encodeEnergy,
   encodeParams,
   hydroParams,
   periodInput,
@@ -19,6 +20,8 @@ import {
   submitPeriod,
 } from "./helpers/dmrv";
 import { LIVE_ATTESTATIONS } from "./fixtures/liveAttestations";
+import { readFileSync, writeFileSync } from "fs";
+import { join } from "path";
 
 const HTS_TOKEN_ABI = [
   "function balanceOf(address) view returns (uint256)",
@@ -452,6 +455,127 @@ describe("DmrvRegistry", function () {
       await submitPeriod(registry, await periodInput(PROJECT_ID, { sequence: 1, metered: e }));
       expect((await registry.getProject(PROJECT_ID)).balanceG).to.equal(0);
       expect(await registry.custodyBalanceOf(operator.address)).to.equal(3);
+    });
+  });
+
+  describe("verifier and module lifecycle", function () {
+    it("rejects an approval signed before the VVB's role was revoked", async function () {
+      const { registry } = await loadFixture(ready);
+      const s = await signSubmission(registry, await periodInput(PROJECT_ID));
+      await registry.revokeRole(await registry.VERIFIER_ROLE(), VVB.address);
+      await expect(registry.submitAttestation(s))
+        .to.be.revertedWithCustomError(registry, "UnregisteredVerifier")
+        .withArgs(VVB.address);
+    });
+
+    it("keeps quantifying a registered project after its module is withdrawn for new registrations", async function () {
+      const { registry, module, operator } = await loadFixture(ready);
+      await registry.setModuleApproved(await module.getAddress(), false);
+      await submitPeriod(registry, await periodInput(PROJECT_ID));
+      expect(await registry.custodyBalanceOf(operator.address)).to.equal(450);
+      const params = await hydroParams({ designHash: ethers.id("new") });
+      await expect(
+        registry.registerProject(
+          ethers.encodeBytes32String("NEW"),
+          "x",
+          await module.getAddress(),
+          operator.address,
+          OTHER_VVB.address,
+          params.designHash,
+          encodeParams(params),
+        ),
+      ).to.be.revertedWithCustomError(registry, "ModuleNotApproved");
+    });
+
+    it("restricts meter, calibration, status and profile changes to the admin", async function () {
+      const { registry, stranger } = await loadFixture(ready);
+      const r = registry.connect(stranger);
+      for (const call of [
+        () => r.setMeter(PROJECT_ID, OTHER_VVB.address),
+        () => r.setCalibrationValidUntil(PROJECT_ID, 1n, ethers.id("c")),
+        () => r.setProjectActive(PROJECT_ID, false),
+        () => r.setMinCompleteness(0),
+        () => r.setAuditTopic(1n),
+        () => r.setVerifierProfile(VVB.address, ethers.id("did")),
+        () => r.setModuleApproved(OTHER_VVB.address, true),
+        () =>
+          r.setArticle6(PROJECT_ID, {
+            hostParty: "0x4e50",
+            authorizedUse: 1,
+            firstTransferDefinition: 1,
+            authorizationRef: ethers.ZeroHash,
+          }),
+      ]) {
+        await expect(call()).to.be.revertedWithCustomError(registry, "AccessControlUnauthorizedAccount");
+      }
+    });
+
+    it("links a VVB key to its accreditation record", async function () {
+      const { registry } = await loadFixture(ready);
+      await expect(registry.setVerifierProfile(VVB.address, ethers.id("did:hedera:testnet:vvb")))
+        .to.emit(registry, "VerifierProfileSet")
+        .withArgs(VVB.address, ethers.id("did:hedera:testnet:vvb"));
+      expect(await registry.verifierProfileOf(VVB.address)).to.equal(ethers.id("did:hedera:testnet:vvb"));
+    });
+  });
+
+  describe("EIP-712 fixture shared with the TypeScript client", function () {
+    it("matches services/mrv/fixtures/eip712.json (UPDATE_EIP712_FIXTURE=1 rewrites it)", async function () {
+      const { admin } = await loadFixture(deployCore);
+      // A fixed deployer at nonce 0 gives the registry a fixed address, so the digests are reproducible.
+      const deployer = new ethers.Wallet(ethers.id("dmrv eip712 fixture deployer"), ethers.provider);
+      if ((await ethers.provider.getTransactionCount(deployer.address)) !== 0) this.skip();
+      await admin.sendTransaction({ to: deployer.address, value: ethers.parseEther("10") });
+      const factory = await ethers.getContractFactory("DmrvRegistry", deployer);
+      const registry = await factory.deploy(admin.address, 9_000);
+      const energy = { netWh: 450_000n, grossWh: 460_000n, fuelG: 0n, leakageG: 0n };
+      const input = {
+        projectId: PROJECT_ID,
+        sequence: 0,
+        intervals: 60,
+        intervalSeconds: 60,
+        readingsDigest: ethers.sha256(ethers.toUtf8Bytes("readings")),
+        reportHash: ethers.sha256(ethers.toUtf8Bytes("report")),
+        hcsTopicNum: AUDIT_TOPIC,
+        hcsSequence: 1n,
+        evidenceHash: ethers.id("guardian vc"),
+        measurement: {
+          periodStart: 1_790_319_600n,
+          periodEnd: 1_790_323_200n,
+          metered: encodeEnergy(energy),
+          verified: encodeEnergy({ ...energy, netWh: 440_000n }),
+        },
+      };
+      const s = await signSubmission(registry, input);
+      const fixture = {
+        note: "Generated by packages/hardhat/test/DmrvRegistry.test.ts from DmrvRegistry on the Hardhat chain. Test keys only.",
+        domain: {
+          name: "DmrvRegistry",
+          version: "1",
+          chainId: Number((await ethers.provider.getNetwork()).chainId),
+          verifyingContract: await registry.getAddress(),
+        },
+        meterAddress: METER.address,
+        verifierAddress: VVB.address,
+        submission: {
+          ...input,
+          hcsTopicNum: input.hcsTopicNum.toString(),
+          hcsSequence: input.hcsSequence.toString(),
+          measurement: {
+            ...input.measurement,
+            periodStart: input.measurement.periodStart.toString(),
+            periodEnd: input.measurement.periodEnd.toString(),
+          },
+          meterSignature: s.meterSignature,
+          verifierSignature: s.verifierSignature,
+        },
+        meterStatementDigest: await registry.meterStatementDigest(s),
+        approvalDigest: await registry.approvalDigest(s),
+      };
+      const path = join(__dirname, "../../nextjs/services/mrv/fixtures/eip712.json");
+      const json = JSON.stringify(fixture, null, 2) + "\n";
+      if (process.env.UPDATE_EIP712_FIXTURE === "1") writeFileSync(path, json);
+      expect(readFileSync(path, "utf8")).to.equal(json);
     });
   });
 

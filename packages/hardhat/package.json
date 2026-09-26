@@ -16,6 +16,7 @@
     "format": "prettier --write './**/*.(ts|sol)'",
     "lint": "eslint",
     "lint-staged": "eslint",
+    "meter-keys": "ts-node scripts/generateMeterKeys.ts",
     "size": "hardhat compile && ts-node scripts/checkContractSizes.ts",
     "test": "hardhat test",
     "verify": "hardhat verify",
