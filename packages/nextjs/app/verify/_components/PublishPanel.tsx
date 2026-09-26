@@ -49,10 +49,10 @@ export const PublishPanel = ({ request, decision }: { request: VerifyRequest; de
 
   return (
     <div className="flex flex-col gap-3 border-t border-base-300 pt-4">
-      <h3 className="font-semibold m-0">Publish & mint (operator)</h3>
+      <h3 className="font-semibold m-0">Publish (operators only)</h3>
       <p className="text-sm text-base-content/70 m-0">
-        Publishes the readings and report to HCS, then calls <code>submitAttestation</code>, which recomputes the
-        emission reductions on-chain. Requires the server&apos;s <code>MRV_API_KEY</code>.
+        Visitors cannot mint from this page. It needs the server operator key. Leave it alone unless you deployed this
+        template yourself.
       </p>
       <div className="flex flex-wrap gap-2">
         <input

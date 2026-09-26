@@ -12,10 +12,9 @@ const VerifyPage: NextPage = () => (
   <div className="flex flex-col gap-6 px-5 py-8 max-w-6xl w-full mx-auto">
     <PageHeader title="Verify & quantify">
       <p className="mt-2">
-        Five stages check a monitoring period against the registered design and the methodology: applicability, data
-        QA/QC, physical cross-checks, quantification (ER = BE − PE − LE) and environmental safeguards. It runs in your
-        browser, so you can try tampered data safely. Only <strong>APPROVED</strong> periods can be anchored on HCS and
-        credited.
+        Practice checker. No wallet and nothing is saved. On the left, press <strong>healthy</strong> (it should say
+        APPROVED) and then <strong>tampered</strong> (it should refuse the batch). The card on the right is the result.
+        The raw file is hidden until you open it.
       </p>
     </PageHeader>
     <VerifyWorkbench />

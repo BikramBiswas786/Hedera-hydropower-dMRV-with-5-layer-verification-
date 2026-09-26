@@ -5,29 +5,19 @@ import type { NextPage } from "next";
 
 const STEPS = [
   {
-    title: "Register",
-    service: "TOOL07 + Solidity",
-    body: "The validated design is registered on-chain: grid emission factor (TOOL07), reservoir power density, baseline and crediting period.",
+    title: "Look",
+    service: "No wallet",
+    body: "Open Verify, press Tampered, and watch a good day fail. Nothing is sent to the network.",
   },
   {
-    title: "Monitor",
-    service: "Plant data logger",
-    body: "Gross generation, export and import at the grid meter, check meter, flow, head, fuel burnt and water quality.",
+    title: "Check",
+    service: "Public log",
+    body: "On Audit, press Check evidence. Your browser re-runs a published issuance from Hedera.",
   },
   {
-    title: "Verify",
-    service: "5-stage engine",
-    body: "Applicability, QA/QC with conservative deductions, physics cross-checks, then ER = BE − PE − LE for the plant's registered methodology.",
-  },
-  {
-    title: "Anchor",
-    service: "HCS",
-    body: "Raw readings and the report are published to a Consensus Service topic, so anyone can re-run the quantification.",
-  },
-  {
-    title: "Issue & settle",
-    service: "HTS + oracles",
-    body: "The contract recomputes the emission reductions and mints HTS credits (1 token = 1 t CO₂e), priced in USD and paid in HBAR.",
+    title: "Buy",
+    service: "Optional",
+    body: "Market needs MetaMask with a Hedera testnet ECDSA account. HashPack over WalletConnect will not send the purchase.",
   },
 ];
 
@@ -35,11 +25,11 @@ const Home: NextPage = () => (
   <div className="flex flex-col grow">
     <section className="hedera-gradient dark:bg-none dark:bg-hedera-charcoal text-white px-5 py-16">
       <div className="max-w-4xl mx-auto flex flex-col gap-4">
-        <span className="uppercase tracking-widest text-sm text-white/70">Scaffold-HBAR template</span>
+        <span className="uppercase tracking-widest text-sm text-white/70">Hedera testnet demo</span>
         <h1 className="text-4xl md:text-5xl font-bold m-0 leading-tight">Hydro dMRV</h1>
         <p className="text-lg text-white/85 m-0 max-w-2xl">
-          The contract holds the credit. Two HBAR/USD feeds must agree before a sale. Anyone can recompute the tonne
-          from the public log.
+          A practice desk for hydropower carbon credits. Press a scenario and see whether the readings would be allowed
+          to become a credit. The two plants are demos. The tokens have no money value.
         </p>
         <div className="flex flex-wrap gap-3 mt-2">
           <Link href="/guide" className="btn bg-white text-hedera-indigo border-none hover:bg-white/90">
@@ -64,7 +54,7 @@ const Home: NextPage = () => (
     <div className="max-w-6xl w-full mx-auto px-5 py-10 flex flex-col gap-10">
       <section>
         <h2 className="text-2xl font-bold">How it works</h2>
-        <ol className="grid grid-cols-1 md:grid-cols-5 gap-4 m-0 p-0 list-none">
+        <ol className="grid grid-cols-1 md:grid-cols-3 gap-4 m-0 p-0 list-none">
           {STEPS.map((step, i) => (
             <li key={step.title} className="bg-base-100 border border-base-300 rounded-2xl p-4 flex flex-col gap-2">
               <span className="text-primary font-bold">

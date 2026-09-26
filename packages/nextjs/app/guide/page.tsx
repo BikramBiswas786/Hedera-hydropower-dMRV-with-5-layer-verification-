@@ -53,26 +53,20 @@ const GuidePage: NextPage = async () => {
       <header className="flex flex-col gap-3">
         <h1 className="text-4xl font-bold m-0">Start here</h1>
         <p className="text-lg text-base-content/80 m-0">
-          A small hydropower plant sends clean electricity to a grid that would otherwise burn coal and gas. Every
-          megawatt-hour it exports avoids some CO₂, and that avoided CO₂ can be sold as carbon credits. The hard part is
-          proving the numbers are real. Hydro dMRV does that proof in public:
+          Demo of hydropower carbon credits on Hedera testnet. The plants are examples. The tokens are not Verra credits
+          and have no money value.
         </p>
         <ol className="list-decimal pl-6 m-0 flex flex-col gap-1 text-base-content/80">
           <li>
-            the plant&apos;s meter <strong>signs</strong> its readings, so nobody can edit them later;
+            Open <Link href="/verify">Verify</Link>. Press <strong>healthy</strong>, then <strong>tampered</strong>. The
+            card on the right should change. No wallet.
           </li>
           <li>
-            a verification engine <strong>checks</strong> them (gaps, meters that disagree, physically impossible
-            numbers). Demo plants use Verra VMR0017 v1.0 with ACM0002 v22.0. A CDM registration still splits AMS-I.D and
-            ACM0002 at 15 MW;
+            Open <Link href="/audit">Audit</Link> and press <strong>Check evidence</strong>.
           </li>
           <li>
-            the readings and the result are <strong>published</strong> on the Hedera Consensus Service, and a smart
-            contract <strong>recalculates</strong> everything before it mints credits (1 credit = 1 tonne CO₂);
-          </li>
-          <li>
-            anyone can <strong>buy and retire</strong> credits, get an NFT certificate, and <strong>re-check</strong>{" "}
-            every figure from public data.
+            Buying is optional. Use <strong>MetaMask</strong> with a Hedera testnet <strong>ECDSA</strong> account.
+            HashPack over WalletConnect reports <code>wallet_sendTransaction</code> and cannot complete the purchase.
           </li>
         </ol>
         <nav className="flex flex-wrap gap-2 mt-2" aria-label="Pick your path">
