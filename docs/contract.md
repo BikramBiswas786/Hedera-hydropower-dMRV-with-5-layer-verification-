@@ -146,8 +146,7 @@ addresses were read with `getPool(USDC, WHBAR, fee)` on each factory. Token orde
 
 A spot price can be moved inside one block. Someone who pushes the pool out of band can block sales (a denial of
 service), but cannot buy cheaper, because the payment is always computed from the oracle price. A TWAP would remove
-the denial-of-service vector and is future work. The admin can switch the guard off while a pool is manipulated or
-drained.
+the denial-of-service vector and is future work. The admin can repoint the pool. The admin cannot turn the check off.
 
 **HBAR decimals.** Inside the EVM on Hedera, `msg.value` is in tinybar (10⁸ per HBAR), while JSON-RPC `value` is
 18-decimal weibar. `CreditMarket` takes `NATIVE_UNITS_PER_HBAR` as a constructor argument (10⁸ on Hedera, 10¹⁸ on a

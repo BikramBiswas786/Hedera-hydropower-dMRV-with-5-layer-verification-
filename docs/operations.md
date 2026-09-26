@@ -136,7 +136,7 @@ record.
    address; that is `ADMIN_ADDRESS`.
 4. **Deploy.** Create a topic first (`yarn mrv:create-topic`), then `HCS_TOPIC_ID=0.0.… VERIFIER_ADDRESS=… ADMIN_ADDRESS=… yarn deploy --network hederaTestnet`. It
    deploys the module, registry and market, creates new HTS tokens, registers both demo plants with the generated
-   meters, stores the SaucerSwap testnet pool guard (disabled), grants the roles, and hands admin to the threshold
+   meters, stores the SaucerSwap testnet pool with the check on, grants the roles, and hands admin to the threshold
    account. It regenerates `packages/nextjs/contracts/deployedContracts.ts` (chain 296 has zero-address placeholders
    until then).
 5. **Verify.** `yarn hardhat:verify:sourcify hederaTestnet` (Sourcify v2 API, shown on HashScan; `yarn hardhat:verify:testnet`

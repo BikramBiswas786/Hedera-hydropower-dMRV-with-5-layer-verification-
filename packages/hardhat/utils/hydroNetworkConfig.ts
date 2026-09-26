@@ -31,7 +31,7 @@ export type PoolGuardConfig = {
   maxDeviationBps: number;
   /** V1: minimum USD-side reserve in base units; V2: minimum in-range `liquidity()`. */
   minLiquidity: bigint;
-  /** Whether settlement enforces the check. Stored but not enforced while false. */
+  /** Must be true. `setPoolGuard` reverts when this is false. */
   enabled: boolean;
   /** Why the default is what it is (printed by the deploy). */
   note: string;
