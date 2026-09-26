@@ -37,7 +37,7 @@
       "route": "/verify",
       "severity": "major",
       "statement": "An APPROVED report shows the exact HCS message with its monitored inputs and emission figures, and publishing requires an operator API key.",
-      "howToVerify": "With 'healthy' selected, find the '3. HCS anchors' card: it shows JSON with schema 'hydro-dmrv/report@4' containing 'monitored' and 'emissions', a 0x-prefixed reportHash, and an 'Anchor & attest' button that stays disabled until a key is typed.",
+      "howToVerify": "With healthy selected, the result card says APPROVED. Open Report file and hashes: JSON with schema hydro-dmrv/report@4, monitored and emissions, and a 0x reportHash. Publish stays for the operator key.",
       "walletRequired": false,
       "verifiableWithoutCredentials": true
     },
@@ -47,7 +47,7 @@
       "route": "/",
       "severity": "major",
       "statement": "The home page explains the flow and how agents connect over MCP, and /llms.txt describes the API.",
-      "howToVerify": "Open /: a 'How it works' section lists Register, Monitor, Verify, Anchor, Issue & settle; a 'Built for AI agents' section shows a /api/mcp URL. Open /llms.txt and confirm it lists the MCP tools.",
+      "howToVerify": "Open /: How it works lists Look, Check and Buy. Open For developers and agents: it shows a /api/mcp URL. Open /llms.txt and confirm it lists the MCP tools.",
       "walletRequired": false,
       "verifiableWithoutCredentials": true
     },
