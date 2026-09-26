@@ -137,8 +137,9 @@ const GuidePage: NextPage = async () => {
             </Link>
             , pick a listing, enter how many tonnes and the name to put on the certificate (for example your company),
             and choose <strong>Buy &amp; retire</strong>. Prices are in US dollars per tonne and paid in HBAR at the
-            live Chainlink rate, cross-checked with Supra. The buy is not built if the SaucerSwap WHBAR/USDC pool is
-            more than 3% from that rate. Retiring burns the credits so nobody can sell them again.
+            live Chainlink rate, cross-checked with Supra. The HBAR is swapped on the SaucerSwap pair stored in the
+            market. The buy is not built if that pair is more than 3% from the oracle. Retiring burns the credits so
+            nobody can sell them again.
           </Step>
           <Step n={3} title="Keep the proof">
             You receive an NFT certificate. On{" "}

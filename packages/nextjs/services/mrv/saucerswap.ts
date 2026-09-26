@@ -1,8 +1,7 @@
 /**
- * SaucerSwap V1 pair SS-LP USDC–WHBAR on Hedera mainnet, 0.0.1462797.
- * token0 is USDC (6 decimals) and token1 is WHBAR (8 decimals). Use the mirror `evm_address`:
- * the long-zero alias answers `getReserves` but not `token0`.
- * The testnet contract does not read this pair. The purchase builder does, and it uses the same 3% band.
+ * Reserve maths for a V1 pair whose USD token has 6 decimals and whose WHBAR has 8.
+ * The purchase builder reads the pair stored on `CreditMarket`, not the mainnet WHBAR/USDC pair.
+ * These constants are the mainnet pair, kept so the reserve formula stays pinned to a published snapshot.
  */
 export const SAUCERSWAP_PAIR_ID = "0.0.1462797";
 export const SAUCERSWAP_PAIR = "0xdb34c1ef944883f0e5a2fc18b6c1978b088bd31d" as const;

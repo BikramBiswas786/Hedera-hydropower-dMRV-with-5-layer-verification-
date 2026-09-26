@@ -68,8 +68,8 @@ export const Marketplace = () => {
         <h2 className="font-semibold text-lg m-0">Open listings ({open.length})</h2>
         {dex && !dex.accepted && (
           <p className="m-0 text-error">
-            SaucerSwap WHBAR/USDC is {dex.deviationBps} bps from the settlement price. Buy is not built until it is
-            inside {dex.maxDeviationBps}.
+            SaucerSwap settlement pair is {dex.deviationBps} bps from the oracle. Buy is not built until it is inside{" "}
+            {dex.maxDeviationBps}.
           </p>
         )}
         {open.length === 0 && (

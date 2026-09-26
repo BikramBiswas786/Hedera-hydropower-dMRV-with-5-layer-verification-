@@ -201,7 +201,7 @@ The on-chain guard compares a SaucerSwap WHBAR/USDC pool with the oracle consens
   seller-favouring round-up. Tune `MAX_PRICE_AGE_SECONDS` and `MAX_ORACLE_DEVIATION_BPS` to the feeds' heartbeats.
   `CreditMarket` can also enforce a SaucerSwap pool check on-chain (enabled on mainnet, off on testnet; see
   [the fallback](#saucerswap-guard-fallback)). The purchase builder additionally refuses when the SaucerSwap V1
-  WHBAR/USDC spot (mainnet pair `0.0.1462797`) is more than 3% from the settlement price.
+  the SaucerSwap pair stored on CreditMarket is more than 3% from the oracle.
 - **Write endpoints** are disabled unless `MRV_API_KEY` is set and use a constant-time comparison. Put them behind
   your own authentication before exposing them publicly. Purchases never touch the server: agents sign their own.
 - **Not audited.** This is a starting point, not production-ready code.

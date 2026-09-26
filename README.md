@@ -1,6 +1,6 @@
 # Hydro dMRV
 
-A Scaffold-HBAR template for the part of digital MRV a policy engine leaves off-chain. `DmrvRegistry` mints only when two keys agree: the plant's meter signs an EIP-712 statement of the raw totals, and an accredited VVB signs an approval over that statement's digest. The VVB can only lower the figures. A pluggable methodology module (`HydroVmr0017Module`) recomputes `ER = BE − PE − LE` from the registered design, and the registry will not mint a different integer. Issuance is anchored on HCS. `CreditMarket` settles sales in HBAR only when Chainlink and Supra agree and a SaucerSwap pool is within 3% of that price. There is no sale without the pool. The pool's `factory()` must be SaucerSwap's.
+A Scaffold-HBAR template for the part of digital MRV a policy engine leaves off-chain. `DmrvRegistry` mints only when two keys agree: the plant's meter signs an EIP-712 statement of the raw totals, and an accredited VVB signs an approval over that statement's digest. The VVB can only lower the figures. A pluggable methodology module (`HydroVmr0017Module`) recomputes `ER = BE − PE − LE` from the registered design, and the registry will not mint a different integer. Issuance is anchored on HCS. `CreditMarket` sells only by sending the oracle HBAR amount through the SaucerSwap router. The seller is paid by that swap. If the router or the pair fails, nothing is sold.
 
 This sits next to [Hedera Guardian](https://github.com/hashgraph/guardian), it does not replace it. Guardian runs roles, verifiable credentials and the methodology library (including ACM0002, AMS-I.D, Tool 03 and Tool 07). A policy's Http Request Block can send its Monitoring Report VC to `/api/guardian/v1/cross-check` and get back a result VC signed by this app's own `did:hedera` DID, and `verify_guardian_evidence` checks a Guardian trust chain from the mirror node before our registry relies on it. The policy patch guide is [docs/GUARDIAN.md](docs/GUARDIAN.md). The worked example is hydropower under **Verra VMR0017 v1.0** with **ACM0002 v22.0**. That is an implementation of the equations, not a certification and not a Verra issuance.
 
@@ -52,7 +52,7 @@ Live app: [hydro-dmrv.vercel.app](https://hydro-dmrv.vercel.app). MCP: `https://
 | You are | Do this |
 | --- | --- |
 | Looking | [/verify](https://hydro-dmrv.vercel.app/verify): `healthy` passes, `inflated` and `tampered` do not. [/audit](https://hydro-dmrv.vercel.app/audit): **Check evidence** re-runs a testnet issuance in the browser. |
-| Buying | Testnet ECDSA account from [portal.hedera.com](https://portal.hedera.com) → [/market](https://hydro-dmrv.vercel.app/market) **Buy & retire**. The page will not build the transaction if SaucerSwap is more than 3% off the settlement price. |
+| Buying | Testnet ECDSA account from [portal.hedera.com](https://portal.hedera.com) → [/market](https://hydro-dmrv.vercel.app/market) **Buy & retire**. The button stays off unless the pair the contract swaps is within 3% of the oracle. |
 | An agent | `claude mcp add --transport http hydro-dmrv https://hydro-dmrv.vercel.app/api/mcp` then `get_dex_price` → `list_open_listings` → `prepare_purchase` → sign with your own key. `reproduce_attestation` re-derives any issuance from HCS. |
 
 `/water` is illustrative VMR0015. It does not mint the hydro token.
@@ -123,13 +123,9 @@ A measured fuel factor outside the IPCC 95% interval is refused. None of this ch
 
 ## Buying
 
-The server never holds the buyer's key. There are two SaucerSwap checks.
+The server never holds the buyer's key. `prepare_purchase` reads the pair stored on `CreditMarket` and returns no transaction when that pair is more than 3% from the oracle. The contract does the same check, then swaps. There is not a second pool.
 
-**Off-chain, in `prepare_purchase`.** It reads SaucerSwap V1 WHBAR/USDC on mainnet (pair [0.0.1462797](https://hashscan.io/mainnet/contract/0.0.1462797)) and returns no transaction if that spot is more than 3% from the settlement price.
-
-**On-chain, in `CreditMarket.settlementPrice()`.** Every quote and purchase reads a SaucerSwap pool: V1 `getReserves()` or V2 `slot0()` + `liquidity()`, as listed on [SaucerSwap's contract page](https://docs.saucerswap.finance/developers/contracts). The pool's `factory()` must be the SaucerSwap factory baked into the market. No pool, a pool from somewhere else, or a pool more than 300 bps from the Chainlink/Supra price, and the call reverts. The admin can repoint the pool. The admin cannot turn the check off.
-
-The market the app reads, [`0x5aeDe76f…`](https://hashscan.io/testnet/contract/0x5aeDe76fc6625cfA3227FFf70197D4D7ff3e5030), does not pay the seller in HBAR. `buy` and `buyAndRetire` send the oracle HBAR amount to the SaucerSwap router (`0.0.19264`) and require the pool to pay the seller the listing's USD, within 3%. The transaction [0x47358084…](https://hashscan.io/testnet/transaction/0x4735808481bde453a2354b4ed395a00ba72112fdcbb0b96c9a1196e4c5753fab) is that swap. The pair is [`0xF98D0dF4…`](https://hashscan.io/testnet/contract/0xF98D0dF4eC60d57f24Ce7BD24eAcAdF045219869), seeded so its reserves match the Chainlink price. The canonical testnet WHBAR/USDC pool was near $2, so it is not the pool. An earlier market at [`0x2c3F315E…`](https://hashscan.io/testnet/contract/0x2c3F315E693342C5572b6859A6a8F378691c9a81) only checked the pool and paid HBAR.
+The market the app reads, [`0x5aeDe76f…`](https://hashscan.io/testnet/contract/0x5aeDe76fc6625cfA3227FFf70197D4D7ff3e5030), sends the HBAR to SaucerSwap router `0.0.19264`. The seller is paid in the pair's USD token. The transaction [0x47358084…](https://hashscan.io/testnet/transaction/0x4735808481bde453a2354b4ed395a00ba72112fdcbb0b96c9a1196e4c5753fab) is that swap. The pair is [`0xF98D0dF4…`](https://hashscan.io/testnet/contract/0xF98D0dF4eC60d57f24Ce7BD24eAcAdF045219869). It was seeded because the canonical testnet WHBAR/USDC pair, [`0x87664e55…`](https://hashscan.io/testnet/contract/0x87664e55d9606657f049139FF654390A72657667), priced HBAR at about $2.28 on 26 September 2026 while Chainlink was about $0.095. Using that pair would revert every sale. The admin cannot turn the check off.
 
 A spot price can be moved within one block. A flash-loan-sized trade could push the pool out of band to block sales (a denial of service), but not to buy cheaper: the settlement price is still the oracle's. A TWAP would be stronger and is future work.
 

@@ -49,7 +49,7 @@ export const AccountPanel = ({ address, nativeUnitsPerHbar }: { address?: Addres
     return (
       <div className="bg-base-100 border border-base-300 rounded-2xl p-5">
         <h2 className="font-semibold text-lg mt-0">Your registry account</h2>
-        <p className="m-0 text-base-content/60">Connect a wallet to see your credits and sale proceeds.</p>
+        <p className="m-0 text-base-content/60">Connect a wallet to list credits or retire them.</p>
       </div>
     );
   }
@@ -79,7 +79,7 @@ export const AccountPanel = ({ address, nativeUnitsPerHbar }: { address?: Addres
         <span className="font-bold">{custody === undefined ? "…" : `${formatTonnes(custody)} t CO₂e`}</span>
       </div>
       <div className="flex justify-between items-center text-sm">
-        <span>Sale proceeds</span>
+        <span>HBAR left in the market</span>
         <span className="flex items-center gap-2">
           <span className="font-bold">
             {proceeds === undefined ? "…" : `${formatHbar(proceeds, nativeUnitsPerHbar)} HBAR`}

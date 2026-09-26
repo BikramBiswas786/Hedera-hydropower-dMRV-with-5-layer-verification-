@@ -181,10 +181,9 @@ Both answers are normalised to 8 decimals. Supra's millisecond timestamps and 18
 reverting provider counts as unavailable instead of bubbling up. `readSources()` never reverts, so dashboards and
 agents can always see both providers.
 
-The purchase builder adds an off-chain pre-flight check. It reads reserves on the SaucerSwap V1 pair
-[0.0.1462797](https://hashscan.io/mainnet/contract/0.0.1462797) (WHBAR/USDC, mainnet). It will not return a
-transaction if that spot is more than 3% from the settlement price. `GET /api/market/dex` and `get_dex_price` report
-the gap. The on-chain pool guard below covers direct calls too.
+The purchase builder reads the SaucerSwap pair stored on `CreditMarket` and will not return a transaction if that
+pair is more than 3% from the oracle. `GET /api/market/dex` and `get_dex_price` report that same pair. The contract
+then swaps through the SaucerSwap router. The mainnet WHBAR/USDC pair is not this check.
 
 Settlement price for `units` kg listed at `p` US cents per tonne, with feed answer `a` at `d` decimals:
 

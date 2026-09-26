@@ -135,7 +135,7 @@ export const ListingCard = ({ listing, isOwn, nativeUnitsPerHbar, dex }: Props) 
           />
           <p className="m-0 text-sm min-h-5 text-error">
             {dex === null && "Reading SaucerSwap before a purchase can be built."}
-            {dex && !dex.accepted && `SaucerSwap is ${dex.deviationBps} bps off. Buy stays off.`}
+            {dex && !dex.accepted && `SaucerSwap settlement pair is ${dex.deviationBps} bps off. Buy stays off.`}
             {gateError}
           </p>
           <div className="flex gap-2">

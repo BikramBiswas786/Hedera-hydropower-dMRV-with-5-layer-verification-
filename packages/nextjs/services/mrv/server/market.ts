@@ -25,7 +25,7 @@ export type PreparedPurchase = {
   exactCostHbar: string;
   functionName: "buy" | "buyAndRetire";
   summary: string;
-  /** SaucerSwap mainnet spot (server pre-flight). Present only when it is inside the 3% band; otherwise this throws. */
+  /** The SaucerSwap pair the contract swaps through. Present only when it is inside the band; otherwise this throws. */
   dex: DexCheck;
   /**
    * The on-chain SaucerSwap guard in `CreditMarket.settlementPrice()`. When `enabled`, the contract itself reverts a
@@ -76,7 +76,7 @@ export async function preparePurchase(input: z.input<typeof preparePurchaseSchem
   const [dex, onChainPoolGuard] = await Promise.all([readDexCheck(), readOnChainPoolGuard()]);
   if (!dex.accepted) {
     throw new ApiError(
-      `SaucerSwap WHBAR/USDC is ${dex.deviationBps} bps from the settlement price (max ${dex.maxDeviationBps}). No purchase transaction was built.`,
+      `SaucerSwap settlement pool is ${dex.deviationBps} bps from the settlement price (max ${dex.maxDeviationBps}). No purchase transaction was built.`,
       409,
     );
   }
