@@ -1,6 +1,6 @@
 # Contract and oracle
 
-`HydroCreditRegistry` compiled from this source is 507 bytes under Hedera's 24 KB contract-size limit. Further additions need a split. The deployed price age is 25 hours (`MAX_PRICE_AGE_SECONDS`, default 90000). Two days is only the upper bound the contract will accept (`MAX_PRICE_AGE`); a deploy cannot set a longer window.
+`HydroCreditRegistry` compiled from this source is 24,551 bytes, 25 under Hedera's 24,576-byte limit. Further additions need a split. The deployed price age is 25 hours (`MAX_PRICE_AGE_SECONDS`, default 90000). Two days is only the upper bound the contract will accept (`MAX_PRICE_AGE`); a deploy cannot set a longer window. `contracts/modules/HydroVmr0017Module.sol` is a parity copy of `quantify` for a later split. It is not deployed. The testnet issuer is the registry below.
 
 ## The HydroCreditRegistry contract
 
@@ -9,7 +9,7 @@ with `viaIR` to stay under the 24 KB limit).
 
 A registry compiled from this source refuses a second plant on the same meter or the same design hash, refuses a
 renewal whose grid factor is zero, refuses an oracle age of zero or above two days, and refuses an attestation that
-does not cite the HCS topic stored by `setAuditTopic`. The testnet registry in the table above
+does not cite the HCS topic stored by `setAuditTopic`. The testnet registry in the README
 (`0x9cdB5782a10c41a103B722d1B8fa9CfaF84107a5`) was deployed with those checks. `setAuditTopic` points it at
 `0.0.10726081`. The older contract `0xAEA76b83…` does not enforce them.
 

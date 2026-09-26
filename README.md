@@ -48,7 +48,7 @@ Live app: [hydro-dmrv.vercel.app](https://hydro-dmrv.vercel.app). MCP: `https://
 
 ## What is on testnet
 
-Deployed from this source. The app reads it and holds no server key. Do not point the app at the older registry `0xAEA76b83ea8e71621d443053A5Ee20D7AF8Ce746`. Link the transactions below, not the contract's transaction list (that list also shows a failed 1-tinybar probe).
+The app reads the registry below and holds no server key. That deployment predates two rules in this source, named after the table. Do not point the app at the older registry `0xAEA76b83ea8e71621d443053A5Ee20D7AF8Ce746`. Link the transactions below, not the contract's transaction list (that list also shows a failed 1-tinybar probe).
 
 | What | Where |
 | --- | --- |
@@ -59,7 +59,7 @@ Deployed from this source. The app reads it and holds no server key. Do not poin
 
 That registry enforces a unique meter, a unique design hash, a non-zero grid factor at renewal, and an attestation that cites topic [0.0.10726081](https://hashscan.io/testnet/topic/0.0.10726081). The price age on this deploy is **25 hours**. Two days is only the contract's upper bound (`MAX_PRICE_AGE`); a longer window does not deploy. `submitAttestation` is simulated, and `quantify` must match the engine, before anything is published to HCS.
 
-The registry bytecode is **507 bytes under** Hedera's 24 KB limit. Another feature in this contract means splitting it.
+Compiled from this source, `HydroCreditRegistry` is 24,551 bytes, 25 under Hedera's 24,576-byte limit. Another feature in that contract means splitting it. `contracts/modules/HydroVmr0017Module.sol` reproduces `quantify` behind `IMethodology` so a later split has a measured module. It is not deployed, and it is not the issuer. The live contract is still `HydroCreditRegistry`.
 
 Credits: HTS [0.0.10726073](https://hashscan.io/testnet/token/0.0.10726073) (HYCC). Certificates: HTS [0.0.10726074](https://hashscan.io/testnet/token/0.0.10726074) (HYRET). Settlement feed: [0xcAE7c6eA…ba77cbb8](https://hashscan.io/testnet/contract/0xcAE7c6eA987107543C1aD0F79802d02cba77cbb8) (Chainlink, Supra fallback). Readings and the report for the first mint are HCS messages [1](https://hashscan.io/testnet/topic/0.0.10726081/message/1) and [5](https://hashscan.io/testnet/topic/0.0.10726081/message/5).
 
