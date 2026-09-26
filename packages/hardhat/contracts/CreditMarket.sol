@@ -14,9 +14,8 @@ import { DmrvRegistry } from "./DmrvRegistry.sol";
 /// custody under this contract's address; the market never touches HTS. `buyAndRetire` retires in the same
 /// transaction and the registry mints the certificate NFT.
 /// @dev A purchase sends the oracle HBAR amount into `ROUTER.swapExactETHForTokens` and requires the
-/// SaucerSwap pool to pay the seller at least the listing's USD minus `SWAP_SLIPPAGE_BPS`. It also
-/// requires Bonzo's WHBAR reserve (`LendingPool.getReserveData`) to be the pinned aToken and active.
-/// Removing either call removes the sale. There is no HBAR payout to the seller.
+/// SaucerSwap pool to pay the seller at least the listing's USD minus `SWAP_SLIPPAGE_BPS`.
+/// Removing the router call removes the sale. There is no HBAR payout to the seller.
 contract CreditMarket is AccessControl, ReentrancyGuard {
     uint16 public constant MAX_BPS = 10_000;
     /// @notice The admin cannot loosen the pool bound beyond 20%.
@@ -31,10 +30,6 @@ contract CreditMarket is AccessControl, ReentrancyGuard {
     address public immutable SAUCER_FACTORY;
     /// @notice SaucerSwap V1 router. Every purchase swaps through it.
     address public immutable ROUTER;
-    /// @notice Bonzo LendingPool. `settlementPrice` reverts unless this pool reports the pinned aToken as active.
-    address public immutable BONZO_POOL;
-    address public immutable BONZO_WHBAR;
-    address public immutable BONZO_ATOKEN;
     /// @notice Execution band versus the listing's USD amount. The spot check is separate (`maxDeviationBps`).
     uint16 public constant SWAP_SLIPPAGE_BPS = 300;
     /// @notice Native units per HBAR as seen by `msg.value`: 1e8 (tinybar) on Hedera, 1e18 on a local Hardhat EVM.
@@ -62,16 +57,13 @@ contract CreditMarket is AccessControl, ReentrancyGuard {
     }
 
     uint32 public maxPriceAge;
-    uint256 public totalProceedsOwed;
     PoolGuard public poolGuard;
-    mapping(address seller => uint256 native) public proceedsOf;
     Listing[] private _listings;
 
     event ListingCreated(uint256 indexed listingId, address indexed seller, uint64 units, uint64 priceUsdCentsPerTonne);
     event ListingCancelled(uint256 indexed listingId, uint64 unitsReturned);
     event Purchased(uint256 indexed listingId, address indexed buyer, uint64 units, uint256 nativePaid);
     event PurchasedAndRetired(uint256 indexed listingId, address indexed buyer, uint256 indexed retirementId);
-    event ProceedsWithdrawn(address indexed seller, uint256 amount);
     event MaxPriceAgeChanged(uint32 maxPriceAge);
     event PoolGuardSet(
         address indexed pool,
@@ -97,7 +89,6 @@ contract CreditMarket is AccessControl, ReentrancyGuard {
     error PoolIlliquid(address pool, uint256 liquidity, uint128 minLiquidity);
     error PoolPriceDeviation(uint256 poolPrice, uint256 oraclePrice, uint256 deviationBps);
     error SwapFailed();
-    error BonzoReserve(address pool, address aToken, bool active);
 
     constructor(
         address admin,
@@ -106,20 +97,14 @@ contract CreditMarket is AccessControl, ReentrancyGuard {
         uint256 nativeUnitsPerHbar,
         uint32 maxPriceAge_,
         address saucerFactory,
-        address router,
-        address bonzoPool,
-        address bonzoWhbar,
-        address bonzoAToken
+        address router
     ) {
         if (
             admin == address(0) ||
             address(registry) == address(0) ||
             address(hbarUsdFeed) == address(0) ||
             saucerFactory == address(0) ||
-            router == address(0) ||
-            bonzoPool == address(0) ||
-            bonzoWhbar == address(0) ||
-            bonzoAToken == address(0)
+            router == address(0)
         ) {
             revert ZeroAddress();
         }
@@ -128,9 +113,6 @@ contract CreditMarket is AccessControl, ReentrancyGuard {
         HBAR_USD_FEED = hbarUsdFeed;
         SAUCER_FACTORY = saucerFactory;
         ROUTER = router;
-        BONZO_POOL = bonzoPool;
-        BONZO_WHBAR = bonzoWhbar;
-        BONZO_ATOKEN = bonzoAToken;
         NATIVE_UNITS_PER_HBAR = nativeUnitsPerHbar;
         maxPriceAge = maxPriceAge_;
         _grantRole(DEFAULT_ADMIN_ROLE, admin);
@@ -183,10 +165,10 @@ contract CreditMarket is AccessControl, ReentrancyGuard {
         emit PoolGuardEnabled(true);
     }
 
-    /// @notice Recovers HBAR that is not owed to sellers.
+    /// @notice Recovers HBAR left in this contract. Purchases swap through the router, so the balance is normally 0.
     function sweepHbar(address payable to) external onlyRole(DEFAULT_ADMIN_ROLE) {
         if (to == address(0)) revert ZeroAddress();
-        _sendNative(to, address(this).balance - totalProceedsOwed);
+        _sendNative(to, address(this).balance);
     }
 
     // ─── Market ──────────────────────────────────────────────────────────────
@@ -233,15 +215,6 @@ contract CreditMarket is AccessControl, ReentrancyGuard {
         _sendNative(msg.sender, refund);
     }
 
-    function withdrawProceeds() external nonReentrant {
-        uint256 amount = proceedsOf[msg.sender];
-        if (amount == 0) revert ZeroAmount();
-        proceedsOf[msg.sender] = 0;
-        totalProceedsOwed -= amount;
-        _sendNative(msg.sender, amount);
-        emit ProceedsWithdrawn(msg.sender, amount);
-    }
-
     // ─── Pricing ─────────────────────────────────────────────────────────────
 
     /// @notice Minimum USD-token units the seller must receive for `units`, after the swap slippage band.
@@ -269,9 +242,8 @@ contract CreditMarket is AccessControl, ReentrancyGuard {
         return (numerator + denominator - 1) / denominator;
     }
 
-    /// @notice The fresh oracle HBAR/USD price, after Bonzo's WHBAR reserve is active and the SaucerSwap pool agrees.
+    /// @notice The fresh oracle HBAR/USD price, after the SaucerSwap pool agrees within the pinned band.
     function settlementPrice() public view returns (uint256 answer, uint8 decimals) {
-        _requireBonzoReserve();
         (uint80 roundId, int256 rawAnswer, , uint256 updatedAt, uint80 answeredInRound) = HBAR_USD_FEED
             .latestRoundData();
         if (rawAnswer <= 0 || updatedAt == 0 || answeredInRound < roundId) revert InvalidPrice(rawAnswer);
@@ -286,21 +258,6 @@ contract CreditMarket is AccessControl, ReentrancyGuard {
         if (deviationBps > g.maxDeviationBps) revert PoolPriceDeviation(poolPrice, answer, deviationBps);
     }
 
-    /// @dev Aave V2 `getReserveData`: word 0 is the configuration bitmap (bit 56 = active), word 7 is the aToken.
-    function _requireBonzoReserve() internal view {
-        (bool ok, bytes memory data) = BONZO_POOL.staticcall(abi.encodeWithSelector(bytes4(0x35ea6a75), BONZO_WHBAR));
-        if (!ok || data.length < 256) revert BonzoReserve(BONZO_POOL, address(0), false);
-        (uint256 configuration, address aToken) = _decodeReserve(data);
-        bool active = ((configuration >> 56) & 1) == 1;
-        if (!active || aToken != BONZO_ATOKEN) revert BonzoReserve(BONZO_POOL, aToken, active);
-    }
-
-    function _decodeReserve(bytes memory data) private pure returns (uint256 configuration, address aToken) {
-        assembly {
-            configuration := mload(add(data, 32))
-            aToken := mload(add(data, 256))
-        }
-    }
     /// @notice HBAR price in USD implied by the configured SaucerSwap pool, scaled to `decimals`.
     /// Reverts when the pool is below the configured liquidity floor.
     function poolHbarUsd(uint8 decimals) public view returns (uint256) {

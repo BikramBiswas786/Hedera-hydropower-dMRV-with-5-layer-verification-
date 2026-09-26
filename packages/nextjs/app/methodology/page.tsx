@@ -50,7 +50,7 @@ const MethodologyPage: NextPage = () => (
         standalone methodologies on 1 January 2027. <strong>TOOL03</strong> prices fossil fuel burnt on site. The grid
         factor follows <strong>TOOL07</strong> v7.0 for CDM plants and Verra&apos;s <strong>VT0011</strong> v1.0
         revision of it for VMR0017 plants (build margin over all units, hydro weights 0.4 / 0.6). The same integer
-        arithmetic runs in this app, in the MCP server and inside the <code>HydroCreditRegistry</code> contract, and
+        arithmetic runs in this app, in the MCP server and inside the <code>HydroVmr0017Module</code> contract, and
         shared test vectors keep them identical.
       </p>
     </PageHeader>

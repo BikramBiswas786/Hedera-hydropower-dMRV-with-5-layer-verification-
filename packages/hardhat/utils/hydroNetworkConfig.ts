@@ -22,8 +22,6 @@ export type HydroNetworkConfig = {
   saucerRouter?: string;
   /** SaucerSwap WHBAR/USDC pool the market cross-checks the oracle against. `undefined` on local chains. */
   poolGuard?: PoolGuardConfig;
-  /** Bonzo LendingPool. A quote reverts unless this reserve's aToken is active. */
-  bonzo?: { pool: string; whbar: string; aToken: string };
 };
 
 export type PoolGuardConfig = {
@@ -43,14 +41,6 @@ export type PoolGuardConfig = {
   note: string;
 };
 
-// Bonzo LendingPool on testnet, WHBAR reserve id 5. Checked 26 Sep 2026: active, 8 decimals, aToken below.
-// getReserveData(0x3ad2) via the mirror node. Mainnet Bonzo was paused after the June 2026 oracle incident,
-// so a mainnet deploy does not pin it.
-const BONZO_TESTNET = {
-  pool: "0xf67DBe9bD1B331cA379c44b5562EAa1CE831EbC2", // 0.0.4999355
-  whbar: "0x0000000000000000000000000000000000003aD2", // 0.0.15058
-  aToken: "0xf594C3d27463bEd0f651847aa7d323908CB5FFaA",
-};
 // Supra:     https://docs.supra.com/oracles/data-feeds/push-oracle/networks (pair 75 = HBAR/USDT)
 const ORACLES: Record<"hederaTestnet" | "hederaMainnet", OracleSources> = {
   hederaTestnet: {
@@ -122,7 +112,6 @@ export function getHydroNetworkConfig(hre: HardhatRuntimeEnvironment): HydroNetw
         saucerFactory: "0x00000000000000000000000000000000000026e7", // V1 factory 0.0.9959
         saucerRouter: "0x0000000000000000000000000000000000004b40", // V1 router 0.0.19264
         poolGuard: POOL_GUARDS.hederaTestnet,
-        bonzo: BONZO_TESTNET,
       };
     case "hederaMainnet":
       return {

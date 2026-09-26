@@ -45,7 +45,13 @@ export const OraclePanel = () => {
     contractName: "ResilientHbarUsdFeed",
     functionName: "MAX_DEVIATION_BPS",
   });
-  const [dex, setDex] = useState<{ price: number; accepted: boolean; deviationBps: number } | null>(null);
+  const [dex, setDex] = useState<{
+    price: number;
+    accepted: boolean;
+    deviationBps: number;
+    pair?: string;
+    venue?: string;
+  } | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -98,6 +104,38 @@ export const OraclePanel = () => {
           : `Fresh sources must agree within ${maxDeviation !== undefined ? Number(maxDeviation) / 100 : "…"}%; if one fails the other prices alone.`}{" "}
         Active source: {SOURCE_NAMES[source ?? 0]}.
       </p>
+      {dex?.pair && (
+        <p className="m-0 text-xs text-base-content/60">
+          Live market{" "}
+          <a
+            className="link"
+            href="https://hashscan.io/testnet/contract/0x5aeDe76fc6625cfA3227FFf70197D4D7ff3e5030"
+            target="_blank"
+            rel="noreferrer"
+          >
+            0x5aeDe76f…
+          </a>{" "}
+          swaps through router 0.0.19264 on pair{" "}
+          <a
+            className="link"
+            href={`https://hashscan.io/testnet/contract/${dex.pair}`}
+            target="_blank"
+            rel="noreferrer"
+          >
+            {dex.pair.slice(0, 10)}…
+          </a>
+          . Settled{" "}
+          <a
+            className="link"
+            href="https://hashscan.io/testnet/transaction/0x4735808481bde453a2354b4ed395a00ba72112fdcbb0b96c9a1196e4c5753fab"
+            target="_blank"
+            rel="noreferrer"
+          >
+            0.020 t
+          </a>
+          . Buy stays off while this pair is outside 3% of the oracle.
+        </p>
+      )}
     </div>
   );
 };

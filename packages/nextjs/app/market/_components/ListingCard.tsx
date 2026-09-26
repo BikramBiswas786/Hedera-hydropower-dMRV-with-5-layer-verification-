@@ -16,6 +16,7 @@ export type DexGate = {
   accepted: boolean;
   deviationBps: number;
   maxDeviationBps: number;
+  pair?: string;
 };
 
 type Prepared = {

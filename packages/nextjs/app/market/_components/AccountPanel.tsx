@@ -4,7 +4,7 @@ import { useState } from "react";
 import type { Address } from "viem";
 import { useWriteContract } from "wagmi";
 import { useScaffoldReadContract, useScaffoldWriteContract, useTransactor } from "~~/hooks/scaffold-hbar";
-import { formatHbar, tonnesToUnits, usdToCents } from "~~/services/mrv/pricing";
+import { tonnesToUnits, usdToCents } from "~~/services/mrv/pricing";
 import { formatTonnes } from "~~/services/mrv/views";
 
 /** HIP-719: HTS tokens expose `associate()` at their EVM address so an EOA can opt in to holding them. */
@@ -14,7 +14,7 @@ const HRC719_ABI = [
 
 type Action = "sell" | "retire" | "withdraw";
 
-export const AccountPanel = ({ address, nativeUnitsPerHbar }: { address?: Address; nativeUnitsPerHbar: bigint }) => {
+export const AccountPanel = ({ address }: { address?: Address }) => {
   const [action, setAction] = useState<Action>("sell");
   const [amount, setAmount] = useState("");
   const [price, setPrice] = useState("15.00");
@@ -23,13 +23,6 @@ export const AccountPanel = ({ address, nativeUnitsPerHbar }: { address?: Addres
   const { data: custody } = useScaffoldReadContract({
     contractName: "DmrvRegistry",
     functionName: "custodyBalanceOf",
-    args: [address],
-    query: { enabled: Boolean(address) },
-  });
-  // Sale proceeds and listings live on CreditMarket; custody, retirement and withdrawal stay on the registry.
-  const { data: proceeds } = useScaffoldReadContract({
-    contractName: "CreditMarket",
-    functionName: "proceedsOf",
     args: [address],
     query: { enabled: Boolean(address) },
   });
@@ -77,23 +70,6 @@ export const AccountPanel = ({ address, nativeUnitsPerHbar }: { address?: Addres
       <div className="flex justify-between text-sm">
         <span>Credits in custody</span>
         <span className="font-bold">{custody === undefined ? "…" : `${formatTonnes(custody)} t CO₂e`}</span>
-      </div>
-      <div className="flex justify-between items-center text-sm">
-        <span>HBAR left in the market</span>
-        <span className="flex items-center gap-2">
-          <span className="font-bold">
-            {proceeds === undefined ? "…" : `${formatHbar(proceeds, nativeUnitsPerHbar)} HBAR`}
-          </span>
-          {proceeds !== undefined && proceeds > 0n && (
-            <button
-              className="btn btn-xs btn-primary"
-              disabled={isMining}
-              onClick={() => writeMarket({ functionName: "withdrawProceeds" })}
-            >
-              Claim
-            </button>
-          )}
-        </span>
       </div>
 
       <div role="tablist" className="tabs tabs-box tabs-sm">

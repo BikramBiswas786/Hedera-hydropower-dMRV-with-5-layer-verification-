@@ -57,7 +57,7 @@
       "route": "/market",
       "severity": "major",
       "statement": "Without a deployment the market and audit pages explain how to deploy instead of crashing; with one, the market shows the settlement price with both oracle sources (Chainlink primary, Supra fallback) and which one is pricing.",
-      "howToVerify": "Open /market and /audit. Either an info alert says HydroCreditRegistry is not deployed and names the deploy command, or the 'HBAR / USD settlement price' card lists 'Chainlink (primary)' and 'Supra (fallback)' rows with one marked 'pricing', and an 'Open listings' heading is visible.",
+      "howToVerify": "Open /market and /audit. Either an info alert says DmrvRegistry is not deployed and names the deploy command, or the 'HBAR / USD settlement price' card lists 'Chainlink (primary)' and 'Supra (fallback)' rows with one marked 'pricing', a SaucerSwap settlement pair row, and an 'Open listings' heading is visible.",
       "walletRequired": false,
       "verifiableWithoutCredentials": true
     },

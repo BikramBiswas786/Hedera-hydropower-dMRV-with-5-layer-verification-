@@ -141,7 +141,7 @@ The totals are raw, before any QA/QC. Two independent checks use the same signat
 | Where | Check |
 | --- | --- |
 | Engine (QA/QC stage, and every reproduction from HCS) | the statement matches the readings and was signed by the metering record's key for this registry |
-| `HydroCreditRegistry.submitAttestation` | the signer is the plant's registered meter; EG_facility ≤ the metered net export; FC ≥ the metered fuel; TEG = the metered gross, capped only at what the nameplate can produce in the period |
+| `HydroVmr0017Module` / `DmrvRegistry.submitAttestation` | the signer is the plant's registered meter; EG_facility ≤ the metered net export; FC ≥ the metered fuel; TEG = the metered gross, capped only at what the nameplate can produce in the period |
 
 QA/QC may only make figures more conservative, and the contract enforces that direction. A stolen or misbehaving
 verifier key cannot mint a period the meter did not sign, inflate export, hide fuel, understate TEG to shrink reservoir
@@ -202,7 +202,7 @@ flowchart LR
   end
   subgraph Hedera
     HCS[(HCS topic<br/>readings + reports)]
-    REG[HydroCreditRegistry.sol<br/>recomputes ER]
+    REG[DmrvRegistry.sol<br/>module recomputes ER]
     TOK[(HTS token HYCC<br/>1 = 1 t CO₂e)]
     NFT[(HTS NFT HYRET)]
     FEED[ResilientHbarUsdFeed.sol]

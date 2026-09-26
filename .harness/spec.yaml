@@ -5,10 +5,10 @@ description: >-
   Scaffold-HBAR template for carbon-credit dMRV of grid-connected hydropower under Verra VMR0017 v1.0
   with ACM0002 v22.0 (VT0011 grid factor, VT0008 additionality), or CDM AMS-I.D / ACM0002 with TOOL07.
   TOOL03 prices fossil fuel. A 5-stage engine verifies monitoring data and quantifies ER = BE - PE - LE;
-  readings and reports are anchored on HCS; the HydroCreditRegistry contract recomputes the emission
-  reductions from the registered design and mints HTS credits (1 token = 1 t CO2e); a Chainlink HBAR/USD
-  feed with a Supra fallback settles USD-priced sales in HBAR; prepare_purchase also refuses a SaucerSwap
-  spot more than 3% from that price. Retirements mint HTS NFT certificates. MCP tools and REST endpoints
+  readings and reports are anchored on HCS; the DmrvRegistry contract recomputes the emission
+  reductions from the registered design (via HydroVmr0017Module) and mints HTS credits (1 token = 1 t CO2e); a Chainlink HBAR/USD
+  feed with a Supra fallback settles USD-priced sales in HBAR; every purchase swaps through SaucerSwap and
+  reverts if the pair is more than 3% from that price. Retirements mint HTS NFT certificates. MCP tools and REST endpoints
   expose it to agents. Demo meter keys are for testing only; mainnet deploys refuse them.
 
 agent: claude

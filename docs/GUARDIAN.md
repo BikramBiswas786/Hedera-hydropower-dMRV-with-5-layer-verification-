@@ -224,5 +224,5 @@ Minting (`POST /api/mrv/attest`) needs `Authorization: Bearer $MRV_API_KEY`. Lea
 
 - These two routes do not parse a Guardian VC, a DID document, or a policy schema. The bridge above does.
 - It does not run VVB approval, multi-sign, or retirement-pool workflows. Guardian already does.
-- The SaucerSwap check in `prepare_purchase` is off-chain. The contract settles on Chainlink and Supra only.
+- The SaucerSwap check is on-chain (`CreditMarket.settlementPrice`) and off-chain (`prepare_purchase`). Both refuse a pair more than 3% from Chainlink/Supra.
 - Guardian's ACM0002 policy and this engine do not match on every cell. The differences are in [methodology.md](methodology.md).

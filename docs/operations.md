@@ -45,7 +45,7 @@ Nothing is required to browse the app or use the engine. Copy the `.env.example`
 | **Home** `/` | The flow, live registry totals in t CO₂e, and how to connect an agent over MCP. |
 | **Methodology** `/methodology` | The equations, QA/QC rules, the TOOL07 calculation on the demo grid unit by unit (EF_EL, option A1/A2, BM sample), each demo plant's assessment and the exact integers registered on-chain. |
 | **Verify** `/verify` | Pick a plant and a scenario, or edit the JSON (readings, meter calibration, even the plant design). The report updates as you type: decision, five stages, ER / BE / PE / LE, an equation trace, QA/QC deductions and every finding. When the registry is deployed it quantifies against the plant's on-chain ledger. It previews the exact HCS report and data hash; operators can publish with the API key. |
-| **Market** `/market` | Both oracle sources, which one is pricing, and whether purchases are paused. Your custody balance and proceeds; list credits in USD per tonne; buy, or buy and retire in one transaction; associate the HTS token (HIP-719) and withdraw to your wallet. |
+| **Market** `/market` | Both oracle sources, which one is pricing, and the SaucerSwap pair the contract swaps. List credits in USD per tonne; buy, or buy and retire in one transaction; associate the HTS token (HIP-719) and withdraw to your wallet. Buy stays off while the pair is outside 3% of the oracle. |
 | **Plants** `/plants`, `/plants/{id}` | Every registered plant; per plant the registered design (capacity, reservoir and power density, TOOL07 grid factor, TOOL03 COEF, baseline, crediting period, design hash), the on-chain ledger (crediting year, carried balance) and every attestation with BE, PE, ER, credits, coverage and links to its HCS report and reproduction. Rendered on the server from the same reads as the API. |
 | **Portfolio** `/portfolio` | Everything an account retired, or anyone retired on behalf of a company, with totals, NFT certificates and a **CSV export** for a GHG inventory or ESG report (beneficiary names are formula-escaped). |
 | **Audit** `/audit` | Every attestation with EG_PJ, ER, credits and its HCS link. **Check evidence** runs the full reproduction in your browser. Retirements link to their certificates. |
@@ -60,7 +60,7 @@ packages/
 │   ├── contracts/
 │   │   ├── DmrvRegistry.sol             projects, meters, VVBs, two-signature attestation, custody, retirement, all HTS
 │   │   ├── modules/HydroVmr0017Module.sol   IMethodology: hydro registration rules and on-chain quantification
-│   │   ├── CreditMarket.sol             listings, oracle settlement, SaucerSwap pool guard, proceeds
+│   │   ├── CreditMarket.sol             listings, oracle settlement, SaucerSwap pool guard (required)
 │   │   ├── ResilientHbarUsdFeed.sol     Chainlink + Supra aggregator behind AggregatorV3Interface
 │   │   ├── legacy/HydroCreditRegistry.sol   phase-0 registry (read-only on testnet; kept for evidence)
 │   │   ├── lib/HederaTokenLib.sol       HTS create / mint / burn / transfer for tokens and NFTs
@@ -191,9 +191,9 @@ A spot price can be moved in one block, so the guard can block sales. It cannot 
   listings and purchases the owner initiated).
 - **Oracle risk** is bounded by two independent providers, a deviation guard, staleness checks and the
   seller-favouring round-up. Tune `MAX_PRICE_AGE_SECONDS` and `MAX_ORACLE_DEVIATION_BPS` to the feeds' heartbeats.
-  `CreditMarket` can also enforce a SaucerSwap pool check on-chain (enabled on mainnet, off on testnet; see
-  [the fallback](#saucerswap-guard-fallback)). The purchase builder additionally refuses when the SaucerSwap V1
-  the SaucerSwap pair stored on CreditMarket is more than 3% from the oracle.
+  `CreditMarket` enforces a SaucerSwap pool check on-chain on every quote and purchase (testnet and mainnet; see
+  [the guard](#saucerswap-guard)). The purchase builder additionally refuses when the
+  SaucerSwap pair stored on CreditMarket is more than 3% from the oracle.
 - **Write endpoints** are disabled unless `MRV_API_KEY` is set and use a constant-time comparison. Put them behind
   your own authentication before exposing them publicly. Purchases never touch the server: agents sign their own.
 - **Not audited.** This is a starting point, not production-ready code.

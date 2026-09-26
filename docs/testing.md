@@ -45,7 +45,7 @@ What the tests pin down:
   23:59:59 UTC is still accepted), renewals 5→5 and 7→7 only, metering rules, and parity: all 13 frozen outputs of the
   legacy `HydroCreditRegistry.quantify` reproduce, and a full greenfield flow on the new registry reproduces the legacy
   registry's 4 791 542 g and 73 386 435 g.
-- **CreditMarket**: escrow in registry custody, oracle-priced settlement, refunds, proceeds, buy-and-retire, and the
+- **CreditMarket**: escrow in registry custody, oracle-priced settlement, refunds, buy-and-retire, and the
   SaucerSwap guard: V1 `getReserves` and V2 `slot0` (WHBAR as token0 and token1) read in feed decimals, settlement
   within 3%, blocked beyond 3% in either direction and on an illiquid pool, cannot be switched off, config validation.
 - **Contract size**: every deployable contract outside `mocks/` and `legacy/` is covered by the 24,064 B guard.

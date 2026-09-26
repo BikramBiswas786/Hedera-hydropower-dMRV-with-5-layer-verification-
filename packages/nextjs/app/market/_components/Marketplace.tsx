@@ -62,7 +62,7 @@ export const Marketplace = () => {
     <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-start">
       <aside className="flex flex-col gap-6">
         <OraclePanel />
-        {nativeUnitsPerHbar !== undefined && <AccountPanel address={address} nativeUnitsPerHbar={nativeUnitsPerHbar} />}
+        <AccountPanel address={address} />
       </aside>
       <section className="lg:col-span-2 flex flex-col gap-4">
         <h2 className="font-semibold text-lg m-0">Open listings ({open.length})</h2>

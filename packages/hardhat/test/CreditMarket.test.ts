@@ -96,7 +96,6 @@ describe("CreditMarket", function () {
       expect(await registry.custodyBalanceOf(buyer.address)).to.equal(250);
       expect(await router.paidUsd(operator.address)).to.equal(minOut);
       expect(await router.lastValue()).to.equal(cost);
-      expect(await market.proceedsOf(operator.address)).to.equal(0);
     });
 
     it("reverts the purchase when the router refuses the swap", async function () {
@@ -197,15 +196,6 @@ describe("CreditMarket", function () {
       await expect(market.quote(0, 1)).to.be.revertedWithCustomError(market, "PoolIlliquid");
       await pair.setReserves(250_000n * 10n ** 6n, 0);
       await expect(market.quote(0, 1)).to.be.revertedWithCustomError(market, "PoolIlliquid");
-    });
-
-    it("reverts the quote when Bonzo's WHBAR reserve is not the pinned active aToken", async function () {
-      const { market, bonzo } = await loadFixture(withV1Pool);
-      await market.quote(0, 1);
-      await bonzo.setActive(false);
-      await expect(market.quote(0, 1)).to.be.revertedWithCustomError(market, "BonzoReserve");
-      await bonzo.setActive(true);
-      await market.quote(0, 1);
     });
 
     it("cannot be switched off, even when the pool is far from the oracle", async function () {

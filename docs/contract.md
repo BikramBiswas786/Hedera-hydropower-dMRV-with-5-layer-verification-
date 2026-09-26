@@ -120,8 +120,7 @@ yet, the NFT waits for `claimCertificate`.
 | `createListing(units, usdCentsPerTonne)` · `cancelListing(id)` | holder | Moves units between registry custody and the market's custody |
 | `quote(listingId, units)` | view | Native cost at the settlement price, rounded up in the seller's favour |
 | `buy` · `buyAndRetire` (payable) | anyone | Sends the oracle HBAR amount to the SaucerSwap router. Reverts if the pool is more than 3% off or the swap fails |
-| `withdrawProceeds()` | seller | Pull payment |
-| `setMaxPriceAge` · `setPoolGuard(...)` · `setPoolGuardEnabled(bool)` · `sweepHbar(to)` | admin | `sweepHbar` never touches owed proceeds |
+| `setMaxPriceAge` · `setPoolGuard(...)` · `setPoolGuardEnabled(bool)` · `sweepHbar(to)` | admin | `sweepHbar` recovers leftover HBAR; purchases swap through the router so the balance is normally 0 |
 
 ### SaucerSwap pool guard
 

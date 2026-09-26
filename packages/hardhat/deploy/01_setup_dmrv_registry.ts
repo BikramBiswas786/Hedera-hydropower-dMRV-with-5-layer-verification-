@@ -24,7 +24,7 @@ function evmAddress(value: string): string {
  *   3. Audit topic from HCS_TOPIC_ID.
  *   4. Demo projects, each with its own meter address. On Hedera networks the meters come from METER_ADDRESSES or
  *      `.secrets/meters.<network>.json`; the public demo derivation is refused (the deploy throws).
- *   5. SaucerSwap pool guard on the market (stored; enforced only where the pool is liquid, see hydroNetworkConfig).
+ *   5. SaucerSwap pool guard on the market (always enforced; `setPoolGuardEnabled(false)` reverts).
  *   6. Key split: VERIFIER_ADDRESS (the VVB's ECDSA signing key) gets VERIFIER_ROLE. ADMIN_ADDRESS (a 2-of-3
  *      Hedera threshold account, 0.0.<num>) gets DEFAULT_ADMIN_ROLE on both contracts and the deployer renounces.
  *      Nobody needs a role to relay attestations: the meter and VVB signatures are the authorisation.

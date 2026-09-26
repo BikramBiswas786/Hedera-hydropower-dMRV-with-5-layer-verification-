@@ -5,7 +5,6 @@ import type {
   CreditMarket,
   DmrvRegistry,
   HydroVmr0017Module,
-  MockBonzoPool,
   MockSaucerRouter,
 } from "../../typechain-types";
 import { ensureHts } from "./hts";
@@ -16,15 +15,13 @@ export const CREDITING_YEAR = 365 * DAY;
 export const YEAR = BigInt(CREDITING_YEAR);
 export const FIVE_YEAR_FROM = 1_798_761_600n; // 2027-01-01T00:00:00Z
 export const AUDIT_TOPIC = 4_242_424n;
-export const REPORT_HASH = ethers.sha256(ethers.toUtf8Bytes('{"schema":"hydro-dmrv/report@5"}'));
+export const REPORT_HASH = ethers.sha256(ethers.toUtf8Bytes('{"schema":"hydro-dmrv/report@4"}'));
 export const FEED_DECIMALS = 8;
 export const HBAR_USD = 25_000_000n; // $0.25
 export const NATIVE_PER_HBAR = 10n ** 18n; // local Hardhat EVM
 export const MIN_COMPLETENESS_BPS = 9_000;
 /** SaucerSwap V1 factory on testnet (0.0.9959). Tests point mock pools at this. */
 export const SAUCER_FACTORY = "0x00000000000000000000000000000000000026e7";
-export const BONZO_WHBAR = "0x0000000000000000000000000000000000003aD2";
-export const BONZO_ATOKEN = "0x000000000000000000000000000000000000b07a";
 
 /** Test keys. The meter and VVB are separate secp256k1 keys, as on a real deployment. */
 export const METER = new ethers.Wallet(ethers.id("dmrv test meter"));
@@ -247,7 +244,6 @@ export type Ctx = {
   registry: DmrvRegistry;
   market: CreditMarket;
   router: MockSaucerRouter;
-  bonzo: MockBonzoPool;
   module: HydroVmr0017Module;
   feed: Awaited<ReturnType<typeof deployFeed>>;
   admin: Awaited<ReturnType<typeof ethers.getSigners>>[number];
@@ -269,7 +265,6 @@ export async function deployCore(): Promise<Ctx> {
   const module = await ethers.deployContract("HydroVmr0017Module");
   const feed = await deployFeed();
   const router = await ethers.deployContract("MockSaucerRouter");
-  const bonzo = await ethers.deployContract("MockBonzoPool", [BONZO_ATOKEN]);
   const market = await ethers.deployContract("CreditMarket", [
     admin.address,
     await registry.getAddress(),
@@ -278,11 +273,8 @@ export async function deployCore(): Promise<Ctx> {
     HOUR,
     SAUCER_FACTORY,
     await router.getAddress(),
-    await bonzo.getAddress(),
-    BONZO_WHBAR,
-    BONZO_ATOKEN,
   ]);
-  return { registry, market, module, feed, admin, operator, buyer, stranger, mocked, router, bonzo };
+  return { registry, market, module, feed, admin, operator, buyer, stranger, mocked, router };
 }
 
 export const PROJECT_ID = ethers.encodeBytes32String("HYDRO-DEMO-01");

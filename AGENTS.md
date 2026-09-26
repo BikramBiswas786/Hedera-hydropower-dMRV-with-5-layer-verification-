@@ -10,7 +10,7 @@ under Verra VMR0017 v1.0 with ACM0002 v22.0 (VT0011 grid factor, VT0008 addition
 carbon credits through `DmrvRegistry`. The registry mints only with two EIP-712 signatures, the plant's meter and an
 accredited VVB. Its methodology module (`HydroVmr0017Module`) recomputes ER = BE − PE − LE on-chain from the plant's
 registered design. `CreditMarket` sells credits at the `ResilientHbarUsdFeed` price (Chainlink with a Supra fallback),
-optionally cross-checked on-chain against a SaucerSwap pool. Every retirement mints an HTS NFT certificate. Raw readings are on HCS too, so anyone can reproduce every figure.
+and every sale is swapped through a SaucerSwap pool that must sit within 3% of that price. Every retirement mints an HTS NFT certificate. Raw readings are on HCS too, so anyone can reproduce every figure.
 
 ## Commands
 
@@ -146,10 +146,11 @@ yarn hardhat:test:fork            # contract tests against Hedera's HTS emulatio
 Use the Scaffold-HBAR hooks in `packages/nextjs/hooks/scaffold-hbar` with the names that exist:
 `useScaffoldReadContract`, `useScaffoldWriteContract`, `useDeployedContractInfo`, `useTransactor`.
 
-Reads go through the hooks: custody, retirements and attestations on `DmrvRegistry`; listings, quotes and proceeds on
+Reads go through the hooks: custody, retirements and attestations on `DmrvRegistry`; listings and quotes on
 `CreditMarket`. Purchases do not. `POST /api/market/prepare-purchase` (MCP: `prepare_purchase`) builds the unsigned
 `CreditMarket` transaction and refuses it when the SaucerSwap WHBAR/USDC spot is more than 3% from the settlement
-price. It also reports the on-chain guard (`onChainPoolGuard`), which reverts the purchase itself when enabled. The
+price. It also reports the on-chain guard (`onChainPoolGuard`), which reverts the purchase itself when the pair is
+outside the band. The
 caller signs `to`, `data` and `value` with their own wallet. Do not call `buy` or `buyAndRetire` with a value the UI
 invented.
 
@@ -157,11 +158,6 @@ invented.
 const { data: custody } = useScaffoldReadContract({
   contractName: "DmrvRegistry",
   functionName: "custodyBalanceOf",
-  args: [address],
-});
-const { data: proceeds } = useScaffoldReadContract({
-  contractName: "CreditMarket",
-  functionName: "proceedsOf",
   args: [address],
 });
 
