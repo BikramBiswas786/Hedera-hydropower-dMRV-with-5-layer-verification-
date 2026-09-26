@@ -635,7 +635,7 @@ function equationsFor(
       expression: embodiedEfGPerMwh(design.methodology)
         ? design.projectType === 1
           ? "0 (VMR0017 §8.3 has no embodied-emission equation for a retrofit)"
-          : `${design.projectType === 0 ? "EG_facility" : "EG_PJ_Add"} × EF_embodied (${embodiedEfGPerMwh(design.methodology) / 1_000} g CO2e/kWh), VMR0017 §8.3`
+          : `${design.projectType === 0 ? "EG_facility" : "max(EG_PJ, EG_facility × Cap_add / Cap_PJ)"} × EF_embodied (${embodiedEfGPerMwh(design.methodology) / 1_000} g CO2e/kWh), VMR0017 §8.3`
         : "0 (leakage not applicable)",
       value: emissions.leakageG / 1e6,
       unit: "t CO2e",

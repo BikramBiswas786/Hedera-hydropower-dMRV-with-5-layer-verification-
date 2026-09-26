@@ -65,6 +65,8 @@ export const embodiedEfGPerMwh = (code: number) =>
 export const MAX_GRID_EF_G_PER_MWH = 2_000_000;
 /** Crediting-period years are 365-day blocks, here and in the contract. */
 export const CREDITING_YEAR_SECONDS = 365 * 24 * 3_600;
+/** VCS Standard v5.0 Table 8: registration requests from this instant use a 5-year E&I crediting period. */
+export const VCS_FIVE_YEAR_FROM = Math.floor(Date.parse("2027-01-01T00:00:00Z") / 1000);
 
 export const PROJECT_TYPES = ["greenfield", "retrofit", "capacity-addition"] as const;
 export type ProjectType = (typeof PROJECT_TYPES)[number];
@@ -74,7 +76,7 @@ export const PROJECT_TYPE_CODE: Record<ProjectType, number> = { greenfield: 0, r
 export type GridEmissionFactorSource =
   | { source: "tool07"; input: Omit<Tool07Input, "projectKind" | "creditingPeriod"> }
   /** A combined margin published by a Designated National Authority or the UNFCCC, cited by reference. */
-  | { source: "published"; efTPerMwh: number; reference: string };
+  | { source: "published"; efTPerMwh: number; reference: string; validFrom?: string; validTo?: string };
 
 export type Hydraulics = {
   /** Design (turbine) flow and gross head: sensor readings above them are implausible. */
@@ -142,9 +144,18 @@ export type ProjectDesign = {
   baselineRetrofitDate?: string;
   /** Generating equipment moved here from another activity (AMS-I.D then requires a leakage assessment). */
   equipmentTransferred: boolean;
+  /**
+   * VMR0017 retrofits. VT0010 excludes efficiency upgrades. Set this only for an end-of-life refurbishment,
+   * which VT0010 §4(5) still covers.
+   */
+  endOfLifeRefurbishment?: boolean;
+  /** VT0009 Step 1 alternatives. Required for a VMR0017 retrofit or capacity addition. ACM0002 needs outcome P2. */
+  baselineAlternatives?: { p1: boolean; p2: boolean; p3: boolean; outcome: "P1" | "P2" | "P3" };
   /** Fossil fuel burnt on site (back-up generators, black start); null when none is used. */
   onSiteFuel: OnSiteFuel | null;
-  crediting: { start: string; years: 7 | 10; period: 1 | 2 | 3 };
+  crediting: { start: string; years: 5 | 7 | 10; period: 1 | 2 | 3 };
+  /** When the registration request is filed. Defaults to the crediting start. VCS Table 8 keys off this date. */
+  registrationRequest?: string;
   grid: GridEmissionFactorSource;
   hydraulics: Hydraulics;
 };
@@ -338,9 +349,25 @@ function additionalityOf(
   };
 }
 
-function gridFactor(design: ProjectDesign): ProjectAssessment["grid"] {
+function gridFactor(
+  design: ProjectDesign,
+  creditingStart: number,
+  vmr0017: boolean,
+  failures: string[],
+): ProjectAssessment["grid"] {
   if (design.grid.source === "published") {
-    const { efTPerMwh, reference } = design.grid;
+    const { efTPerMwh, reference, validFrom, validTo } = design.grid;
+    if (vmr0017 && (!validFrom || !validTo)) {
+      failures.push(
+        "A published grid factor on the VMR0017 path needs validFrom and validTo. VT0011 replaces a CDM standardized baseline such as ASB0054",
+      );
+    } else if (validFrom && validTo) {
+      const from = toUnix(validFrom);
+      const to = toUnix(validTo);
+      if (creditingStart < from || creditingStart >= to) {
+        failures.push("The crediting start is outside the published grid factor's validity window");
+      }
+    }
     return {
       source: "published",
       efTPerMwh,
@@ -448,6 +475,26 @@ export function assessProject(design: ProjectDesign): ProjectAssessment {
   if (years === 10 && period !== 1) failures.push("A fixed 10-year crediting period cannot be renewed");
   const creditingStart = toUnix(design.crediting.start);
   const creditingEnd = creditingStart + years * CREDITING_YEAR_SECONDS;
+  const requestAt = design.registrationRequest ? toUnix(design.registrationRequest) : creditingStart;
+  if (vmr0017 && requestAt >= VCS_FIVE_YEAR_FROM && years !== 5) {
+    failures.push(
+      "VCS Standard v5.0 Table 8: an E&I registration request on or after 1 January 2027 uses a 5-year crediting period, renewable twice",
+    );
+  }
+
+  if (vmr0017 && design.projectType === "retrofit" && !design.endOfLifeRefurbishment) {
+    failures.push(
+      "VMR0017 applies VT0010, which excludes an efficiency upgrade. Record an end-of-life refurbishment, or do not register the retrofit under VMR0017",
+    );
+  }
+  if (vmr0017 && design.projectType !== "greenfield") {
+    const alternatives = design.baselineAlternatives;
+    if (!alternatives?.p1 || !alternatives.p2 || !alternatives.p3) {
+      failures.push("VMR0017 §6: VT0009 Step 1 must record alternatives P1, P2 and P3");
+    } else if (alternatives.outcome !== "P2") {
+      failures.push("ACM0002 applies only when the baseline is continuation of the current situation (P2)");
+    }
+  }
 
   if (vmr0017) {
     // Table 1: hydroelectric, 15 MW or less by rated or authorized capacity (whichever is higher), LDCs only.
@@ -478,7 +525,9 @@ export function assessProject(design: ProjectDesign): ProjectAssessment {
     leakageBasis =
       design.projectType === "retrofit"
         ? "VMR0017 §8.3 gives embodied-emission equations for greenfield plants and capacity additions only: LE_y = 0 for a retrofit"
-        : `VMR0017 §8.3: LE_y = ${design.projectType === "greenfield" ? "EG_facility,y" : "EG_PJ_Add,y"} × EF_embodied (${VMR0017_EMBODIED_HYDRO_G_PER_MWH / 1_000} g CO2e/kWh for hydropower)`;
+        : `VMR0017 §8.3: LE_y = ${
+            design.projectType === "greenfield" ? "EG_facility,y" : "max(EG_PJ,y, EG_facility,y × Cap_add / Cap_PJ)"
+          } × EF_embodied (${VMR0017_EMBODIED_HYDRO_G_PER_MWH / 1_000} g CO2e/kWh for hydropower)`;
   } else if (methodologyId === "AMS-I.D" && design.equipmentTransferred) {
     failures.push("AMS-I.D: equipment transferred from another activity requires a leakage assessment");
     leakageBasis = "Leakage from transferred equipment must be assessed; not supported";
@@ -486,7 +535,7 @@ export function assessProject(design: ProjectDesign): ProjectAssessment {
   const additionality = additionalityOf(design, vmr0017, failures);
 
   const baseline = baselineOf(design, failures);
-  const grid = gridFactor(design);
+  const grid = gridFactor(design, creditingStart, vmr0017, failures);
   if (grid.efGPerMwh <= 0 || grid.efGPerMwh > MAX_GRID_EF_G_PER_MWH) {
     failures.push(`EF_grid,CM must be above 0 and at most ${MAX_GRID_EF_G_PER_MWH / 1e6} t CO2/MWh`);
   }

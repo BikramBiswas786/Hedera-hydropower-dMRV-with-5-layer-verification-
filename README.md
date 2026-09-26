@@ -134,7 +134,7 @@ Each plant is registered on-chain under one of two rule sets, and the contract a
 | Hydro eligibility | 15 MW or less (rated or authorized), Least Developed Countries only (Table 1) | any size, any host country |
 | Additionality | VT0008: regulatory surplus, benchmark analysis on project or equity IRR with a sensitivity analysis, common practice (no barrier analysis, no TOOL32) | TOOL01 / TOOL02 at validation |
 | EF_Res (reservoirs) | 100 kg CO₂e/MWh (§9.1) | 90 kg CO₂e/MWh |
-| Leakage | embodied emissions, 21 g CO₂e/kWh of EG_facility (greenfield) or EG_PJ_Add (capacity addition); none for retrofits (§8.3) | 0 |
+| Leakage | embodied emissions, 21 g CO₂e/kWh of EG_facility (greenfield) or the higher of EG_PJ and EG_facility × Cap_add / Cap_PJ (capacity addition); none for retrofits (§8.3) | 0 |
 | Grid emission factor | VT0011 v1.0 with TOOL07 v7.0: BM over all units including VCS and CDM ones, hydro weights 0.4 / 0.6, then 0.25 / 0.75 | TOOL07 v7.0 |
 
 Verra inactivates ACM0002 and AMS-I.D as standalone methodologies on 1 January 2027, so new projects register under
@@ -151,7 +151,8 @@ Imports are subtracted from export before BE. VT0010 would instead charge EC × 
 PE_FF = Σ FC × COEF,  COEF = NCV × EF_CO2             TOOL03 option B, IPCC upper 95% bounds
 PE_HP = EF_Res × TEG_y  if 4 < PD ≤ 10 W/m², else 0   EF_Res = 100 kg CO2e/MWh (VMR0017), 90 (CDM)
 LE_y  = EG × EF_embodied                              VMR0017: 21 g CO2e/kWh; EG_facility (greenfield) or
-                                                      EG_PJ_Add (addition), never negative; 0 for retrofits
+                                                      the higher of EG_PJ and EG_facility × Cap_add / Cap_PJ
+                                                      (capacity addition), never negative; 0 for retrofits
 LE_y  = 0                                             CDM: ACM0002; AMS-I.D without transferred equipment
 
 EG_PJ,y = EG_facility,y                               greenfield
@@ -176,7 +177,7 @@ EG_facility = export − import at the grid meter, after QA/QC;  TEG = gross gen
 | Reservoir power density `PD = (Cap_PJ − Cap_BL) / (A_PJ − A_BL)` | PD ≤ 4 W/m² not eligible; 4 < PD ≤ 10 → PE_HP; PD > 10 or no new area → 0 | engine **and contract** |
 | Project type | greenfield has no baseline; retrofits need Cap_BL, EG_historical + σ and DATE_BaselineRetrofit; additions must add capacity | engine **and contract** |
 | Leakage | VMR0017: embodied emissions computed by the contract; AMS-I.D with transferred equipment needs a leakage assessment: refused | engine **and contract** |
-| Crediting period | 7 years (renewable twice, weights change) or 10 fixed, in 365-day years; periods inside it and inside one crediting year | engine **and contract** |
+| Crediting period | exactly 5, 7 or 10 × 365-day years. VMR0017 from 1 Jan 2027 is 5 years, renewable at most twice; a 10-year period is fixed. Periods stay inside it and inside one crediting year | engine **and contract** |
 
 ### Grid emission factor (TOOL07 and VT0011, ex-ante)
 
@@ -546,8 +547,15 @@ with `viaIR` to stay under the 24 KB limit).
 
 A registry compiled from this source refuses a second plant on the same meter or the same design hash, refuses a
 renewal whose grid factor is zero, refuses an oracle age of zero or above two days, and refuses an attestation that
-does not cite the HCS topic stored by `setAuditTopic`. The testnet registry in the table above was deployed from
-this source. `setAuditTopic` points it at `0.0.10726081`. The older contract `0xAEA76b83…` does not enforce these.
+does not cite the HCS topic stored by `setAuditTopic`. The testnet registry in the table above
+(`0x9cdB5782a10c41a103B722d1B8fa9CfaF84107a5`) was deployed with those checks. `setAuditTopic` points it at
+`0.0.10726081`. The older contract `0xAEA76b83…` does not enforce them.
+
+This source also requires a crediting span of exactly 5, 7 or 10 × 365 days. A VMR0017 period that starts on or
+after 1 January 2027 must be 5 years, and a period renews at most twice (a fixed 10-year period does not renew).
+Capacity-addition leakage uses the higher of EG_PJ and EG_facility × Cap_add / Cap_PJ, so the added units are not
+under-counted. The testnet registry above was deployed before those two rules. Greenfield quantification is
+unchanged, so the attestations in the table still match this engine.
 
 **Units.** 1 HYCC token = 1 t CO₂e; 3 decimals, so one base unit is 1 kg. `quantify(plantId, input)` is public, so any
 wallet or agent can preview exactly what an attestation will mint.
@@ -563,8 +571,8 @@ code, so if the wallet cannot hold it yet, the retirement still succeeds and the
 | Function | Who | What it enforces |
 | --- | --- | --- |
 | `createCreditToken` · `createCertificateToken` (payable) | admin | Creates the HTS token / NFT collection through `0x167`; the contract is treasury, admin and supply key. Once each. |
-| `registerPlant(id, name, operator, design)` | admin | Power density (`PowerDensityTooLow`, `ReservoirBelowBaseline`), baseline fields per project type, grid EF range, crediting period ≤ 10 × 365 days. Derives the PE_HP rate. |
-| `renewCreditingPeriod(id, ef, start, end, hash)` | admin | Starts after the previous period; new EF (TOOL07 BM update and weights); restarts the crediting-year count. |
+| `registerPlant(id, name, operator, design)` | admin | Power density (`PowerDensityTooLow`, `ReservoirBelowBaseline`), baseline fields per project type, grid EF range, crediting span of exactly 5, 7 or 10 × 365 days (VMR0017 from 1 Jan 2027 must be 5 years). Derives the PE_HP rate. |
+| `renewCreditingPeriod(id, ef, start, end, hash)` | admin | Starts after the previous period; a 10-year period cannot renew, and no period renews a third time; new EF (TOOL07 BM update and weights); the new span follows the same 5/7/10 rule; restarts the crediting-year count. |
 | `submitAttestation(input)` | `VERIFIER_ROLE` | Plant active; period ≤ now, not overlapping, inside the crediting period and one crediting year; `plantSequence` matches (`StaleLedger`); completeness ≥ 90%; TEG ≤ nameplate × duration; net ≤ gross; fuel only with a registered COEF. Recomputes EG_PJ, BE, PE_HP, PE_FF, ER; mints from the carried balance. |
 | `quantify(id, input)` | view | The same computation without recording anything. |
 | `createListing(units, usdCentsPerTonne)` · `cancelListing(id)` | holder | Moves units between custody and escrow. |

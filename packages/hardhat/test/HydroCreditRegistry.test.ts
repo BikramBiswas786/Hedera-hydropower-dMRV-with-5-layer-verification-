@@ -287,6 +287,106 @@ describe("HydroCreditRegistry", function () {
       ).to.be.revertedWithCustomError(registry, "InvalidCreditingPeriod");
     });
 
+    it("accepts only 5-, 7- and 10-year spans, and a 5-year VMR0017 period from 2027", async function () {
+      const { registry, operator } = await loadFixture(readyFixture);
+      const VCS_FIVE_YEAR_FROM = 1_798_761_600n;
+      const register = async (label: string, design: Partial<DesignInput>) =>
+        registry.registerPlant(
+          ethers.encodeBytes32String(label),
+          label,
+          operator.address,
+          new ethers.Wallet(ethers.id(`${label} meter`)).address,
+          await plantDesign({ designHash: ethers.id(label), ...design }),
+        );
+
+      const early = VCS_FIVE_YEAR_FROM - BigInt(8 * CREDITING_YEAR);
+      await expect(
+        register("span-6", { creditingStart: early, creditingEnd: early + BigInt(6 * CREDITING_YEAR) }),
+      ).to.be.revertedWithCustomError(registry, "InvalidCreditingPeriod");
+      await register("span-5", { creditingStart: early, creditingEnd: early + BigInt(5 * CREDITING_YEAR) });
+      await register("span-10", { creditingStart: early, creditingEnd: early + BigInt(10 * CREDITING_YEAR) });
+
+      const fixedId = ethers.encodeBytes32String("span-10");
+      const fixedEnd = (await registry.getPlant(fixedId)).design.creditingEnd;
+      await expect(
+        registry.renewCreditingPeriod(
+          fixedId,
+          540_000,
+          fixedEnd,
+          fixedEnd + BigInt(7 * CREDITING_YEAR),
+          ethers.id("no"),
+        ),
+      ).to.be.revertedWithCustomError(registry, "InvalidCreditingPeriod");
+
+      const after = VCS_FIVE_YEAR_FROM;
+      await expect(
+        register("vmr-7-2027", {
+          methodology: METHODOLOGY.Vmr0017,
+          capacityKw: 12_000,
+          creditingStart: after,
+          creditingEnd: after + BigInt(7 * CREDITING_YEAR),
+        }),
+      ).to.be.revertedWithCustomError(registry, "InvalidCreditingPeriod");
+      await register("vmr-5-2027", {
+        methodology: METHODOLOGY.Vmr0017,
+        capacityKw: 12_000,
+        creditingStart: after,
+        creditingEnd: after + BigInt(5 * CREDITING_YEAR),
+      });
+
+      const pre = VCS_FIVE_YEAR_FROM - BigInt(7 * CREDITING_YEAR);
+      await register("vmr-pre", {
+        methodology: METHODOLOGY.Vmr0017,
+        capacityKw: 12_000,
+        creditingStart: pre,
+        creditingEnd: VCS_FIVE_YEAR_FROM,
+      });
+      const preId = ethers.encodeBytes32String("vmr-pre");
+      await expect(
+        registry.renewCreditingPeriod(
+          preId,
+          540_000,
+          VCS_FIVE_YEAR_FROM,
+          VCS_FIVE_YEAR_FROM + BigInt(7 * CREDITING_YEAR),
+          ethers.id("vmr-pre-7"),
+        ),
+      ).to.be.revertedWithCustomError(registry, "InvalidCreditingPeriod");
+      await registry.renewCreditingPeriod(
+        preId,
+        540_000,
+        VCS_FIVE_YEAR_FROM,
+        VCS_FIVE_YEAR_FROM + BigInt(5 * CREDITING_YEAR),
+        ethers.id("vmr-pre-5"),
+      );
+    });
+
+    it("renews a 5-year period at most twice", async function () {
+      const { registry, operator } = await loadFixture(readyFixture);
+      const id = ethers.encodeBytes32String("FIVE");
+      const start = 1_700_000_000n;
+      await registry.registerPlant(
+        id,
+        "five",
+        operator.address,
+        new ethers.Wallet(ethers.id("five meter")).address,
+        await plantDesign({
+          creditingStart: start,
+          creditingEnd: start + BigInt(5 * CREDITING_YEAR),
+          designHash: ethers.id("five"),
+        }),
+      );
+      let from = start + BigInt(5 * CREDITING_YEAR);
+      for (const n of [2, 3]) {
+        const end = from + BigInt(5 * CREDITING_YEAR);
+        await registry.renewCreditingPeriod(id, 540_000, from, end, ethers.id(`five-${n}`));
+        from = end;
+      }
+      await expect(
+        registry.renewCreditingPeriod(id, 540_000, from, from + BigInt(5 * CREDITING_YEAR), ethers.id("five-4")),
+      ).to.be.revertedWithCustomError(registry, "InvalidCreditingPeriod");
+      expect((await registry.getPlant(id)).creditingPeriods).to.equal(3);
+    });
+
     it("rejects duplicates, empty ids and missing operators", async function () {
       const { registry, operator } = await loadFixture(readyFixture);
       const design = await plantDesign();

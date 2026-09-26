@@ -171,7 +171,21 @@ describe("VMR0017 v1.0 (with ACM0002 v22.0)", () => {
     commonPractice: { nAll: 12, nDiff: 10, basis: "test" },
   };
   const vmr = (overrides: Partial<ProjectDesign> = {}) =>
-    assessProject(design({ methodology: "VMR0017", hostCountry: "UG", additionality: evidence, ...overrides }));
+    assessProject(
+      design({
+        methodology: "VMR0017",
+        hostCountry: "UG",
+        additionality: evidence,
+        grid: {
+          source: "published",
+          efTPerMwh: 0.6,
+          reference: "illustrative factor",
+          validFrom: "2020-01-01T00:00:00Z",
+          validTo: "2035-01-01T00:00:00Z",
+        },
+        ...overrides,
+      }),
+    );
 
   it("registers under methodology code 1 with EF_Res 100 kg/MWh and embodied leakage", () => {
     const a = vmr({ reservoirAreaM2: 1_800_000 });
@@ -256,15 +270,78 @@ describe("VMR0017 v1.0 (with ACM0002 v22.0)", () => {
     expect(assessProject(design({})).additionality.ccpInvestmentConditions).toBeNull();
   });
 
-  it("has no embodied-emission equation for retrofits", () => {
-    const a = vmr({
-      projectType: "retrofit",
+  it("has no embodied-emission equation for an end-of-life refurbishment", () => {
+    const history = {
+      projectType: "retrofit" as const,
       baselineCapacityKw: 8_000,
       historicalGenerationMwh: [40_000, 41_000, 39_500, 40_200, 40_800],
       baselineRetrofitDate: "2031-01-01T00:00:00Z",
+    };
+    const bare = vmr(history);
+    expect(bare.failures.join()).toMatch(/end-of-life refurbishment/);
+    expect(bare.failures.join()).toMatch(/P1, P2 and P3/);
+
+    const wrongOutcome = vmr({
+      ...history,
+      endOfLifeRefurbishment: true,
+      baselineAlternatives: { p1: true, p2: true, p3: true, outcome: "P1" },
+    });
+    expect(wrongOutcome.failures.join()).toMatch(/continuation of the current situation \(P2\)/);
+
+    const a = vmr({
+      ...history,
+      endOfLifeRefurbishment: true,
+      baselineAlternatives: { p1: true, p2: true, p3: true, outcome: "P2" },
     });
     expect(a.failures).toEqual([]);
     expect(a.leakage.basis).toMatch(/LE_y = 0 for a retrofit/);
+  });
+
+  it("requires VT0009 P2 for a VMR0017 capacity addition and bounds its leakage", () => {
+    const addition = {
+      projectType: "capacity-addition" as const,
+      baselineCapacityKw: 8_000,
+      historicalGenerationMwh: [40_000, 41_000, 39_500, 40_200, 40_800],
+      baselineRetrofitDate: "2031-01-01T00:00:00Z",
+      baselineAlternatives: { p1: true, p2: true, p3: true, outcome: "P2" as const },
+    };
+    const a = vmr(addition);
+    expect(a.failures).toEqual([]);
+    expect(a.leakage.basis).toMatch(/max\(EG_PJ,y, EG_facility,y × Cap_add \/ Cap_PJ\)/);
+    expect(vmr({ ...addition, baselineAlternatives: undefined }).failures.join()).toMatch(/P1, P2 and P3/);
+  });
+
+  it("uses a 5-year period for a VMR0017 registration request on or after 1 January 2027", () => {
+    const seven = vmr({
+      registrationRequest: "2027-01-01T00:00:00Z",
+      crediting: { start: "2026-01-01T00:00:00Z", years: 7, period: 1 },
+    });
+    expect(seven.eligible).toBe(false);
+    expect(seven.failures.join()).toMatch(/5-year crediting period/);
+
+    const five = vmr({
+      registrationRequest: "2027-01-01T00:00:00Z",
+      crediting: { start: "2027-01-01T00:00:00Z", years: 5, period: 1 },
+    });
+    expect(five.failures).toEqual([]);
+    expect(five.crediting.end - five.crediting.start).toBe(5 * CREDITING_YEAR_SECONDS);
+    // A request filed before 2027 can still use the 7-year period.
+    expect(vmr().failures).toEqual([]);
+  });
+
+  it("rejects a VMR0017 published factor with no validity window, or one that does not cover the crediting start", () => {
+    const missing = vmr({ grid: { source: "published", efTPerMwh: 0.6, reference: "ASB0054-2022" } });
+    expect(missing.failures.join()).toMatch(/validFrom and validTo/);
+    const expired = vmr({
+      grid: {
+        source: "published",
+        efTPerMwh: 0.137,
+        reference: "ASB0054-2022",
+        validFrom: "2022-08-10T00:00:00Z",
+        validTo: "2025-08-09T00:00:00Z",
+      },
+    });
+    expect(expired.failures.join()).toMatch(/validity window/);
   });
 });
 

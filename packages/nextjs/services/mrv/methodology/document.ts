@@ -40,7 +40,7 @@ so a verifier cannot mint more than the equations allow. 1 credit = 1 t CO2e; 1 
 | BE_y | EG_PJ,y × EF_grid,CM,y | down |
 | PE_FF,y | Σ FC × COEF, COEF = NCV × EF_CO2 (TOOL03 option B) | up |
 | PE_HP,y | EF_Res × TEG_y when ${MIN_POWER_DENSITY} < PD ≤ ${RESERVOIR_EMISSIONS_POWER_DENSITY} W/m², else 0 (EF_Res = ${VMR0017_RESERVOIR_EF_G_PER_MWH / 1_000} kg CO2e/MWh under VMR0017, ${RESERVOIR_EF_G_PER_MWH / 1_000} under the CDM) | up |
-| LE_y | VMR0017: EG_facility,y (greenfield) or EG_PJ_Add,y (capacity addition) × ${VMR0017_EMBODIED_HYDRO_G_PER_MWH / 1_000} g CO2e/kWh, never on negative energy; 0 for retrofits (no equation in §8.3). CDM: 0 (ACM0002; AMS-I.D without transferred equipment) | up |
+| LE_y | VMR0017: EG_facility,y (greenfield) or max(EG_PJ,y, EG_facility,y × Cap_add / Cap_PJ) (capacity addition) × ${VMR0017_EMBODIED_HYDRO_G_PER_MWH / 1_000} g CO2e/kWh, never on negative energy; 0 for retrofits (no equation in §8.3). CDM: 0 (ACM0002; AMS-I.D without transferred equipment) | up |
 
 - EG_facility,y is **net**: export − import at the grid meter. TEG_y is gross generation at the generator terminals.
 - Retrofits apply the annual equation cumulatively per crediting year: nothing is credited until the year's generation
@@ -60,7 +60,7 @@ so a verifier cannot mint more than the equations allow. 1 credit = 1 t CO2e; 1 
   > 20% and N_all − N_diff > 3 (Step 4b). Whether the CCP conditions (b)–(c) hold (the credit revenue is decisive and
   lifts the IRR to the benchmark) is recorded, not required. The engine checks the recorded evidence; the VVB makes the
   determination.
-- Crediting period: 7 years (renewable twice) or 10 years fixed, counted in 365-day years; a monitoring period must stay
+- Crediting period: exactly 5, 7 or 10 × 365-day years. A VMR0017 registration request on or after 1 January 2027 uses 5 years, renewable at most twice. A 10-year period is fixed. A monitoring period must stay
   inside the crediting period and inside one crediting year (contract checks both).
 
 ## Grid emission factor (TOOL07 and VT0011, ex-ante)

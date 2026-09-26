@@ -11,7 +11,8 @@
  * VMR0017 (EF_Res 100 000 g/MWh, EF_embodied 21 000 g/MWh, LE rounded up, never on negative energy):
  *   1 234 567 Wh × 0.1 → 130 000 PE_HP for 1 300 000 Wh TEG; 1 234 567 Wh × 0.021 = 25 925.9 → LE 25 926;
  *   ER = 759 810 − 130 000 − 25 926 = 603 884; an import-only day has LE 0; the capacity addition pays LE on
- *   EG_PJ_Add (2 MWh → 42 000 g) only; the retrofit has no embodied-emission equation (LE 0).
+ *   max(EG_PJ, EG_facility × Cap_add / Cap_PJ) — day 0 is 2 MWh → 42 000 g with EG_PJ 0, which carries as a
+ *   deficit; the retrofit has no embodied-emission equation (LE 0).
  */
 export type VectorPeriod = {
   startDay: number;
@@ -204,7 +205,7 @@ export const QUANTIFICATION_VECTORS: QuantificationVector[] = [
     ],
   },
   {
-    name: "VMR0017 capacity addition: embodied emissions on the added generation only",
+    name: "VMR0017 capacity addition: embodied emissions on the higher of EG_PJ and the added share",
     design: {
       projectType: 2,
       methodology: 1,
@@ -218,14 +219,21 @@ export const QUANTIFICATION_VECTORS: QuantificationVector[] = [
       baselineEndsAtDay: 380,
     },
     periods: [
-      { startDay: 0, netWh: 6_000_000, grossWh: 6_100_000, fuelG: 0, leakageG: 0, expected: e(0, 0, 0, 0, 0, 0, 0) },
+      {
+        startDay: 0,
+        netWh: 6_000_000,
+        grossWh: 6_100_000,
+        fuelG: 0,
+        leakageG: 0,
+        expected: e(0, 0, 0, 0, -42_000, 0, -42_000, 42_000),
+      },
       {
         startDay: 1,
         netWh: 6_000_000,
         grossWh: 6_100_000,
         fuelG: 0,
         leakageG: 0,
-        expected: e(2_000_000, 1_230_894, 0, 0, 1_188_894, 1_188, 894, 42_000),
+        expected: e(2_000_000, 1_230_894, 0, 0, 1_188_894, 1_146, 894, 42_000),
       },
       {
         startDay: 2,

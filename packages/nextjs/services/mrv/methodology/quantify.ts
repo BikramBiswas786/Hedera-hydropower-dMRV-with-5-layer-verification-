@@ -21,7 +21,8 @@ import {
  *             EF_Res = 90 kg CO2e/MWh (CDM) or 100 (VMR0017 §9.1)
  *   LE_y    = 0                                                               CDM (ACM0002; AMS-I.D w/o transfer)
  *   LE_y    = EG × EF_embodied, 21 g CO2e/kWh for hydro                       VMR0017 §8.3, rounded up; EG is
- *             EG_facility,y (greenfield) or EG_PJ_Add,y (capacity addition), never below 0; 0 for a retrofit
+ *             EG_facility,y (greenfield), max(EG_PJ, EG_facility × Cap_add / Cap_PJ)
+ *             for a capacity addition, never below 0; 0 for a retrofit
  *   ER_y    = BE_y − PE_y − LE_y
  *
  * Units: energy in Wh, emissions in g CO2e, EF in g CO2/MWh, fuel in g, COEF in g CO2/t fuel.
@@ -78,6 +79,18 @@ export const floorDiv = (a: bigint, b: bigint) => (a < 0n && a % b !== 0n ? a / 
 export const ceilDiv = (a: bigint, b: bigint) => (a + b - 1n) / b;
 const max0 = (a: bigint) => (a > 0n ? a : 0n);
 
+/** VMR0017 §8.3. Greenfield uses EG_facility. A capacity addition has no added-unit meter here, so leakage
+ * uses the higher of EG_PJ and the added capacity's share of EG_facility. Retrofits have no equation. */
+function embodiedLeakageWh(design: RegisteredDesign, netWh: bigint, egProjectWh: bigint): bigint {
+  if (design.projectType === PROJECT_TYPE_CODE.greenfield) return max0(netWh);
+  if (design.projectType !== PROJECT_TYPE_CODE["capacity-addition"]) return 0n;
+  const facility = max0(netWh);
+  const added = BigInt(Math.max(0, design.capacityKw - design.baselineCapacityKw));
+  const share = design.capacityKw === 0 ? 0n : (facility * added) / BigInt(design.capacityKw);
+  const project = max0(egProjectWh);
+  return share > project ? share : project;
+}
+
 /** Returns why a period cannot be credited, or null. The contract reverts with the same conditions. */
 export function creditingPeriodViolation(design: RegisteredDesign, periodStart: number, periodEnd: number) {
   if (periodEnd <= periodStart) return "The monitoring period is empty";
@@ -124,13 +137,7 @@ export function quantifyPeriod(
   const baselineG = floorDiv(egProjectWh * BigInt(design.efGridGPerMwh), WH_PER_MWH);
   const reservoirG = ceilDiv(monitored.grossWh * reservoirRateGPerMwh(design), WH_PER_MWH);
   const fossilFuelG = ceilDiv(monitored.fuelG * BigInt(design.fuelCoefGPerTonne), G_PER_TONNE);
-  // A period that imports more than it exports carries no embodied emissions rather than negative ones.
-  const embodiedBasisWh =
-    design.projectType === PROJECT_TYPE_CODE.greenfield
-      ? max0(monitored.netWh)
-      : design.projectType === PROJECT_TYPE_CODE["capacity-addition"]
-        ? max0(egProjectWh)
-        : 0n;
+  const embodiedBasisWh = embodiedLeakageWh(design, monitored.netWh, egProjectWh);
   const embodiedG = ceilDiv(embodiedBasisWh * BigInt(embodiedEfGPerMwh(design.methodology)), WH_PER_MWH);
   const leakageG = monitored.leakageG + embodiedG;
   const reductionG = baselineG - reservoirG - fossilFuelG - leakageG;

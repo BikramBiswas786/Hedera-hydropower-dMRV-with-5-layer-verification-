@@ -39,6 +39,8 @@ contract HydroCreditRegistry is AccessControl, ReentrancyGuard {
     /// @notice Crediting-period years are 365-day blocks counted from the crediting start.
     uint256 public constant CREDITING_YEAR = 365 days;
     uint256 public constant MAX_CREDITING_YEARS = 10;
+    /// @notice VCS Standard v5.0 Table 8: E&I registrations from this instant use a 5-year crediting period.
+    uint64 public constant VCS_FIVE_YEAR_FROM = 1_798_761_600;
     /// @notice EF_Res, the default emission factor for reservoir emissions: 90 kg CO2e/MWh (ACM0002 / AMS-I.D).
     uint32 public constant RESERVOIR_EF_G_PER_MWH = 90_000;
     /// @notice VMR0017 §9.1: EF_Res = 100 kg CO2e/MWh.
@@ -120,6 +122,8 @@ contract HydroCreditRegistry is AccessControl, ReentrancyGuard {
         uint64 lastPeriodEnd;
         int128 totalNetWh;
         uint128 issuedUnits;
+        /// @dev 1 when the plant is registered. A 10-year period is fixed. A 5- or 7-year period renews at most twice.
+        uint8 creditingPeriods;
     }
 
     /// @notice What the plant's meter signed for the period: raw totals, before any QA/QC, and the SHA-256 of the
@@ -405,6 +409,7 @@ contract HydroCreditRegistry is AccessControl, ReentrancyGuard {
         plant.design = design;
         plant.reservoirGPerMwh = reservoirRate;
         plant.embodiedGPerMwh = design.methodology == Methodology.Vmr0017 ? VMR0017_EMBODIED_HYDRO_G_PER_MWH : 0;
+        plant.creditingPeriods = 1;
         _plantIds.push(plantId);
 
         emit PlantRegistered(
@@ -442,7 +447,11 @@ contract HydroCreditRegistry is AccessControl, ReentrancyGuard {
     ) external onlyRole(DEFAULT_ADMIN_ROLE) {
         Plant storage plant = _existingPlant(plantId);
         if (creditingStart < plant.design.creditingEnd) revert InvalidCreditingPeriod(creditingStart, creditingEnd);
-        _validateCrediting(creditingStart, creditingEnd);
+        uint256 previous = uint256(plant.design.creditingEnd) - plant.design.creditingStart;
+        if (previous == 10 * CREDITING_YEAR || plant.creditingPeriods >= 3) {
+            revert InvalidCreditingPeriod(creditingStart, creditingEnd);
+        }
+        _validateCrediting(plant.design.methodology, creditingStart, creditingEnd);
         if (efGridGPerMwh == 0 || efGridGPerMwh > MAX_GRID_EF_G_PER_MWH) {
             revert GridEmissionFactorOutOfRange(efGridGPerMwh);
         }
@@ -451,6 +460,7 @@ contract HydroCreditRegistry is AccessControl, ReentrancyGuard {
         plant.design.efGridGPerMwh = efGridGPerMwh;
         plant.design.creditingStart = creditingStart;
         plant.design.creditingEnd = creditingEnd;
+        plant.creditingPeriods += 1;
         bytes32 previousHash = plant.design.designHash;
         plant.design.designHash = designHash;
         if (previousHash != designHash) plantOfDesign[previousHash] = bytes32(0);
@@ -578,8 +588,9 @@ contract HydroCreditRegistry is AccessControl, ReentrancyGuard {
     ///   EG_PJ = EG_facility (greenfield) or the crediting year's excess over EG_historical + σ (retrofit,
     ///           capacity addition) until DATE_BaselineRetrofit;
     ///   BE = ⌊EG_PJ × EF_grid,CM⌋;  PE_HP = ⌈TEG × EF_Res⌉ when 4 < PD ≤ 10;  PE_FF = ⌈FC × COEF⌉;
-    ///   LE = input leakage + ⌈EG × EF_embodied⌉ (VMR0017: EG_facility for greenfield, EG_PJ_Add for capacity
-    ///   additions, never below 0; none for retrofits);
+    ///   LE = input leakage + ⌈EG × EF_embodied⌉ (VMR0017: EG_facility for greenfield; for a capacity addition the
+    ///   greater of EG_PJ and EG_facility × Cap_add / Cap_PJ, so the added units are not under-counted; none for
+    ///   retrofits);
     ///   ER = BE − PE_HP − PE_FF − LE; credits = ⌊(ledger balance + ER) / 1 kg⌋.
     function quantify(bytes32 plantId, AttestationInput calldata input) public view returns (Quantification memory q) {
         Plant storage plant = _plants[plantId];
@@ -606,7 +617,14 @@ contract HydroCreditRegistry is AccessControl, ReentrancyGuard {
         int256 embodiedBasisWh = design.projectType == ProjectType.Greenfield
             ? int256(input.netEnergyWh)
             : design.projectType == ProjectType.CapacityAddition
-                ? q.projectEnergyWh
+                ? int256(
+                    _capacityAdditionLeakageWh(
+                        design.capacityKw,
+                        design.baselineCapacityKw,
+                        input.netEnergyWh,
+                        q.projectEnergyWh
+                    )
+                )
                 : int256(0);
         q.leakageG =
             uint256(input.leakageG) +
@@ -784,7 +802,7 @@ contract HydroCreditRegistry is AccessControl, ReentrancyGuard {
         if (design.efGridGPerMwh == 0 || design.efGridGPerMwh > MAX_GRID_EF_G_PER_MWH) {
             revert GridEmissionFactorOutOfRange(design.efGridGPerMwh);
         }
-        _validateCrediting(design.creditingStart, design.creditingEnd);
+        _validateCrediting(design.methodology, design.creditingStart, design.creditingEnd);
 
         if (design.projectType == ProjectType.Greenfield) {
             if (design.baselineCapacityKw != 0 || design.baselineWh != 0 || design.baselineEndsAt != 0) {
@@ -812,10 +830,34 @@ contract HydroCreditRegistry is AccessControl, ReentrancyGuard {
         return design.methodology == Methodology.Vmr0017 ? VMR0017_RESERVOIR_EF_G_PER_MWH : RESERVOIR_EF_G_PER_MWH;
     }
 
-    function _validateCrediting(uint64 creditingStart, uint64 creditingEnd) private pure {
-        if (creditingEnd <= creditingStart || creditingEnd - creditingStart > MAX_CREDITING_YEARS * CREDITING_YEAR) {
+    /// @dev A crediting period is exactly 5, 7 or 10 years of 365 days. From 1 Jan 2027 a VMR0017 period is 5 years.
+    function _validateCrediting(Methodology methodology, uint64 creditingStart, uint64 creditingEnd) private pure {
+        if (creditingEnd <= creditingStart) revert InvalidCreditingPeriod(creditingStart, creditingEnd);
+        uint256 span = uint256(creditingEnd) - creditingStart;
+        bool five = span == 5 * CREDITING_YEAR;
+        bool seven = span == 7 * CREDITING_YEAR;
+        bool ten = span == 10 * CREDITING_YEAR;
+        if (
+            (!five && !seven && !ten) ||
+            (methodology == Methodology.Vmr0017 && creditingStart >= VCS_FIVE_YEAR_FROM && !five)
+        ) {
             revert InvalidCreditingPeriod(creditingStart, creditingEnd);
         }
+    }
+
+    /// @dev VMR0017 eq.(20) has no separate added-unit meter here. Leakage uses the higher of EG_PJ and the added
+    /// capacity's share of EG_facility, and never a negative quantity.
+    function _capacityAdditionLeakageWh(
+        uint32 capacityKw,
+        uint32 baselineCapacityKw,
+        int64 netEnergyWh,
+        int256 projectEnergyWh
+    ) private pure returns (uint256) {
+        uint256 facility = uint256(_positive(netEnergyWh));
+        uint256 addedKw = capacityKw > baselineCapacityKw ? uint256(capacityKw) - baselineCapacityKw : 0;
+        uint256 share = capacityKw == 0 ? 0 : (facility * addedKw) / capacityKw;
+        uint256 project = uint256(_positive(projectEnergyWh));
+        return share > project ? share : project;
     }
 
     function _checkAttestation(Plant storage plant, AttestationInput calldata input) private view {

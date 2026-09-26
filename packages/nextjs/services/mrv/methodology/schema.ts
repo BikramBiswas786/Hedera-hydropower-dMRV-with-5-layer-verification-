@@ -83,6 +83,15 @@ export const projectDesignSchema = z.object({
   historicalGenerationMwh: z.array(z.number().nonnegative()).max(50).optional(),
   baselineRetrofitDate: z.iso.datetime({ offset: true }).optional(),
   equipmentTransferred: z.boolean(),
+  endOfLifeRefurbishment: z.boolean().optional(),
+  baselineAlternatives: z
+    .object({
+      p1: z.boolean(),
+      p2: z.boolean(),
+      p3: z.boolean(),
+      outcome: z.enum(["P1", "P2", "P3"]),
+    })
+    .optional(),
   onSiteFuel: z
     .object({
       fuel: z.enum(FUEL_TYPES),
@@ -92,15 +101,19 @@ export const projectDesignSchema = z.object({
     .nullable(),
   crediting: z.object({
     start: z.iso.datetime({ offset: true }),
-    years: z.union([z.literal(7), z.literal(10)]),
+    years: z.union([z.literal(5), z.literal(7), z.literal(10)]),
     period,
   }),
+  /** When the registration request is filed. VCS Table 8 keys the 5-year rule off this date. */
+  registrationRequest: z.iso.datetime({ offset: true }).optional(),
   grid: z.discriminatedUnion("source", [
     z.object({ source: z.literal("tool07"), input: tool07InputSchema }),
     z.object({
       source: z.literal("published"),
       efTPerMwh: z.number().positive().max(2),
       reference: z.string().min(1).max(200),
+      validFrom: z.iso.datetime({ offset: true }).optional(),
+      validTo: z.iso.datetime({ offset: true }).optional(),
     }),
   ]),
   hydraulics: z.object({

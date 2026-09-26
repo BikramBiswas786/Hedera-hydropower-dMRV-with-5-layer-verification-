@@ -64,7 +64,8 @@ PE_FF = Σ FC × NCV × EF_CO2             TOOL03, IPCC upper bounds
 PE_HP = EF_Res × TEG_y                  if ${MIN_POWER_DENSITY} < PD ≤ ${RESERVOIR_EMISSIONS_POWER_DENSITY} W/m², else 0
                                         EF_Res = 100 kg CO2e/MWh (VMR0017), 90 (CDM)
 LE_y  = EG × EF_embodied                VMR0017 §8.3, 21 g CO2e/kWh for hydro,
-                                        EG_facility (greenfield) or EG_PJ_Add (addition)
+                                        EG_facility (greenfield) or
+                                        max(EG_PJ, EG_facility × Cap_add / Cap_PJ)
 LE_y  = 0                               CDM; VMR0017 retrofit`}</Eq>
           <Eq>{`EG_PJ,y = EG_facility,y                        greenfield
 EG_PJ,y = EG_facility,y − (EG_historical + σ)  retrofit, addition
@@ -260,7 +261,7 @@ EG_facility = export − import at the grid meter, after QA/QC`}</Eq>
       <Card title="What the contract enforces on its own">
         <ul className="text-sm m-0 pl-4 list-disc flex flex-col gap-1">
           <li>Power density rule at registration (PD ≤ 4 W/m² reverts) and the PE_HP rate that follows from it.</li>
-          <li>Baseline fields per project type, grid EF range, crediting period of at most 10 × 365 days.</li>
+          <li>Baseline fields per project type, grid EF range, crediting span of exactly 5, 7 or 10 × 365 days.</li>
           <li>Periods inside the crediting period, inside one crediting year, never overlapping.</li>
           <li>Gross generation within nameplate × duration; net export never above gross.</li>
           <li>VMR0017 plants: at most 15 MW; EF_Res and EF_embodied fixed by the registered methodology.</li>
