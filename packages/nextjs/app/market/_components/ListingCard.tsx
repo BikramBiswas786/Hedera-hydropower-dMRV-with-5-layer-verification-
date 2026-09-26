@@ -1,17 +1,29 @@
 "use client";
 
 import { useState } from "react";
+import { useAccount } from "wagmi";
 import { HederaAddress } from "~~/components/scaffold-hbar";
-import { useScaffoldReadContract, useScaffoldWriteContract, useTargetNetwork } from "~~/hooks/scaffold-hbar";
-import { formatHbar, quoteToTxValue, tonnesToUnits } from "~~/services/mrv/pricing";
+import { useScaffoldReadContract, useScaffoldWriteContract, useTargetNetwork, useTransactor } from "~~/hooks/scaffold-hbar";
+import { formatHbar, tonnesToUnits } from "~~/services/mrv/pricing";
 import { type ListingView, formatTonnes, formatUsdCents } from "~~/services/mrv/views";
+import type { DexGate } from "./Marketplace";
 
-type Props = { listing: ListingView; isOwn: boolean; nativeUnitsPerHbar: bigint };
+type Prepared = {
+  to: `0x${string}`;
+  data: `0x${string}`;
+  value: string;
+  error?: string;
+};
 
-export const ListingCard = ({ listing, isOwn, nativeUnitsPerHbar }: Props) => {
+type Props = { listing: ListingView; isOwn: boolean; nativeUnitsPerHbar: bigint; dex: DexGate | null };
+
+export const ListingCard = ({ listing, isOwn, nativeUnitsPerHbar, dex }: Props) => {
   const { targetNetwork } = useTargetNetwork();
+  const { address } = useAccount();
   const [amount, setAmount] = useState(formatTonnes(listing.unitsAvailable).replace(/,/g, ""));
   const [beneficiary, setBeneficiary] = useState("");
+  const [sending, setSending] = useState(false);
+  const [gateError, setGateError] = useState<string | null>(null);
   const units = tonnesToUnits(amount);
   const tooMuch = units !== null && units > BigInt(listing.unitsAvailable);
 
@@ -22,15 +34,41 @@ export const ListingCard = ({ listing, isOwn, nativeUnitsPerHbar }: Props) => {
     query: { enabled: units !== null && !tooMuch },
   });
   const { writeContractAsync, isMining } = useScaffoldWriteContract({ contractName: "HydroCreditRegistry" });
+  const writeTx = useTransactor();
 
-  const canBuy = units !== null && !tooMuch && quote !== undefined && !isMining;
+  const poolOk = dex?.accepted === true;
+  const canBuy = units !== null && !tooMuch && quote !== undefined && !isMining && !sending && poolOk;
+
   const buy = async (retire: boolean) => {
-    if (!canBuy) return;
-    const value = quoteToTxValue(quote, nativeUnitsPerHbar);
-    if (retire) {
-      await writeContractAsync({ functionName: "buyAndRetire", args: [BigInt(listing.id), units, beneficiary], value });
-    } else {
-      await writeContractAsync({ functionName: "buy", args: [BigInt(listing.id), units], value });
+    if (!canBuy || !address || units === null) return;
+    setSending(true);
+    setGateError(null);
+    try {
+      const response = await fetch("/api/market/prepare-purchase", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          listingId: listing.id,
+          amountKg: Number(units),
+          retire,
+          beneficiary,
+        }),
+      });
+      const body = (await response.json()) as Prepared;
+      if (!response.ok || !body.data || !body.to) {
+        setGateError(body.error ?? "No purchase transaction was built.");
+        return;
+      }
+      await writeTx({
+        account: address,
+        to: body.to,
+        data: body.data,
+        value: BigInt(body.value),
+      });
+    } catch {
+      setGateError("No purchase transaction was built.");
+    } finally {
+      setSending(false);
     }
   };
 
@@ -79,6 +117,11 @@ export const ListingCard = ({ listing, isOwn, nativeUnitsPerHbar }: Props) => {
             onChange={event => setBeneficiary(event.target.value)}
             aria-label={`Beneficiary for listing ${listing.id}`}
           />
+          <p className="m-0 text-sm min-h-5 text-error">
+            {dex === null && "Reading SaucerSwap before a purchase can be built."}
+            {dex && !dex.accepted && `SaucerSwap is ${dex.deviationBps} bps off. Buy stays off.`}
+            {gateError}
+          </p>
           <div className="flex gap-2">
             <button className="btn btn-primary btn-sm grow" disabled={!canBuy} onClick={() => buy(true)}>
               Buy & retire
