@@ -1,9 +1,9 @@
+import { prepareDocumentSchema, publishDocumentSchema, waterRequestSchema } from "../documents/schema";
 import { ENGINE_VERSION } from "../engine";
 import { gridEmissionFactorRequestSchema, projectDesignSchema } from "../methodology/schema";
 import { HYDRO_CHAIN_ID } from "../network";
 import { SCENARIO_NAMES } from "../scenarios";
 import { verifyRequestSchema } from "../schema";
-import { prepareDocumentSchema, publishDocumentSchema, waterRequestSchema } from "../documents/schema";
 import { portfolioQuerySchema } from "./insights";
 import { preparePurchaseSchema } from "./market";
 import { z } from "zod";
@@ -75,7 +75,14 @@ export function buildOpenApi(origin: string) {
       { name: "registry", description: `On-chain state on chain ${HYDRO_CHAIN_ID}` },
       { name: "evidence", description: "Audit and reproduction from HCS through the public mirror node" },
       { name: "market", description: "Listings, unsigned purchases, retirements and certificates" },
-      { name: "documents", description: "Signed VCS-shaped documents and the safe-water equation. Not a second credit mint." },
+      {
+        name: "documents",
+        description: "Signed VCS-shaped documents and the safe-water equation. Not a second credit mint.",
+      },
+      {
+        name: "guardian",
+        description: "Hedera Guardian bridge: signed cross-check VCs and evidence verification (docs/GUARDIAN.md)",
+      },
     ],
     paths: {
       "/api/methodology/assess": post({
@@ -287,10 +294,47 @@ export function buildOpenApi(origin: string) {
         requestBody: body(waterRequestSchema),
         responses: ok("Tonnes, not hydro credits"),
       }),
+      "/api/guardian/v1/cross-check": post({
+        operationId: "guardian_cross_check",
+        tags: ["guardian"],
+        summary: "Cross-check a Guardian Monitoring Report VC and return a signed result VC",
+        description:
+          'Called by a Guardian policy\'s httpRequestBlock with the Monitoring Report VC (or a one-element array). Runs the dMRV engine on the mapped fields and answers with a "DMRV Cross-Check Result" VC signed with Ed25519Signature2018 by the bridge did:hedera key. Requires the GUARDIAN_BRIDGE_API_KEY bearer; 503 until BRIDGE_ED25519_PRIVATE_KEY, BRIDGE_DID and GUARDIAN_BRIDGE_RESULT_SCHEMA are set. Max body 1 MB, idempotent on the source VC hash. Not an MCP tool.',
+        security: [{ guardianBridgeKey: [] }],
+        parameters: [query("policyId", "Guardian policy id, selects the result schema and is echoed in the result")],
+        requestBody: { required: true, content: json({ type: "object", description: "Guardian VC document" }) },
+        responses: {
+          ...ok("W3C Verifiable Credential (DMRV Cross-Check Result)"),
+          "401": { $ref: "#/components/responses/Error" },
+          "413": { $ref: "#/components/responses/Error" },
+          "422": { $ref: "#/components/responses/Error" },
+          "429": { $ref: "#/components/responses/Error" },
+        },
+      }),
+      "/api/guardian/v1/evidence/{timestamp}": get({
+        operationId: "verify_guardian_evidence",
+        tags: ["guardian"],
+        summary: "Verify Guardian evidence from the mirror node and IPFS",
+        description:
+          "Accepts a VP consensus timestamp, a mint transaction id (0.0.x@secs.nanos, followed through its memo) or nft:<tokenId>:<serial>. Checks the HCS message topic and status, fetches the VP from IPFS, verifies every signature and walks the related documents. Refuses any chain that contains a MintToken VC (the credit was already issued by Guardian) and any Monitoring Report without a MATCH cross-check.",
+        parameters: [
+          path("timestamp", "Consensus timestamp, mint transaction id or nft:<tokenId>:<serial>"),
+          query("topicIds", "Comma-separated Guardian policy topic ids; defaults to GUARDIAN_EVIDENCE_TOPIC_IDS"),
+        ],
+        responses: {
+          ...ok("{ accepted, refusals, notes, chain, crossChecks, evidenceHash }"),
+          "422": { $ref: "#/components/responses/Error" },
+        },
+      }),
     },
     components: {
       securitySchemes: {
         mrvApiKey: { type: "http", scheme: "bearer", description: "MRV_API_KEY, held by the plant operator" },
+        guardianBridgeKey: {
+          type: "http",
+          scheme: "bearer",
+          description: "GUARDIAN_BRIDGE_API_KEY, configured in the Guardian policy's httpRequestBlock headers",
+        },
       },
       responses: {
         Error: {

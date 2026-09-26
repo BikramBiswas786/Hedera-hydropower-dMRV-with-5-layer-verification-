@@ -35,3 +35,5 @@ yarn-error.log*
 
 # typescript
 *.tsbuildinfo
+# Guardian bridge key written by `yarn guardian:publish-did --generate-key`
+.secrets/

@@ -13,6 +13,11 @@ Nothing is required to browse the app or use the engine. Copy the `.env.example`
 | `HCS_TOPIC_ID` | publishing | Created by `yarn mrv:create-topic`; the operator key is its submit key. |
 | `MRV_API_KEY` | publishing | Bearer token for `POST /api/mrv/attest` and the MCP `submit_attestation` tool. Unset disables writes. |
 | `VERIFIER_PRIVATE_KEY` | optional | Overrides the verifier EVM key (ED25519 operators, local chains). |
+| `BRIDGE_ED25519_PRIVATE_KEY` / `BRIDGE_DID` | Guardian bridge | Ed25519 key and its published `did:hedera` DID (`yarn guardian:publish-did`). The cross-check route answers 503 until both are set and match. |
+| `GUARDIAN_BRIDGE_API_KEY` | Guardian bridge | Bearer token the policy's httpRequestBlock sends. |
+| `GUARDIAN_BRIDGE_RESULT_SCHEMA` | Guardian bridge | JSON `{type, contextUrl}` of the imported "DMRV Cross-Check Result" schema, or a map by policyId. |
+| `GUARDIAN_EVIDENCE_TOPIC_IDS` / `GUARDIAN_MIRROR_NODE_URL` / `GUARDIAN_IPFS_GATEWAY` | optional | Evidence verifier defaults. |
+| `FILEBASE_IPFS_RPC_TOKEN` | bridge DID script | Only for `yarn guardian:publish-did --send`, which pins the DID document. |
 | `NEXT_PUBLIC_HEDERA_TESTNET_RPC_URL` / `…MAINNET…` | optional | JSON-RPC relay; defaults to Hashio. |
 | `NEXT_PUBLIC_MIRROR_NODE_URL` | optional | Defaults to the public mirror node of the first target network. |
 | `NEXT_PUBLIC_WALLET_CONNECT_PROJECT_ID` | optional | Your WalletConnect project id for production. |
