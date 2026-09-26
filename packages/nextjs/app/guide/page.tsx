@@ -170,13 +170,13 @@ const GuidePage: NextPage = async () => {
             factor, reservoir rules and the exact numbers to register on-chain.
           </Step>
           <Step n={2} title="Register it">
-            The registry admin records the validated design on-chain (<code>registerPlant</code>, done for the demo
+            The registry admin records the validated design on-chain (<code>registerProject</code>, done for the demo
             plants by <code>yarn deploy</code>). From then on the contract refuses anything that breaks it.
           </Step>
           <Step n={3} title="Give the meter a key">
             <code>yarn mrv:meter-key</code> creates a key for the data logger; its address is registered with the plant.
-            The logger signs every batch&apos;s totals (<code>yarn mrv:sign</code> or any Ethereum library), and the
-            contract never mints more than the meter signed.
+            The logger signs every batch&apos;s totals (<code>yarn mrv:sign</code> or any Ethereum library), a VVB
+            approves the same statement, and the contract never mints more than the meter signed.
           </Step>
           <Step n={4} title="Attest and sell">
             <code>yarn mrv:attest</code> (or <code>POST /api/mrv/attest</code> with your API key) verifies a period,

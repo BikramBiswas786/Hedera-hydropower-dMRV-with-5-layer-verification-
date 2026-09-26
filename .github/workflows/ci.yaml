@@ -21,6 +21,8 @@ jobs:
       - run: yarn next:check-types
       - run: yarn hardhat:check-types
       - run: yarn hardhat:test
+      # Fails if any deployable contract's runtime bytecode exceeds 24,064 B (EIP-170 minus a 512 B margin).
+      - run: yarn hardhat:size
       - run: yarn next:test
       - run: yarn next:build
 
@@ -42,8 +44,9 @@ jobs:
           git config --global user.email "ci@example.com"
           corepack enable
 
-      # Same command as the README Quick start. CREATE_SCAFFOLD_HBAR_TEMPLATE_DIR
-      # points it at this checkout so a pull request is what gets scaffolded.
+      # The judged command, `npm create scaffold-hbar@latest --template BikramBiswas786/Hedera-hydropower-dMRV-with-5-layer-verification-`,
+      # made non-interactive (project name + --ci flags), as in the README Quick start. CREATE_SCAFFOLD_HBAR_TEMPLATE_DIR
+      # points it at this checkout, so the branch or pull request under test is what gets scaffolded.
       - name: Scaffold with the judged command
         env:
           CREATE_SCAFFOLD_HBAR_TEMPLATE_DIR: ${{ github.workspace }}/template
@@ -58,6 +61,7 @@ jobs:
           yarn install --immutable
           yarn lint --max-warnings=0
           yarn test
+          yarn hardhat:size
           yarn next:build
 
       - name: No template manifest or secrets left behind

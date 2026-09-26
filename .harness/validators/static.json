@@ -19,9 +19,20 @@
       "AGENTS.md",
       "LICENCE",
       "template.json",
-      "packages/hardhat/contracts/HydroCreditRegistry.sol",
+      "packages/hardhat/contracts/DmrvRegistry.sol",
+      "packages/hardhat/contracts/CreditMarket.sol",
+      "packages/hardhat/contracts/modules/HydroVmr0017Module.sol",
+      "packages/hardhat/contracts/interfaces/IMethodology.sol",
+      "packages/hardhat/contracts/interfaces/ISaucerSwap.sol",
+      "packages/hardhat/contracts/legacy/HydroCreditRegistry.sol",
       "packages/hardhat/contracts/lib/HederaTokenLib.sol",
       "packages/hardhat/test/HydroCreditRegistry.test.ts",
+      "packages/hardhat/test/DmrvRegistry.test.ts",
+      "packages/hardhat/test/CreditMarket.test.ts",
+      "packages/hardhat/test/ContractSize.test.ts",
+      "packages/hardhat/scripts/checkContractSizes.ts",
+      "packages/nextjs/services/mrv/approval.ts",
+      "packages/nextjs/services/mrv/fixtures/eip712.json",
       "packages/nextjs/services/mrv/engine.ts",
       "packages/nextjs/services/mrv/engine.test.ts",
       "packages/nextjs/app/api/mcp/route.ts",
@@ -78,15 +89,30 @@
       ]
     },
     {
-      "file": "packages/hardhat/contracts/HydroCreditRegistry.sol",
+      "file": "packages/hardhat/contracts/DmrvRegistry.sol",
       "contains": [
-        "AggregatorV3Interface",
         "HederaTokenLib.mint",
         "HederaTokenLib.burn",
         "HederaTokenLib.mintNft",
+        "StaleLedger",
+        "VERIFIER_APPROVAL_TYPEHASH",
+        "evidenceUsed"
+      ]
+    },
+    {
+      "file": "packages/hardhat/contracts/modules/HydroVmr0017Module.sol",
+      "contains": [
         "PowerDensityTooLow",
         "RESERVOIR_EF_G_PER_MWH",
-        "StaleLedger"
+        "RenewalSpan"
+      ]
+    },
+    {
+      "file": "packages/hardhat/contracts/CreditMarket.sol",
+      "contains": [
+        "AggregatorV3Interface",
+        "ISaucerSwapV2Pool",
+        "PoolPriceDeviation"
       ]
     },
     {

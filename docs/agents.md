@@ -24,7 +24,8 @@ claude mcp add --transport http hydro-dmrv https://hydro-dmrv.vercel.app/api/mcp
 | `get_dex_price` · `list_open_listings` · `prepare_purchase` | public | SaucerSwap spot vs the settlement price · listings with HBAR quotes · unsigned `buy` / `buyAndRetire`. Refuses above a 3% gap |
 | `get_plant` | public | One plant: design, power density, ledger, lifetime EG / BE / PE / ER / credits, coverage, credits per MWh, attestations with HCS links |
 | `get_retirement_certificate` · `get_portfolio` | public | Retirement record and its NFT certificate · everything an account or a beneficiary retired, with totals |
-| `submit_attestation` | bearer `MRV_API_KEY` | Verify → contract agreement check → HCS → mint. Only listed for authenticated requests |
+| `submit_attestation` | bearer `MRV_API_KEY` | Step 1 (`publishForApproval`): verify → meter signature → HCS → returns the VVB's EIP-712 typed data. Step 2: with `anchor` and `verifierSignature`, relays `submitAttestation`. Only listed for authenticated requests |
+| `approve_attestation` | bearer `MRV_API_KEY` | Checks a VVB signature over a step-1 statement and relays the mint. Only listed for authenticated requests |
 
 An autonomous buyer needs no special permissions:
 
