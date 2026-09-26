@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { MutateOptions } from "@tanstack/react-query";
 import { Abi, ExtractAbiFunctionNames } from "abitype";
+import { encodeFunctionData } from "viem";
 import { Config, UseWriteContractParameters, useAccount, useConfig, useWriteContract } from "wagmi";
 import { WriteContractErrorType, WriteContractReturnType } from "wagmi/actions";
 import { WriteContractVariables } from "wagmi/query";
@@ -71,7 +72,7 @@ export function useScaffoldWriteContract<TContractName extends ContractName>(
     }
   }, [configOrName]);
 
-  const { chain: accountChain } = useAccount();
+  const { chain: accountChain, address } = useAccount();
   const writeTx = useTransactor();
   const [isMining, setIsMining] = useState(false);
 
@@ -109,7 +110,7 @@ export function useScaffoldWriteContract<TContractName extends ContractName>(
 
     try {
       setIsMining(true);
-      const { blockConfirmations, onBlockConfirmation, ...mutateOptions } = options || {};
+      const { blockConfirmations, onBlockConfirmation } = options || {};
 
       const writeContractObject = {
         abi: deployedContractData.abi as Abi,
@@ -125,19 +126,27 @@ export function useScaffoldWriteContract<TContractName extends ContractName>(
         });
       }
 
-      const makeWriteWithParams = () =>
-        wagmiContractWrite.writeContractAsync(
-          writeContractObject,
-          mutateOptions as
-            | MutateOptions<
-                WriteContractReturnType,
-                WriteContractErrorType,
-                WriteContractVariables<Abi, string, any[], Config, number>,
-                unknown
-              >
-            | undefined,
-        );
-      const writeTxResult = await writeTx(makeWriteWithParams, { blockConfirmations, onBlockConfirmation });
+      if (!address) {
+        notification.error("Please connect your wallet");
+        return;
+      }
+
+      // wagmi's writeContract uses viem sendTransaction, which calls wallet_sendTransaction.
+      // HashPack rejects that method. eth_sendTransaction is what an ECDSA session signs.
+      const data = encodeFunctionData({
+        abi: deployedContractData.abi as Abi,
+        functionName: variables.functionName,
+        args: variables.args ?? [],
+      } as Parameters<typeof encodeFunctionData>[0]);
+      const writeTxResult = await writeTx(
+        {
+          account: address,
+          to: deployedContractData.address,
+          data,
+          value: variables.value,
+        },
+        { blockConfirmations, onBlockConfirmation },
+      );
 
       return writeTxResult;
     } catch (e: any) {
