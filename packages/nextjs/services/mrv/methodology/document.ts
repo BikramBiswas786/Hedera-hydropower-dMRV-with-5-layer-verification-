@@ -20,8 +20,9 @@ Each plant is registered on-chain under one of two rule sets:
 - **Verra VMR0017 v${METHODOLOGIES.VMR0017.version}** (23 April 2026), applied with **ACM0002 v${METHODOLOGIES.ACM0002.version}** as it requires. The
   demo plants use it. For hydro it changes ACM0002 as follows: hydroelectric projects of ${VMR0017_MAX_HYDRO_KW / 1_000} MW or less (rated or
   authorized capacity, whichever is higher) in Least Developed Countries only (Table 1; ${LDC_COUNT} LDCs as of ${LDC_LIST_AS_OF});
-  additionality by VT0008 (regulatory surplus, benchmark analysis on project or equity IRR with a sensitivity analysis,
-  common practice; no barrier analysis, no TOOL32);
+  additionality by VT0008 (regulatory surplus with the laws named, benchmark analysis on project or equity IRR,
+  a sensitivity table covering at least ±10%, common practice inside a named area and a capacity band of at least
+  ±50%; an independent assessor; no barrier analysis, no TOOL32);
   EF_Res = ${VMR0017_RESERVOIR_EF_G_PER_MWH / 1_000} kg CO2e/MWh; leakage from embodied emissions, ${VMR0017_EMBODIED_HYDRO_G_PER_MWH / 1_000} g CO2e/kWh for hydro (§8.3); TOOL07
   replaced by VT0011 v1.0. Verra inactivates ACM0002 and AMS-I.D as standalone methodologies on 1 January 2027.
 - **CDM ${METHODOLOGIES["AMS-I.D"].id} v${METHODOLOGIES["AMS-I.D"].version}** (up to ${SMALL_SCALE_LIMIT_KW / 1_000} MW) and **${METHODOLOGIES.ACM0002.id} v${METHODOLOGIES.ACM0002.version}** (above).
@@ -40,7 +41,7 @@ so a verifier cannot mint more than the equations allow. 1 credit = 1 t CO2e; 1 
 | BE_y | EG_PJ,y × EF_grid,CM,y | down |
 | PE_FF,y | Σ FC × COEF, COEF = NCV × EF_CO2 (TOOL03 option B) | up |
 | PE_HP,y | EF_Res × TEG_y when ${MIN_POWER_DENSITY} < PD ≤ ${RESERVOIR_EMISSIONS_POWER_DENSITY} W/m², else 0 (EF_Res = ${VMR0017_RESERVOIR_EF_G_PER_MWH / 1_000} kg CO2e/MWh under VMR0017, ${RESERVOIR_EF_G_PER_MWH / 1_000} under the CDM) | up |
-| LE_y | VMR0017: EG_facility,y (greenfield) or EG_PJ_Add,y (capacity addition) × ${VMR0017_EMBODIED_HYDRO_G_PER_MWH / 1_000} g CO2e/kWh, never on negative energy; 0 for retrofits (no equation in §8.3). CDM: 0 (ACM0002; AMS-I.D without transferred equipment) | up |
+| LE_y | VMR0017: EG_facility,y (greenfield) or max(EG_PJ,y, EG_facility,y × Cap_add / Cap_PJ) (capacity addition) × ${VMR0017_EMBODIED_HYDRO_G_PER_MWH / 1_000} g CO2e/kWh, never on negative energy; 0 for retrofits (no equation in §8.3). CDM: 0 (ACM0002; AMS-I.D without transferred equipment) | up |
 
 - EG_facility,y is **net**: export − import at the grid meter. TEG_y is gross generation at the generator terminals.
 - Retrofits apply the annual equation cumulatively per crediting year: nothing is credited until the year's generation
@@ -55,12 +56,19 @@ so a verifier cannot mint more than the equations allow. 1 credit = 1 t CO2e; 1 
   no added reservoir area means PE_HP = 0.
 - AMS-I.D ≤ ${SMALL_SCALE_LIMIT_KW / 1_000} MW; transferred equipment under AMS-I.D needs a leakage assessment (refused).
 - VMR0017: hydro ≤ ${VMR0017_MAX_HYDRO_KW / 1_000} MW (contract reverts above), host country on the UN LDC list at the crediting start,
-  and complete VT0008 evidence: regulatory surplus; the project or equity IRR without carbon revenue below the
-  benchmark, confirmed by a sensitivity analysis (§5.4.2); not common practice, which it is when F = 1 − N_diff / N_all
-  > 20% and N_all − N_diff > 3 (Step 4b). Whether the CCP conditions (b)–(c) hold (the credit revenue is decisive and
+  and complete VT0008 evidence: regulatory surplus, with the laws named; the project or equity IRR without carbon revenue below the
+  benchmark; a sensitivity table that varies a critical input by at least −10% and +10% (§5.4.2, ¶24), and a likelihood
+  note when a variation reaches the benchmark (¶25); not common practice, which it is when F = 1 − N_diff / N_all
+  > 20% and N_all − N_diff > 3 (Step 4b), counted inside a named geographic area and a capacity band of at least ±50%.
+  The assessor is named. Whether the CCP conditions (b)–(c) hold (the credit revenue is decisive and
   lifts the IRR to the benchmark) is recorded, not required. The engine checks the recorded evidence; the VVB makes the
   determination.
-- Crediting period: 7 years (renewable twice) or 10 years fixed, counted in 365-day years; a monitoring period must stay
+- A retrofit or capacity addition records ACM0002 ¶8(b): commissioning date before the historical reference period,
+  no expansion in between, at least five years of EG_historical, and a TOOL10 basis for DATE_BaselineRetrofit.
+- A second or third crediting period needs a baseline-validity reference (TOOL11) and a fresh regulatory-surplus check.
+- When a batch reports captive supply, more than half of export + captive must go to the grid. Otherwise ACM0002,
+  AMS-I.D and VMR0017 do not apply.
+- Crediting period: exactly 5, 7 or 10 × 365-day years. A VMR0017 registration request on or after 1 January 2027 uses 5 years, renewable at most twice. A 10-year period is fixed. A monitoring period must stay
   inside the crediting period and inside one crediting year (contract checks both).
 
 ## Grid emission factor (TOOL07 and VT0011, ex-ante)
@@ -78,6 +86,9 @@ so a verifier cannot mint more than the equations allow. 1 credit = 1 t CO2e; 1 
   default efficiency (¶79); a unit with generation data only counts as 0 t/MWh (option A3, ¶50); weights hydro
   0.4 / 0.6 in the first crediting period and 0.25 / 0.75 after it, wind and solar 0.5 / 0.5, 0.4 / 0.6, 0.3 / 0.7 (¶86).
   The optional ¶90 (w_OM = 1 in an LDC, which would raise the factor) and ¶91 (default BM) are not offered.
+  Net imports, and imports from an Annex I system, enter the operating margin at 0 t CO2/MWh (¶25(a1), ¶16).
+  A unit burning several fuels takes the lowest CO2 factor (¶50, option A2). Purpose-built wheeling is left out of
+  the factor where the MWh are known.
 - IPCC 2006 defaults use the **lower** 95% bound for the baseline (TOOL07) and the **upper** bound for project
   emissions (TOOL03), so both sides err toward fewer credits.
 - A combined margin published by a DNA can be registered instead, with its reference.

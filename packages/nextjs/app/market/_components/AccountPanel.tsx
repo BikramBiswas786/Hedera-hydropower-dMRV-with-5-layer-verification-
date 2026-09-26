@@ -4,7 +4,7 @@ import { useState } from "react";
 import type { Address } from "viem";
 import { useWriteContract } from "wagmi";
 import { useScaffoldReadContract, useScaffoldWriteContract, useTransactor } from "~~/hooks/scaffold-hbar";
-import { formatHbar, tonnesToUnits, usdToCents } from "~~/services/mrv/pricing";
+import { tonnesToUnits, usdToCents } from "~~/services/mrv/pricing";
 import { formatTonnes } from "~~/services/mrv/views";
 
 /** HIP-719: HTS tokens expose `associate()` at their EVM address so an EOA can opt in to holding them. */
@@ -14,29 +14,27 @@ const HRC719_ABI = [
 
 type Action = "sell" | "retire" | "withdraw";
 
-export const AccountPanel = ({ address, nativeUnitsPerHbar }: { address?: Address; nativeUnitsPerHbar: bigint }) => {
+export const AccountPanel = ({ address }: { address?: Address }) => {
   const [action, setAction] = useState<Action>("sell");
   const [amount, setAmount] = useState("");
   const [price, setPrice] = useState("15.00");
   const [beneficiary, setBeneficiary] = useState("");
 
   const { data: custody } = useScaffoldReadContract({
-    contractName: "HydroCreditRegistry",
+    contractName: "DmrvRegistry",
     functionName: "custodyBalanceOf",
     args: [address],
     query: { enabled: Boolean(address) },
   });
-  const { data: proceeds } = useScaffoldReadContract({
-    contractName: "HydroCreditRegistry",
-    functionName: "proceedsOf",
-    args: [address],
-    query: { enabled: Boolean(address) },
-  });
   const { data: creditToken } = useScaffoldReadContract({
-    contractName: "HydroCreditRegistry",
+    contractName: "DmrvRegistry",
     functionName: "creditToken",
   });
-  const { writeContractAsync, isMining } = useScaffoldWriteContract({ contractName: "HydroCreditRegistry" });
+  const { writeContractAsync, isMining: registryMining } = useScaffoldWriteContract({ contractName: "DmrvRegistry" });
+  const { writeContractAsync: writeMarket, isMining: marketMining } = useScaffoldWriteContract({
+    contractName: "CreditMarket",
+  });
+  const isMining = registryMining || marketMining;
   const { writeContractAsync: writeToken } = useWriteContract();
   const transact = useTransactor();
 
@@ -44,7 +42,7 @@ export const AccountPanel = ({ address, nativeUnitsPerHbar }: { address?: Addres
     return (
       <div className="bg-base-100 border border-base-300 rounded-2xl p-5">
         <h2 className="font-semibold text-lg mt-0">Your registry account</h2>
-        <p className="m-0 text-base-content/60">Connect a wallet to see your credits and sale proceeds.</p>
+        <p className="m-0 text-base-content/60">Connect a wallet to list credits or retire them.</p>
       </div>
     );
   }
@@ -57,7 +55,7 @@ export const AccountPanel = ({ address, nativeUnitsPerHbar }: { address?: Addres
   const submit = async () => {
     if (!ready) return;
     if (action === "sell" && cents !== null) {
-      await writeContractAsync({ functionName: "createListing", args: [units, cents] });
+      await writeMarket({ functionName: "createListing", args: [units, cents] });
     } else if (action === "retire") {
       await writeContractAsync({ functionName: "retire", args: [units, beneficiary] });
     } else if (action === "withdraw") {
@@ -72,23 +70,6 @@ export const AccountPanel = ({ address, nativeUnitsPerHbar }: { address?: Addres
       <div className="flex justify-between text-sm">
         <span>Credits in custody</span>
         <span className="font-bold">{custody === undefined ? "…" : `${formatTonnes(custody)} t CO₂e`}</span>
-      </div>
-      <div className="flex justify-between items-center text-sm">
-        <span>Sale proceeds</span>
-        <span className="flex items-center gap-2">
-          <span className="font-bold">
-            {proceeds === undefined ? "…" : `${formatHbar(proceeds, nativeUnitsPerHbar)} HBAR`}
-          </span>
-          {proceeds !== undefined && proceeds > 0n && (
-            <button
-              className="btn btn-xs btn-primary"
-              disabled={isMining}
-              onClick={() => writeContractAsync({ functionName: "withdrawProceeds" })}
-            >
-              Claim
-            </button>
-          )}
-        </span>
       </div>
 
       <div role="tablist" className="tabs tabs-box tabs-sm">

@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import { useScaffoldReadContract } from "~~/hooks/scaffold-hbar";
 
 type Reading = { answer: bigint; updatedAt: bigint; fresh: boolean };
@@ -44,6 +45,28 @@ export const OraclePanel = () => {
     contractName: "ResilientHbarUsdFeed",
     functionName: "MAX_DEVIATION_BPS",
   });
+  const [dex, setDex] = useState<{
+    price: number;
+    accepted: boolean;
+    deviationBps: number;
+    pair?: string;
+    venue?: string;
+  } | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    fetch("/api/market/dex")
+      .then(response => (response.ok ? response.json() : null))
+      .then(body => {
+        if (!cancelled) setDex(body);
+      })
+      .catch(() => {
+        if (!cancelled) setDex(null);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   const [primary, fallback] = (sources ?? []) as Reading[];
   const [answer, source] = (resolved ?? []) as [Reading | undefined, number | undefined];
@@ -58,6 +81,21 @@ export const OraclePanel = () => {
         <tbody>
           <SourceRow name="Chainlink (primary)" reading={primary} active={source === 1} />
           <SourceRow name="Supra (fallback)" reading={fallback} active={source === 2} />
+          <tr>
+            <td className="font-medium">
+              SaucerSwap <span className="badge badge-ghost badge-xs">settlement pair</span>
+            </td>
+            <td className="text-right">{dex ? `$${dex.price.toFixed(5)}` : "…"}</td>
+            <td className="text-right">
+              {dex ? (
+                <span className={dex.accepted ? undefined : "text-error"}>
+                  {dex.deviationBps} bps{dex.accepted ? "" : " · refused"}
+                </span>
+              ) : (
+                "—"
+              )}
+            </td>
+          </tr>
         </tbody>
       </table>
       <p className="m-0 text-xs text-base-content/60">
@@ -66,6 +104,38 @@ export const OraclePanel = () => {
           : `Fresh sources must agree within ${maxDeviation !== undefined ? Number(maxDeviation) / 100 : "…"}%; if one fails the other prices alone.`}{" "}
         Active source: {SOURCE_NAMES[source ?? 0]}.
       </p>
+      {dex?.pair && (
+        <p className="m-0 text-xs text-base-content/60">
+          Live market{" "}
+          <a
+            className="link"
+            href="https://hashscan.io/testnet/contract/0x5aeDe76fc6625cfA3227FFf70197D4D7ff3e5030"
+            target="_blank"
+            rel="noreferrer"
+          >
+            0x5aeDe76f…
+          </a>{" "}
+          swaps through router 0.0.19264 on pair{" "}
+          <a
+            className="link"
+            href={`https://hashscan.io/testnet/contract/${dex.pair}`}
+            target="_blank"
+            rel="noreferrer"
+          >
+            {dex.pair.slice(0, 10)}…
+          </a>
+          . Settled{" "}
+          <a
+            className="link"
+            href="https://hashscan.io/testnet/transaction/0x4735808481bde453a2354b4ed395a00ba72112fdcbb0b96c9a1196e4c5753fab"
+            target="_blank"
+            rel="noreferrer"
+          >
+            0.020 t
+          </a>
+          . Buy stays off while this pair is outside 3% of the oracle.
+        </p>
+      )}
     </div>
   );
 };

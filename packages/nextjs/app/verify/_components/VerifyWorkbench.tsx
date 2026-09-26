@@ -2,14 +2,21 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { PublishPanel } from "./PublishPanel";
+import { zeroAddress } from "viem";
 import { z } from "zod";
 import { ReportView } from "~~/components/hydro/ReportView";
 import { useScaffoldReadContract } from "~~/hooks/scaffold-hbar";
 import { DEMO_PLANTS } from "~~/services/mrv/demo";
 import { prepareAnchors } from "~~/services/mrv/pipeline";
-import { SCENARIOS, SCENARIO_NAMES, type ScenarioName, generateScenario } from "~~/services/mrv/scenarios";
+import {
+  PREVIEW_METER_DOMAIN,
+  SCENARIOS,
+  SCENARIO_NAMES,
+  type ScenarioName,
+  generateScenario,
+} from "~~/services/mrv/scenarios";
 import { type LedgerJson, type VerifyRequest, verifyRequestSchema } from "~~/services/mrv/schema";
-import { type RawPlant, plantIdToBytes32, toPlantView } from "~~/services/mrv/views";
+import { type RawProject, plantIdToBytes32, toProjectView } from "~~/services/mrv/views";
 
 function parseRequest(text: string): { request: VerifyRequest } | { error: string } {
   try {
@@ -27,22 +34,31 @@ export const VerifyWorkbench = () => {
   const plant = DEMO_PLANTS[plantIndex];
 
   // Generated on the client because scenarios end at the current hour, which would differ from the server render.
-  useEffect(() => setText(JSON.stringify(generateScenario(scenario, { plant }), null, 2)), [scenario, plant]);
+  useEffect(
+    () => setText(JSON.stringify(generateScenario(scenario, { plant, domain: PREVIEW_METER_DOMAIN }), null, 2)),
+    [scenario, plant],
+  );
 
   // Quantify against the plant's on-chain ledger when the registry is deployed, exactly as attesting would.
-  const { data: rawPlant } = useScaffoldReadContract({
-    contractName: "HydroCreditRegistry",
-    functionName: "getPlant",
+  const { data: rawProject } = useScaffoldReadContract({
+    contractName: "DmrvRegistry",
+    functionName: "getProject",
     args: [plantIdToBytes32(plant.plantId)],
   });
-  const onChain = rawPlant ? toPlantView(plantIdToBytes32(plant.plantId), rawPlant as RawPlant) : null;
+  const onChain =
+    rawProject && rawProject.operator !== zeroAddress
+      ? toProjectView(plantIdToBytes32(plant.plantId), rawProject as RawProject)
+      : null;
   const ledger: LedgerJson | undefined = onChain?.design.capacityKw ? onChain.ledger : undefined;
 
   const parsed = useMemo(() => (text ? parseRequest(text) : null), [text]);
   const result = useMemo(() => {
     if (!parsed || "error" in parsed) return null;
     try {
-      return { request: parsed.request, ...prepareAnchors({ ...parsed.request, ledger }) };
+      return {
+        request: parsed.request,
+        ...prepareAnchors({ ...parsed.request, ledger }),
+      };
     } catch (error) {
       return { error: (error as Error).message };
     }
@@ -82,24 +98,23 @@ export const VerifyWorkbench = () => {
               </button>
             ))}
           </div>
-          <p className="text-sm text-base-content/70 m-0">{SCENARIOS[scenario]}</p>
-          <p className="text-xs text-base-content/60 m-0">
-            {plant.methodology} · {plant.design.capacityKw.toLocaleString()} kW · EF_grid,CM{" "}
-            {(plant.design.efGridGPerMwh / 1e6).toFixed(4)} t/MWh (TOOL07) ·{" "}
-            {ledger
-              ? `quantified against the on-chain ledger (${ledger.attestations} attestation${ledger.attestations === 1 ? "" : "s"})`
-              : "empty ledger (registry not deployed on this network)"}
-            . The plant&apos;s meter signed this batch: edit any reading and QA/QC rejects it, exactly as it would
-            reject data changed between the meter and HCS. Edit the metering record or plant design to see the other
-            stages react.
+          <p className="text-sm m-0 rounded-xl bg-base-200 px-3 py-2">
+            These buttons re-run the checker in this browser. No wallet. Start with <strong>healthy</strong>, then{" "}
+            <strong>tampered</strong>.
           </p>
-          <textarea
-            aria-label="Verification request JSON"
-            className="textarea textarea-bordered font-mono text-xs h-[28rem] w-full rounded-xl"
-            spellCheck={false}
-            value={text}
-            onChange={event => setText(event.target.value)}
-          />
+          <p className="text-sm text-base-content/70 m-0">{SCENARIOS[scenario]}</p>
+          <details className="collapse collapse-arrow bg-base-200">
+            <summary className="collapse-title text-sm font-medium min-h-0 py-3">Edit the raw readings</summary>
+            <div className="collapse-content">
+              <textarea
+                aria-label="Verification request JSON"
+                className="textarea textarea-bordered font-mono text-xs h-72 w-full rounded-xl"
+                spellCheck={false}
+                value={text}
+                onChange={event => setText(event.target.value)}
+              />
+            </div>
+          </details>
           {error && (
             <pre className="text-error text-xs whitespace-pre-wrap m-0" role="alert">
               {error}
@@ -120,23 +135,24 @@ export const VerifyWorkbench = () => {
 
         {ready && (
           <div className="bg-base-100 border border-base-300 rounded-2xl p-5 flex flex-col gap-3">
-            <h2 className="font-semibold text-lg m-0">3. HCS anchors</h2>
+            <h2 className="font-semibold text-lg m-0">3. What a real issuance would publish</h2>
             <p className="text-sm text-base-content/70 m-0">
-              Publishing writes two messages to the audit topic. First the raw readings, plant profile, metering and
-              ledger ({ready.data.chunks} HCS chunk{ready.data.chunks === 1 ? "" : "s"}), so anyone can re-run this
-              quantification; then this report, which commits to them by hash and sequence number. The report&apos;s
-              SHA-256 becomes the attestation&apos;s <code>reportHash</code>, and the contract recomputes every figure
-              in it.
+              Nothing on this page is written to Hedera. An operator publish sends the readings and this result to the
+              public log, then the contract repeats the sum before it mints.
             </p>
-            <pre className="bg-base-200 rounded-xl p-3 text-xs overflow-x-auto m-0">
-              {JSON.stringify(ready.preview.body, null, 2)}
-            </pre>
-            <p className="text-xs font-mono break-all m-0">
-              dataHash: {ready.data.dataHash}
-              <br />
-              reportHash: {ready.preview.reportHash}{" "}
-              <span className="text-base-content/60">(before data.sequence is known)</span>
-            </p>
+            <details className="collapse collapse-arrow bg-base-200">
+              <summary className="collapse-title text-sm font-medium min-h-0 py-3">Report file and hashes</summary>
+              <div className="collapse-content">
+                <pre className="bg-base-100 rounded-xl p-3 text-xs overflow-x-auto m-0">
+                  {JSON.stringify(ready.preview.body, null, 2)}
+                </pre>
+                <p className="text-xs font-mono break-all m-0 mt-2">
+                  dataHash: {ready.data.dataHash}
+                  <br />
+                  reportHash: {ready.preview.reportHash}
+                </p>
+              </div>
+            </details>
             <PublishPanel request={ready.request} decision={ready.report.decision} />
           </div>
         )}

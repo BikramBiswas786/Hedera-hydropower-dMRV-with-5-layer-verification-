@@ -23,6 +23,11 @@ export const readingSchema = z.object({
   headM: z.number().nonnegative(),
   /** On-site fossil fuel burnt in the interval (kg), for PE_FF via TOOL03. */
   fuelKg: z.number().nonnegative().optional(),
+  /**
+   * Electricity supplied to a captive user in the interval (kWh), not to the grid. When any interval sets this,
+   * the period must still deliver more than half of (export + captive) to the grid.
+   */
+  captiveKwh: z.number().nonnegative().optional(),
   /** Environmental safeguard monitoring. Reported, never used to compute emission reductions. */
   ph: z.number().min(0).max(14).optional(),
   turbidityNtu: z.number().nonnegative().optional(),
@@ -38,6 +43,18 @@ export const meteringSchema = z.object({
   calibrationValidUntil: z.iso.datetime({ offset: true }),
   /** Uncertainty of the flow measurement in %, widening the hydraulic upper bound. */
   flowUncertaintyPct: z.number().nonnegative().max(50),
+  /** sha256 of the calibration certificate. Absent while calibration is in date, the engine records that gap. */
+  calibrationCertificateSha256: z
+    .string()
+    .regex(/^[0-9a-fA-F]{64}$/)
+    .optional(),
+  /** sha256 of the utility invoice or statement used to cross-check the revenue meter. */
+  invoiceCrossCheckSha256: z
+    .string()
+    .regex(/^[0-9a-fA-F]{64}$/)
+    .optional(),
+  /** Expanded uncertainty from the last calibration (%). Wider than the meter class is reported, not substituted. */
+  lastCalibrationUncertaintyPct: z.number().nonnegative().max(5).optional(),
   /**
    * Address of the data logger's secp256k1 key, recorded at validation like a calibration certificate. When set,
    * every batch must carry that key's signature (`provenance.ts`), or the engine rejects it.
@@ -48,16 +65,22 @@ export const meteringSchema = z.object({
     .optional(),
 });
 
-/** The registry a meter statement is signed for (`provenance.ts`): its chain id and address. */
+/**
+ * The registry a meter statement is signed for (`provenance.ts`): its chain id and address, plus the project's
+ * attestation count for DmrvRegistry (EIP-712). Without `sequence` the legacy HydroCreditRegistry hash applies.
+ */
 export const meterDomainSchema = z.object({
   chainId: z.number().int().positive(),
   registry: z.string().regex(/^0x[0-9a-fA-F]{40}$/, "Expected a 20-byte hex address"),
+  sequence: z.number().int().nonnegative().max(0xffffffff).optional(),
 });
+
+const bytes32Schema = z.string().regex(/^0x[0-9a-fA-F]{64}$/, "Expected a 32-byte hex value");
 
 /** 65-byte r‖s‖v secp256k1 signature. */
 export const signatureSchema = z.string().regex(/^0x[0-9a-fA-F]{130}$/, "Expected a 65-byte hex signature");
 
-/** The integers `HydroCreditRegistry.registerPlant` stores (see `methodology/project.ts`). */
+/** The integers the hydro module's params carry (see `methodology/project.ts`). */
 export const registeredDesignSchema = z.object({
   projectType: z.number().int().min(0).max(2),
   /** 0 = CDM (ACM0002 / AMS-I.D), 1 = VMR0017 v1.0; absent in data messages published before VMR0017. */
@@ -72,6 +95,8 @@ export const registeredDesignSchema = z.object({
   baselineEndsAt: safeInt(),
   creditingStart: safeInt(),
   creditingEnd: safeInt(),
+  /** VCS Table 8 date; absent in data messages published for the legacy registry. */
+  registrationRequestedAt: safeInt().optional(),
 });
 
 /** Everything the monitoring engine needs about a plant: the registered design plus its hydraulic envelope. */
@@ -109,6 +134,37 @@ export const verifyRequestSchema = z.object({
   /** Registry the statement is signed for; defaults to this app's registry (`defaultMeterDomain`). */
   domain: meterDomainSchema.optional(),
 });
+
+/**
+ * `POST /api/mrv/attest` (DmrvRegistry two-signature flow).
+ * - No `verifierSignature`, no `publishForApproval`: 409 "needs VVB approval" before anything is published, unless
+ *   this deployment is a labelled demo registry with its own demo VVB key (then the call completes in one step).
+ * - Step 1, `publishForApproval: true`: verify, publish the readings and the report to HCS, and return the
+ *   `VerifierApproval` typed data and the `anchor` for the VVB.
+ * - Step 2, `anchor` + `verifierSignature`: re-derive the same report, check its hash, dry-run, then relay.
+ */
+export const attestRequestSchema = verifyRequestSchema.extend({
+  /** The VVB's EIP-712 `VerifierApproval` signature (secp256k1). */
+  verifierSignature: signatureSchema.optional(),
+  /** keccak256 of external evidence the VVB relied on (e.g. a Guardian VC); single-use on-chain. */
+  evidenceHash: bytes32Schema.optional(),
+  /**
+   * Step 1 of the two-step flow: publish the readings and report to HCS and return the typed data the VVB must sign.
+   * Without it (and without `verifierSignature`), the server refuses with 409 before publishing anything.
+   */
+  publishForApproval: z.boolean().optional(),
+  /** The HCS messages from step 1, which the approval signs over. */
+  anchor: z
+    .object({
+      reportHash: bytes32Schema,
+      hcsTopicNum: z.string().regex(/^\d+$/),
+      hcsSequence: z.string().regex(/^\d+$/),
+      dataSequence: z.number().int().positive(),
+    })
+    .optional(),
+});
+
+export type AttestRequest = z.infer<typeof attestRequestSchema>;
 
 export type Reading = z.infer<typeof readingSchema>;
 export type Metering = z.infer<typeof meteringSchema>;

@@ -106,6 +106,7 @@ describe("ResilientHbarUsdFeed", function () {
     await registry.createCreditToken("Hydro dMRV Carbon Credit", "HYCC");
     const plantId = ethers.encodeBytes32String("PLANT");
     await registry.registerPlant(plantId, "Plant", operator.address, METER.address, await plantDesign());
+    await registry.setAuditTopic(4_242_424);
     await registry.submitAttestation(await attestationInput(registry, plantId, { netEnergyWh: 400_000n }));
     await registry.connect(operator).createListing(400, 1_250);
 

@@ -10,9 +10,12 @@ import {
   BeakerIcon,
   BookOpenIcon,
   BriefcaseIcon,
-  BugAntIcon,
   BuildingOffice2Icon,
   DocumentMagnifyingGlassIcon,
+  DocumentTextIcon,
+  NewspaperIcon,
+  QueueListIcon,
+  ScaleIcon,
   ShoppingBagIcon,
 } from "@heroicons/react/24/outline";
 import { RainbowKitCustomConnectButton } from "~~/components/scaffold-hbar";
@@ -40,6 +43,11 @@ export const menuLinks: HeaderMenuLink[] = [
     icon: <AcademicCapIcon className="h-4 w-4" />,
   },
   {
+    label: "Compare",
+    href: "/check",
+    icon: <ScaleIcon className="h-4 w-4" />,
+  },
+  {
     label: "Verify",
     href: "/verify",
     icon: <BeakerIcon className="h-4 w-4" />,
@@ -60,14 +68,29 @@ export const menuLinks: HeaderMenuLink[] = [
     icon: <BriefcaseIcon className="h-4 w-4" />,
   },
   {
+    label: "Documents",
+    href: "/documents",
+    icon: <DocumentTextIcon className="h-4 w-4" />,
+  },
+  {
+    label: "Work",
+    href: "/work",
+    icon: <QueueListIcon className="h-4 w-4" />,
+  },
+  {
+    label: "Water",
+    href: "/water",
+    icon: <BeakerIcon className="h-4 w-4" />,
+  },
+  {
     label: "Audit",
     href: "/audit",
     icon: <DocumentMagnifyingGlassIcon className="h-4 w-4" />,
   },
   {
-    label: "Debug",
-    href: "/debug",
-    icon: <BugAntIcon className="h-4 w-4" />,
+    label: "Notes",
+    href: "/blog",
+    icon: <NewspaperIcon className="h-4 w-4" />,
   },
 ];
 

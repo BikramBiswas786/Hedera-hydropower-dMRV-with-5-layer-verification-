@@ -1,8 +1,10 @@
+import { prepareDocumentSchema, publishDocumentSchema, waterRequestSchema } from "../documents/schema";
 import { ENGINE_VERSION } from "../engine";
+import { compareReportSchema } from "../guardian/compare";
 import { gridEmissionFactorRequestSchema, projectDesignSchema } from "../methodology/schema";
 import { HYDRO_CHAIN_ID } from "../network";
 import { SCENARIO_NAMES } from "../scenarios";
-import { verifyRequestSchema } from "../schema";
+import { attestRequestSchema, verifyRequestSchema } from "../schema";
 import { portfolioQuerySchema } from "./insights";
 import { preparePurchaseSchema } from "./market";
 import { z } from "zod";
@@ -74,8 +76,28 @@ export function buildOpenApi(origin: string) {
       { name: "registry", description: `On-chain state on chain ${HYDRO_CHAIN_ID}` },
       { name: "evidence", description: "Audit and reproduction from HCS through the public mirror node" },
       { name: "market", description: "Listings, unsigned purchases, retirements and certificates" },
+      {
+        name: "documents",
+        description: "Signed VCS-shaped documents and the safe-water equation. Not a second credit mint.",
+      },
+      {
+        name: "guardian",
+        description: "Hedera Guardian bridge: signed cross-check VCs and evidence verification (docs/GUARDIAN.md)",
+      },
     ],
     paths: {
+      "/api/methodology/compare": post({
+        operationId: "compare_guardian_report",
+        tags: ["guardian"],
+        summary: "Recompute a Guardian monitoring figure",
+        description:
+          "Runs a Guardian VMR0017 monitoring report through the same integers the registry uses. Returns MATCH, MISMATCH, or NOT_COMPARABLE, plus the tonne difference. Does not mint and does not sign. No API key.",
+        requestBody: body(compareReportSchema),
+        responses: {
+          ...ok("decision, oursT, theirsT, deltaTonnes, notes"),
+          "422": { $ref: "#/components/responses/Error" },
+        },
+      }),
       "/api/methodology/assess": post({
         operationId: "assess_project",
         tags: ["methodology"],
@@ -135,15 +157,25 @@ export function buildOpenApi(origin: string) {
       "/api/mrv/attest": post({
         operationId: "submit_attestation",
         tags: ["monitoring"],
-        summary: "Verify, anchor on HCS and attest on-chain",
+        summary: "Two-step attestation: anchor on HCS, then relay the meter + VVB signatures",
         description:
-          "Only for the plant operator's server: requires the MRV_API_KEY bearer token. Refuses anything but APPROVED periods and anything the contract's quantify() disagrees with.",
+          "Only for the plant operator's server: requires the MRV_API_KEY bearer token. Without `verifierSignature` it answers 409 (nothing published) unless `publishForApproval: true`, which publishes readings and report to HCS and returns `status: awaiting-approval` with the VerifierApproval typed data and `anchor`. Step 2 sends the same body plus `anchor` and `verifierSignature` (an accredited VVB's EIP-712 signature) and relays DmrvRegistry.submitAttestation. Optional `evidenceHash` binds external evidence such as a Guardian VC (single use). Refuses anything but APPROVED periods and anything the module's preview() disagrees with.",
         security: [{ mrvApiKey: [] }],
-        requestBody: body(verifyRequestSchema),
+        requestBody: body(attestRequestSchema),
         responses: {
-          ...ok("Attestation id, credits minted, Hashscan links"),
+          ...ok("awaiting-approval (typed data + anchor) or attested (id, credits minted, VVB, Hashscan links)"),
           "401": { $ref: "#/components/responses/Error" },
+          "409": { $ref: "#/components/responses/Error" },
         },
+      }),
+      "/api/mrv/approve": post({
+        operationId: "approve_attestation",
+        tags: ["monitoring"],
+        summary: "Preview the VVB's EIP-712 approval (writes and signs nothing)",
+        description:
+          "Re-derives, from the readings and the step-1 anchor, the exact VerifierApproval typed data DmrvRegistry checks. The VVB signs it with its own secp256k1 key (eth_signTypedData_v4 or `yarn mrv:approve`).",
+        requestBody: body(attestRequestSchema),
+        responses: ok("{ approval, summary, report }"),
       }),
       "/api/registry": get({
         operationId: "get_registry_overview",
@@ -186,8 +218,11 @@ export function buildOpenApi(origin: string) {
         tags: ["evidence"],
         summary: "Re-derive the issuance from the readings published to HCS",
         description:
-          "Audits the report, reassembles the data message, checks its hash, the registered design and the meter signature, re-runs the engine and compares every figure.",
-        parameters: [path("id", "Attestation id", { type: "integer", minimum: 0 })],
+          "Audits the report, reassembles the data message, checks its hash, the registered design and the meter signature, re-runs the engine and compares every figure. Pass `registry=0x9cdB…` (the legacy HydroCreditRegistry) to reproduce pre-phase-1 evidence.",
+        parameters: [
+          path("id", "Attestation id", { type: "integer", minimum: 0 }),
+          query("registry", "Registry address (default: the active DmrvRegistry)", { type: "string" }),
+        ],
         responses: ok("reproduced | diverged | no-data | not-auditable, with per-field checks"),
       }),
       "/api/registry/listings": get({
@@ -195,6 +230,12 @@ export function buildOpenApi(origin: string) {
         tags: ["market"],
         summary: "Open listings with an HBAR quote for the full listing",
         responses: ok("Listings (units in kg, price in US cents per tonne, quote in tinybar)"),
+      }),
+      "/api/market/dex": get({
+        operationId: "get_dex_price",
+        tags: ["market"],
+        summary: "SaucerSwap settlement pair versus the oracle",
+        responses: ok("Price, deviation in basis points, and whether a purchase may be built"),
       }),
       "/api/market/prepare-purchase": post({
         operationId: "prepare_purchase",
@@ -227,10 +268,99 @@ export function buildOpenApi(origin: string) {
         parameters: [path("id", "Retirement id", { type: "integer", minimum: 0 })],
         responses: ok("Retirement and certificate"),
       }),
+      "/api/documents": {
+        ...get({
+          operationId: "list_documents",
+          tags: ["documents"],
+          summary: "Sealed demo documents, optionally for one subject",
+          parameters: [query("subjectId", "Plant or water project id")],
+          responses: ok("Documents"),
+        }),
+        ...post({
+          operationId: "publish_document",
+          tags: ["documents"],
+          summary: "Store a wallet-signed document",
+          requestBody: body(publishDocumentSchema),
+          responses: ok("Stored"),
+          security: [{ mrvApiKey: [] }],
+        }),
+      },
+      "/api/documents/{subjectId}": get({
+        operationId: "get_trust_chain",
+        tags: ["documents"],
+        summary: "Trust chain for one subject",
+        parameters: [path("subjectId", "Plant or water project id")],
+        responses: ok("Chain status"),
+      }),
+      "/api/documents/check": post({
+        operationId: "check_document",
+        tags: ["documents"],
+        summary: "Confirm a wallet signature; stores nothing",
+        requestBody: body(publishDocumentSchema),
+        responses: ok("Intact, not stored"),
+      }),
+      "/api/documents/prepare": post({
+        operationId: "prepare_document",
+        tags: ["documents"],
+        summary: "Hash to sign; writes nothing",
+        requestBody: body(prepareDocumentSchema),
+        responses: ok("Hash and message"),
+      }),
+      "/api/work": get({
+        operationId: "run_public_work",
+        tags: ["documents"],
+        summary: "Public describe-to-verify playbook",
+        parameters: [query("subjectId", "Defaults to HYDRO-DEMO-01")],
+        responses: ok("Steps and chain"),
+      }),
+      "/api/water/quantify": post({
+        operationId: "quantify_safe_water",
+        tags: ["documents"],
+        summary: "Illustrative VMR0015 quantification",
+        requestBody: body(waterRequestSchema),
+        responses: ok("Tonnes, not hydro credits"),
+      }),
+      "/api/guardian/v1/cross-check": post({
+        operationId: "guardian_cross_check",
+        tags: ["guardian"],
+        summary: "Cross-check a Guardian Monitoring Report VC and return a signed result VC",
+        description:
+          'Called by a Guardian policy\'s httpRequestBlock with the Monitoring Report VC (or a one-element array). Runs the dMRV engine on the mapped fields and answers with a "DMRV Cross-Check Result" VC signed with Ed25519Signature2018 by the bridge did:hedera key. Requires the GUARDIAN_BRIDGE_API_KEY bearer; 503 until BRIDGE_ED25519_PRIVATE_KEY, BRIDGE_DID and GUARDIAN_BRIDGE_RESULT_SCHEMA are set. Max body 1 MB, idempotent on the source VC hash. Not an MCP tool.',
+        security: [{ guardianBridgeKey: [] }],
+        parameters: [query("policyId", "Guardian policy id, selects the result schema and is echoed in the result")],
+        requestBody: { required: true, content: json({ type: "object", description: "Guardian VC document" }) },
+        responses: {
+          ...ok("W3C Verifiable Credential (DMRV Cross-Check Result)"),
+          "401": { $ref: "#/components/responses/Error" },
+          "413": { $ref: "#/components/responses/Error" },
+          "422": { $ref: "#/components/responses/Error" },
+          "429": { $ref: "#/components/responses/Error" },
+        },
+      }),
+      "/api/guardian/v1/evidence/{timestamp}": get({
+        operationId: "verify_guardian_evidence",
+        tags: ["guardian"],
+        summary: "Verify Guardian evidence from the mirror node and IPFS",
+        description:
+          "Accepts a VP consensus timestamp, a mint transaction id (0.0.x@secs.nanos, followed through its memo) or nft:<tokenId>:<serial>. Checks the HCS message topic and status, fetches the VP from IPFS, verifies every signature and walks the related documents. Refuses any chain that contains a MintToken VC (the credit was already issued by Guardian) and any Monitoring Report without a MATCH cross-check.",
+        parameters: [
+          path("timestamp", "Consensus timestamp, mint transaction id or nft:<tokenId>:<serial>"),
+          query("topicIds", "Comma-separated Guardian policy topic ids; defaults to GUARDIAN_EVIDENCE_TOPIC_IDS"),
+        ],
+        responses: {
+          ...ok("{ accepted, refusals, notes, chain, crossChecks, evidenceHash }"),
+          "422": { $ref: "#/components/responses/Error" },
+        },
+      }),
     },
     components: {
       securitySchemes: {
         mrvApiKey: { type: "http", scheme: "bearer", description: "MRV_API_KEY, held by the plant operator" },
+        guardianBridgeKey: {
+          type: "http",
+          scheme: "bearer",
+          description: "GUARDIAN_BRIDGE_API_KEY, configured in the Guardian policy's httpRequestBlock headers",
+        },
       },
       responses: {
         Error: {

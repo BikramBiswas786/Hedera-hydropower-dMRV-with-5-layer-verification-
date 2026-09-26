@@ -180,6 +180,20 @@ describe("verifyReadings — physical cross-checks", () => {
     expect(report.excludedIntervals).toContain(0);
     expect(report.issues.find(i => i.reading === 0)?.message).toMatch(/nameplate/);
   });
+
+  it("rejects a period that does not deliver more than half its electricity to the grid", () => {
+    const { request } = run("healthy");
+    const readings: Reading[] = request.readings.map(reading => ({ ...reading, captiveKwh: reading.exportKwh }));
+    const report = verifyReadings(readings, request.plant, request.metering);
+    expect(report.decision).toBe("REJECTED");
+    expect(report.issues.some(issue => /more than half/.test(issue.message))).toBe(true);
+    const gridOnly = verifyReadings(
+      request.readings.map(reading => ({ ...reading, captiveKwh: 0 })),
+      request.plant,
+      request.metering,
+    );
+    expect(gridOnly.issues.some(issue => /more than half/.test(issue.message))).toBe(false);
+  });
 });
 
 describe("verifyReadings — quantification", () => {

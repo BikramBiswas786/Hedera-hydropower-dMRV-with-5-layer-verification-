@@ -48,6 +48,6 @@ describe("OpenAPI description", () => {
   it("requires the operator key only for attestation", () => {
     expect(spec.security).toEqual([]);
     const secured = operations.filter(op => "security" in op).map(op => op.operationId);
-    expect(secured).toEqual(["submit_attestation"]);
+    expect(secured.sort()).toEqual(["guardian_cross_check", "publish_document", "submit_attestation"]);
   });
 });

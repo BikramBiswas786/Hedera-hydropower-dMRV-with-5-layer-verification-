@@ -38,7 +38,7 @@ export const PageHeader = ({ title, children }: { title: string; children: React
 export const NotDeployedNotice = ({ networkName }: { networkName: string }) => (
   <div role="alert" className="alert alert-info">
     <div>
-      <p className="font-semibold m-0">HydroCreditRegistry is not deployed on {networkName} yet.</p>
+      <p className="font-semibold m-0">DmrvRegistry is not deployed on {networkName} yet.</p>
       <p className="m-0 text-sm">
         Deploy it with <code>yarn deploy --network hederaTestnet</code>, or follow the README to run it on a local
         chain. The{" "}

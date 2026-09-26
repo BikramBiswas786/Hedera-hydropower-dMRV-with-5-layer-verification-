@@ -4,10 +4,16 @@
 > (per plant; the demo plants) or CDM AMS-I.D (≤ 15 MW) and ACM0002, with TOOL07
 > (grid emission factor) and TOOL03 (fossil fuel combustion). A deterministic 5-stage engine verifies monitoring data
 > and quantifies ER = BE − PE − LE. Raw readings and reports are published on the Hedera Consensus Service (HCS), so
-> any agent can reproduce every figure. The HydroCreditRegistry contract stores each plant's validated design,
-> recomputes the emission reductions itself and mints Hedera Token Service credits (1 token = 1 t CO2e, 1 base unit =
-> 1 kg), sells them at USD prices settled in HBAR through Chainlink HBAR/USD cross-checked against a Supra fallback,
-> and on retirement burns them and mints an HTS NFT certificate.
+> any agent can reproduce every figure. The DmrvRegistry contract stores each plant's validated design,
+> recomputes the emission reductions through its VMR0017 module, and mints Hedera Token Service credits (1 token =
+> 1 t CO2e, 1 base unit = 1 kg) only with two signatures: the plant's meter and a registered VVB, who may only lower
+> the figures. CreditMarket sells them at USD prices settled in HBAR through Chainlink HBAR/USD cross-checked against
+> a Supra fallback (plus an on-chain SaucerSwap pool check where enabled); retirement burns them and mints an HTS NFT
+> certificate.
+
+Registry methodology is on-chain; demo plants are VMR0017.
+A short note for people is at `/blog`. Do not treat it as a plant design or as a second copy of the equations.
+Document tools (no key, except `publish_document`): `list_documents`, `get_trust_chain`, `prepare_document`, `check_document`, `run_public_work`, `quantify_safe_water`. `POST /api/documents/check` confirms a signature and stores nothing. Safe water is VMR0015 and does not mint HYCC.
 
 Everything below is relative to this site's origin. Read-only access needs no credentials. The server never holds a
 buyer's key: purchases are returned as unsigned transactions. The REST API is described in OpenAPI 3.1 at
@@ -24,13 +30,15 @@ buyer's key: purchases are returned as unsigned transactions. The REST API is de
   `list_attestations`, `get_plant` (design, ledger, lifetime totals and attestations of one plant)
 - Evidence: `audit_attestation` (report vs chain), `reproduce_attestation` (re-run the engine on the data published to
   HCS, check the registered design was used, compare every figure)
-- Market: `list_open_listings`, `prepare_purchase` (unsigned buy / buyAndRetire for your own wallet),
+- Guardian: `verify_guardian_evidence { ref, topicIds? }` (verify a Guardian VP/VC chain from the mirror node and IPFS:
+  topic, status, every Ed25519 signature; refuses chains with a MintToken VC or a Monitoring Report that does not match)
+- Market: `get_dex_price`, `list_open_listings`, `prepare_purchase` (unsigned buy / buyAndRetire for your own wallet),
   `get_retirement_certificate`, `get_portfolio` (retirements by an account or on behalf of a beneficiary)
-- Write tool `submit_attestation` is listed only when the request carries `Authorization: Bearer <MRV_API_KEY>`
+- Write tools `submit_attestation` (two steps: publish for approval, then relay with the VVB signature) and
+  `approve_attestation` are listed only when the request carries `Authorization: Bearer <MRV_API_KEY>`
 - Resource: `hydro-dmrv://methodology` (equations, QA/QC rules, IPCC bounds, what is not implemented)
 
-Buying as an agent: `list_open_listings` → `prepare_purchase { listingId, amountKg, beneficiary }` → sign and send
-`{ to, data, value }` with your wallet on `chainId` → `get_retirement_certificate`.
+Buying as an agent: `get_dex_price` → `list_open_listings` → `prepare_purchase { listingId, amountKg, beneficiary }` → sign and send `{ to, data, value }` with your wallet on `chainId` → `get_retirement_certificate`. `prepare_purchase` returns nothing if the SaucerSwap WHBAR/USDC spot is more than 3% from the settlement price. The server never holds your key.
 
 ## REST
 
@@ -55,6 +63,11 @@ Buying as an agent: `list_open_listings` → `prepare_purchase { listingId, amou
   account or on behalf of the beneficiary, totals, certificates; CSV for ESG reporting
 - `POST /api/mrv/attest` — verify → HCS (readings, report) → submitAttestation; requires `Authorization: Bearer
   <MRV_API_KEY>`
+- `POST /api/guardian/v1/cross-check?policyId=…` — for a Guardian policy's httpRequestBlock: body = the Monitoring
+  Report VC → a "DMRV Cross-Check Result" VC signed by the bridge did:hedera (Ed25519Signature2018); requires
+  `Authorization: Bearer <GUARDIAN_BRIDGE_API_KEY>`; 503 until the bridge key and DID are configured (docs/GUARDIAN.md)
+- `GET  /api/guardian/v1/evidence/{timestamp|0.0.x@s.n|nft:token:serial}?topicIds=0.0.a,0.0.b` — Guardian evidence
+  check (same as `verify_guardian_evidence`)
 
 ## Data shapes
 
@@ -85,7 +98,8 @@ Buying as an agent: `list_open_listings` → `prepare_purchase { listingId, amou
 
 ## Source
 
-- Contracts: `packages/hardhat/contracts/HydroCreditRegistry.sol`, `ResilientHbarUsdFeed.sol`
+- Contracts: `packages/hardhat/contracts/DmrvRegistry.sol`, `modules/HydroVmr0017Module.sol`, `CreditMarket.sol`,
+  `ResilientHbarUsdFeed.sol` (legacy: `legacy/HydroCreditRegistry.sol`)
 - Methodology: `packages/nextjs/services/mrv/methodology/` (tool07.ts, tool03.ts, project.ts, quantify.ts)
 - Engine: `packages/nextjs/services/mrv/engine.ts`; reproduction: `services/mrv/audit.ts`
 - Agent briefing for coding agents: `AGENTS.md`

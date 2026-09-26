@@ -40,7 +40,7 @@ const PATHS = [
   ["#look", "Just looking", "5 min, no wallet"],
   ["#buy", "Buying credits", "10 min, testnet wallet"],
   ["#operate", "Running a plant", "an afternoon"],
-  ["#build", "Building on it", "15 min to a local copy"],
+  ["#build", "Building on it", "follow Quick start; local chain has no faucet"],
   ["#agents", "AI agents", "1 command"],
 ] as const;
 
@@ -53,25 +53,20 @@ const GuidePage: NextPage = async () => {
       <header className="flex flex-col gap-3">
         <h1 className="text-4xl font-bold m-0">Start here</h1>
         <p className="text-lg text-base-content/80 m-0">
-          A small hydropower plant sends clean electricity to a grid that would otherwise burn coal and gas. Every
-          megawatt-hour it exports avoids some CO₂, and that avoided CO₂ can be sold as carbon credits. The hard part is
-          proving the numbers are real. Hydro dMRV does that proof in public:
+          Demo of hydropower carbon credits on Hedera testnet. The plants are examples. The tokens are not Verra credits
+          and have no money value.
         </p>
         <ol className="list-decimal pl-6 m-0 flex flex-col gap-1 text-base-content/80">
           <li>
-            the plant&apos;s meter <strong>signs</strong> its readings, so nobody can edit them later;
+            Open <Link href="/verify">Verify</Link>. Press <strong>healthy</strong>, then <strong>tampered</strong>. The
+            card on the right should change. No wallet.
           </li>
           <li>
-            a verification engine <strong>checks</strong> them (gaps, meters that disagree, physically impossible
-            numbers) and <strong>calculates</strong> the CO₂ avoided with the UN&apos;s CDM formulas;
+            Open <Link href="/audit">Audit</Link> and press <strong>Check evidence</strong>.
           </li>
           <li>
-            the readings and the result are <strong>published</strong> on the Hedera Consensus Service, and a smart
-            contract <strong>recalculates</strong> everything before it mints credits (1 credit = 1 tonne CO₂);
-          </li>
-          <li>
-            anyone can <strong>buy and retire</strong> credits, get an NFT certificate, and <strong>re-check</strong>{" "}
-            every figure from public data.
+            Buying is optional. Use <strong>MetaMask</strong> with a Hedera testnet <strong>ECDSA</strong> account.
+            HashPack over WalletConnect reports <code>wallet_sendTransaction</code> and cannot complete the purchase.
           </li>
         </ol>
         <nav className="flex flex-wrap gap-2 mt-2" aria-label="Pick your path">
@@ -142,7 +137,9 @@ const GuidePage: NextPage = async () => {
             </Link>
             , pick a listing, enter how many tonnes and the name to put on the certificate (for example your company),
             and choose <strong>Buy &amp; retire</strong>. Prices are in US dollars per tonne and paid in HBAR at the
-            live Chainlink rate, cross-checked with Supra. Retiring burns the credits so nobody can sell them again.
+            live Chainlink rate, cross-checked with Supra. The HBAR is swapped on the SaucerSwap pair stored in the
+            market. The buy is not built if that pair is more than 3% from the oracle. Retiring burns the credits so
+            nobody can sell them again.
           </Step>
           <Step n={3} title="Keep the proof">
             You receive an NFT certificate. On{" "}
@@ -163,17 +160,18 @@ const GuidePage: NextPage = async () => {
           <Step n={1} title="Check the project qualifies">
             Describe the plant (capacity, reservoir area, start date, grid data) and post it to{" "}
             <code>/api/methodology/assess</code>, or ask an agent to call <code>assess_project</code>. You get the
-            methodology (AMS-I.D up to 15 MW, ACM0002 above), the grid emission factor, reservoir rules and the exact
-            numbers to register on-chain.
+            methodology. VMR0017, which the demo plants use, applies ACM0002 v22.0, limits hydro to 15 MW, and only in a
+            least developed country. CDM uses AMS-I.D up to 15 MW and ACM0002 above. You also get the grid emission
+            factor, reservoir rules and the exact numbers to register on-chain.
           </Step>
           <Step n={2} title="Register it">
-            The registry admin records the validated design on-chain (<code>registerPlant</code>, done for the demo
+            The registry admin records the validated design on-chain (<code>registerProject</code>, done for the demo
             plants by <code>yarn deploy</code>). From then on the contract refuses anything that breaks it.
           </Step>
           <Step n={3} title="Give the meter a key">
             <code>yarn mrv:meter-key</code> creates a key for the data logger; its address is registered with the plant.
-            The logger signs every batch&apos;s totals (<code>yarn mrv:sign</code> or any Ethereum library), and the
-            contract never mints more than the meter signed.
+            The logger signs every batch&apos;s totals (<code>yarn mrv:sign</code> or any Ethereum library), a VVB
+            approves the same statement, and the contract never mints more than the meter signed.
           </Step>
           <Step n={4} title="Attest and sell">
             <code>yarn mrv:attest</code> (or <code>POST /api/mrv/attest</code> with your API key) verifies a period,
@@ -191,7 +189,7 @@ const GuidePage: NextPage = async () => {
         </p>
       </Path>
 
-      <Path id="build" who="Building on it" time="15 min to a local copy">
+      <Path id="build" who="Building on it" time="follow Quick start; local chain has no faucet">
         <p className="m-0 text-base-content/80">
           Hydro dMRV is a Scaffold-HBAR template: one command gives you the contracts, this app, the API and the MCP
           server, ready to change.
@@ -250,7 +248,11 @@ yarn start                       # terminal 3: http://localhost:3000`}</Code>
           {[
             [
               "Is this a real carbon registry?",
-              "No. It implements the published CDM methodologies (AMS-I.D, ACM0002, TOOL07, TOOL03) and runs on Hedera testnet with demo plants. Credits it mints are not Verra or Gold Standard units. A real deployment needs a validated project, an accredited verifier and a standard's approval.",
+              "No. The demo plants are registered as Verra VMR0017 v1.0 with ACM0002 v22.0. CDM AMS-I.D and ACM0002 remain selectable. Credits it mints are testnet tokens, not Verra or Gold Standard units. A real project needs a validated design, an accredited verifier and the standard's approval.",
+            ],
+            [
+              "Why is this needed if Guardian already digitizes the policy?",
+              "Guardian runs the methodology: forms, roles, an off-chain calculation, and a mint for the number that calculation returns. This template does not replace that. The contract recomputes the tonne and refuses a different integer, two price feeds must agree before a sale, the purchase builder also requires the SaucerSwap pool within 3%, and anyone can rerun the figure from HCS without a Guardian server.",
             ],
             [
               "Why should I trust the numbers?",

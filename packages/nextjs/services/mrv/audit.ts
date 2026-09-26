@@ -167,9 +167,10 @@ export async function reproduceAttestation(
   const r = recomputed.emissions;
   const e = report.emissions;
   const designChecks = registered
-    ? (Object.keys(registered) as (keyof RegisteredDesign)[]).map(key =>
-        check(`registered.${key}`, registered[key], parsed.plant.design[key]),
-      )
+    ? (Object.keys(registered) as (keyof RegisteredDesign)[])
+        // registrationRequestedAt is DmrvRegistry-only; data messages published before it do not carry it.
+        .filter(key => key !== "registrationRequestedAt" || parsed.plant.design[key] !== undefined)
+        .map(key => check(`registered.${key}`, registered[key] ?? null, parsed.plant.design[key] ?? null))
     : [];
   const meterChecks = registeredMeter
     ? [check("registered.meter", registeredMeter.toLowerCase(), parsed.metering.deviceAddress?.toLowerCase() ?? null)]

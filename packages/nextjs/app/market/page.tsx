@@ -5,7 +5,7 @@ import { getMetadata } from "~~/utils/scaffold-hbar/getMetadata";
 
 export const metadata = getMetadata({
   title: "Credit market",
-  description: "Buy, sell and retire verified hydropower carbon credits priced in USD and settled in HBAR",
+  description: "Buy and retire hydropower credits. The HBAR is swapped on SaucerSwap.",
 });
 
 const MarketPage: NextPage = () => (
@@ -13,10 +13,10 @@ const MarketPage: NextPage = () => (
     <PageHeader title="Credit market">
       <p className="mt-2">
         Each credit is one tonne of CO₂e reduced, computed on-chain from the plant&apos;s registered design and its
-        verified monitoring data. Sellers price credits in USD per tonne. At purchase the contract converts that price
-        to HBAR using <strong>Chainlink HBAR/USD</strong>, cross-checked against <strong>Supra</strong> and falling back
-        to it when Chainlink is unavailable. Retiring burns the HTS tokens and mints an HTS NFT certificate to the
-        buyer.
+        verified monitoring data. Sellers price credits in USD per tonne. A purchase sends the HBAR amount, from{" "}
+        <strong>Chainlink HBAR/USD</strong> with <strong>Supra</strong> as fallback, to the SaucerSwap router. The
+        seller is paid by that swap. If the settlement pair is more than 3% from the oracle, the contract reverts and
+        this page does not build the transaction. Retiring burns the credits and mints an HTS NFT to the buyer.
       </p>
     </PageHeader>
     <Marketplace />

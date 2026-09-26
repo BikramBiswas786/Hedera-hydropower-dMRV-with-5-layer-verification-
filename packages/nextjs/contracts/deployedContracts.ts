@@ -6,14 +6,19 @@ import { GenericContractsDeclaration } from "~~/utils/scaffold-hbar/contract";
 
 const deployedContracts = {
   296: {
-    HydroCreditRegistry: {
-      address: "0xAEA76b83ea8e71621d443053A5Ee20D7AF8Ce746",
+    CreditMarket: {
+      address: "0x5aeDe76fc6625cfA3227FFf70197D4D7ff3e5030",
       abi: [
         {
           inputs: [
             {
               internalType: "address",
               name: "admin",
+              type: "address",
+            },
+            {
+              internalType: "contract DmrvRegistry",
+              name: "registry",
               type: "address",
             },
             {
@@ -27,14 +32,1243 @@ const deployedContracts = {
               type: "uint256",
             },
             {
+              internalType: "uint32",
+              name: "maxPriceAge_",
+              type: "uint32",
+            },
+            {
+              internalType: "address",
+              name: "saucerFactory",
+              type: "address",
+            },
+            {
+              internalType: "address",
+              name: "router",
+              type: "address",
+            },
+          ],
+          stateMutability: "nonpayable",
+          type: "constructor",
+        },
+        {
+          inputs: [],
+          name: "AccessControlBadConfirmation",
+          type: "error",
+        },
+        {
+          inputs: [
+            {
+              internalType: "address",
+              name: "account",
+              type: "address",
+            },
+            {
+              internalType: "bytes32",
+              name: "neededRole",
+              type: "bytes32",
+            },
+          ],
+          name: "AccessControlUnauthorizedAccount",
+          type: "error",
+        },
+        {
+          inputs: [
+            {
+              internalType: "uint64",
+              name: "requested",
+              type: "uint64",
+            },
+            {
+              internalType: "uint64",
+              name: "available",
+              type: "uint64",
+            },
+          ],
+          name: "InsufficientListingUnits",
+          type: "error",
+        },
+        {
+          inputs: [
+            {
+              internalType: "uint256",
+              name: "required",
+              type: "uint256",
+            },
+            {
+              internalType: "uint256",
+              name: "provided",
+              type: "uint256",
+            },
+          ],
+          name: "InsufficientPayment",
+          type: "error",
+        },
+        {
+          inputs: [
+            {
+              internalType: "uint256",
+              name: "listingId",
+              type: "uint256",
+            },
+          ],
+          name: "InvalidListing",
+          type: "error",
+        },
+        {
+          inputs: [],
+          name: "InvalidPoolGuard",
+          type: "error",
+        },
+        {
+          inputs: [
+            {
+              internalType: "int256",
+              name: "answer",
+              type: "int256",
+            },
+          ],
+          name: "InvalidPrice",
+          type: "error",
+        },
+        {
+          inputs: [],
+          name: "NativeTransferFailed",
+          type: "error",
+        },
+        {
+          inputs: [
+            {
+              internalType: "uint256",
+              name: "listingId",
+              type: "uint256",
+            },
+          ],
+          name: "NotSeller",
+          type: "error",
+        },
+        {
+          inputs: [
+            {
+              internalType: "address",
+              name: "pool",
+              type: "address",
+            },
+            {
+              internalType: "uint256",
+              name: "liquidity",
+              type: "uint256",
+            },
+            {
+              internalType: "uint128",
+              name: "minLiquidity",
+              type: "uint128",
+            },
+          ],
+          name: "PoolIlliquid",
+          type: "error",
+        },
+        {
+          inputs: [
+            {
+              internalType: "uint256",
+              name: "poolPrice",
+              type: "uint256",
+            },
+            {
+              internalType: "uint256",
+              name: "oraclePrice",
+              type: "uint256",
+            },
+            {
+              internalType: "uint256",
+              name: "deviationBps",
+              type: "uint256",
+            },
+          ],
+          name: "PoolPriceDeviation",
+          type: "error",
+        },
+        {
+          inputs: [
+            {
+              internalType: "uint32",
+              name: "maxPriceAge",
+              type: "uint32",
+            },
+          ],
+          name: "PriceAgeOutOfRange",
+          type: "error",
+        },
+        {
+          inputs: [],
+          name: "ReentrancyGuardReentrantCall",
+          type: "error",
+        },
+        {
+          inputs: [
+            {
+              internalType: "uint256",
+              name: "updatedAt",
+              type: "uint256",
+            },
+            {
+              internalType: "uint32",
+              name: "maxPriceAge",
+              type: "uint32",
+            },
+          ],
+          name: "StalePrice",
+          type: "error",
+        },
+        {
+          inputs: [],
+          name: "SwapFailed",
+          type: "error",
+        },
+        {
+          inputs: [],
+          name: "ZeroAddress",
+          type: "error",
+        },
+        {
+          inputs: [],
+          name: "ZeroAmount",
+          type: "error",
+        },
+        {
+          anonymous: false,
+          inputs: [
+            {
+              indexed: true,
+              internalType: "uint256",
+              name: "listingId",
+              type: "uint256",
+            },
+            {
+              indexed: false,
+              internalType: "uint64",
+              name: "unitsReturned",
+              type: "uint64",
+            },
+          ],
+          name: "ListingCancelled",
+          type: "event",
+        },
+        {
+          anonymous: false,
+          inputs: [
+            {
+              indexed: true,
+              internalType: "uint256",
+              name: "listingId",
+              type: "uint256",
+            },
+            {
+              indexed: true,
+              internalType: "address",
+              name: "seller",
+              type: "address",
+            },
+            {
+              indexed: false,
+              internalType: "uint64",
+              name: "units",
+              type: "uint64",
+            },
+            {
+              indexed: false,
+              internalType: "uint64",
+              name: "priceUsdCentsPerTonne",
+              type: "uint64",
+            },
+          ],
+          name: "ListingCreated",
+          type: "event",
+        },
+        {
+          anonymous: false,
+          inputs: [
+            {
+              indexed: false,
+              internalType: "uint32",
+              name: "maxPriceAge",
+              type: "uint32",
+            },
+          ],
+          name: "MaxPriceAgeChanged",
+          type: "event",
+        },
+        {
+          anonymous: false,
+          inputs: [
+            {
+              indexed: false,
+              internalType: "bool",
+              name: "enabled",
+              type: "bool",
+            },
+          ],
+          name: "PoolGuardEnabled",
+          type: "event",
+        },
+        {
+          anonymous: false,
+          inputs: [
+            {
+              indexed: true,
+              internalType: "address",
+              name: "pool",
+              type: "address",
+            },
+            {
+              indexed: false,
+              internalType: "bool",
+              name: "isV2",
+              type: "bool",
+            },
+            {
+              indexed: false,
+              internalType: "bool",
+              name: "whbarIsToken0",
+              type: "bool",
+            },
+            {
+              indexed: false,
               internalType: "uint16",
-              name: "minCompletenessBps_",
+              name: "maxDeviationBps",
               type: "uint16",
             },
+            {
+              indexed: false,
+              internalType: "uint128",
+              name: "minLiquidity",
+              type: "uint128",
+            },
+            {
+              indexed: false,
+              internalType: "bool",
+              name: "enabled",
+              type: "bool",
+            },
+          ],
+          name: "PoolGuardSet",
+          type: "event",
+        },
+        {
+          anonymous: false,
+          inputs: [
+            {
+              indexed: true,
+              internalType: "address",
+              name: "seller",
+              type: "address",
+            },
+            {
+              indexed: false,
+              internalType: "uint256",
+              name: "amount",
+              type: "uint256",
+            },
+          ],
+          name: "ProceedsWithdrawn",
+          type: "event",
+        },
+        {
+          anonymous: false,
+          inputs: [
+            {
+              indexed: true,
+              internalType: "uint256",
+              name: "listingId",
+              type: "uint256",
+            },
+            {
+              indexed: true,
+              internalType: "address",
+              name: "buyer",
+              type: "address",
+            },
+            {
+              indexed: false,
+              internalType: "uint64",
+              name: "units",
+              type: "uint64",
+            },
+            {
+              indexed: false,
+              internalType: "uint256",
+              name: "nativePaid",
+              type: "uint256",
+            },
+          ],
+          name: "Purchased",
+          type: "event",
+        },
+        {
+          anonymous: false,
+          inputs: [
+            {
+              indexed: true,
+              internalType: "uint256",
+              name: "listingId",
+              type: "uint256",
+            },
+            {
+              indexed: true,
+              internalType: "address",
+              name: "buyer",
+              type: "address",
+            },
+            {
+              indexed: true,
+              internalType: "uint256",
+              name: "retirementId",
+              type: "uint256",
+            },
+          ],
+          name: "PurchasedAndRetired",
+          type: "event",
+        },
+        {
+          anonymous: false,
+          inputs: [
+            {
+              indexed: true,
+              internalType: "bytes32",
+              name: "role",
+              type: "bytes32",
+            },
+            {
+              indexed: true,
+              internalType: "bytes32",
+              name: "previousAdminRole",
+              type: "bytes32",
+            },
+            {
+              indexed: true,
+              internalType: "bytes32",
+              name: "newAdminRole",
+              type: "bytes32",
+            },
+          ],
+          name: "RoleAdminChanged",
+          type: "event",
+        },
+        {
+          anonymous: false,
+          inputs: [
+            {
+              indexed: true,
+              internalType: "bytes32",
+              name: "role",
+              type: "bytes32",
+            },
+            {
+              indexed: true,
+              internalType: "address",
+              name: "account",
+              type: "address",
+            },
+            {
+              indexed: true,
+              internalType: "address",
+              name: "sender",
+              type: "address",
+            },
+          ],
+          name: "RoleGranted",
+          type: "event",
+        },
+        {
+          anonymous: false,
+          inputs: [
+            {
+              indexed: true,
+              internalType: "bytes32",
+              name: "role",
+              type: "bytes32",
+            },
+            {
+              indexed: true,
+              internalType: "address",
+              name: "account",
+              type: "address",
+            },
+            {
+              indexed: true,
+              internalType: "address",
+              name: "sender",
+              type: "address",
+            },
+          ],
+          name: "RoleRevoked",
+          type: "event",
+        },
+        {
+          inputs: [],
+          name: "DEFAULT_ADMIN_ROLE",
+          outputs: [
+            {
+              internalType: "bytes32",
+              name: "",
+              type: "bytes32",
+            },
+          ],
+          stateMutability: "view",
+          type: "function",
+        },
+        {
+          inputs: [],
+          name: "HBAR_USD_FEED",
+          outputs: [
+            {
+              internalType: "contract AggregatorV3Interface",
+              name: "",
+              type: "address",
+            },
+          ],
+          stateMutability: "view",
+          type: "function",
+        },
+        {
+          inputs: [],
+          name: "MAX_BPS",
+          outputs: [
+            {
+              internalType: "uint16",
+              name: "",
+              type: "uint16",
+            },
+          ],
+          stateMutability: "view",
+          type: "function",
+        },
+        {
+          inputs: [],
+          name: "MAX_POOL_DEVIATION_BPS",
+          outputs: [
+            {
+              internalType: "uint16",
+              name: "",
+              type: "uint16",
+            },
+          ],
+          stateMutability: "view",
+          type: "function",
+        },
+        {
+          inputs: [],
+          name: "MAX_PRICE_AGE",
+          outputs: [
+            {
+              internalType: "uint32",
+              name: "",
+              type: "uint32",
+            },
+          ],
+          stateMutability: "view",
+          type: "function",
+        },
+        {
+          inputs: [],
+          name: "NATIVE_UNITS_PER_HBAR",
+          outputs: [
+            {
+              internalType: "uint256",
+              name: "",
+              type: "uint256",
+            },
+          ],
+          stateMutability: "view",
+          type: "function",
+        },
+        {
+          inputs: [],
+          name: "REGISTRY",
+          outputs: [
+            {
+              internalType: "contract DmrvRegistry",
+              name: "",
+              type: "address",
+            },
+          ],
+          stateMutability: "view",
+          type: "function",
+        },
+        {
+          inputs: [],
+          name: "ROUTER",
+          outputs: [
+            {
+              internalType: "address",
+              name: "",
+              type: "address",
+            },
+          ],
+          stateMutability: "view",
+          type: "function",
+        },
+        {
+          inputs: [],
+          name: "SAUCER_FACTORY",
+          outputs: [
+            {
+              internalType: "address",
+              name: "",
+              type: "address",
+            },
+          ],
+          stateMutability: "view",
+          type: "function",
+        },
+        {
+          inputs: [],
+          name: "SWAP_SLIPPAGE_BPS",
+          outputs: [
+            {
+              internalType: "uint16",
+              name: "",
+              type: "uint16",
+            },
+          ],
+          stateMutability: "view",
+          type: "function",
+        },
+        {
+          inputs: [],
+          name: "UNITS_PER_CREDIT",
+          outputs: [
+            {
+              internalType: "uint256",
+              name: "",
+              type: "uint256",
+            },
+          ],
+          stateMutability: "view",
+          type: "function",
+        },
+        {
+          inputs: [
+            {
+              internalType: "uint256",
+              name: "listingId",
+              type: "uint256",
+            },
+            {
+              internalType: "uint64",
+              name: "units",
+              type: "uint64",
+            },
+          ],
+          name: "buy",
+          outputs: [],
+          stateMutability: "payable",
+          type: "function",
+        },
+        {
+          inputs: [
+            {
+              internalType: "uint256",
+              name: "listingId",
+              type: "uint256",
+            },
+            {
+              internalType: "uint64",
+              name: "units",
+              type: "uint64",
+            },
+            {
+              internalType: "string",
+              name: "beneficiary",
+              type: "string",
+            },
+          ],
+          name: "buyAndRetire",
+          outputs: [
+            {
+              internalType: "uint256",
+              name: "retirementId",
+              type: "uint256",
+            },
+          ],
+          stateMutability: "payable",
+          type: "function",
+        },
+        {
+          inputs: [
+            {
+              internalType: "uint256",
+              name: "listingId",
+              type: "uint256",
+            },
+          ],
+          name: "cancelListing",
+          outputs: [],
+          stateMutability: "nonpayable",
+          type: "function",
+        },
+        {
+          inputs: [
+            {
+              internalType: "uint64",
+              name: "units",
+              type: "uint64",
+            },
+            {
+              internalType: "uint64",
+              name: "priceUsdCentsPerTonne",
+              type: "uint64",
+            },
+          ],
+          name: "createListing",
+          outputs: [
+            {
+              internalType: "uint256",
+              name: "listingId",
+              type: "uint256",
+            },
+          ],
+          stateMutability: "nonpayable",
+          type: "function",
+        },
+        {
+          inputs: [
+            {
+              internalType: "uint256",
+              name: "listingId",
+              type: "uint256",
+            },
+          ],
+          name: "getListing",
+          outputs: [
+            {
+              components: [
+                {
+                  internalType: "address",
+                  name: "seller",
+                  type: "address",
+                },
+                {
+                  internalType: "uint64",
+                  name: "unitsAvailable",
+                  type: "uint64",
+                },
+                {
+                  internalType: "uint64",
+                  name: "priceUsdCentsPerTonne",
+                  type: "uint64",
+                },
+                {
+                  internalType: "bool",
+                  name: "active",
+                  type: "bool",
+                },
+              ],
+              internalType: "struct CreditMarket.Listing",
+              name: "",
+              type: "tuple",
+            },
+          ],
+          stateMutability: "view",
+          type: "function",
+        },
+        {
+          inputs: [
+            {
+              internalType: "uint256",
+              name: "start",
+              type: "uint256",
+            },
+            {
+              internalType: "uint256",
+              name: "count",
+              type: "uint256",
+            },
+          ],
+          name: "getListings",
+          outputs: [
+            {
+              components: [
+                {
+                  internalType: "address",
+                  name: "seller",
+                  type: "address",
+                },
+                {
+                  internalType: "uint64",
+                  name: "unitsAvailable",
+                  type: "uint64",
+                },
+                {
+                  internalType: "uint64",
+                  name: "priceUsdCentsPerTonne",
+                  type: "uint64",
+                },
+                {
+                  internalType: "bool",
+                  name: "active",
+                  type: "bool",
+                },
+              ],
+              internalType: "struct CreditMarket.Listing[]",
+              name: "page",
+              type: "tuple[]",
+            },
+          ],
+          stateMutability: "view",
+          type: "function",
+        },
+        {
+          inputs: [
+            {
+              internalType: "bytes32",
+              name: "role",
+              type: "bytes32",
+            },
+          ],
+          name: "getRoleAdmin",
+          outputs: [
+            {
+              internalType: "bytes32",
+              name: "",
+              type: "bytes32",
+            },
+          ],
+          stateMutability: "view",
+          type: "function",
+        },
+        {
+          inputs: [
+            {
+              internalType: "bytes32",
+              name: "role",
+              type: "bytes32",
+            },
+            {
+              internalType: "address",
+              name: "account",
+              type: "address",
+            },
+          ],
+          name: "grantRole",
+          outputs: [],
+          stateMutability: "nonpayable",
+          type: "function",
+        },
+        {
+          inputs: [
+            {
+              internalType: "bytes32",
+              name: "role",
+              type: "bytes32",
+            },
+            {
+              internalType: "address",
+              name: "account",
+              type: "address",
+            },
+          ],
+          name: "hasRole",
+          outputs: [
+            {
+              internalType: "bool",
+              name: "",
+              type: "bool",
+            },
+          ],
+          stateMutability: "view",
+          type: "function",
+        },
+        {
+          inputs: [],
+          name: "listingCount",
+          outputs: [
+            {
+              internalType: "uint256",
+              name: "",
+              type: "uint256",
+            },
+          ],
+          stateMutability: "view",
+          type: "function",
+        },
+        {
+          inputs: [],
+          name: "maxPriceAge",
+          outputs: [
+            {
+              internalType: "uint32",
+              name: "",
+              type: "uint32",
+            },
+          ],
+          stateMutability: "view",
+          type: "function",
+        },
+        {
+          inputs: [
+            {
+              internalType: "uint256",
+              name: "listingId",
+              type: "uint256",
+            },
+            {
+              internalType: "uint64",
+              name: "units",
+              type: "uint64",
+            },
+          ],
+          name: "minUsdOut",
+          outputs: [
+            {
+              internalType: "uint256",
+              name: "",
+              type: "uint256",
+            },
+          ],
+          stateMutability: "view",
+          type: "function",
+        },
+        {
+          inputs: [],
+          name: "poolGuard",
+          outputs: [
+            {
+              internalType: "address",
+              name: "pool",
+              type: "address",
+            },
+            {
+              internalType: "bool",
+              name: "isV2",
+              type: "bool",
+            },
+            {
+              internalType: "bool",
+              name: "whbarIsToken0",
+              type: "bool",
+            },
+            {
+              internalType: "bool",
+              name: "enabled",
+              type: "bool",
+            },
+            {
+              internalType: "uint8",
+              name: "whbarDecimals",
+              type: "uint8",
+            },
+            {
+              internalType: "uint8",
+              name: "usdDecimals",
+              type: "uint8",
+            },
+            {
+              internalType: "uint16",
+              name: "maxDeviationBps",
+              type: "uint16",
+            },
+            {
+              internalType: "uint128",
+              name: "minLiquidity",
+              type: "uint128",
+            },
+          ],
+          stateMutability: "view",
+          type: "function",
+        },
+        {
+          inputs: [
+            {
+              internalType: "uint8",
+              name: "decimals",
+              type: "uint8",
+            },
+          ],
+          name: "poolHbarUsd",
+          outputs: [
+            {
+              internalType: "uint256",
+              name: "",
+              type: "uint256",
+            },
+          ],
+          stateMutability: "view",
+          type: "function",
+        },
+        {
+          inputs: [
+            {
+              internalType: "address",
+              name: "seller",
+              type: "address",
+            },
+          ],
+          name: "proceedsOf",
+          outputs: [
+            {
+              internalType: "uint256",
+              name: "native",
+              type: "uint256",
+            },
+          ],
+          stateMutability: "view",
+          type: "function",
+        },
+        {
+          inputs: [
+            {
+              internalType: "uint256",
+              name: "listingId",
+              type: "uint256",
+            },
+            {
+              internalType: "uint64",
+              name: "units",
+              type: "uint64",
+            },
+          ],
+          name: "quote",
+          outputs: [
+            {
+              internalType: "uint256",
+              name: "nativeCost",
+              type: "uint256",
+            },
+          ],
+          stateMutability: "view",
+          type: "function",
+        },
+        {
+          inputs: [
+            {
+              internalType: "bytes32",
+              name: "role",
+              type: "bytes32",
+            },
+            {
+              internalType: "address",
+              name: "callerConfirmation",
+              type: "address",
+            },
+          ],
+          name: "renounceRole",
+          outputs: [],
+          stateMutability: "nonpayable",
+          type: "function",
+        },
+        {
+          inputs: [
+            {
+              internalType: "bytes32",
+              name: "role",
+              type: "bytes32",
+            },
+            {
+              internalType: "address",
+              name: "account",
+              type: "address",
+            },
+          ],
+          name: "revokeRole",
+          outputs: [],
+          stateMutability: "nonpayable",
+          type: "function",
+        },
+        {
+          inputs: [
             {
               internalType: "uint32",
               name: "maxPriceAge_",
               type: "uint32",
+            },
+          ],
+          name: "setMaxPriceAge",
+          outputs: [],
+          stateMutability: "nonpayable",
+          type: "function",
+        },
+        {
+          inputs: [
+            {
+              internalType: "address",
+              name: "pool",
+              type: "address",
+            },
+            {
+              internalType: "bool",
+              name: "isV2",
+              type: "bool",
+            },
+            {
+              internalType: "address",
+              name: "whbar",
+              type: "address",
+            },
+            {
+              internalType: "uint8",
+              name: "whbarDecimals",
+              type: "uint8",
+            },
+            {
+              internalType: "uint8",
+              name: "usdDecimals",
+              type: "uint8",
+            },
+            {
+              internalType: "uint16",
+              name: "maxDeviationBps",
+              type: "uint16",
+            },
+            {
+              internalType: "uint128",
+              name: "minLiquidity",
+              type: "uint128",
+            },
+            {
+              internalType: "bool",
+              name: "enabled",
+              type: "bool",
+            },
+          ],
+          name: "setPoolGuard",
+          outputs: [],
+          stateMutability: "nonpayable",
+          type: "function",
+        },
+        {
+          inputs: [
+            {
+              internalType: "bool",
+              name: "enabled",
+              type: "bool",
+            },
+          ],
+          name: "setPoolGuardEnabled",
+          outputs: [],
+          stateMutability: "nonpayable",
+          type: "function",
+        },
+        {
+          inputs: [],
+          name: "settlementPrice",
+          outputs: [
+            {
+              internalType: "uint256",
+              name: "answer",
+              type: "uint256",
+            },
+            {
+              internalType: "uint8",
+              name: "decimals",
+              type: "uint8",
+            },
+          ],
+          stateMutability: "view",
+          type: "function",
+        },
+        {
+          inputs: [
+            {
+              internalType: "bytes4",
+              name: "interfaceId",
+              type: "bytes4",
+            },
+          ],
+          name: "supportsInterface",
+          outputs: [
+            {
+              internalType: "bool",
+              name: "",
+              type: "bool",
+            },
+          ],
+          stateMutability: "view",
+          type: "function",
+        },
+        {
+          inputs: [
+            {
+              internalType: "address payable",
+              name: "to",
+              type: "address",
+            },
+          ],
+          name: "sweepHbar",
+          outputs: [],
+          stateMutability: "nonpayable",
+          type: "function",
+        },
+        {
+          inputs: [],
+          name: "totalProceedsOwed",
+          outputs: [
+            {
+              internalType: "uint256",
+              name: "",
+              type: "uint256",
+            },
+          ],
+          stateMutability: "view",
+          type: "function",
+        },
+        {
+          inputs: [
+            {
+              internalType: "uint64",
+              name: "priceUsdCentsPerTonne",
+              type: "uint64",
+            },
+            {
+              internalType: "uint64",
+              name: "units",
+              type: "uint64",
+            },
+          ],
+          name: "usdCentsPerTonneToNative",
+          outputs: [
+            {
+              internalType: "uint256",
+              name: "",
+              type: "uint256",
+            },
+          ],
+          stateMutability: "view",
+          type: "function",
+        },
+        {
+          inputs: [],
+          name: "withdrawProceeds",
+          outputs: [],
+          stateMutability: "nonpayable",
+          type: "function",
+        },
+      ],
+      inheritedFunctions: {
+        DEFAULT_ADMIN_ROLE: "@openzeppelin/contracts/access/AccessControl.sol",
+        getRoleAdmin: "@openzeppelin/contracts/access/AccessControl.sol",
+        grantRole: "@openzeppelin/contracts/access/AccessControl.sol",
+        hasRole: "@openzeppelin/contracts/access/AccessControl.sol",
+        renounceRole: "@openzeppelin/contracts/access/AccessControl.sol",
+        revokeRole: "@openzeppelin/contracts/access/AccessControl.sol",
+        supportsInterface: "@openzeppelin/contracts/access/AccessControl.sol",
+      },
+      deployedOnBlock: 41009828,
+    },
+    DmrvRegistry: {
+      address: "0xaf9C76B48B317cee770ED6AE038D516b269E0129",
+      abi: [
+        {
+          inputs: [
+            {
+              internalType: "address",
+              name: "admin",
+              type: "address",
+            },
+            {
+              internalType: "uint16",
+              name: "minCompletenessBps_",
+              type: "uint16",
             },
           ],
           stateMutability: "nonpayable",
@@ -69,6 +1303,22 @@ const deployedContracts = {
         {
           inputs: [
             {
+              internalType: "uint64",
+              name: "periodEnd",
+              type: "uint64",
+            },
+            {
+              internalType: "uint64",
+              name: "calibrationValidUntil",
+              type: "uint64",
+            },
+          ],
+          name: "CalibrationExpired",
+          type: "error",
+        },
+        {
+          inputs: [
+            {
               internalType: "uint16",
               name: "completenessBps",
               type: "uint16",
@@ -80,6 +1330,17 @@ const deployedContracts = {
             },
           ],
           name: "CompletenessTooLow",
+          type: "error",
+        },
+        {
+          inputs: [
+            {
+              internalType: "bytes32",
+              name: "designHash",
+              type: "bytes32",
+            },
+          ],
+          name: "DesignAlreadyRegistered",
           type: "error",
         },
         {
@@ -111,39 +1372,23 @@ const deployedContracts = {
         },
         {
           inputs: [],
+          name: "EmptyDesignHash",
+          type: "error",
+        },
+        {
+          inputs: [],
           name: "EmptyReportHash",
           type: "error",
         },
         {
           inputs: [
             {
-              internalType: "uint64",
-              name: "grossEnergyWh",
-              type: "uint64",
-            },
-            {
-              internalType: "uint256",
-              name: "maxEnergyWh",
-              type: "uint256",
+              internalType: "bytes32",
+              name: "evidenceHash",
+              type: "bytes32",
             },
           ],
-          name: "EnergyExceedsCapacity",
-          type: "error",
-        },
-        {
-          inputs: [],
-          name: "FuelNotRegistered",
-          type: "error",
-        },
-        {
-          inputs: [
-            {
-              internalType: "uint32",
-              name: "efGridGPerMwh",
-              type: "uint32",
-            },
-          ],
-          name: "GridEmissionFactorOutOfRange",
+          name: "EvidenceAlreadyUsed",
           type: "error",
         },
         {
@@ -192,44 +1437,12 @@ const deployedContracts = {
         {
           inputs: [
             {
-              internalType: "uint64",
-              name: "requested",
-              type: "uint64",
-            },
-            {
-              internalType: "uint64",
-              name: "available",
-              type: "uint64",
-            },
-          ],
-          name: "InsufficientListingUnits",
-          type: "error",
-        },
-        {
-          inputs: [
-            {
               internalType: "uint256",
-              name: "required",
-              type: "uint256",
-            },
-            {
-              internalType: "uint256",
-              name: "provided",
+              name: "attestationId",
               type: "uint256",
             },
           ],
-          name: "InsufficientPayment",
-          type: "error",
-        },
-        {
-          inputs: [
-            {
-              internalType: "enum HydroCreditRegistry.ProjectType",
-              name: "projectType",
-              type: "uint8",
-            },
-          ],
-          name: "InvalidBaseline",
+          name: "InvalidAttestation",
           type: "error",
         },
         {
@@ -241,33 +1454,6 @@ const deployedContracts = {
             },
           ],
           name: "InvalidCompleteness",
-          type: "error",
-        },
-        {
-          inputs: [
-            {
-              internalType: "uint64",
-              name: "creditingStart",
-              type: "uint64",
-            },
-            {
-              internalType: "uint64",
-              name: "creditingEnd",
-              type: "uint64",
-            },
-          ],
-          name: "InvalidCreditingPeriod",
-          type: "error",
-        },
-        {
-          inputs: [
-            {
-              internalType: "uint256",
-              name: "listingId",
-              type: "uint256",
-            },
-          ],
-          name: "InvalidListing",
           type: "error",
         },
         {
@@ -306,59 +1492,38 @@ const deployedContracts = {
           inputs: [
             {
               internalType: "bytes32",
-              name: "plantId",
+              name: "projectId",
               type: "bytes32",
             },
           ],
-          name: "InvalidPlant",
+          name: "InvalidProject",
           type: "error",
         },
         {
           inputs: [
             {
-              internalType: "int256",
-              name: "answer",
-              type: "int256",
+              internalType: "address",
+              name: "meter",
+              type: "address",
             },
           ],
-          name: "InvalidPrice",
+          name: "MeterAlreadyRegistered",
           type: "error",
         },
         {
           inputs: [
             {
-              internalType: "enum HydroCreditRegistry.Methodology",
-              name: "methodology",
-              type: "uint8",
-            },
-            {
-              internalType: "uint32",
-              name: "capacityKw",
-              type: "uint32",
+              internalType: "address",
+              name: "module",
+              type: "address",
             },
           ],
-          name: "MethodologyNotApplicable",
+          name: "ModuleNotApproved",
           type: "error",
         },
         {
           inputs: [],
           name: "NativeTransferFailed",
-          type: "error",
-        },
-        {
-          inputs: [
-            {
-              internalType: "int64",
-              name: "netEnergyWh",
-              type: "int64",
-            },
-            {
-              internalType: "uint64",
-              name: "grossEnergyWh",
-              type: "uint64",
-            },
-          ],
-          name: "NetExceedsGross",
           type: "error",
         },
         {
@@ -375,44 +1540,12 @@ const deployedContracts = {
         {
           inputs: [
             {
-              internalType: "uint64",
-              name: "grossEnergyWh",
-              type: "uint64",
-            },
-            {
-              internalType: "int64",
-              name: "netEnergyWh",
-              type: "int64",
-            },
-            {
-              internalType: "uint64",
-              name: "fuelG",
-              type: "uint64",
-            },
-          ],
-          name: "NotMetered",
-          type: "error",
-        },
-        {
-          inputs: [
-            {
               internalType: "uint256",
               name: "retirementId",
               type: "uint256",
             },
           ],
           name: "NotRetirementOwner",
-          type: "error",
-        },
-        {
-          inputs: [
-            {
-              internalType: "uint256",
-              name: "listingId",
-              type: "uint256",
-            },
-          ],
-          name: "NotSeller",
           type: "error",
         },
         {
@@ -440,22 +1573,6 @@ const deployedContracts = {
             },
             {
               internalType: "uint64",
-              name: "periodEnd",
-              type: "uint64",
-            },
-          ],
-          name: "PeriodCrossesCreditingYear",
-          type: "error",
-        },
-        {
-          inputs: [
-            {
-              internalType: "uint64",
-              name: "periodStart",
-              type: "uint64",
-            },
-            {
-              internalType: "uint64",
               name: "lastPeriodEnd",
               type: "uint64",
             },
@@ -467,38 +1584,22 @@ const deployedContracts = {
           inputs: [
             {
               internalType: "bytes32",
-              name: "plantId",
+              name: "projectId",
               type: "bytes32",
             },
           ],
-          name: "PlantAlreadyRegistered",
+          name: "ProjectAlreadyRegistered",
           type: "error",
         },
         {
           inputs: [
             {
               internalType: "bytes32",
-              name: "plantId",
+              name: "projectId",
               type: "bytes32",
             },
           ],
-          name: "PlantInactive",
-          type: "error",
-        },
-        {
-          inputs: [
-            {
-              internalType: "uint256",
-              name: "addedCapacityW",
-              type: "uint256",
-            },
-            {
-              internalType: "uint256",
-              name: "addedAreaM2",
-              type: "uint256",
-            },
-          ],
-          name: "PowerDensityTooLow",
+          name: "ProjectInactive",
           type: "error",
         },
         {
@@ -510,16 +1611,11 @@ const deployedContracts = {
           inputs: [
             {
               internalType: "uint64",
-              name: "reservoirAreaM2",
-              type: "uint64",
-            },
-            {
-              internalType: "uint64",
-              name: "baselineReservoirAreaM2",
+              name: "requestedAt",
               type: "uint64",
             },
           ],
-          name: "ReservoirBelowBaseline",
+          name: "RegistrationInTheFuture",
           type: "error",
         },
         {
@@ -539,22 +1635,6 @@ const deployedContracts = {
           type: "error",
         },
         {
-          inputs: [
-            {
-              internalType: "uint256",
-              name: "updatedAt",
-              type: "uint256",
-            },
-            {
-              internalType: "uint32",
-              name: "maxPriceAge",
-              type: "uint32",
-            },
-          ],
-          name: "StalePrice",
-          type: "error",
-        },
-        {
           inputs: [],
           name: "TokenAlreadyCreated",
           type: "error",
@@ -562,6 +1642,55 @@ const deployedContracts = {
         {
           inputs: [],
           name: "TokenNotCreated",
+          type: "error",
+        },
+        {
+          inputs: [
+            {
+              internalType: "uint64",
+              name: "topic",
+              type: "uint64",
+            },
+            {
+              internalType: "uint64",
+              name: "sequence",
+              type: "uint64",
+            },
+          ],
+          name: "Unanchored",
+          type: "error",
+        },
+        {
+          inputs: [
+            {
+              internalType: "address",
+              name: "signer",
+              type: "address",
+            },
+          ],
+          name: "UnregisteredVerifier",
+          type: "error",
+        },
+        {
+          inputs: [
+            {
+              internalType: "address",
+              name: "verifier",
+              type: "address",
+            },
+          ],
+          name: "VerifierIsParty",
+          type: "error",
+        },
+        {
+          inputs: [
+            {
+              internalType: "uint256",
+              name: "chainId",
+              type: "uint256",
+            },
+          ],
+          name: "WrongChain",
           type: "error",
         },
         {
@@ -579,6 +1708,43 @@ const deployedContracts = {
           inputs: [
             {
               indexed: true,
+              internalType: "bytes32",
+              name: "projectId",
+              type: "bytes32",
+            },
+            {
+              indexed: false,
+              internalType: "bytes2",
+              name: "hostParty",
+              type: "bytes2",
+            },
+            {
+              indexed: false,
+              internalType: "uint8",
+              name: "authorizedUse",
+              type: "uint8",
+            },
+            {
+              indexed: false,
+              internalType: "uint8",
+              name: "firstTransferDefinition",
+              type: "uint8",
+            },
+            {
+              indexed: false,
+              internalType: "bytes32",
+              name: "authorizationRef",
+              type: "bytes32",
+            },
+          ],
+          name: "Article6Set",
+          type: "event",
+        },
+        {
+          anonymous: false,
+          inputs: [
+            {
+              indexed: true,
               internalType: "uint256",
               name: "attestationId",
               type: "uint256",
@@ -586,14 +1752,14 @@ const deployedContracts = {
             {
               indexed: true,
               internalType: "bytes32",
-              name: "plantId",
+              name: "projectId",
               type: "bytes32",
             },
             {
-              indexed: false,
-              internalType: "int256",
-              name: "projectEnergyWh",
-              type: "int256",
+              indexed: true,
+              internalType: "address",
+              name: "verifier",
+              type: "address",
             },
             {
               indexed: false,
@@ -625,8 +1791,58 @@ const deployedContracts = {
               name: "hcsSequence",
               type: "uint64",
             },
+            {
+              indexed: false,
+              internalType: "bytes32",
+              name: "evidenceHash",
+              type: "bytes32",
+            },
+            {
+              indexed: false,
+              internalType: "bytes",
+              name: "breakdown",
+              type: "bytes",
+            },
           ],
           name: "AttestationSubmitted",
+          type: "event",
+        },
+        {
+          anonymous: false,
+          inputs: [
+            {
+              indexed: false,
+              internalType: "uint64",
+              name: "topic",
+              type: "uint64",
+            },
+          ],
+          name: "AuditTopicSet",
+          type: "event",
+        },
+        {
+          anonymous: false,
+          inputs: [
+            {
+              indexed: true,
+              internalType: "bytes32",
+              name: "projectId",
+              type: "bytes32",
+            },
+            {
+              indexed: false,
+              internalType: "uint64",
+              name: "validUntil",
+              type: "uint64",
+            },
+            {
+              indexed: false,
+              internalType: "bytes32",
+              name: "certificateHash",
+              type: "bytes32",
+            },
+          ],
+          name: "CalibrationUpdated",
           type: "event",
         },
         {
@@ -697,6 +1913,31 @@ const deployedContracts = {
           inputs: [
             {
               indexed: true,
+              internalType: "uint256",
+              name: "attestationId",
+              type: "uint256",
+            },
+            {
+              indexed: false,
+              internalType: "uint8",
+              name: "status",
+              type: "uint8",
+            },
+            {
+              indexed: false,
+              internalType: "bytes32",
+              name: "ref",
+              type: "bytes32",
+            },
+          ],
+          name: "CorrespondingAdjustmentSet",
+          type: "event",
+        },
+        {
+          anonymous: false,
+          inputs: [
+            {
+              indexed: true,
               internalType: "address",
               name: "token",
               type: "address",
@@ -711,14 +1952,8 @@ const deployedContracts = {
             {
               indexed: true,
               internalType: "bytes32",
-              name: "plantId",
+              name: "projectId",
               type: "bytes32",
-            },
-            {
-              indexed: false,
-              internalType: "uint32",
-              name: "efGridGPerMwh",
-              type: "uint32",
             },
             {
               indexed: false,
@@ -734,9 +1969,9 @@ const deployedContracts = {
             },
             {
               indexed: false,
-              internalType: "bytes32",
-              name: "designHash",
-              type: "bytes32",
+              internalType: "bytes",
+              name: "params",
+              type: "bytes",
             },
           ],
           name: "CreditingPeriodRenewed",
@@ -747,62 +1982,43 @@ const deployedContracts = {
           inputs: [
             {
               indexed: true,
-              internalType: "uint256",
-              name: "listingId",
-              type: "uint256",
-            },
-            {
-              indexed: false,
-              internalType: "uint64",
-              name: "unitsReturned",
-              type: "uint64",
-            },
-          ],
-          name: "ListingCancelled",
-          type: "event",
-        },
-        {
-          anonymous: false,
-          inputs: [
-            {
-              indexed: true,
-              internalType: "uint256",
-              name: "listingId",
-              type: "uint256",
+              internalType: "address",
+              name: "from",
+              type: "address",
             },
             {
               indexed: true,
               internalType: "address",
-              name: "seller",
+              name: "to",
               type: "address",
             },
             {
               indexed: false,
-              internalType: "uint64",
+              internalType: "uint256",
               name: "units",
-              type: "uint64",
-            },
-            {
-              indexed: false,
-              internalType: "uint64",
-              name: "priceUsdCentsPerTonne",
-              type: "uint64",
+              type: "uint256",
             },
           ],
-          name: "ListingCreated",
+          name: "CustodyMoved",
           type: "event",
         },
         {
           anonymous: false,
           inputs: [
             {
-              indexed: false,
-              internalType: "uint32",
-              name: "maxPriceAge",
-              type: "uint32",
+              indexed: true,
+              internalType: "bytes32",
+              name: "projectId",
+              type: "bytes32",
+            },
+            {
+              indexed: true,
+              internalType: "address",
+              name: "meter",
+              type: "address",
             },
           ],
-          name: "MaxPriceAgeChanged",
+          name: "MeterChanged",
           type: "event",
         },
         {
@@ -848,18 +2064,36 @@ const deployedContracts = {
           inputs: [
             {
               indexed: true,
+              internalType: "address",
+              name: "module",
+              type: "address",
+            },
+            {
+              indexed: false,
               internalType: "bytes32",
-              name: "plantId",
+              name: "methodologyId",
               type: "bytes32",
             },
             {
-              indexed: true,
-              internalType: "address",
-              name: "meter",
-              type: "address",
+              indexed: false,
+              internalType: "uint32",
+              name: "version",
+              type: "uint32",
+            },
+            {
+              indexed: false,
+              internalType: "bytes32",
+              name: "schemaHash",
+              type: "bytes32",
+            },
+            {
+              indexed: false,
+              internalType: "bool",
+              name: "approved",
+              type: "bool",
             },
           ],
-          name: "PlantMeterChanged",
+          name: "ModuleApproved",
           type: "event",
         },
         {
@@ -868,14 +2102,14 @@ const deployedContracts = {
             {
               indexed: true,
               internalType: "bytes32",
-              name: "plantId",
+              name: "projectId",
               type: "bytes32",
             },
             {
-              indexed: false,
-              internalType: "string",
-              name: "name",
-              type: "string",
+              indexed: true,
+              internalType: "address",
+              name: "module",
+              type: "address",
             },
             {
               indexed: true,
@@ -885,21 +2119,15 @@ const deployedContracts = {
             },
             {
               indexed: false,
-              internalType: "uint32",
-              name: "capacityKw",
-              type: "uint32",
+              internalType: "string",
+              name: "name",
+              type: "string",
             },
             {
               indexed: false,
-              internalType: "uint32",
-              name: "efGridGPerMwh",
-              type: "uint32",
-            },
-            {
-              indexed: false,
-              internalType: "uint32",
-              name: "reservoirGPerMwh",
-              type: "uint32",
+              internalType: "address",
+              name: "meter",
+              type: "address",
             },
             {
               indexed: false,
@@ -907,8 +2135,14 @@ const deployedContracts = {
               name: "designHash",
               type: "bytes32",
             },
+            {
+              indexed: false,
+              internalType: "bytes",
+              name: "params",
+              type: "bytes",
+            },
           ],
-          name: "PlantRegistered",
+          name: "ProjectRegistered",
           type: "event",
         },
         {
@@ -917,7 +2151,7 @@ const deployedContracts = {
             {
               indexed: true,
               internalType: "bytes32",
-              name: "plantId",
+              name: "projectId",
               type: "bytes32",
             },
             {
@@ -927,57 +2161,7 @@ const deployedContracts = {
               type: "bool",
             },
           ],
-          name: "PlantStatusChanged",
-          type: "event",
-        },
-        {
-          anonymous: false,
-          inputs: [
-            {
-              indexed: true,
-              internalType: "address",
-              name: "seller",
-              type: "address",
-            },
-            {
-              indexed: false,
-              internalType: "uint256",
-              name: "amount",
-              type: "uint256",
-            },
-          ],
-          name: "ProceedsWithdrawn",
-          type: "event",
-        },
-        {
-          anonymous: false,
-          inputs: [
-            {
-              indexed: true,
-              internalType: "uint256",
-              name: "listingId",
-              type: "uint256",
-            },
-            {
-              indexed: true,
-              internalType: "address",
-              name: "buyer",
-              type: "address",
-            },
-            {
-              indexed: false,
-              internalType: "uint64",
-              name: "units",
-              type: "uint64",
-            },
-            {
-              indexed: false,
-              internalType: "uint256",
-              name: "nativePaid",
-              type: "uint256",
-            },
-          ],
-          name: "Purchased",
+          name: "ProjectStatusChanged",
           type: "event",
         },
         {
@@ -1092,6 +2276,25 @@ const deployedContracts = {
             {
               indexed: true,
               internalType: "address",
+              name: "verifier",
+              type: "address",
+            },
+            {
+              indexed: false,
+              internalType: "bytes32",
+              name: "accreditationHash",
+              type: "bytes32",
+            },
+          ],
+          name: "VerifierProfileSet",
+          type: "event",
+        },
+        {
+          anonymous: false,
+          inputs: [
+            {
+              indexed: true,
+              internalType: "address",
               name: "account",
               type: "address",
             },
@@ -1107,12 +2310,12 @@ const deployedContracts = {
         },
         {
           inputs: [],
-          name: "CREDITING_YEAR",
+          name: "CREDIT_DECIMALS",
           outputs: [
             {
-              internalType: "uint256",
+              internalType: "int32",
               name: "",
-              type: "uint256",
+              type: "int32",
             },
           ],
           stateMutability: "view",
@@ -1120,12 +2323,12 @@ const deployedContracts = {
         },
         {
           inputs: [],
-          name: "CREDIT_DECIMALS",
+          name: "DECISION_APPROVED",
           outputs: [
             {
-              internalType: "int32",
+              internalType: "uint8",
               name: "",
-              type: "int32",
+              type: "uint8",
             },
           ],
           stateMutability: "view",
@@ -1159,12 +2362,12 @@ const deployedContracts = {
         },
         {
           inputs: [],
-          name: "HBAR_USD_FEED",
+          name: "MARKET_ROLE",
           outputs: [
             {
-              internalType: "contract AggregatorV3Interface",
+              internalType: "bytes32",
               name: "",
-              type: "address",
+              type: "bytes32",
             },
           ],
           stateMutability: "view",
@@ -1198,33 +2401,7 @@ const deployedContracts = {
         },
         {
           inputs: [],
-          name: "MAX_CREDITING_YEARS",
-          outputs: [
-            {
-              internalType: "uint256",
-              name: "",
-              type: "uint256",
-            },
-          ],
-          stateMutability: "view",
-          type: "function",
-        },
-        {
-          inputs: [],
-          name: "MAX_GRID_EF_G_PER_MWH",
-          outputs: [
-            {
-              internalType: "uint32",
-              name: "",
-              type: "uint32",
-            },
-          ],
-          stateMutability: "view",
-          type: "function",
-        },
-        {
-          inputs: [],
-          name: "METER_STATEMENT_TAG",
+          name: "METER_STATEMENT_TYPEHASH",
           outputs: [
             {
               internalType: "bytes32",
@@ -1237,64 +2414,12 @@ const deployedContracts = {
         },
         {
           inputs: [],
-          name: "MIN_POWER_DENSITY",
+          name: "VERIFIER_APPROVAL_TYPEHASH",
           outputs: [
             {
-              internalType: "uint256",
+              internalType: "bytes32",
               name: "",
-              type: "uint256",
-            },
-          ],
-          stateMutability: "view",
-          type: "function",
-        },
-        {
-          inputs: [],
-          name: "NATIVE_UNITS_PER_HBAR",
-          outputs: [
-            {
-              internalType: "uint256",
-              name: "",
-              type: "uint256",
-            },
-          ],
-          stateMutability: "view",
-          type: "function",
-        },
-        {
-          inputs: [],
-          name: "RESERVOIR_EF_G_PER_MWH",
-          outputs: [
-            {
-              internalType: "uint32",
-              name: "",
-              type: "uint32",
-            },
-          ],
-          stateMutability: "view",
-          type: "function",
-        },
-        {
-          inputs: [],
-          name: "RESERVOIR_EMISSIONS_POWER_DENSITY",
-          outputs: [
-            {
-              internalType: "uint256",
-              name: "",
-              type: "uint256",
-            },
-          ],
-          stateMutability: "view",
-          type: "function",
-        },
-        {
-          inputs: [],
-          name: "UNITS_PER_CREDIT",
-          outputs: [
-            {
-              internalType: "uint256",
-              name: "",
-              type: "uint256",
+              type: "bytes32",
             },
           ],
           stateMutability: "view",
@@ -1314,39 +2439,156 @@ const deployedContracts = {
           type: "function",
         },
         {
-          inputs: [],
-          name: "VMR0017_EMBODIED_HYDRO_G_PER_MWH",
+          inputs: [
+            {
+              components: [
+                {
+                  internalType: "bytes32",
+                  name: "projectId",
+                  type: "bytes32",
+                },
+                {
+                  internalType: "uint32",
+                  name: "sequence",
+                  type: "uint32",
+                },
+                {
+                  internalType: "uint32",
+                  name: "intervals",
+                  type: "uint32",
+                },
+                {
+                  internalType: "uint32",
+                  name: "intervalSeconds",
+                  type: "uint32",
+                },
+                {
+                  internalType: "bytes32",
+                  name: "readingsDigest",
+                  type: "bytes32",
+                },
+                {
+                  internalType: "bytes32",
+                  name: "reportHash",
+                  type: "bytes32",
+                },
+                {
+                  internalType: "uint64",
+                  name: "hcsTopicNum",
+                  type: "uint64",
+                },
+                {
+                  internalType: "uint64",
+                  name: "hcsSequence",
+                  type: "uint64",
+                },
+                {
+                  internalType: "bytes32",
+                  name: "evidenceHash",
+                  type: "bytes32",
+                },
+                {
+                  components: [
+                    {
+                      internalType: "uint64",
+                      name: "periodStart",
+                      type: "uint64",
+                    },
+                    {
+                      internalType: "uint64",
+                      name: "periodEnd",
+                      type: "uint64",
+                    },
+                    {
+                      internalType: "bytes",
+                      name: "metered",
+                      type: "bytes",
+                    },
+                    {
+                      internalType: "bytes",
+                      name: "verified",
+                      type: "bytes",
+                    },
+                  ],
+                  internalType: "struct Measurement",
+                  name: "measurement",
+                  type: "tuple",
+                },
+                {
+                  internalType: "bytes",
+                  name: "meterSignature",
+                  type: "bytes",
+                },
+                {
+                  internalType: "bytes",
+                  name: "verifierSignature",
+                  type: "bytes",
+                },
+              ],
+              internalType: "struct DmrvRegistry.Submission",
+              name: "s",
+              type: "tuple",
+            },
+          ],
+          name: "approvalDigest",
           outputs: [
             {
-              internalType: "uint32",
+              internalType: "bytes32",
               name: "",
-              type: "uint32",
+              type: "bytes32",
             },
           ],
           stateMutability: "view",
           type: "function",
         },
         {
-          inputs: [],
-          name: "VMR0017_MAX_HYDRO_KW",
+          inputs: [
+            {
+              internalType: "contract IMethodology",
+              name: "module",
+              type: "address",
+            },
+          ],
+          name: "approvedModule",
           outputs: [
             {
-              internalType: "uint32",
+              internalType: "bool",
               name: "",
-              type: "uint32",
+              type: "bool",
             },
           ],
           stateMutability: "view",
           type: "function",
         },
         {
-          inputs: [],
-          name: "VMR0017_RESERVOIR_EF_G_PER_MWH",
+          inputs: [
+            {
+              internalType: "bytes32",
+              name: "projectId",
+              type: "bytes32",
+            },
+          ],
+          name: "article6Of",
           outputs: [
             {
-              internalType: "uint32",
-              name: "",
-              type: "uint32",
+              internalType: "bytes2",
+              name: "hostParty",
+              type: "bytes2",
+            },
+            {
+              internalType: "uint8",
+              name: "authorizedUse",
+              type: "uint8",
+            },
+            {
+              internalType: "uint8",
+              name: "firstTransferDefinition",
+              type: "uint8",
+            },
+            {
+              internalType: "bytes32",
+              name: "authorizationRef",
+              type: "bytes32",
             },
           ],
           stateMutability: "view",
@@ -1366,63 +2608,16 @@ const deployedContracts = {
           type: "function",
         },
         {
-          inputs: [
-            {
-              internalType: "uint256",
-              name: "listingId",
-              type: "uint256",
-            },
-            {
-              internalType: "uint64",
-              name: "units",
-              type: "uint64",
-            },
-          ],
-          name: "buy",
-          outputs: [],
-          stateMutability: "payable",
-          type: "function",
-        },
-        {
-          inputs: [
-            {
-              internalType: "uint256",
-              name: "listingId",
-              type: "uint256",
-            },
-            {
-              internalType: "uint64",
-              name: "units",
-              type: "uint64",
-            },
-            {
-              internalType: "string",
-              name: "beneficiary",
-              type: "string",
-            },
-          ],
-          name: "buyAndRetire",
+          inputs: [],
+          name: "auditTopic",
           outputs: [
             {
-              internalType: "uint256",
-              name: "retirementId",
-              type: "uint256",
+              internalType: "uint64",
+              name: "",
+              type: "uint64",
             },
           ],
-          stateMutability: "payable",
-          type: "function",
-        },
-        {
-          inputs: [
-            {
-              internalType: "uint256",
-              name: "listingId",
-              type: "uint256",
-            },
-          ],
-          name: "cancelListing",
-          outputs: [],
-          stateMutability: "nonpayable",
+          stateMutability: "view",
           type: "function",
         },
         {
@@ -1454,6 +2649,25 @@ const deployedContracts = {
         {
           inputs: [
             {
+              internalType: "uint256",
+              name: "attestationId",
+              type: "uint256",
+            },
+          ],
+          name: "correspondingAdjustmentOf",
+          outputs: [
+            {
+              internalType: "uint8",
+              name: "",
+              type: "uint8",
+            },
+          ],
+          stateMutability: "view",
+          type: "function",
+        },
+        {
+          inputs: [
+            {
               internalType: "string",
               name: "name",
               type: "string",
@@ -1461,6 +2675,11 @@ const deployedContracts = {
             {
               internalType: "string",
               name: "symbol",
+              type: "string",
+            },
+            {
+              internalType: "string",
+              name: "memo",
               type: "string",
             },
           ],
@@ -1481,34 +2700,15 @@ const deployedContracts = {
               name: "symbol",
               type: "string",
             },
+            {
+              internalType: "string",
+              name: "memo",
+              type: "string",
+            },
           ],
           name: "createCreditToken",
           outputs: [],
           stateMutability: "payable",
-          type: "function",
-        },
-        {
-          inputs: [
-            {
-              internalType: "uint64",
-              name: "units",
-              type: "uint64",
-            },
-            {
-              internalType: "uint64",
-              name: "priceUsdCentsPerTonne",
-              type: "uint64",
-            },
-          ],
-          name: "createListing",
-          outputs: [
-            {
-              internalType: "uint256",
-              name: "listingId",
-              type: "uint256",
-            },
-          ],
-          stateMutability: "nonpayable",
           type: "function",
         },
         {
@@ -1544,6 +2744,38 @@ const deployedContracts = {
           type: "function",
         },
         {
+          inputs: [],
+          name: "domainSeparator",
+          outputs: [
+            {
+              internalType: "bytes32",
+              name: "",
+              type: "bytes32",
+            },
+          ],
+          stateMutability: "view",
+          type: "function",
+        },
+        {
+          inputs: [
+            {
+              internalType: "bytes32",
+              name: "evidenceHash",
+              type: "bytes32",
+            },
+          ],
+          name: "evidenceUsed",
+          outputs: [
+            {
+              internalType: "bool",
+              name: "",
+              type: "bool",
+            },
+          ],
+          stateMutability: "view",
+          type: "function",
+        },
+        {
           inputs: [
             {
               internalType: "uint256",
@@ -1557,7 +2789,7 @@ const deployedContracts = {
               components: [
                 {
                   internalType: "bytes32",
-                  name: "plantId",
+                  name: "projectId",
                   type: "bytes32",
                 },
                 {
@@ -1568,46 +2800,6 @@ const deployedContracts = {
                 {
                   internalType: "uint64",
                   name: "periodEnd",
-                  type: "uint64",
-                },
-                {
-                  internalType: "int64",
-                  name: "netEnergyWh",
-                  type: "int64",
-                },
-                {
-                  internalType: "uint64",
-                  name: "grossEnergyWh",
-                  type: "uint64",
-                },
-                {
-                  internalType: "uint64",
-                  name: "fuelG",
-                  type: "uint64",
-                },
-                {
-                  internalType: "int64",
-                  name: "projectEnergyWh",
-                  type: "int64",
-                },
-                {
-                  internalType: "int64",
-                  name: "baselineG",
-                  type: "int64",
-                },
-                {
-                  internalType: "uint64",
-                  name: "reservoirG",
-                  type: "uint64",
-                },
-                {
-                  internalType: "uint64",
-                  name: "fossilFuelG",
-                  type: "uint64",
-                },
-                {
-                  internalType: "uint64",
-                  name: "leakageG",
                   type: "uint64",
                 },
                 {
@@ -1626,9 +2818,14 @@ const deployedContracts = {
                   type: "uint16",
                 },
                 {
-                  internalType: "bytes32",
-                  name: "reportHash",
-                  type: "bytes32",
+                  internalType: "address",
+                  name: "verifier",
+                  type: "address",
+                },
+                {
+                  internalType: "address",
+                  name: "meter",
+                  type: "address",
                 },
                 {
                   internalType: "uint64",
@@ -1641,17 +2838,37 @@ const deployedContracts = {
                   type: "uint64",
                 },
                 {
-                  internalType: "address",
-                  name: "verifier",
-                  type: "address",
-                },
-                {
                   internalType: "uint64",
                   name: "timestamp",
                   type: "uint64",
                 },
+                {
+                  internalType: "bytes32",
+                  name: "reportHash",
+                  type: "bytes32",
+                },
+                {
+                  internalType: "bytes32",
+                  name: "readingsDigest",
+                  type: "bytes32",
+                },
+                {
+                  internalType: "bytes32",
+                  name: "evidenceHash",
+                  type: "bytes32",
+                },
+                {
+                  internalType: "bytes",
+                  name: "verified",
+                  type: "bytes",
+                },
+                {
+                  internalType: "bytes",
+                  name: "breakdown",
+                  type: "bytes",
+                },
               ],
-              internalType: "struct HydroCreditRegistry.Attestation",
+              internalType: "struct DmrvRegistry.Attestation",
               name: "",
               type: "tuple",
             },
@@ -1678,7 +2895,7 @@ const deployedContracts = {
               components: [
                 {
                   internalType: "bytes32",
-                  name: "plantId",
+                  name: "projectId",
                   type: "bytes32",
                 },
                 {
@@ -1689,46 +2906,6 @@ const deployedContracts = {
                 {
                   internalType: "uint64",
                   name: "periodEnd",
-                  type: "uint64",
-                },
-                {
-                  internalType: "int64",
-                  name: "netEnergyWh",
-                  type: "int64",
-                },
-                {
-                  internalType: "uint64",
-                  name: "grossEnergyWh",
-                  type: "uint64",
-                },
-                {
-                  internalType: "uint64",
-                  name: "fuelG",
-                  type: "uint64",
-                },
-                {
-                  internalType: "int64",
-                  name: "projectEnergyWh",
-                  type: "int64",
-                },
-                {
-                  internalType: "int64",
-                  name: "baselineG",
-                  type: "int64",
-                },
-                {
-                  internalType: "uint64",
-                  name: "reservoirG",
-                  type: "uint64",
-                },
-                {
-                  internalType: "uint64",
-                  name: "fossilFuelG",
-                  type: "uint64",
-                },
-                {
-                  internalType: "uint64",
-                  name: "leakageG",
                   type: "uint64",
                 },
                 {
@@ -1747,9 +2924,14 @@ const deployedContracts = {
                   type: "uint16",
                 },
                 {
-                  internalType: "bytes32",
-                  name: "reportHash",
-                  type: "bytes32",
+                  internalType: "address",
+                  name: "verifier",
+                  type: "address",
+                },
+                {
+                  internalType: "address",
+                  name: "meter",
+                  type: "address",
                 },
                 {
                   internalType: "uint64",
@@ -1762,63 +2944,37 @@ const deployedContracts = {
                   type: "uint64",
                 },
                 {
-                  internalType: "address",
-                  name: "verifier",
-                  type: "address",
-                },
-                {
                   internalType: "uint64",
                   name: "timestamp",
                   type: "uint64",
                 },
-              ],
-              internalType: "struct HydroCreditRegistry.Attestation[]",
-              name: "page",
-              type: "tuple[]",
-            },
-          ],
-          stateMutability: "view",
-          type: "function",
-        },
-        {
-          inputs: [
-            {
-              internalType: "uint256",
-              name: "start",
-              type: "uint256",
-            },
-            {
-              internalType: "uint256",
-              name: "count",
-              type: "uint256",
-            },
-          ],
-          name: "getListings",
-          outputs: [
-            {
-              components: [
                 {
-                  internalType: "address",
-                  name: "seller",
-                  type: "address",
+                  internalType: "bytes32",
+                  name: "reportHash",
+                  type: "bytes32",
                 },
                 {
-                  internalType: "uint64",
-                  name: "unitsAvailable",
-                  type: "uint64",
+                  internalType: "bytes32",
+                  name: "readingsDigest",
+                  type: "bytes32",
                 },
                 {
-                  internalType: "uint64",
-                  name: "priceUsdCentsPerTonne",
-                  type: "uint64",
+                  internalType: "bytes32",
+                  name: "evidenceHash",
+                  type: "bytes32",
                 },
                 {
-                  internalType: "bool",
-                  name: "active",
-                  type: "bool",
+                  internalType: "bytes",
+                  name: "verified",
+                  type: "bytes",
+                },
+                {
+                  internalType: "bytes",
+                  name: "breakdown",
+                  type: "bytes",
                 },
               ],
-              internalType: "struct HydroCreditRegistry.Listing[]",
+              internalType: "struct DmrvRegistry.Attestation[]",
               name: "page",
               type: "tuple[]",
             },
@@ -1830,19 +2986,14 @@ const deployedContracts = {
           inputs: [
             {
               internalType: "bytes32",
-              name: "plantId",
+              name: "projectId",
               type: "bytes32",
             },
           ],
-          name: "getPlant",
+          name: "getProject",
           outputs: [
             {
               components: [
-                {
-                  internalType: "string",
-                  name: "name",
-                  type: "string",
-                },
                 {
                   internalType: "address",
                   name: "operator",
@@ -1854,91 +3005,19 @@ const deployedContracts = {
                   type: "address",
                 },
                 {
+                  internalType: "contract IMethodology",
+                  name: "module",
+                  type: "address",
+                },
+                {
                   internalType: "bool",
                   name: "active",
                   type: "bool",
                 },
                 {
-                  components: [
-                    {
-                      internalType: "enum HydroCreditRegistry.ProjectType",
-                      name: "projectType",
-                      type: "uint8",
-                    },
-                    {
-                      internalType: "enum HydroCreditRegistry.Methodology",
-                      name: "methodology",
-                      type: "uint8",
-                    },
-                    {
-                      internalType: "uint32",
-                      name: "capacityKw",
-                      type: "uint32",
-                    },
-                    {
-                      internalType: "uint32",
-                      name: "baselineCapacityKw",
-                      type: "uint32",
-                    },
-                    {
-                      internalType: "uint64",
-                      name: "reservoirAreaM2",
-                      type: "uint64",
-                    },
-                    {
-                      internalType: "uint64",
-                      name: "baselineReservoirAreaM2",
-                      type: "uint64",
-                    },
-                    {
-                      internalType: "uint32",
-                      name: "efGridGPerMwh",
-                      type: "uint32",
-                    },
-                    {
-                      internalType: "uint32",
-                      name: "fuelCoefGPerTonne",
-                      type: "uint32",
-                    },
-                    {
-                      internalType: "uint64",
-                      name: "baselineWh",
-                      type: "uint64",
-                    },
-                    {
-                      internalType: "uint64",
-                      name: "baselineEndsAt",
-                      type: "uint64",
-                    },
-                    {
-                      internalType: "uint64",
-                      name: "creditingStart",
-                      type: "uint64",
-                    },
-                    {
-                      internalType: "uint64",
-                      name: "creditingEnd",
-                      type: "uint64",
-                    },
-                    {
-                      internalType: "bytes32",
-                      name: "designHash",
-                      type: "bytes32",
-                    },
-                  ],
-                  internalType: "struct HydroCreditRegistry.PlantDesign",
-                  name: "design",
-                  type: "tuple",
-                },
-                {
-                  internalType: "uint32",
-                  name: "reservoirGPerMwh",
-                  type: "uint32",
-                },
-                {
-                  internalType: "uint32",
-                  name: "embodiedGPerMwh",
-                  type: "uint32",
+                  internalType: "uint8",
+                  name: "creditingPeriods",
+                  type: "uint8",
                 },
                 {
                   internalType: "uint32",
@@ -1946,19 +3025,14 @@ const deployedContracts = {
                   type: "uint32",
                 },
                 {
-                  internalType: "uint32",
-                  name: "creditingYear",
-                  type: "uint32",
+                  internalType: "uint64",
+                  name: "creditingStart",
+                  type: "uint64",
                 },
                 {
-                  internalType: "int128",
-                  name: "yearNetWh",
-                  type: "int128",
-                },
-                {
-                  internalType: "int128",
-                  name: "balanceG",
-                  type: "int128",
+                  internalType: "uint64",
+                  name: "creditingEnd",
+                  type: "uint64",
                 },
                 {
                   internalType: "uint64",
@@ -1966,8 +3040,18 @@ const deployedContracts = {
                   type: "uint64",
                 },
                 {
+                  internalType: "uint64",
+                  name: "calibrationValidUntil",
+                  type: "uint64",
+                },
+                {
+                  internalType: "uint64",
+                  name: "registrationRequestedAt",
+                  type: "uint64",
+                },
+                {
                   internalType: "int128",
-                  name: "totalNetWh",
+                  name: "balanceG",
                   type: "int128",
                 },
                 {
@@ -1975,8 +3059,23 @@ const deployedContracts = {
                   name: "issuedUnits",
                   type: "uint128",
                 },
+                {
+                  internalType: "bytes32",
+                  name: "state",
+                  type: "bytes32",
+                },
+                {
+                  internalType: "bytes32",
+                  name: "designHash",
+                  type: "bytes32",
+                },
+                {
+                  internalType: "bytes",
+                  name: "params",
+                  type: "bytes",
+                },
               ],
-              internalType: "struct HydroCreditRegistry.Plant",
+              internalType: "struct DmrvRegistry.Project",
               name: "",
               type: "tuple",
             },
@@ -1986,7 +3085,7 @@ const deployedContracts = {
         },
         {
           inputs: [],
-          name: "getPlantIds",
+          name: "getProjectIds",
           outputs: [
             {
               internalType: "bytes32[]",
@@ -2040,7 +3139,7 @@ const deployedContracts = {
                   type: "bool",
                 },
               ],
-              internalType: "struct HydroCreditRegistry.Retirement",
+              internalType: "struct DmrvRegistry.Retirement",
               name: "",
               type: "tuple",
             },
@@ -2096,7 +3195,7 @@ const deployedContracts = {
                   type: "bool",
                 },
               ],
-              internalType: "struct HydroCreditRegistry.Retirement[]",
+              internalType: "struct DmrvRegistry.Retirement[]",
               name: "page",
               type: "tuple[]",
             },
@@ -2166,84 +3265,33 @@ const deployedContracts = {
           type: "function",
         },
         {
-          inputs: [],
-          name: "listingCount",
-          outputs: [
-            {
-              internalType: "uint256",
-              name: "",
-              type: "uint256",
-            },
-          ],
-          stateMutability: "view",
-          type: "function",
-        },
-        {
-          inputs: [],
-          name: "maxPriceAge",
-          outputs: [
-            {
-              internalType: "uint32",
-              name: "",
-              type: "uint32",
-            },
-          ],
-          stateMutability: "view",
-          type: "function",
-        },
-        {
           inputs: [
-            {
-              internalType: "bytes32",
-              name: "plantId",
-              type: "bytes32",
-            },
             {
               components: [
                 {
                   internalType: "bytes32",
-                  name: "plantId",
+                  name: "projectId",
                   type: "bytes32",
                 },
                 {
                   internalType: "uint32",
-                  name: "plantSequence",
+                  name: "sequence",
                   type: "uint32",
                 },
                 {
-                  internalType: "uint64",
-                  name: "periodStart",
-                  type: "uint64",
+                  internalType: "uint32",
+                  name: "intervals",
+                  type: "uint32",
                 },
                 {
-                  internalType: "uint64",
-                  name: "periodEnd",
-                  type: "uint64",
+                  internalType: "uint32",
+                  name: "intervalSeconds",
+                  type: "uint32",
                 },
                 {
-                  internalType: "int64",
-                  name: "netEnergyWh",
-                  type: "int64",
-                },
-                {
-                  internalType: "uint64",
-                  name: "grossEnergyWh",
-                  type: "uint64",
-                },
-                {
-                  internalType: "uint64",
-                  name: "fuelG",
-                  type: "uint64",
-                },
-                {
-                  internalType: "uint64",
-                  name: "leakageG",
-                  type: "uint64",
-                },
-                {
-                  internalType: "uint16",
-                  name: "completenessBps",
-                  type: "uint16",
+                  internalType: "bytes32",
+                  name: "readingsDigest",
+                  type: "bytes32",
                 },
                 {
                   internalType: "bytes32",
@@ -2261,44 +3309,54 @@ const deployedContracts = {
                   type: "uint64",
                 },
                 {
+                  internalType: "bytes32",
+                  name: "evidenceHash",
+                  type: "bytes32",
+                },
+                {
                   components: [
                     {
                       internalType: "uint64",
-                      name: "grossEnergyWh",
+                      name: "periodStart",
                       type: "uint64",
-                    },
-                    {
-                      internalType: "int64",
-                      name: "netEnergyWh",
-                      type: "int64",
                     },
                     {
                       internalType: "uint64",
-                      name: "fuelG",
+                      name: "periodEnd",
                       type: "uint64",
                     },
                     {
-                      internalType: "bytes32",
-                      name: "readingsDigest",
-                      type: "bytes32",
+                      internalType: "bytes",
+                      name: "metered",
+                      type: "bytes",
                     },
                     {
                       internalType: "bytes",
-                      name: "signature",
+                      name: "verified",
                       type: "bytes",
                     },
                   ],
-                  internalType: "struct HydroCreditRegistry.MeterStatement",
-                  name: "meter",
+                  internalType: "struct Measurement",
+                  name: "measurement",
                   type: "tuple",
                 },
+                {
+                  internalType: "bytes",
+                  name: "meterSignature",
+                  type: "bytes",
+                },
+                {
+                  internalType: "bytes",
+                  name: "verifierSignature",
+                  type: "bytes",
+                },
               ],
-              internalType: "struct HydroCreditRegistry.AttestationInput",
-              name: "input",
+              internalType: "struct DmrvRegistry.Submission",
+              name: "s",
               type: "tuple",
             },
           ],
-          name: "meterStatementHash",
+          name: "meterStatementDigest",
           outputs: [
             {
               internalType: "bytes32",
@@ -2326,40 +3384,34 @@ const deployedContracts = {
           inputs: [
             {
               internalType: "address",
-              name: "seller",
+              name: "from",
               type: "address",
             },
-          ],
-          name: "proceedsOf",
-          outputs: [
+            {
+              internalType: "address",
+              name: "to",
+              type: "address",
+            },
             {
               internalType: "uint256",
-              name: "native",
+              name: "units",
               type: "uint256",
             },
           ],
-          stateMutability: "view",
+          name: "moveCustody",
+          outputs: [],
+          stateMutability: "nonpayable",
           type: "function",
         },
         {
           inputs: [
             {
               internalType: "bytes32",
-              name: "plantId",
+              name: "projectId",
               type: "bytes32",
             },
             {
               components: [
-                {
-                  internalType: "bytes32",
-                  name: "plantId",
-                  type: "bytes32",
-                },
-                {
-                  internalType: "uint32",
-                  name: "plantSequence",
-                  type: "uint32",
-                },
                 {
                   internalType: "uint64",
                   name: "periodStart",
@@ -2371,164 +3423,48 @@ const deployedContracts = {
                   type: "uint64",
                 },
                 {
-                  internalType: "int64",
-                  name: "netEnergyWh",
-                  type: "int64",
+                  internalType: "bytes",
+                  name: "metered",
+                  type: "bytes",
                 },
                 {
-                  internalType: "uint64",
-                  name: "grossEnergyWh",
-                  type: "uint64",
-                },
-                {
-                  internalType: "uint64",
-                  name: "fuelG",
-                  type: "uint64",
-                },
-                {
-                  internalType: "uint64",
-                  name: "leakageG",
-                  type: "uint64",
-                },
-                {
-                  internalType: "uint16",
-                  name: "completenessBps",
-                  type: "uint16",
-                },
-                {
-                  internalType: "bytes32",
-                  name: "reportHash",
-                  type: "bytes32",
-                },
-                {
-                  internalType: "uint64",
-                  name: "hcsTopicNum",
-                  type: "uint64",
-                },
-                {
-                  internalType: "uint64",
-                  name: "hcsSequence",
-                  type: "uint64",
-                },
-                {
-                  components: [
-                    {
-                      internalType: "uint64",
-                      name: "grossEnergyWh",
-                      type: "uint64",
-                    },
-                    {
-                      internalType: "int64",
-                      name: "netEnergyWh",
-                      type: "int64",
-                    },
-                    {
-                      internalType: "uint64",
-                      name: "fuelG",
-                      type: "uint64",
-                    },
-                    {
-                      internalType: "bytes32",
-                      name: "readingsDigest",
-                      type: "bytes32",
-                    },
-                    {
-                      internalType: "bytes",
-                      name: "signature",
-                      type: "bytes",
-                    },
-                  ],
-                  internalType: "struct HydroCreditRegistry.MeterStatement",
-                  name: "meter",
-                  type: "tuple",
+                  internalType: "bytes",
+                  name: "verified",
+                  type: "bytes",
                 },
               ],
-              internalType: "struct HydroCreditRegistry.AttestationInput",
-              name: "input",
+              internalType: "struct Measurement",
+              name: "m",
               type: "tuple",
             },
           ],
-          name: "quantify",
+          name: "preview",
           outputs: [
             {
               components: [
-                {
-                  internalType: "uint32",
-                  name: "creditingYear",
-                  type: "uint32",
-                },
-                {
-                  internalType: "int256",
-                  name: "yearNetWh",
-                  type: "int256",
-                },
-                {
-                  internalType: "int256",
-                  name: "projectEnergyWh",
-                  type: "int256",
-                },
-                {
-                  internalType: "int256",
-                  name: "baselineG",
-                  type: "int256",
-                },
-                {
-                  internalType: "uint256",
-                  name: "reservoirG",
-                  type: "uint256",
-                },
-                {
-                  internalType: "uint256",
-                  name: "fossilFuelG",
-                  type: "uint256",
-                },
-                {
-                  internalType: "uint256",
-                  name: "leakageG",
-                  type: "uint256",
-                },
                 {
                   internalType: "int256",
                   name: "reductionG",
                   type: "int256",
                 },
                 {
-                  internalType: "uint256",
-                  name: "units",
-                  type: "uint256",
+                  internalType: "bytes32",
+                  name: "newState",
+                  type: "bytes32",
                 },
                 {
-                  internalType: "int256",
-                  name: "balanceG",
-                  type: "int256",
+                  internalType: "bytes",
+                  name: "breakdown",
+                  type: "bytes",
                 },
               ],
-              internalType: "struct HydroCreditRegistry.Quantification",
+              internalType: "struct QuantResult",
               name: "q",
               type: "tuple",
             },
-          ],
-          stateMutability: "view",
-          type: "function",
-        },
-        {
-          inputs: [
             {
               internalType: "uint256",
-              name: "listingId",
-              type: "uint256",
-            },
-            {
-              internalType: "uint64",
               name: "units",
-              type: "uint64",
-            },
-          ],
-          name: "quote",
-          outputs: [
-            {
-              internalType: "uint256",
-              name: "nativeCost",
               type: "uint256",
             },
           ],
@@ -2539,13 +3475,56 @@ const deployedContracts = {
           inputs: [
             {
               internalType: "bytes32",
-              name: "plantId",
+              name: "designHash",
+              type: "bytes32",
+            },
+          ],
+          name: "projectOfDesign",
+          outputs: [
+            {
+              internalType: "bytes32",
+              name: "projectId",
+              type: "bytes32",
+            },
+          ],
+          stateMutability: "view",
+          type: "function",
+        },
+        {
+          inputs: [
+            {
+              internalType: "address",
+              name: "meter",
+              type: "address",
+            },
+          ],
+          name: "projectOfMeter",
+          outputs: [
+            {
+              internalType: "bytes32",
+              name: "projectId",
+              type: "bytes32",
+            },
+          ],
+          stateMutability: "view",
+          type: "function",
+        },
+        {
+          inputs: [
+            {
+              internalType: "bytes32",
+              name: "projectId",
               type: "bytes32",
             },
             {
               internalType: "string",
               name: "name",
               type: "string",
+            },
+            {
+              internalType: "contract IMethodology",
+              name: "module",
+              type: "address",
             },
             {
               internalType: "address",
@@ -2558,79 +3537,17 @@ const deployedContracts = {
               type: "address",
             },
             {
-              components: [
-                {
-                  internalType: "enum HydroCreditRegistry.ProjectType",
-                  name: "projectType",
-                  type: "uint8",
-                },
-                {
-                  internalType: "enum HydroCreditRegistry.Methodology",
-                  name: "methodology",
-                  type: "uint8",
-                },
-                {
-                  internalType: "uint32",
-                  name: "capacityKw",
-                  type: "uint32",
-                },
-                {
-                  internalType: "uint32",
-                  name: "baselineCapacityKw",
-                  type: "uint32",
-                },
-                {
-                  internalType: "uint64",
-                  name: "reservoirAreaM2",
-                  type: "uint64",
-                },
-                {
-                  internalType: "uint64",
-                  name: "baselineReservoirAreaM2",
-                  type: "uint64",
-                },
-                {
-                  internalType: "uint32",
-                  name: "efGridGPerMwh",
-                  type: "uint32",
-                },
-                {
-                  internalType: "uint32",
-                  name: "fuelCoefGPerTonne",
-                  type: "uint32",
-                },
-                {
-                  internalType: "uint64",
-                  name: "baselineWh",
-                  type: "uint64",
-                },
-                {
-                  internalType: "uint64",
-                  name: "baselineEndsAt",
-                  type: "uint64",
-                },
-                {
-                  internalType: "uint64",
-                  name: "creditingStart",
-                  type: "uint64",
-                },
-                {
-                  internalType: "uint64",
-                  name: "creditingEnd",
-                  type: "uint64",
-                },
-                {
-                  internalType: "bytes32",
-                  name: "designHash",
-                  type: "bytes32",
-                },
-              ],
-              internalType: "struct HydroCreditRegistry.PlantDesign",
-              name: "design",
-              type: "tuple",
+              internalType: "bytes32",
+              name: "designHash",
+              type: "bytes32",
+            },
+            {
+              internalType: "bytes",
+              name: "params",
+              type: "bytes",
             },
           ],
-          name: "registerPlant",
+          name: "registerProject",
           outputs: [],
           stateMutability: "nonpayable",
           type: "function",
@@ -2639,28 +3556,13 @@ const deployedContracts = {
           inputs: [
             {
               internalType: "bytes32",
-              name: "plantId",
+              name: "projectId",
               type: "bytes32",
             },
             {
-              internalType: "uint32",
-              name: "efGridGPerMwh",
-              type: "uint32",
-            },
-            {
-              internalType: "uint64",
-              name: "creditingStart",
-              type: "uint64",
-            },
-            {
-              internalType: "uint64",
-              name: "creditingEnd",
-              type: "uint64",
-            },
-            {
-              internalType: "bytes32",
-              name: "designHash",
-              type: "bytes32",
+              internalType: "bytes",
+              name: "newParams",
+              type: "bytes",
             },
           ],
           name: "renewCreditingPeriod",
@@ -2703,7 +3605,36 @@ const deployedContracts = {
           outputs: [
             {
               internalType: "uint256",
-              name: "retirementId",
+              name: "",
+              type: "uint256",
+            },
+          ],
+          stateMutability: "nonpayable",
+          type: "function",
+        },
+        {
+          inputs: [
+            {
+              internalType: "address",
+              name: "account",
+              type: "address",
+            },
+            {
+              internalType: "uint64",
+              name: "units",
+              type: "uint64",
+            },
+            {
+              internalType: "string",
+              name: "beneficiary",
+              type: "string",
+            },
+          ],
+          name: "retireFor",
+          outputs: [
+            {
+              internalType: "uint256",
+              name: "",
               type: "uint256",
             },
           ],
@@ -2744,12 +3675,116 @@ const deployedContracts = {
         {
           inputs: [
             {
-              internalType: "uint32",
-              name: "maxPriceAge_",
-              type: "uint32",
+              internalType: "bytes32",
+              name: "projectId",
+              type: "bytes32",
+            },
+            {
+              components: [
+                {
+                  internalType: "bytes2",
+                  name: "hostParty",
+                  type: "bytes2",
+                },
+                {
+                  internalType: "uint8",
+                  name: "authorizedUse",
+                  type: "uint8",
+                },
+                {
+                  internalType: "uint8",
+                  name: "firstTransferDefinition",
+                  type: "uint8",
+                },
+                {
+                  internalType: "bytes32",
+                  name: "authorizationRef",
+                  type: "bytes32",
+                },
+              ],
+              internalType: "struct DmrvRegistry.Article6",
+              name: "a",
+              type: "tuple",
             },
           ],
-          name: "setMaxPriceAge",
+          name: "setArticle6",
+          outputs: [],
+          stateMutability: "nonpayable",
+          type: "function",
+        },
+        {
+          inputs: [
+            {
+              internalType: "uint64",
+              name: "topic",
+              type: "uint64",
+            },
+          ],
+          name: "setAuditTopic",
+          outputs: [],
+          stateMutability: "nonpayable",
+          type: "function",
+        },
+        {
+          inputs: [
+            {
+              internalType: "bytes32",
+              name: "projectId",
+              type: "bytes32",
+            },
+            {
+              internalType: "uint64",
+              name: "validUntil",
+              type: "uint64",
+            },
+            {
+              internalType: "bytes32",
+              name: "certificateHash",
+              type: "bytes32",
+            },
+          ],
+          name: "setCalibrationValidUntil",
+          outputs: [],
+          stateMutability: "nonpayable",
+          type: "function",
+        },
+        {
+          inputs: [
+            {
+              internalType: "uint256",
+              name: "attestationId",
+              type: "uint256",
+            },
+            {
+              internalType: "uint8",
+              name: "status",
+              type: "uint8",
+            },
+            {
+              internalType: "bytes32",
+              name: "ref",
+              type: "bytes32",
+            },
+          ],
+          name: "setCorrespondingAdjustment",
+          outputs: [],
+          stateMutability: "nonpayable",
+          type: "function",
+        },
+        {
+          inputs: [
+            {
+              internalType: "bytes32",
+              name: "projectId",
+              type: "bytes32",
+            },
+            {
+              internalType: "address",
+              name: "meter",
+              type: "address",
+            },
+          ],
+          name: "setMeter",
           outputs: [],
           stateMutability: "nonpayable",
           type: "function",
@@ -2770,17 +3805,17 @@ const deployedContracts = {
         {
           inputs: [
             {
-              internalType: "bytes32",
-              name: "plantId",
-              type: "bytes32",
+              internalType: "contract IMethodology",
+              name: "module",
+              type: "address",
             },
             {
               internalType: "bool",
-              name: "active",
+              name: "approved",
               type: "bool",
             },
           ],
-          name: "setPlantActive",
+          name: "setModuleApproved",
           outputs: [],
           stateMutability: "nonpayable",
           type: "function",
@@ -2789,16 +3824,34 @@ const deployedContracts = {
           inputs: [
             {
               internalType: "bytes32",
-              name: "plantId",
+              name: "projectId",
               type: "bytes32",
             },
             {
-              internalType: "address",
-              name: "meter",
-              type: "address",
+              internalType: "bool",
+              name: "active",
+              type: "bool",
             },
           ],
-          name: "setPlantMeter",
+          name: "setProjectActive",
+          outputs: [],
+          stateMutability: "nonpayable",
+          type: "function",
+        },
+        {
+          inputs: [
+            {
+              internalType: "address",
+              name: "verifier",
+              type: "address",
+            },
+            {
+              internalType: "bytes32",
+              name: "accreditationHash",
+              type: "bytes32",
+            },
+          ],
+          name: "setVerifierProfile",
           outputs: [],
           stateMutability: "nonpayable",
           type: "function",
@@ -2809,48 +3862,28 @@ const deployedContracts = {
               components: [
                 {
                   internalType: "bytes32",
-                  name: "plantId",
+                  name: "projectId",
                   type: "bytes32",
                 },
                 {
                   internalType: "uint32",
-                  name: "plantSequence",
+                  name: "sequence",
                   type: "uint32",
                 },
                 {
-                  internalType: "uint64",
-                  name: "periodStart",
-                  type: "uint64",
+                  internalType: "uint32",
+                  name: "intervals",
+                  type: "uint32",
                 },
                 {
-                  internalType: "uint64",
-                  name: "periodEnd",
-                  type: "uint64",
+                  internalType: "uint32",
+                  name: "intervalSeconds",
+                  type: "uint32",
                 },
                 {
-                  internalType: "int64",
-                  name: "netEnergyWh",
-                  type: "int64",
-                },
-                {
-                  internalType: "uint64",
-                  name: "grossEnergyWh",
-                  type: "uint64",
-                },
-                {
-                  internalType: "uint64",
-                  name: "fuelG",
-                  type: "uint64",
-                },
-                {
-                  internalType: "uint64",
-                  name: "leakageG",
-                  type: "uint64",
-                },
-                {
-                  internalType: "uint16",
-                  name: "completenessBps",
-                  type: "uint16",
+                  internalType: "bytes32",
+                  name: "readingsDigest",
+                  type: "bytes32",
                 },
                 {
                   internalType: "bytes32",
@@ -2868,40 +3901,50 @@ const deployedContracts = {
                   type: "uint64",
                 },
                 {
+                  internalType: "bytes32",
+                  name: "evidenceHash",
+                  type: "bytes32",
+                },
+                {
                   components: [
                     {
                       internalType: "uint64",
-                      name: "grossEnergyWh",
+                      name: "periodStart",
                       type: "uint64",
-                    },
-                    {
-                      internalType: "int64",
-                      name: "netEnergyWh",
-                      type: "int64",
                     },
                     {
                       internalType: "uint64",
-                      name: "fuelG",
+                      name: "periodEnd",
                       type: "uint64",
                     },
                     {
-                      internalType: "bytes32",
-                      name: "readingsDigest",
-                      type: "bytes32",
+                      internalType: "bytes",
+                      name: "metered",
+                      type: "bytes",
                     },
                     {
                       internalType: "bytes",
-                      name: "signature",
+                      name: "verified",
                       type: "bytes",
                     },
                   ],
-                  internalType: "struct HydroCreditRegistry.MeterStatement",
-                  name: "meter",
+                  internalType: "struct Measurement",
+                  name: "measurement",
                   type: "tuple",
                 },
+                {
+                  internalType: "bytes",
+                  name: "meterSignature",
+                  type: "bytes",
+                },
+                {
+                  internalType: "bytes",
+                  name: "verifierSignature",
+                  type: "bytes",
+                },
               ],
-              internalType: "struct HydroCreditRegistry.AttestationInput",
-              name: "input",
+              internalType: "struct DmrvRegistry.Submission",
+              name: "s",
               type: "tuple",
             },
           ],
@@ -2963,19 +4006,6 @@ const deployedContracts = {
         },
         {
           inputs: [],
-          name: "totalProceedsOwed",
-          outputs: [
-            {
-              internalType: "uint256",
-              name: "",
-              type: "uint256",
-            },
-          ],
-          stateMutability: "view",
-          type: "function",
-        },
-        {
-          inputs: [],
           name: "totalRetiredUnits",
           outputs: [
             {
@@ -2990,22 +4020,17 @@ const deployedContracts = {
         {
           inputs: [
             {
-              internalType: "uint64",
-              name: "priceUsdCentsPerTonne",
-              type: "uint64",
-            },
-            {
-              internalType: "uint64",
-              name: "units",
-              type: "uint64",
+              internalType: "address",
+              name: "verifier",
+              type: "address",
             },
           ],
-          name: "usdCentsPerTonneToNative",
+          name: "verifierProfileOf",
           outputs: [
             {
-              internalType: "uint256",
-              name: "",
-              type: "uint256",
+              internalType: "bytes32",
+              name: "accreditationHash",
+              type: "bytes32",
             },
           ],
           stateMutability: "view",
@@ -3024,13 +4049,6 @@ const deployedContracts = {
           stateMutability: "nonpayable",
           type: "function",
         },
-        {
-          inputs: [],
-          name: "withdrawProceeds",
-          outputs: [],
-          stateMutability: "nonpayable",
-          type: "function",
-        },
       ],
       inheritedFunctions: {
         DEFAULT_ADMIN_ROLE: "@openzeppelin/contracts/access/AccessControl.sol",
@@ -3041,10 +4059,553 @@ const deployedContracts = {
         revokeRole: "@openzeppelin/contracts/access/AccessControl.sol",
         supportsInterface: "@openzeppelin/contracts/access/AccessControl.sol",
       },
-      deployedOnBlock: 40978237,
+      deployedOnBlock: 41009354,
+    },
+    HydroVmr0017Module: {
+      address: "0x8D57432792aD39Ef2d2e104904e31b157846261d",
+      abi: [
+        {
+          inputs: [
+            {
+              internalType: "uint64",
+              name: "grossWh",
+              type: "uint64",
+            },
+            {
+              internalType: "uint256",
+              name: "maxWh",
+              type: "uint256",
+            },
+          ],
+          name: "EnergyExceedsCapacity",
+          type: "error",
+        },
+        {
+          inputs: [],
+          name: "FuelNotRegistered",
+          type: "error",
+        },
+        {
+          inputs: [
+            {
+              internalType: "uint32",
+              name: "ef",
+              type: "uint32",
+            },
+          ],
+          name: "GridEmissionFactorOutOfRange",
+          type: "error",
+        },
+        {
+          inputs: [],
+          name: "InvalidBaseline",
+          type: "error",
+        },
+        {
+          inputs: [
+            {
+              internalType: "uint64",
+              name: "start",
+              type: "uint64",
+            },
+            {
+              internalType: "uint64",
+              name: "end",
+              type: "uint64",
+            },
+          ],
+          name: "InvalidCreditingPeriod",
+          type: "error",
+        },
+        {
+          inputs: [],
+          name: "InvalidParams",
+          type: "error",
+        },
+        {
+          inputs: [
+            {
+              internalType: "uint32",
+              name: "capacityKw",
+              type: "uint32",
+            },
+          ],
+          name: "MethodologyNotApplicable",
+          type: "error",
+        },
+        {
+          inputs: [],
+          name: "MissingCalibration",
+          type: "error",
+        },
+        {
+          inputs: [],
+          name: "MissingRegistrationRequest",
+          type: "error",
+        },
+        {
+          inputs: [
+            {
+              internalType: "int64",
+              name: "netWh",
+              type: "int64",
+            },
+            {
+              internalType: "uint64",
+              name: "grossWh",
+              type: "uint64",
+            },
+          ],
+          name: "NetExceedsGross",
+          type: "error",
+        },
+        {
+          inputs: [],
+          name: "NotMetered",
+          type: "error",
+        },
+        {
+          inputs: [],
+          name: "NotRenewable",
+          type: "error",
+        },
+        {
+          inputs: [],
+          name: "ParamsChanged",
+          type: "error",
+        },
+        {
+          inputs: [
+            {
+              internalType: "uint64",
+              name: "periodStart",
+              type: "uint64",
+            },
+            {
+              internalType: "uint64",
+              name: "periodEnd",
+              type: "uint64",
+            },
+          ],
+          name: "PeriodCrossesCreditingYear",
+          type: "error",
+        },
+        {
+          inputs: [
+            {
+              internalType: "uint256",
+              name: "addedW",
+              type: "uint256",
+            },
+            {
+              internalType: "uint256",
+              name: "addedArea",
+              type: "uint256",
+            },
+          ],
+          name: "PowerDensityTooLow",
+          type: "error",
+        },
+        {
+          inputs: [
+            {
+              internalType: "uint64",
+              name: "requestedAt",
+              type: "uint64",
+            },
+          ],
+          name: "RegistrationInTheFuture",
+          type: "error",
+        },
+        {
+          inputs: [],
+          name: "RenewalOverlap",
+          type: "error",
+        },
+        {
+          inputs: [],
+          name: "RenewalSpan",
+          type: "error",
+        },
+        {
+          inputs: [],
+          name: "ReservoirBelowBaseline",
+          type: "error",
+        },
+        {
+          inputs: [],
+          name: "StateOverflow",
+          type: "error",
+        },
+        {
+          inputs: [],
+          name: "CREDITING_YEAR",
+          outputs: [
+            {
+              internalType: "uint256",
+              name: "",
+              type: "uint256",
+            },
+          ],
+          stateMutability: "view",
+          type: "function",
+        },
+        {
+          inputs: [],
+          name: "MAX_GRID_EF_G_PER_MWH",
+          outputs: [
+            {
+              internalType: "uint32",
+              name: "",
+              type: "uint32",
+            },
+          ],
+          stateMutability: "view",
+          type: "function",
+        },
+        {
+          inputs: [],
+          name: "MIN_POWER_DENSITY",
+          outputs: [
+            {
+              internalType: "uint256",
+              name: "",
+              type: "uint256",
+            },
+          ],
+          stateMutability: "view",
+          type: "function",
+        },
+        {
+          inputs: [],
+          name: "RESERVOIR_EF_G_PER_MWH",
+          outputs: [
+            {
+              internalType: "uint32",
+              name: "",
+              type: "uint32",
+            },
+          ],
+          stateMutability: "view",
+          type: "function",
+        },
+        {
+          inputs: [],
+          name: "RESERVOIR_EMISSIONS_POWER_DENSITY",
+          outputs: [
+            {
+              internalType: "uint256",
+              name: "",
+              type: "uint256",
+            },
+          ],
+          stateMutability: "view",
+          type: "function",
+        },
+        {
+          inputs: [],
+          name: "VCS_FIVE_YEAR_FROM",
+          outputs: [
+            {
+              internalType: "uint64",
+              name: "",
+              type: "uint64",
+            },
+          ],
+          stateMutability: "view",
+          type: "function",
+        },
+        {
+          inputs: [],
+          name: "VMR0017_EMBODIED_HYDRO_G_PER_MWH",
+          outputs: [
+            {
+              internalType: "uint32",
+              name: "",
+              type: "uint32",
+            },
+          ],
+          stateMutability: "view",
+          type: "function",
+        },
+        {
+          inputs: [],
+          name: "VMR0017_MAX_HYDRO_KW",
+          outputs: [
+            {
+              internalType: "uint32",
+              name: "",
+              type: "uint32",
+            },
+          ],
+          stateMutability: "view",
+          type: "function",
+        },
+        {
+          inputs: [],
+          name: "VMR0017_RESERVOIR_EF_G_PER_MWH",
+          outputs: [
+            {
+              internalType: "uint32",
+              name: "",
+              type: "uint32",
+            },
+          ],
+          stateMutability: "view",
+          type: "function",
+        },
+        {
+          inputs: [
+            {
+              internalType: "bytes",
+              name: "params",
+              type: "bytes",
+            },
+          ],
+          name: "describe",
+          outputs: [
+            {
+              internalType: "string",
+              name: "",
+              type: "string",
+            },
+          ],
+          stateMutability: "pure",
+          type: "function",
+        },
+        {
+          inputs: [],
+          name: "methodologyId",
+          outputs: [
+            {
+              internalType: "bytes32",
+              name: "",
+              type: "bytes32",
+            },
+          ],
+          stateMutability: "pure",
+          type: "function",
+        },
+        {
+          inputs: [
+            {
+              internalType: "bytes",
+              name: "params",
+              type: "bytes",
+            },
+            {
+              internalType: "bytes32",
+              name: "state",
+              type: "bytes32",
+            },
+            {
+              components: [
+                {
+                  internalType: "uint64",
+                  name: "periodStart",
+                  type: "uint64",
+                },
+                {
+                  internalType: "uint64",
+                  name: "periodEnd",
+                  type: "uint64",
+                },
+                {
+                  internalType: "bytes",
+                  name: "metered",
+                  type: "bytes",
+                },
+                {
+                  internalType: "bytes",
+                  name: "verified",
+                  type: "bytes",
+                },
+              ],
+              internalType: "struct Measurement",
+              name: "m",
+              type: "tuple",
+            },
+          ],
+          name: "quantify",
+          outputs: [
+            {
+              components: [
+                {
+                  internalType: "int256",
+                  name: "reductionG",
+                  type: "int256",
+                },
+                {
+                  internalType: "bytes32",
+                  name: "newState",
+                  type: "bytes32",
+                },
+                {
+                  internalType: "bytes",
+                  name: "breakdown",
+                  type: "bytes",
+                },
+              ],
+              internalType: "struct QuantResult",
+              name: "result",
+              type: "tuple",
+            },
+          ],
+          stateMutability: "pure",
+          type: "function",
+        },
+        {
+          inputs: [],
+          name: "schemaHash",
+          outputs: [
+            {
+              internalType: "bytes32",
+              name: "",
+              type: "bytes32",
+            },
+          ],
+          stateMutability: "pure",
+          type: "function",
+        },
+        {
+          inputs: [
+            {
+              internalType: "bytes",
+              name: "params",
+              type: "bytes",
+            },
+          ],
+          name: "validateProject",
+          outputs: [
+            {
+              components: [
+                {
+                  internalType: "uint64",
+                  name: "creditingStart",
+                  type: "uint64",
+                },
+                {
+                  internalType: "uint64",
+                  name: "creditingEnd",
+                  type: "uint64",
+                },
+                {
+                  internalType: "uint64",
+                  name: "maxQuantityPerSecond",
+                  type: "uint64",
+                },
+                {
+                  internalType: "uint64",
+                  name: "calibrationValidUntil",
+                  type: "uint64",
+                },
+                {
+                  internalType: "uint64",
+                  name: "registrationRequestedAt",
+                  type: "uint64",
+                },
+              ],
+              internalType: "struct ProjectTerms",
+              name: "terms",
+              type: "tuple",
+            },
+          ],
+          stateMutability: "view",
+          type: "function",
+        },
+        {
+          inputs: [
+            {
+              internalType: "bytes",
+              name: "oldParams",
+              type: "bytes",
+            },
+            {
+              internalType: "bytes",
+              name: "newParams",
+              type: "bytes",
+            },
+            {
+              internalType: "uint64",
+              name: "prevStart",
+              type: "uint64",
+            },
+            {
+              internalType: "uint64",
+              name: "prevEnd",
+              type: "uint64",
+            },
+            {
+              internalType: "uint8",
+              name: "periods",
+              type: "uint8",
+            },
+          ],
+          name: "validateRenewal",
+          outputs: [
+            {
+              components: [
+                {
+                  internalType: "uint64",
+                  name: "creditingStart",
+                  type: "uint64",
+                },
+                {
+                  internalType: "uint64",
+                  name: "creditingEnd",
+                  type: "uint64",
+                },
+                {
+                  internalType: "uint64",
+                  name: "maxQuantityPerSecond",
+                  type: "uint64",
+                },
+                {
+                  internalType: "uint64",
+                  name: "calibrationValidUntil",
+                  type: "uint64",
+                },
+                {
+                  internalType: "uint64",
+                  name: "registrationRequestedAt",
+                  type: "uint64",
+                },
+              ],
+              internalType: "struct ProjectTerms",
+              name: "",
+              type: "tuple",
+            },
+          ],
+          stateMutability: "view",
+          type: "function",
+        },
+        {
+          inputs: [],
+          name: "version",
+          outputs: [
+            {
+              internalType: "uint32",
+              name: "",
+              type: "uint32",
+            },
+          ],
+          stateMutability: "pure",
+          type: "function",
+        },
+      ],
+      inheritedFunctions: {
+        describe: "contracts/interfaces/IMethodology.sol",
+        methodologyId: "contracts/interfaces/IMethodology.sol",
+        quantify: "contracts/interfaces/IMethodology.sol",
+        schemaHash: "contracts/interfaces/IMethodology.sol",
+        validateProject: "contracts/interfaces/IMethodology.sol",
+        validateRenewal: "contracts/interfaces/IMethodology.sol",
+        version: "contracts/interfaces/IMethodology.sol",
+      },
+      deployedOnBlock: 41009352,
     },
     ResilientHbarUsdFeed: {
-      address: "0x5A07AE6219509948fBdab08cc65ccd1b6897A591",
+      address: "0x9529A0189654834949cf78f9ce25336be59F8AbB",
       abi: [
         {
           inputs: [
@@ -3338,7 +4899,5042 @@ const deployedContracts = {
         description: "contracts/interfaces/AggregatorV3Interface.sol",
         latestRoundData: "contracts/interfaces/AggregatorV3Interface.sol",
       },
-      deployedOnBlock: 40939828,
+      deployedOnBlock: 41009349,
+    },
+  },
+  31337: {
+    CreditMarket: {
+      address: "0x3Aa5ebB10DC797CAC828524e59A333d0A371443c",
+      abi: [
+        {
+          inputs: [
+            {
+              internalType: "address",
+              name: "admin",
+              type: "address",
+            },
+            {
+              internalType: "contract DmrvRegistry",
+              name: "registry",
+              type: "address",
+            },
+            {
+              internalType: "contract AggregatorV3Interface",
+              name: "hbarUsdFeed",
+              type: "address",
+            },
+            {
+              internalType: "uint256",
+              name: "nativeUnitsPerHbar",
+              type: "uint256",
+            },
+            {
+              internalType: "uint32",
+              name: "maxPriceAge_",
+              type: "uint32",
+            },
+          ],
+          stateMutability: "nonpayable",
+          type: "constructor",
+        },
+        {
+          inputs: [],
+          name: "AccessControlBadConfirmation",
+          type: "error",
+        },
+        {
+          inputs: [
+            {
+              internalType: "address",
+              name: "account",
+              type: "address",
+            },
+            {
+              internalType: "bytes32",
+              name: "neededRole",
+              type: "bytes32",
+            },
+          ],
+          name: "AccessControlUnauthorizedAccount",
+          type: "error",
+        },
+        {
+          inputs: [
+            {
+              internalType: "uint64",
+              name: "requested",
+              type: "uint64",
+            },
+            {
+              internalType: "uint64",
+              name: "available",
+              type: "uint64",
+            },
+          ],
+          name: "InsufficientListingUnits",
+          type: "error",
+        },
+        {
+          inputs: [
+            {
+              internalType: "uint256",
+              name: "required",
+              type: "uint256",
+            },
+            {
+              internalType: "uint256",
+              name: "provided",
+              type: "uint256",
+            },
+          ],
+          name: "InsufficientPayment",
+          type: "error",
+        },
+        {
+          inputs: [
+            {
+              internalType: "uint256",
+              name: "listingId",
+              type: "uint256",
+            },
+          ],
+          name: "InvalidListing",
+          type: "error",
+        },
+        {
+          inputs: [],
+          name: "InvalidPoolGuard",
+          type: "error",
+        },
+        {
+          inputs: [
+            {
+              internalType: "int256",
+              name: "answer",
+              type: "int256",
+            },
+          ],
+          name: "InvalidPrice",
+          type: "error",
+        },
+        {
+          inputs: [],
+          name: "NativeTransferFailed",
+          type: "error",
+        },
+        {
+          inputs: [
+            {
+              internalType: "uint256",
+              name: "listingId",
+              type: "uint256",
+            },
+          ],
+          name: "NotSeller",
+          type: "error",
+        },
+        {
+          inputs: [
+            {
+              internalType: "address",
+              name: "pool",
+              type: "address",
+            },
+            {
+              internalType: "uint256",
+              name: "liquidity",
+              type: "uint256",
+            },
+            {
+              internalType: "uint128",
+              name: "minLiquidity",
+              type: "uint128",
+            },
+          ],
+          name: "PoolIlliquid",
+          type: "error",
+        },
+        {
+          inputs: [
+            {
+              internalType: "uint256",
+              name: "poolPrice",
+              type: "uint256",
+            },
+            {
+              internalType: "uint256",
+              name: "oraclePrice",
+              type: "uint256",
+            },
+            {
+              internalType: "uint256",
+              name: "deviationBps",
+              type: "uint256",
+            },
+          ],
+          name: "PoolPriceDeviation",
+          type: "error",
+        },
+        {
+          inputs: [
+            {
+              internalType: "uint32",
+              name: "maxPriceAge",
+              type: "uint32",
+            },
+          ],
+          name: "PriceAgeOutOfRange",
+          type: "error",
+        },
+        {
+          inputs: [],
+          name: "ReentrancyGuardReentrantCall",
+          type: "error",
+        },
+        {
+          inputs: [
+            {
+              internalType: "uint256",
+              name: "updatedAt",
+              type: "uint256",
+            },
+            {
+              internalType: "uint32",
+              name: "maxPriceAge",
+              type: "uint32",
+            },
+          ],
+          name: "StalePrice",
+          type: "error",
+        },
+        {
+          inputs: [],
+          name: "ZeroAddress",
+          type: "error",
+        },
+        {
+          inputs: [],
+          name: "ZeroAmount",
+          type: "error",
+        },
+        {
+          anonymous: false,
+          inputs: [
+            {
+              indexed: true,
+              internalType: "uint256",
+              name: "listingId",
+              type: "uint256",
+            },
+            {
+              indexed: false,
+              internalType: "uint64",
+              name: "unitsReturned",
+              type: "uint64",
+            },
+          ],
+          name: "ListingCancelled",
+          type: "event",
+        },
+        {
+          anonymous: false,
+          inputs: [
+            {
+              indexed: true,
+              internalType: "uint256",
+              name: "listingId",
+              type: "uint256",
+            },
+            {
+              indexed: true,
+              internalType: "address",
+              name: "seller",
+              type: "address",
+            },
+            {
+              indexed: false,
+              internalType: "uint64",
+              name: "units",
+              type: "uint64",
+            },
+            {
+              indexed: false,
+              internalType: "uint64",
+              name: "priceUsdCentsPerTonne",
+              type: "uint64",
+            },
+          ],
+          name: "ListingCreated",
+          type: "event",
+        },
+        {
+          anonymous: false,
+          inputs: [
+            {
+              indexed: false,
+              internalType: "uint32",
+              name: "maxPriceAge",
+              type: "uint32",
+            },
+          ],
+          name: "MaxPriceAgeChanged",
+          type: "event",
+        },
+        {
+          anonymous: false,
+          inputs: [
+            {
+              indexed: false,
+              internalType: "bool",
+              name: "enabled",
+              type: "bool",
+            },
+          ],
+          name: "PoolGuardEnabled",
+          type: "event",
+        },
+        {
+          anonymous: false,
+          inputs: [
+            {
+              indexed: true,
+              internalType: "address",
+              name: "pool",
+              type: "address",
+            },
+            {
+              indexed: false,
+              internalType: "bool",
+              name: "isV2",
+              type: "bool",
+            },
+            {
+              indexed: false,
+              internalType: "bool",
+              name: "whbarIsToken0",
+              type: "bool",
+            },
+            {
+              indexed: false,
+              internalType: "uint16",
+              name: "maxDeviationBps",
+              type: "uint16",
+            },
+            {
+              indexed: false,
+              internalType: "uint128",
+              name: "minLiquidity",
+              type: "uint128",
+            },
+            {
+              indexed: false,
+              internalType: "bool",
+              name: "enabled",
+              type: "bool",
+            },
+          ],
+          name: "PoolGuardSet",
+          type: "event",
+        },
+        {
+          anonymous: false,
+          inputs: [
+            {
+              indexed: true,
+              internalType: "address",
+              name: "seller",
+              type: "address",
+            },
+            {
+              indexed: false,
+              internalType: "uint256",
+              name: "amount",
+              type: "uint256",
+            },
+          ],
+          name: "ProceedsWithdrawn",
+          type: "event",
+        },
+        {
+          anonymous: false,
+          inputs: [
+            {
+              indexed: true,
+              internalType: "uint256",
+              name: "listingId",
+              type: "uint256",
+            },
+            {
+              indexed: true,
+              internalType: "address",
+              name: "buyer",
+              type: "address",
+            },
+            {
+              indexed: false,
+              internalType: "uint64",
+              name: "units",
+              type: "uint64",
+            },
+            {
+              indexed: false,
+              internalType: "uint256",
+              name: "nativePaid",
+              type: "uint256",
+            },
+          ],
+          name: "Purchased",
+          type: "event",
+        },
+        {
+          anonymous: false,
+          inputs: [
+            {
+              indexed: true,
+              internalType: "uint256",
+              name: "listingId",
+              type: "uint256",
+            },
+            {
+              indexed: true,
+              internalType: "address",
+              name: "buyer",
+              type: "address",
+            },
+            {
+              indexed: true,
+              internalType: "uint256",
+              name: "retirementId",
+              type: "uint256",
+            },
+          ],
+          name: "PurchasedAndRetired",
+          type: "event",
+        },
+        {
+          anonymous: false,
+          inputs: [
+            {
+              indexed: true,
+              internalType: "bytes32",
+              name: "role",
+              type: "bytes32",
+            },
+            {
+              indexed: true,
+              internalType: "bytes32",
+              name: "previousAdminRole",
+              type: "bytes32",
+            },
+            {
+              indexed: true,
+              internalType: "bytes32",
+              name: "newAdminRole",
+              type: "bytes32",
+            },
+          ],
+          name: "RoleAdminChanged",
+          type: "event",
+        },
+        {
+          anonymous: false,
+          inputs: [
+            {
+              indexed: true,
+              internalType: "bytes32",
+              name: "role",
+              type: "bytes32",
+            },
+            {
+              indexed: true,
+              internalType: "address",
+              name: "account",
+              type: "address",
+            },
+            {
+              indexed: true,
+              internalType: "address",
+              name: "sender",
+              type: "address",
+            },
+          ],
+          name: "RoleGranted",
+          type: "event",
+        },
+        {
+          anonymous: false,
+          inputs: [
+            {
+              indexed: true,
+              internalType: "bytes32",
+              name: "role",
+              type: "bytes32",
+            },
+            {
+              indexed: true,
+              internalType: "address",
+              name: "account",
+              type: "address",
+            },
+            {
+              indexed: true,
+              internalType: "address",
+              name: "sender",
+              type: "address",
+            },
+          ],
+          name: "RoleRevoked",
+          type: "event",
+        },
+        {
+          inputs: [],
+          name: "DEFAULT_ADMIN_ROLE",
+          outputs: [
+            {
+              internalType: "bytes32",
+              name: "",
+              type: "bytes32",
+            },
+          ],
+          stateMutability: "view",
+          type: "function",
+        },
+        {
+          inputs: [],
+          name: "HBAR_USD_FEED",
+          outputs: [
+            {
+              internalType: "contract AggregatorV3Interface",
+              name: "",
+              type: "address",
+            },
+          ],
+          stateMutability: "view",
+          type: "function",
+        },
+        {
+          inputs: [],
+          name: "MAX_BPS",
+          outputs: [
+            {
+              internalType: "uint16",
+              name: "",
+              type: "uint16",
+            },
+          ],
+          stateMutability: "view",
+          type: "function",
+        },
+        {
+          inputs: [],
+          name: "MAX_POOL_DEVIATION_BPS",
+          outputs: [
+            {
+              internalType: "uint16",
+              name: "",
+              type: "uint16",
+            },
+          ],
+          stateMutability: "view",
+          type: "function",
+        },
+        {
+          inputs: [],
+          name: "MAX_PRICE_AGE",
+          outputs: [
+            {
+              internalType: "uint32",
+              name: "",
+              type: "uint32",
+            },
+          ],
+          stateMutability: "view",
+          type: "function",
+        },
+        {
+          inputs: [],
+          name: "NATIVE_UNITS_PER_HBAR",
+          outputs: [
+            {
+              internalType: "uint256",
+              name: "",
+              type: "uint256",
+            },
+          ],
+          stateMutability: "view",
+          type: "function",
+        },
+        {
+          inputs: [],
+          name: "REGISTRY",
+          outputs: [
+            {
+              internalType: "contract DmrvRegistry",
+              name: "",
+              type: "address",
+            },
+          ],
+          stateMutability: "view",
+          type: "function",
+        },
+        {
+          inputs: [],
+          name: "UNITS_PER_CREDIT",
+          outputs: [
+            {
+              internalType: "uint256",
+              name: "",
+              type: "uint256",
+            },
+          ],
+          stateMutability: "view",
+          type: "function",
+        },
+        {
+          inputs: [
+            {
+              internalType: "uint256",
+              name: "listingId",
+              type: "uint256",
+            },
+            {
+              internalType: "uint64",
+              name: "units",
+              type: "uint64",
+            },
+          ],
+          name: "buy",
+          outputs: [],
+          stateMutability: "payable",
+          type: "function",
+        },
+        {
+          inputs: [
+            {
+              internalType: "uint256",
+              name: "listingId",
+              type: "uint256",
+            },
+            {
+              internalType: "uint64",
+              name: "units",
+              type: "uint64",
+            },
+            {
+              internalType: "string",
+              name: "beneficiary",
+              type: "string",
+            },
+          ],
+          name: "buyAndRetire",
+          outputs: [
+            {
+              internalType: "uint256",
+              name: "retirementId",
+              type: "uint256",
+            },
+          ],
+          stateMutability: "payable",
+          type: "function",
+        },
+        {
+          inputs: [
+            {
+              internalType: "uint256",
+              name: "listingId",
+              type: "uint256",
+            },
+          ],
+          name: "cancelListing",
+          outputs: [],
+          stateMutability: "nonpayable",
+          type: "function",
+        },
+        {
+          inputs: [
+            {
+              internalType: "uint64",
+              name: "units",
+              type: "uint64",
+            },
+            {
+              internalType: "uint64",
+              name: "priceUsdCentsPerTonne",
+              type: "uint64",
+            },
+          ],
+          name: "createListing",
+          outputs: [
+            {
+              internalType: "uint256",
+              name: "listingId",
+              type: "uint256",
+            },
+          ],
+          stateMutability: "nonpayable",
+          type: "function",
+        },
+        {
+          inputs: [
+            {
+              internalType: "uint256",
+              name: "listingId",
+              type: "uint256",
+            },
+          ],
+          name: "getListing",
+          outputs: [
+            {
+              components: [
+                {
+                  internalType: "address",
+                  name: "seller",
+                  type: "address",
+                },
+                {
+                  internalType: "uint64",
+                  name: "unitsAvailable",
+                  type: "uint64",
+                },
+                {
+                  internalType: "uint64",
+                  name: "priceUsdCentsPerTonne",
+                  type: "uint64",
+                },
+                {
+                  internalType: "bool",
+                  name: "active",
+                  type: "bool",
+                },
+              ],
+              internalType: "struct CreditMarket.Listing",
+              name: "",
+              type: "tuple",
+            },
+          ],
+          stateMutability: "view",
+          type: "function",
+        },
+        {
+          inputs: [
+            {
+              internalType: "uint256",
+              name: "start",
+              type: "uint256",
+            },
+            {
+              internalType: "uint256",
+              name: "count",
+              type: "uint256",
+            },
+          ],
+          name: "getListings",
+          outputs: [
+            {
+              components: [
+                {
+                  internalType: "address",
+                  name: "seller",
+                  type: "address",
+                },
+                {
+                  internalType: "uint64",
+                  name: "unitsAvailable",
+                  type: "uint64",
+                },
+                {
+                  internalType: "uint64",
+                  name: "priceUsdCentsPerTonne",
+                  type: "uint64",
+                },
+                {
+                  internalType: "bool",
+                  name: "active",
+                  type: "bool",
+                },
+              ],
+              internalType: "struct CreditMarket.Listing[]",
+              name: "page",
+              type: "tuple[]",
+            },
+          ],
+          stateMutability: "view",
+          type: "function",
+        },
+        {
+          inputs: [
+            {
+              internalType: "bytes32",
+              name: "role",
+              type: "bytes32",
+            },
+          ],
+          name: "getRoleAdmin",
+          outputs: [
+            {
+              internalType: "bytes32",
+              name: "",
+              type: "bytes32",
+            },
+          ],
+          stateMutability: "view",
+          type: "function",
+        },
+        {
+          inputs: [
+            {
+              internalType: "bytes32",
+              name: "role",
+              type: "bytes32",
+            },
+            {
+              internalType: "address",
+              name: "account",
+              type: "address",
+            },
+          ],
+          name: "grantRole",
+          outputs: [],
+          stateMutability: "nonpayable",
+          type: "function",
+        },
+        {
+          inputs: [
+            {
+              internalType: "bytes32",
+              name: "role",
+              type: "bytes32",
+            },
+            {
+              internalType: "address",
+              name: "account",
+              type: "address",
+            },
+          ],
+          name: "hasRole",
+          outputs: [
+            {
+              internalType: "bool",
+              name: "",
+              type: "bool",
+            },
+          ],
+          stateMutability: "view",
+          type: "function",
+        },
+        {
+          inputs: [],
+          name: "listingCount",
+          outputs: [
+            {
+              internalType: "uint256",
+              name: "",
+              type: "uint256",
+            },
+          ],
+          stateMutability: "view",
+          type: "function",
+        },
+        {
+          inputs: [],
+          name: "maxPriceAge",
+          outputs: [
+            {
+              internalType: "uint32",
+              name: "",
+              type: "uint32",
+            },
+          ],
+          stateMutability: "view",
+          type: "function",
+        },
+        {
+          inputs: [],
+          name: "poolGuard",
+          outputs: [
+            {
+              internalType: "address",
+              name: "pool",
+              type: "address",
+            },
+            {
+              internalType: "bool",
+              name: "isV2",
+              type: "bool",
+            },
+            {
+              internalType: "bool",
+              name: "whbarIsToken0",
+              type: "bool",
+            },
+            {
+              internalType: "bool",
+              name: "enabled",
+              type: "bool",
+            },
+            {
+              internalType: "uint8",
+              name: "whbarDecimals",
+              type: "uint8",
+            },
+            {
+              internalType: "uint8",
+              name: "usdDecimals",
+              type: "uint8",
+            },
+            {
+              internalType: "uint16",
+              name: "maxDeviationBps",
+              type: "uint16",
+            },
+            {
+              internalType: "uint128",
+              name: "minLiquidity",
+              type: "uint128",
+            },
+          ],
+          stateMutability: "view",
+          type: "function",
+        },
+        {
+          inputs: [
+            {
+              internalType: "uint8",
+              name: "decimals",
+              type: "uint8",
+            },
+          ],
+          name: "poolHbarUsd",
+          outputs: [
+            {
+              internalType: "uint256",
+              name: "",
+              type: "uint256",
+            },
+          ],
+          stateMutability: "view",
+          type: "function",
+        },
+        {
+          inputs: [
+            {
+              internalType: "address",
+              name: "seller",
+              type: "address",
+            },
+          ],
+          name: "proceedsOf",
+          outputs: [
+            {
+              internalType: "uint256",
+              name: "native",
+              type: "uint256",
+            },
+          ],
+          stateMutability: "view",
+          type: "function",
+        },
+        {
+          inputs: [
+            {
+              internalType: "uint256",
+              name: "listingId",
+              type: "uint256",
+            },
+            {
+              internalType: "uint64",
+              name: "units",
+              type: "uint64",
+            },
+          ],
+          name: "quote",
+          outputs: [
+            {
+              internalType: "uint256",
+              name: "nativeCost",
+              type: "uint256",
+            },
+          ],
+          stateMutability: "view",
+          type: "function",
+        },
+        {
+          inputs: [
+            {
+              internalType: "bytes32",
+              name: "role",
+              type: "bytes32",
+            },
+            {
+              internalType: "address",
+              name: "callerConfirmation",
+              type: "address",
+            },
+          ],
+          name: "renounceRole",
+          outputs: [],
+          stateMutability: "nonpayable",
+          type: "function",
+        },
+        {
+          inputs: [
+            {
+              internalType: "bytes32",
+              name: "role",
+              type: "bytes32",
+            },
+            {
+              internalType: "address",
+              name: "account",
+              type: "address",
+            },
+          ],
+          name: "revokeRole",
+          outputs: [],
+          stateMutability: "nonpayable",
+          type: "function",
+        },
+        {
+          inputs: [
+            {
+              internalType: "uint32",
+              name: "maxPriceAge_",
+              type: "uint32",
+            },
+          ],
+          name: "setMaxPriceAge",
+          outputs: [],
+          stateMutability: "nonpayable",
+          type: "function",
+        },
+        {
+          inputs: [
+            {
+              internalType: "address",
+              name: "pool",
+              type: "address",
+            },
+            {
+              internalType: "bool",
+              name: "isV2",
+              type: "bool",
+            },
+            {
+              internalType: "address",
+              name: "whbar",
+              type: "address",
+            },
+            {
+              internalType: "uint8",
+              name: "whbarDecimals",
+              type: "uint8",
+            },
+            {
+              internalType: "uint8",
+              name: "usdDecimals",
+              type: "uint8",
+            },
+            {
+              internalType: "uint16",
+              name: "maxDeviationBps",
+              type: "uint16",
+            },
+            {
+              internalType: "uint128",
+              name: "minLiquidity",
+              type: "uint128",
+            },
+            {
+              internalType: "bool",
+              name: "enabled",
+              type: "bool",
+            },
+          ],
+          name: "setPoolGuard",
+          outputs: [],
+          stateMutability: "nonpayable",
+          type: "function",
+        },
+        {
+          inputs: [
+            {
+              internalType: "bool",
+              name: "enabled",
+              type: "bool",
+            },
+          ],
+          name: "setPoolGuardEnabled",
+          outputs: [],
+          stateMutability: "nonpayable",
+          type: "function",
+        },
+        {
+          inputs: [],
+          name: "settlementPrice",
+          outputs: [
+            {
+              internalType: "uint256",
+              name: "answer",
+              type: "uint256",
+            },
+            {
+              internalType: "uint8",
+              name: "decimals",
+              type: "uint8",
+            },
+          ],
+          stateMutability: "view",
+          type: "function",
+        },
+        {
+          inputs: [
+            {
+              internalType: "bytes4",
+              name: "interfaceId",
+              type: "bytes4",
+            },
+          ],
+          name: "supportsInterface",
+          outputs: [
+            {
+              internalType: "bool",
+              name: "",
+              type: "bool",
+            },
+          ],
+          stateMutability: "view",
+          type: "function",
+        },
+        {
+          inputs: [
+            {
+              internalType: "address payable",
+              name: "to",
+              type: "address",
+            },
+          ],
+          name: "sweepHbar",
+          outputs: [],
+          stateMutability: "nonpayable",
+          type: "function",
+        },
+        {
+          inputs: [],
+          name: "totalProceedsOwed",
+          outputs: [
+            {
+              internalType: "uint256",
+              name: "",
+              type: "uint256",
+            },
+          ],
+          stateMutability: "view",
+          type: "function",
+        },
+        {
+          inputs: [
+            {
+              internalType: "uint64",
+              name: "priceUsdCentsPerTonne",
+              type: "uint64",
+            },
+            {
+              internalType: "uint64",
+              name: "units",
+              type: "uint64",
+            },
+          ],
+          name: "usdCentsPerTonneToNative",
+          outputs: [
+            {
+              internalType: "uint256",
+              name: "",
+              type: "uint256",
+            },
+          ],
+          stateMutability: "view",
+          type: "function",
+        },
+        {
+          inputs: [],
+          name: "withdrawProceeds",
+          outputs: [],
+          stateMutability: "nonpayable",
+          type: "function",
+        },
+      ],
+      inheritedFunctions: {
+        DEFAULT_ADMIN_ROLE: "@openzeppelin/contracts/access/AccessControl.sol",
+        getRoleAdmin: "@openzeppelin/contracts/access/AccessControl.sol",
+        grantRole: "@openzeppelin/contracts/access/AccessControl.sol",
+        hasRole: "@openzeppelin/contracts/access/AccessControl.sol",
+        renounceRole: "@openzeppelin/contracts/access/AccessControl.sol",
+        revokeRole: "@openzeppelin/contracts/access/AccessControl.sol",
+        supportsInterface: "@openzeppelin/contracts/access/AccessControl.sol",
+      },
+      deployedOnBlock: 31,
+    },
+    DmrvRegistry: {
+      address: "0x68B1D87F95878fE05B998F19b66F4baba5De1aed",
+      abi: [
+        {
+          inputs: [
+            {
+              internalType: "address",
+              name: "admin",
+              type: "address",
+            },
+            {
+              internalType: "uint16",
+              name: "minCompletenessBps_",
+              type: "uint16",
+            },
+          ],
+          stateMutability: "nonpayable",
+          type: "constructor",
+        },
+        {
+          inputs: [],
+          name: "AccessControlBadConfirmation",
+          type: "error",
+        },
+        {
+          inputs: [
+            {
+              internalType: "address",
+              name: "account",
+              type: "address",
+            },
+            {
+              internalType: "bytes32",
+              name: "neededRole",
+              type: "bytes32",
+            },
+          ],
+          name: "AccessControlUnauthorizedAccount",
+          type: "error",
+        },
+        {
+          inputs: [],
+          name: "BeneficiaryTooLong",
+          type: "error",
+        },
+        {
+          inputs: [
+            {
+              internalType: "uint64",
+              name: "periodEnd",
+              type: "uint64",
+            },
+            {
+              internalType: "uint64",
+              name: "calibrationValidUntil",
+              type: "uint64",
+            },
+          ],
+          name: "CalibrationExpired",
+          type: "error",
+        },
+        {
+          inputs: [
+            {
+              internalType: "uint16",
+              name: "completenessBps",
+              type: "uint16",
+            },
+            {
+              internalType: "uint16",
+              name: "minCompletenessBps",
+              type: "uint16",
+            },
+          ],
+          name: "CompletenessTooLow",
+          type: "error",
+        },
+        {
+          inputs: [
+            {
+              internalType: "bytes32",
+              name: "designHash",
+              type: "bytes32",
+            },
+          ],
+          name: "DesignAlreadyRegistered",
+          type: "error",
+        },
+        {
+          inputs: [],
+          name: "ECDSAInvalidSignature",
+          type: "error",
+        },
+        {
+          inputs: [
+            {
+              internalType: "uint256",
+              name: "length",
+              type: "uint256",
+            },
+          ],
+          name: "ECDSAInvalidSignatureLength",
+          type: "error",
+        },
+        {
+          inputs: [
+            {
+              internalType: "bytes32",
+              name: "s",
+              type: "bytes32",
+            },
+          ],
+          name: "ECDSAInvalidSignatureS",
+          type: "error",
+        },
+        {
+          inputs: [],
+          name: "EmptyDesignHash",
+          type: "error",
+        },
+        {
+          inputs: [],
+          name: "EmptyReportHash",
+          type: "error",
+        },
+        {
+          inputs: [
+            {
+              internalType: "bytes32",
+              name: "evidenceHash",
+              type: "bytes32",
+            },
+          ],
+          name: "EvidenceAlreadyUsed",
+          type: "error",
+        },
+        {
+          inputs: [
+            {
+              internalType: "uint256",
+              name: "amount",
+              type: "uint256",
+            },
+          ],
+          name: "HtsAmountOverflow",
+          type: "error",
+        },
+        {
+          inputs: [
+            {
+              internalType: "bytes4",
+              name: "selector",
+              type: "bytes4",
+            },
+            {
+              internalType: "int64",
+              name: "responseCode",
+              type: "int64",
+            },
+          ],
+          name: "HtsCallFailed",
+          type: "error",
+        },
+        {
+          inputs: [
+            {
+              internalType: "uint256",
+              name: "requested",
+              type: "uint256",
+            },
+            {
+              internalType: "uint256",
+              name: "available",
+              type: "uint256",
+            },
+          ],
+          name: "InsufficientCustody",
+          type: "error",
+        },
+        {
+          inputs: [
+            {
+              internalType: "uint256",
+              name: "attestationId",
+              type: "uint256",
+            },
+          ],
+          name: "InvalidAttestation",
+          type: "error",
+        },
+        {
+          inputs: [
+            {
+              internalType: "uint16",
+              name: "value",
+              type: "uint16",
+            },
+          ],
+          name: "InvalidCompleteness",
+          type: "error",
+        },
+        {
+          inputs: [
+            {
+              internalType: "address",
+              name: "signer",
+              type: "address",
+            },
+            {
+              internalType: "address",
+              name: "meter",
+              type: "address",
+            },
+          ],
+          name: "InvalidMeterSignature",
+          type: "error",
+        },
+        {
+          inputs: [
+            {
+              internalType: "uint64",
+              name: "periodStart",
+              type: "uint64",
+            },
+            {
+              internalType: "uint64",
+              name: "periodEnd",
+              type: "uint64",
+            },
+          ],
+          name: "InvalidPeriod",
+          type: "error",
+        },
+        {
+          inputs: [
+            {
+              internalType: "bytes32",
+              name: "projectId",
+              type: "bytes32",
+            },
+          ],
+          name: "InvalidProject",
+          type: "error",
+        },
+        {
+          inputs: [
+            {
+              internalType: "address",
+              name: "meter",
+              type: "address",
+            },
+          ],
+          name: "MeterAlreadyRegistered",
+          type: "error",
+        },
+        {
+          inputs: [
+            {
+              internalType: "address",
+              name: "module",
+              type: "address",
+            },
+          ],
+          name: "ModuleNotApproved",
+          type: "error",
+        },
+        {
+          inputs: [],
+          name: "NativeTransferFailed",
+          type: "error",
+        },
+        {
+          inputs: [
+            {
+              internalType: "uint256",
+              name: "retirementId",
+              type: "uint256",
+            },
+          ],
+          name: "NoCertificateToClaim",
+          type: "error",
+        },
+        {
+          inputs: [
+            {
+              internalType: "uint256",
+              name: "retirementId",
+              type: "uint256",
+            },
+          ],
+          name: "NotRetirementOwner",
+          type: "error",
+        },
+        {
+          inputs: [
+            {
+              internalType: "uint64",
+              name: "periodStart",
+              type: "uint64",
+            },
+            {
+              internalType: "uint64",
+              name: "periodEnd",
+              type: "uint64",
+            },
+          ],
+          name: "OutsideCreditingPeriod",
+          type: "error",
+        },
+        {
+          inputs: [
+            {
+              internalType: "uint64",
+              name: "periodStart",
+              type: "uint64",
+            },
+            {
+              internalType: "uint64",
+              name: "lastPeriodEnd",
+              type: "uint64",
+            },
+          ],
+          name: "PeriodOverlapsPrevious",
+          type: "error",
+        },
+        {
+          inputs: [
+            {
+              internalType: "bytes32",
+              name: "projectId",
+              type: "bytes32",
+            },
+          ],
+          name: "ProjectAlreadyRegistered",
+          type: "error",
+        },
+        {
+          inputs: [
+            {
+              internalType: "bytes32",
+              name: "projectId",
+              type: "bytes32",
+            },
+          ],
+          name: "ProjectInactive",
+          type: "error",
+        },
+        {
+          inputs: [],
+          name: "ReentrancyGuardReentrantCall",
+          type: "error",
+        },
+        {
+          inputs: [
+            {
+              internalType: "uint64",
+              name: "requestedAt",
+              type: "uint64",
+            },
+          ],
+          name: "RegistrationInTheFuture",
+          type: "error",
+        },
+        {
+          inputs: [
+            {
+              internalType: "uint32",
+              name: "expected",
+              type: "uint32",
+            },
+            {
+              internalType: "uint32",
+              name: "provided",
+              type: "uint32",
+            },
+          ],
+          name: "StaleLedger",
+          type: "error",
+        },
+        {
+          inputs: [],
+          name: "TokenAlreadyCreated",
+          type: "error",
+        },
+        {
+          inputs: [],
+          name: "TokenNotCreated",
+          type: "error",
+        },
+        {
+          inputs: [
+            {
+              internalType: "uint64",
+              name: "topic",
+              type: "uint64",
+            },
+            {
+              internalType: "uint64",
+              name: "sequence",
+              type: "uint64",
+            },
+          ],
+          name: "Unanchored",
+          type: "error",
+        },
+        {
+          inputs: [
+            {
+              internalType: "address",
+              name: "signer",
+              type: "address",
+            },
+          ],
+          name: "UnregisteredVerifier",
+          type: "error",
+        },
+        {
+          inputs: [
+            {
+              internalType: "address",
+              name: "verifier",
+              type: "address",
+            },
+          ],
+          name: "VerifierIsParty",
+          type: "error",
+        },
+        {
+          inputs: [
+            {
+              internalType: "uint256",
+              name: "chainId",
+              type: "uint256",
+            },
+          ],
+          name: "WrongChain",
+          type: "error",
+        },
+        {
+          inputs: [],
+          name: "ZeroAddress",
+          type: "error",
+        },
+        {
+          inputs: [],
+          name: "ZeroAmount",
+          type: "error",
+        },
+        {
+          anonymous: false,
+          inputs: [
+            {
+              indexed: true,
+              internalType: "bytes32",
+              name: "projectId",
+              type: "bytes32",
+            },
+            {
+              indexed: false,
+              internalType: "bytes2",
+              name: "hostParty",
+              type: "bytes2",
+            },
+            {
+              indexed: false,
+              internalType: "uint8",
+              name: "authorizedUse",
+              type: "uint8",
+            },
+            {
+              indexed: false,
+              internalType: "uint8",
+              name: "firstTransferDefinition",
+              type: "uint8",
+            },
+            {
+              indexed: false,
+              internalType: "bytes32",
+              name: "authorizationRef",
+              type: "bytes32",
+            },
+          ],
+          name: "Article6Set",
+          type: "event",
+        },
+        {
+          anonymous: false,
+          inputs: [
+            {
+              indexed: true,
+              internalType: "uint256",
+              name: "attestationId",
+              type: "uint256",
+            },
+            {
+              indexed: true,
+              internalType: "bytes32",
+              name: "projectId",
+              type: "bytes32",
+            },
+            {
+              indexed: true,
+              internalType: "address",
+              name: "verifier",
+              type: "address",
+            },
+            {
+              indexed: false,
+              internalType: "int256",
+              name: "reductionG",
+              type: "int256",
+            },
+            {
+              indexed: false,
+              internalType: "uint256",
+              name: "unitsMinted",
+              type: "uint256",
+            },
+            {
+              indexed: false,
+              internalType: "bytes32",
+              name: "reportHash",
+              type: "bytes32",
+            },
+            {
+              indexed: false,
+              internalType: "uint64",
+              name: "hcsTopicNum",
+              type: "uint64",
+            },
+            {
+              indexed: false,
+              internalType: "uint64",
+              name: "hcsSequence",
+              type: "uint64",
+            },
+            {
+              indexed: false,
+              internalType: "bytes32",
+              name: "evidenceHash",
+              type: "bytes32",
+            },
+            {
+              indexed: false,
+              internalType: "bytes",
+              name: "breakdown",
+              type: "bytes",
+            },
+          ],
+          name: "AttestationSubmitted",
+          type: "event",
+        },
+        {
+          anonymous: false,
+          inputs: [
+            {
+              indexed: false,
+              internalType: "uint64",
+              name: "topic",
+              type: "uint64",
+            },
+          ],
+          name: "AuditTopicSet",
+          type: "event",
+        },
+        {
+          anonymous: false,
+          inputs: [
+            {
+              indexed: true,
+              internalType: "bytes32",
+              name: "projectId",
+              type: "bytes32",
+            },
+            {
+              indexed: false,
+              internalType: "uint64",
+              name: "validUntil",
+              type: "uint64",
+            },
+            {
+              indexed: false,
+              internalType: "bytes32",
+              name: "certificateHash",
+              type: "bytes32",
+            },
+          ],
+          name: "CalibrationUpdated",
+          type: "event",
+        },
+        {
+          anonymous: false,
+          inputs: [
+            {
+              indexed: true,
+              internalType: "uint256",
+              name: "retirementId",
+              type: "uint256",
+            },
+            {
+              indexed: true,
+              internalType: "address",
+              name: "account",
+              type: "address",
+            },
+            {
+              indexed: false,
+              internalType: "uint64",
+              name: "serial",
+              type: "uint64",
+            },
+          ],
+          name: "CertificateClaimed",
+          type: "event",
+        },
+        {
+          anonymous: false,
+          inputs: [
+            {
+              indexed: true,
+              internalType: "uint256",
+              name: "retirementId",
+              type: "uint256",
+            },
+            {
+              indexed: false,
+              internalType: "uint64",
+              name: "serial",
+              type: "uint64",
+            },
+            {
+              indexed: false,
+              internalType: "bool",
+              name: "delivered",
+              type: "bool",
+            },
+          ],
+          name: "CertificateIssued",
+          type: "event",
+        },
+        {
+          anonymous: false,
+          inputs: [
+            {
+              indexed: true,
+              internalType: "address",
+              name: "token",
+              type: "address",
+            },
+          ],
+          name: "CertificateTokenCreated",
+          type: "event",
+        },
+        {
+          anonymous: false,
+          inputs: [
+            {
+              indexed: true,
+              internalType: "uint256",
+              name: "attestationId",
+              type: "uint256",
+            },
+            {
+              indexed: false,
+              internalType: "uint8",
+              name: "status",
+              type: "uint8",
+            },
+            {
+              indexed: false,
+              internalType: "bytes32",
+              name: "ref",
+              type: "bytes32",
+            },
+          ],
+          name: "CorrespondingAdjustmentSet",
+          type: "event",
+        },
+        {
+          anonymous: false,
+          inputs: [
+            {
+              indexed: true,
+              internalType: "address",
+              name: "token",
+              type: "address",
+            },
+          ],
+          name: "CreditTokenCreated",
+          type: "event",
+        },
+        {
+          anonymous: false,
+          inputs: [
+            {
+              indexed: true,
+              internalType: "bytes32",
+              name: "projectId",
+              type: "bytes32",
+            },
+            {
+              indexed: false,
+              internalType: "uint64",
+              name: "creditingStart",
+              type: "uint64",
+            },
+            {
+              indexed: false,
+              internalType: "uint64",
+              name: "creditingEnd",
+              type: "uint64",
+            },
+            {
+              indexed: false,
+              internalType: "bytes",
+              name: "params",
+              type: "bytes",
+            },
+          ],
+          name: "CreditingPeriodRenewed",
+          type: "event",
+        },
+        {
+          anonymous: false,
+          inputs: [
+            {
+              indexed: true,
+              internalType: "address",
+              name: "from",
+              type: "address",
+            },
+            {
+              indexed: true,
+              internalType: "address",
+              name: "to",
+              type: "address",
+            },
+            {
+              indexed: false,
+              internalType: "uint256",
+              name: "units",
+              type: "uint256",
+            },
+          ],
+          name: "CustodyMoved",
+          type: "event",
+        },
+        {
+          anonymous: false,
+          inputs: [
+            {
+              indexed: true,
+              internalType: "bytes32",
+              name: "projectId",
+              type: "bytes32",
+            },
+            {
+              indexed: true,
+              internalType: "address",
+              name: "meter",
+              type: "address",
+            },
+          ],
+          name: "MeterChanged",
+          type: "event",
+        },
+        {
+          anonymous: false,
+          inputs: [
+            {
+              indexed: true,
+              internalType: "uint256",
+              name: "attestationId",
+              type: "uint256",
+            },
+            {
+              indexed: true,
+              internalType: "address",
+              name: "meter",
+              type: "address",
+            },
+            {
+              indexed: false,
+              internalType: "bytes32",
+              name: "readingsDigest",
+              type: "bytes32",
+            },
+          ],
+          name: "MeterStatementAccepted",
+          type: "event",
+        },
+        {
+          anonymous: false,
+          inputs: [
+            {
+              indexed: false,
+              internalType: "uint16",
+              name: "minCompletenessBps",
+              type: "uint16",
+            },
+          ],
+          name: "MinCompletenessChanged",
+          type: "event",
+        },
+        {
+          anonymous: false,
+          inputs: [
+            {
+              indexed: true,
+              internalType: "address",
+              name: "module",
+              type: "address",
+            },
+            {
+              indexed: false,
+              internalType: "bytes32",
+              name: "methodologyId",
+              type: "bytes32",
+            },
+            {
+              indexed: false,
+              internalType: "uint32",
+              name: "version",
+              type: "uint32",
+            },
+            {
+              indexed: false,
+              internalType: "bytes32",
+              name: "schemaHash",
+              type: "bytes32",
+            },
+            {
+              indexed: false,
+              internalType: "bool",
+              name: "approved",
+              type: "bool",
+            },
+          ],
+          name: "ModuleApproved",
+          type: "event",
+        },
+        {
+          anonymous: false,
+          inputs: [
+            {
+              indexed: true,
+              internalType: "bytes32",
+              name: "projectId",
+              type: "bytes32",
+            },
+            {
+              indexed: true,
+              internalType: "address",
+              name: "module",
+              type: "address",
+            },
+            {
+              indexed: true,
+              internalType: "address",
+              name: "operator",
+              type: "address",
+            },
+            {
+              indexed: false,
+              internalType: "string",
+              name: "name",
+              type: "string",
+            },
+            {
+              indexed: false,
+              internalType: "address",
+              name: "meter",
+              type: "address",
+            },
+            {
+              indexed: false,
+              internalType: "bytes32",
+              name: "designHash",
+              type: "bytes32",
+            },
+            {
+              indexed: false,
+              internalType: "bytes",
+              name: "params",
+              type: "bytes",
+            },
+          ],
+          name: "ProjectRegistered",
+          type: "event",
+        },
+        {
+          anonymous: false,
+          inputs: [
+            {
+              indexed: true,
+              internalType: "bytes32",
+              name: "projectId",
+              type: "bytes32",
+            },
+            {
+              indexed: false,
+              internalType: "bool",
+              name: "active",
+              type: "bool",
+            },
+          ],
+          name: "ProjectStatusChanged",
+          type: "event",
+        },
+        {
+          anonymous: false,
+          inputs: [
+            {
+              indexed: true,
+              internalType: "uint256",
+              name: "retirementId",
+              type: "uint256",
+            },
+            {
+              indexed: true,
+              internalType: "address",
+              name: "account",
+              type: "address",
+            },
+            {
+              indexed: false,
+              internalType: "uint64",
+              name: "units",
+              type: "uint64",
+            },
+            {
+              indexed: false,
+              internalType: "string",
+              name: "beneficiary",
+              type: "string",
+            },
+          ],
+          name: "Retired",
+          type: "event",
+        },
+        {
+          anonymous: false,
+          inputs: [
+            {
+              indexed: true,
+              internalType: "bytes32",
+              name: "role",
+              type: "bytes32",
+            },
+            {
+              indexed: true,
+              internalType: "bytes32",
+              name: "previousAdminRole",
+              type: "bytes32",
+            },
+            {
+              indexed: true,
+              internalType: "bytes32",
+              name: "newAdminRole",
+              type: "bytes32",
+            },
+          ],
+          name: "RoleAdminChanged",
+          type: "event",
+        },
+        {
+          anonymous: false,
+          inputs: [
+            {
+              indexed: true,
+              internalType: "bytes32",
+              name: "role",
+              type: "bytes32",
+            },
+            {
+              indexed: true,
+              internalType: "address",
+              name: "account",
+              type: "address",
+            },
+            {
+              indexed: true,
+              internalType: "address",
+              name: "sender",
+              type: "address",
+            },
+          ],
+          name: "RoleGranted",
+          type: "event",
+        },
+        {
+          anonymous: false,
+          inputs: [
+            {
+              indexed: true,
+              internalType: "bytes32",
+              name: "role",
+              type: "bytes32",
+            },
+            {
+              indexed: true,
+              internalType: "address",
+              name: "account",
+              type: "address",
+            },
+            {
+              indexed: true,
+              internalType: "address",
+              name: "sender",
+              type: "address",
+            },
+          ],
+          name: "RoleRevoked",
+          type: "event",
+        },
+        {
+          anonymous: false,
+          inputs: [
+            {
+              indexed: true,
+              internalType: "address",
+              name: "verifier",
+              type: "address",
+            },
+            {
+              indexed: false,
+              internalType: "bytes32",
+              name: "accreditationHash",
+              type: "bytes32",
+            },
+          ],
+          name: "VerifierProfileSet",
+          type: "event",
+        },
+        {
+          anonymous: false,
+          inputs: [
+            {
+              indexed: true,
+              internalType: "address",
+              name: "account",
+              type: "address",
+            },
+            {
+              indexed: false,
+              internalType: "uint256",
+              name: "units",
+              type: "uint256",
+            },
+          ],
+          name: "Withdrawn",
+          type: "event",
+        },
+        {
+          inputs: [],
+          name: "CREDIT_DECIMALS",
+          outputs: [
+            {
+              internalType: "int32",
+              name: "",
+              type: "int32",
+            },
+          ],
+          stateMutability: "view",
+          type: "function",
+        },
+        {
+          inputs: [],
+          name: "DECISION_APPROVED",
+          outputs: [
+            {
+              internalType: "uint8",
+              name: "",
+              type: "uint8",
+            },
+          ],
+          stateMutability: "view",
+          type: "function",
+        },
+        {
+          inputs: [],
+          name: "DEFAULT_ADMIN_ROLE",
+          outputs: [
+            {
+              internalType: "bytes32",
+              name: "",
+              type: "bytes32",
+            },
+          ],
+          stateMutability: "view",
+          type: "function",
+        },
+        {
+          inputs: [],
+          name: "G_PER_UNIT",
+          outputs: [
+            {
+              internalType: "uint256",
+              name: "",
+              type: "uint256",
+            },
+          ],
+          stateMutability: "view",
+          type: "function",
+        },
+        {
+          inputs: [],
+          name: "MARKET_ROLE",
+          outputs: [
+            {
+              internalType: "bytes32",
+              name: "",
+              type: "bytes32",
+            },
+          ],
+          stateMutability: "view",
+          type: "function",
+        },
+        {
+          inputs: [],
+          name: "MAX_BENEFICIARY_BYTES",
+          outputs: [
+            {
+              internalType: "uint256",
+              name: "",
+              type: "uint256",
+            },
+          ],
+          stateMutability: "view",
+          type: "function",
+        },
+        {
+          inputs: [],
+          name: "MAX_BPS",
+          outputs: [
+            {
+              internalType: "uint16",
+              name: "",
+              type: "uint16",
+            },
+          ],
+          stateMutability: "view",
+          type: "function",
+        },
+        {
+          inputs: [],
+          name: "METER_STATEMENT_TYPEHASH",
+          outputs: [
+            {
+              internalType: "bytes32",
+              name: "",
+              type: "bytes32",
+            },
+          ],
+          stateMutability: "view",
+          type: "function",
+        },
+        {
+          inputs: [],
+          name: "VERIFIER_APPROVAL_TYPEHASH",
+          outputs: [
+            {
+              internalType: "bytes32",
+              name: "",
+              type: "bytes32",
+            },
+          ],
+          stateMutability: "view",
+          type: "function",
+        },
+        {
+          inputs: [],
+          name: "VERIFIER_ROLE",
+          outputs: [
+            {
+              internalType: "bytes32",
+              name: "",
+              type: "bytes32",
+            },
+          ],
+          stateMutability: "view",
+          type: "function",
+        },
+        {
+          inputs: [
+            {
+              components: [
+                {
+                  internalType: "bytes32",
+                  name: "projectId",
+                  type: "bytes32",
+                },
+                {
+                  internalType: "uint32",
+                  name: "sequence",
+                  type: "uint32",
+                },
+                {
+                  internalType: "uint32",
+                  name: "intervals",
+                  type: "uint32",
+                },
+                {
+                  internalType: "uint32",
+                  name: "intervalSeconds",
+                  type: "uint32",
+                },
+                {
+                  internalType: "bytes32",
+                  name: "readingsDigest",
+                  type: "bytes32",
+                },
+                {
+                  internalType: "bytes32",
+                  name: "reportHash",
+                  type: "bytes32",
+                },
+                {
+                  internalType: "uint64",
+                  name: "hcsTopicNum",
+                  type: "uint64",
+                },
+                {
+                  internalType: "uint64",
+                  name: "hcsSequence",
+                  type: "uint64",
+                },
+                {
+                  internalType: "bytes32",
+                  name: "evidenceHash",
+                  type: "bytes32",
+                },
+                {
+                  components: [
+                    {
+                      internalType: "uint64",
+                      name: "periodStart",
+                      type: "uint64",
+                    },
+                    {
+                      internalType: "uint64",
+                      name: "periodEnd",
+                      type: "uint64",
+                    },
+                    {
+                      internalType: "bytes",
+                      name: "metered",
+                      type: "bytes",
+                    },
+                    {
+                      internalType: "bytes",
+                      name: "verified",
+                      type: "bytes",
+                    },
+                  ],
+                  internalType: "struct Measurement",
+                  name: "measurement",
+                  type: "tuple",
+                },
+                {
+                  internalType: "bytes",
+                  name: "meterSignature",
+                  type: "bytes",
+                },
+                {
+                  internalType: "bytes",
+                  name: "verifierSignature",
+                  type: "bytes",
+                },
+              ],
+              internalType: "struct DmrvRegistry.Submission",
+              name: "s",
+              type: "tuple",
+            },
+          ],
+          name: "approvalDigest",
+          outputs: [
+            {
+              internalType: "bytes32",
+              name: "",
+              type: "bytes32",
+            },
+          ],
+          stateMutability: "view",
+          type: "function",
+        },
+        {
+          inputs: [
+            {
+              internalType: "contract IMethodology",
+              name: "module",
+              type: "address",
+            },
+          ],
+          name: "approvedModule",
+          outputs: [
+            {
+              internalType: "bool",
+              name: "",
+              type: "bool",
+            },
+          ],
+          stateMutability: "view",
+          type: "function",
+        },
+        {
+          inputs: [
+            {
+              internalType: "bytes32",
+              name: "projectId",
+              type: "bytes32",
+            },
+          ],
+          name: "article6Of",
+          outputs: [
+            {
+              internalType: "bytes2",
+              name: "hostParty",
+              type: "bytes2",
+            },
+            {
+              internalType: "uint8",
+              name: "authorizedUse",
+              type: "uint8",
+            },
+            {
+              internalType: "uint8",
+              name: "firstTransferDefinition",
+              type: "uint8",
+            },
+            {
+              internalType: "bytes32",
+              name: "authorizationRef",
+              type: "bytes32",
+            },
+          ],
+          stateMutability: "view",
+          type: "function",
+        },
+        {
+          inputs: [],
+          name: "attestationCount",
+          outputs: [
+            {
+              internalType: "uint256",
+              name: "",
+              type: "uint256",
+            },
+          ],
+          stateMutability: "view",
+          type: "function",
+        },
+        {
+          inputs: [],
+          name: "auditTopic",
+          outputs: [
+            {
+              internalType: "uint64",
+              name: "",
+              type: "uint64",
+            },
+          ],
+          stateMutability: "view",
+          type: "function",
+        },
+        {
+          inputs: [],
+          name: "certificateToken",
+          outputs: [
+            {
+              internalType: "address",
+              name: "",
+              type: "address",
+            },
+          ],
+          stateMutability: "view",
+          type: "function",
+        },
+        {
+          inputs: [
+            {
+              internalType: "uint256",
+              name: "retirementId",
+              type: "uint256",
+            },
+          ],
+          name: "claimCertificate",
+          outputs: [],
+          stateMutability: "nonpayable",
+          type: "function",
+        },
+        {
+          inputs: [
+            {
+              internalType: "uint256",
+              name: "attestationId",
+              type: "uint256",
+            },
+          ],
+          name: "correspondingAdjustmentOf",
+          outputs: [
+            {
+              internalType: "uint8",
+              name: "",
+              type: "uint8",
+            },
+          ],
+          stateMutability: "view",
+          type: "function",
+        },
+        {
+          inputs: [
+            {
+              internalType: "string",
+              name: "name",
+              type: "string",
+            },
+            {
+              internalType: "string",
+              name: "symbol",
+              type: "string",
+            },
+            {
+              internalType: "string",
+              name: "memo",
+              type: "string",
+            },
+          ],
+          name: "createCertificateToken",
+          outputs: [],
+          stateMutability: "payable",
+          type: "function",
+        },
+        {
+          inputs: [
+            {
+              internalType: "string",
+              name: "name",
+              type: "string",
+            },
+            {
+              internalType: "string",
+              name: "symbol",
+              type: "string",
+            },
+            {
+              internalType: "string",
+              name: "memo",
+              type: "string",
+            },
+          ],
+          name: "createCreditToken",
+          outputs: [],
+          stateMutability: "payable",
+          type: "function",
+        },
+        {
+          inputs: [],
+          name: "creditToken",
+          outputs: [
+            {
+              internalType: "address",
+              name: "",
+              type: "address",
+            },
+          ],
+          stateMutability: "view",
+          type: "function",
+        },
+        {
+          inputs: [
+            {
+              internalType: "address",
+              name: "account",
+              type: "address",
+            },
+          ],
+          name: "custodyBalanceOf",
+          outputs: [
+            {
+              internalType: "uint256",
+              name: "units",
+              type: "uint256",
+            },
+          ],
+          stateMutability: "view",
+          type: "function",
+        },
+        {
+          inputs: [],
+          name: "domainSeparator",
+          outputs: [
+            {
+              internalType: "bytes32",
+              name: "",
+              type: "bytes32",
+            },
+          ],
+          stateMutability: "view",
+          type: "function",
+        },
+        {
+          inputs: [
+            {
+              internalType: "bytes32",
+              name: "evidenceHash",
+              type: "bytes32",
+            },
+          ],
+          name: "evidenceUsed",
+          outputs: [
+            {
+              internalType: "bool",
+              name: "",
+              type: "bool",
+            },
+          ],
+          stateMutability: "view",
+          type: "function",
+        },
+        {
+          inputs: [
+            {
+              internalType: "uint256",
+              name: "attestationId",
+              type: "uint256",
+            },
+          ],
+          name: "getAttestation",
+          outputs: [
+            {
+              components: [
+                {
+                  internalType: "bytes32",
+                  name: "projectId",
+                  type: "bytes32",
+                },
+                {
+                  internalType: "uint64",
+                  name: "periodStart",
+                  type: "uint64",
+                },
+                {
+                  internalType: "uint64",
+                  name: "periodEnd",
+                  type: "uint64",
+                },
+                {
+                  internalType: "int64",
+                  name: "reductionG",
+                  type: "int64",
+                },
+                {
+                  internalType: "uint64",
+                  name: "unitsMinted",
+                  type: "uint64",
+                },
+                {
+                  internalType: "uint16",
+                  name: "completenessBps",
+                  type: "uint16",
+                },
+                {
+                  internalType: "address",
+                  name: "verifier",
+                  type: "address",
+                },
+                {
+                  internalType: "address",
+                  name: "meter",
+                  type: "address",
+                },
+                {
+                  internalType: "uint64",
+                  name: "hcsTopicNum",
+                  type: "uint64",
+                },
+                {
+                  internalType: "uint64",
+                  name: "hcsSequence",
+                  type: "uint64",
+                },
+                {
+                  internalType: "uint64",
+                  name: "timestamp",
+                  type: "uint64",
+                },
+                {
+                  internalType: "bytes32",
+                  name: "reportHash",
+                  type: "bytes32",
+                },
+                {
+                  internalType: "bytes32",
+                  name: "readingsDigest",
+                  type: "bytes32",
+                },
+                {
+                  internalType: "bytes32",
+                  name: "evidenceHash",
+                  type: "bytes32",
+                },
+                {
+                  internalType: "bytes",
+                  name: "verified",
+                  type: "bytes",
+                },
+                {
+                  internalType: "bytes",
+                  name: "breakdown",
+                  type: "bytes",
+                },
+              ],
+              internalType: "struct DmrvRegistry.Attestation",
+              name: "",
+              type: "tuple",
+            },
+          ],
+          stateMutability: "view",
+          type: "function",
+        },
+        {
+          inputs: [
+            {
+              internalType: "uint256",
+              name: "start",
+              type: "uint256",
+            },
+            {
+              internalType: "uint256",
+              name: "count",
+              type: "uint256",
+            },
+          ],
+          name: "getAttestations",
+          outputs: [
+            {
+              components: [
+                {
+                  internalType: "bytes32",
+                  name: "projectId",
+                  type: "bytes32",
+                },
+                {
+                  internalType: "uint64",
+                  name: "periodStart",
+                  type: "uint64",
+                },
+                {
+                  internalType: "uint64",
+                  name: "periodEnd",
+                  type: "uint64",
+                },
+                {
+                  internalType: "int64",
+                  name: "reductionG",
+                  type: "int64",
+                },
+                {
+                  internalType: "uint64",
+                  name: "unitsMinted",
+                  type: "uint64",
+                },
+                {
+                  internalType: "uint16",
+                  name: "completenessBps",
+                  type: "uint16",
+                },
+                {
+                  internalType: "address",
+                  name: "verifier",
+                  type: "address",
+                },
+                {
+                  internalType: "address",
+                  name: "meter",
+                  type: "address",
+                },
+                {
+                  internalType: "uint64",
+                  name: "hcsTopicNum",
+                  type: "uint64",
+                },
+                {
+                  internalType: "uint64",
+                  name: "hcsSequence",
+                  type: "uint64",
+                },
+                {
+                  internalType: "uint64",
+                  name: "timestamp",
+                  type: "uint64",
+                },
+                {
+                  internalType: "bytes32",
+                  name: "reportHash",
+                  type: "bytes32",
+                },
+                {
+                  internalType: "bytes32",
+                  name: "readingsDigest",
+                  type: "bytes32",
+                },
+                {
+                  internalType: "bytes32",
+                  name: "evidenceHash",
+                  type: "bytes32",
+                },
+                {
+                  internalType: "bytes",
+                  name: "verified",
+                  type: "bytes",
+                },
+                {
+                  internalType: "bytes",
+                  name: "breakdown",
+                  type: "bytes",
+                },
+              ],
+              internalType: "struct DmrvRegistry.Attestation[]",
+              name: "page",
+              type: "tuple[]",
+            },
+          ],
+          stateMutability: "view",
+          type: "function",
+        },
+        {
+          inputs: [
+            {
+              internalType: "bytes32",
+              name: "projectId",
+              type: "bytes32",
+            },
+          ],
+          name: "getProject",
+          outputs: [
+            {
+              components: [
+                {
+                  internalType: "address",
+                  name: "operator",
+                  type: "address",
+                },
+                {
+                  internalType: "address",
+                  name: "meter",
+                  type: "address",
+                },
+                {
+                  internalType: "contract IMethodology",
+                  name: "module",
+                  type: "address",
+                },
+                {
+                  internalType: "bool",
+                  name: "active",
+                  type: "bool",
+                },
+                {
+                  internalType: "uint8",
+                  name: "creditingPeriods",
+                  type: "uint8",
+                },
+                {
+                  internalType: "uint32",
+                  name: "attestations",
+                  type: "uint32",
+                },
+                {
+                  internalType: "uint64",
+                  name: "creditingStart",
+                  type: "uint64",
+                },
+                {
+                  internalType: "uint64",
+                  name: "creditingEnd",
+                  type: "uint64",
+                },
+                {
+                  internalType: "uint64",
+                  name: "lastPeriodEnd",
+                  type: "uint64",
+                },
+                {
+                  internalType: "uint64",
+                  name: "calibrationValidUntil",
+                  type: "uint64",
+                },
+                {
+                  internalType: "uint64",
+                  name: "registrationRequestedAt",
+                  type: "uint64",
+                },
+                {
+                  internalType: "int128",
+                  name: "balanceG",
+                  type: "int128",
+                },
+                {
+                  internalType: "uint128",
+                  name: "issuedUnits",
+                  type: "uint128",
+                },
+                {
+                  internalType: "bytes32",
+                  name: "state",
+                  type: "bytes32",
+                },
+                {
+                  internalType: "bytes32",
+                  name: "designHash",
+                  type: "bytes32",
+                },
+                {
+                  internalType: "bytes",
+                  name: "params",
+                  type: "bytes",
+                },
+              ],
+              internalType: "struct DmrvRegistry.Project",
+              name: "",
+              type: "tuple",
+            },
+          ],
+          stateMutability: "view",
+          type: "function",
+        },
+        {
+          inputs: [],
+          name: "getProjectIds",
+          outputs: [
+            {
+              internalType: "bytes32[]",
+              name: "",
+              type: "bytes32[]",
+            },
+          ],
+          stateMutability: "view",
+          type: "function",
+        },
+        {
+          inputs: [
+            {
+              internalType: "uint256",
+              name: "retirementId",
+              type: "uint256",
+            },
+          ],
+          name: "getRetirement",
+          outputs: [
+            {
+              components: [
+                {
+                  internalType: "address",
+                  name: "account",
+                  type: "address",
+                },
+                {
+                  internalType: "uint64",
+                  name: "units",
+                  type: "uint64",
+                },
+                {
+                  internalType: "uint64",
+                  name: "timestamp",
+                  type: "uint64",
+                },
+                {
+                  internalType: "string",
+                  name: "beneficiary",
+                  type: "string",
+                },
+                {
+                  internalType: "uint64",
+                  name: "certificateSerial",
+                  type: "uint64",
+                },
+                {
+                  internalType: "bool",
+                  name: "certificateDelivered",
+                  type: "bool",
+                },
+              ],
+              internalType: "struct DmrvRegistry.Retirement",
+              name: "",
+              type: "tuple",
+            },
+          ],
+          stateMutability: "view",
+          type: "function",
+        },
+        {
+          inputs: [
+            {
+              internalType: "uint256",
+              name: "start",
+              type: "uint256",
+            },
+            {
+              internalType: "uint256",
+              name: "count",
+              type: "uint256",
+            },
+          ],
+          name: "getRetirements",
+          outputs: [
+            {
+              components: [
+                {
+                  internalType: "address",
+                  name: "account",
+                  type: "address",
+                },
+                {
+                  internalType: "uint64",
+                  name: "units",
+                  type: "uint64",
+                },
+                {
+                  internalType: "uint64",
+                  name: "timestamp",
+                  type: "uint64",
+                },
+                {
+                  internalType: "string",
+                  name: "beneficiary",
+                  type: "string",
+                },
+                {
+                  internalType: "uint64",
+                  name: "certificateSerial",
+                  type: "uint64",
+                },
+                {
+                  internalType: "bool",
+                  name: "certificateDelivered",
+                  type: "bool",
+                },
+              ],
+              internalType: "struct DmrvRegistry.Retirement[]",
+              name: "page",
+              type: "tuple[]",
+            },
+          ],
+          stateMutability: "view",
+          type: "function",
+        },
+        {
+          inputs: [
+            {
+              internalType: "bytes32",
+              name: "role",
+              type: "bytes32",
+            },
+          ],
+          name: "getRoleAdmin",
+          outputs: [
+            {
+              internalType: "bytes32",
+              name: "",
+              type: "bytes32",
+            },
+          ],
+          stateMutability: "view",
+          type: "function",
+        },
+        {
+          inputs: [
+            {
+              internalType: "bytes32",
+              name: "role",
+              type: "bytes32",
+            },
+            {
+              internalType: "address",
+              name: "account",
+              type: "address",
+            },
+          ],
+          name: "grantRole",
+          outputs: [],
+          stateMutability: "nonpayable",
+          type: "function",
+        },
+        {
+          inputs: [
+            {
+              internalType: "bytes32",
+              name: "role",
+              type: "bytes32",
+            },
+            {
+              internalType: "address",
+              name: "account",
+              type: "address",
+            },
+          ],
+          name: "hasRole",
+          outputs: [
+            {
+              internalType: "bool",
+              name: "",
+              type: "bool",
+            },
+          ],
+          stateMutability: "view",
+          type: "function",
+        },
+        {
+          inputs: [
+            {
+              components: [
+                {
+                  internalType: "bytes32",
+                  name: "projectId",
+                  type: "bytes32",
+                },
+                {
+                  internalType: "uint32",
+                  name: "sequence",
+                  type: "uint32",
+                },
+                {
+                  internalType: "uint32",
+                  name: "intervals",
+                  type: "uint32",
+                },
+                {
+                  internalType: "uint32",
+                  name: "intervalSeconds",
+                  type: "uint32",
+                },
+                {
+                  internalType: "bytes32",
+                  name: "readingsDigest",
+                  type: "bytes32",
+                },
+                {
+                  internalType: "bytes32",
+                  name: "reportHash",
+                  type: "bytes32",
+                },
+                {
+                  internalType: "uint64",
+                  name: "hcsTopicNum",
+                  type: "uint64",
+                },
+                {
+                  internalType: "uint64",
+                  name: "hcsSequence",
+                  type: "uint64",
+                },
+                {
+                  internalType: "bytes32",
+                  name: "evidenceHash",
+                  type: "bytes32",
+                },
+                {
+                  components: [
+                    {
+                      internalType: "uint64",
+                      name: "periodStart",
+                      type: "uint64",
+                    },
+                    {
+                      internalType: "uint64",
+                      name: "periodEnd",
+                      type: "uint64",
+                    },
+                    {
+                      internalType: "bytes",
+                      name: "metered",
+                      type: "bytes",
+                    },
+                    {
+                      internalType: "bytes",
+                      name: "verified",
+                      type: "bytes",
+                    },
+                  ],
+                  internalType: "struct Measurement",
+                  name: "measurement",
+                  type: "tuple",
+                },
+                {
+                  internalType: "bytes",
+                  name: "meterSignature",
+                  type: "bytes",
+                },
+                {
+                  internalType: "bytes",
+                  name: "verifierSignature",
+                  type: "bytes",
+                },
+              ],
+              internalType: "struct DmrvRegistry.Submission",
+              name: "s",
+              type: "tuple",
+            },
+          ],
+          name: "meterStatementDigest",
+          outputs: [
+            {
+              internalType: "bytes32",
+              name: "",
+              type: "bytes32",
+            },
+          ],
+          stateMutability: "view",
+          type: "function",
+        },
+        {
+          inputs: [],
+          name: "minCompletenessBps",
+          outputs: [
+            {
+              internalType: "uint16",
+              name: "",
+              type: "uint16",
+            },
+          ],
+          stateMutability: "view",
+          type: "function",
+        },
+        {
+          inputs: [
+            {
+              internalType: "address",
+              name: "from",
+              type: "address",
+            },
+            {
+              internalType: "address",
+              name: "to",
+              type: "address",
+            },
+            {
+              internalType: "uint256",
+              name: "units",
+              type: "uint256",
+            },
+          ],
+          name: "moveCustody",
+          outputs: [],
+          stateMutability: "nonpayable",
+          type: "function",
+        },
+        {
+          inputs: [
+            {
+              internalType: "bytes32",
+              name: "projectId",
+              type: "bytes32",
+            },
+            {
+              components: [
+                {
+                  internalType: "uint64",
+                  name: "periodStart",
+                  type: "uint64",
+                },
+                {
+                  internalType: "uint64",
+                  name: "periodEnd",
+                  type: "uint64",
+                },
+                {
+                  internalType: "bytes",
+                  name: "metered",
+                  type: "bytes",
+                },
+                {
+                  internalType: "bytes",
+                  name: "verified",
+                  type: "bytes",
+                },
+              ],
+              internalType: "struct Measurement",
+              name: "m",
+              type: "tuple",
+            },
+          ],
+          name: "preview",
+          outputs: [
+            {
+              components: [
+                {
+                  internalType: "int256",
+                  name: "reductionG",
+                  type: "int256",
+                },
+                {
+                  internalType: "bytes32",
+                  name: "newState",
+                  type: "bytes32",
+                },
+                {
+                  internalType: "bytes",
+                  name: "breakdown",
+                  type: "bytes",
+                },
+              ],
+              internalType: "struct QuantResult",
+              name: "q",
+              type: "tuple",
+            },
+            {
+              internalType: "uint256",
+              name: "units",
+              type: "uint256",
+            },
+          ],
+          stateMutability: "view",
+          type: "function",
+        },
+        {
+          inputs: [
+            {
+              internalType: "bytes32",
+              name: "designHash",
+              type: "bytes32",
+            },
+          ],
+          name: "projectOfDesign",
+          outputs: [
+            {
+              internalType: "bytes32",
+              name: "projectId",
+              type: "bytes32",
+            },
+          ],
+          stateMutability: "view",
+          type: "function",
+        },
+        {
+          inputs: [
+            {
+              internalType: "address",
+              name: "meter",
+              type: "address",
+            },
+          ],
+          name: "projectOfMeter",
+          outputs: [
+            {
+              internalType: "bytes32",
+              name: "projectId",
+              type: "bytes32",
+            },
+          ],
+          stateMutability: "view",
+          type: "function",
+        },
+        {
+          inputs: [
+            {
+              internalType: "bytes32",
+              name: "projectId",
+              type: "bytes32",
+            },
+            {
+              internalType: "string",
+              name: "name",
+              type: "string",
+            },
+            {
+              internalType: "contract IMethodology",
+              name: "module",
+              type: "address",
+            },
+            {
+              internalType: "address",
+              name: "operator",
+              type: "address",
+            },
+            {
+              internalType: "address",
+              name: "meter",
+              type: "address",
+            },
+            {
+              internalType: "bytes32",
+              name: "designHash",
+              type: "bytes32",
+            },
+            {
+              internalType: "bytes",
+              name: "params",
+              type: "bytes",
+            },
+          ],
+          name: "registerProject",
+          outputs: [],
+          stateMutability: "nonpayable",
+          type: "function",
+        },
+        {
+          inputs: [
+            {
+              internalType: "bytes32",
+              name: "projectId",
+              type: "bytes32",
+            },
+            {
+              internalType: "bytes",
+              name: "newParams",
+              type: "bytes",
+            },
+          ],
+          name: "renewCreditingPeriod",
+          outputs: [],
+          stateMutability: "nonpayable",
+          type: "function",
+        },
+        {
+          inputs: [
+            {
+              internalType: "bytes32",
+              name: "role",
+              type: "bytes32",
+            },
+            {
+              internalType: "address",
+              name: "callerConfirmation",
+              type: "address",
+            },
+          ],
+          name: "renounceRole",
+          outputs: [],
+          stateMutability: "nonpayable",
+          type: "function",
+        },
+        {
+          inputs: [
+            {
+              internalType: "uint64",
+              name: "units",
+              type: "uint64",
+            },
+            {
+              internalType: "string",
+              name: "beneficiary",
+              type: "string",
+            },
+          ],
+          name: "retire",
+          outputs: [
+            {
+              internalType: "uint256",
+              name: "",
+              type: "uint256",
+            },
+          ],
+          stateMutability: "nonpayable",
+          type: "function",
+        },
+        {
+          inputs: [
+            {
+              internalType: "address",
+              name: "account",
+              type: "address",
+            },
+            {
+              internalType: "uint64",
+              name: "units",
+              type: "uint64",
+            },
+            {
+              internalType: "string",
+              name: "beneficiary",
+              type: "string",
+            },
+          ],
+          name: "retireFor",
+          outputs: [
+            {
+              internalType: "uint256",
+              name: "",
+              type: "uint256",
+            },
+          ],
+          stateMutability: "nonpayable",
+          type: "function",
+        },
+        {
+          inputs: [],
+          name: "retirementCount",
+          outputs: [
+            {
+              internalType: "uint256",
+              name: "",
+              type: "uint256",
+            },
+          ],
+          stateMutability: "view",
+          type: "function",
+        },
+        {
+          inputs: [
+            {
+              internalType: "bytes32",
+              name: "role",
+              type: "bytes32",
+            },
+            {
+              internalType: "address",
+              name: "account",
+              type: "address",
+            },
+          ],
+          name: "revokeRole",
+          outputs: [],
+          stateMutability: "nonpayable",
+          type: "function",
+        },
+        {
+          inputs: [
+            {
+              internalType: "bytes32",
+              name: "projectId",
+              type: "bytes32",
+            },
+            {
+              components: [
+                {
+                  internalType: "bytes2",
+                  name: "hostParty",
+                  type: "bytes2",
+                },
+                {
+                  internalType: "uint8",
+                  name: "authorizedUse",
+                  type: "uint8",
+                },
+                {
+                  internalType: "uint8",
+                  name: "firstTransferDefinition",
+                  type: "uint8",
+                },
+                {
+                  internalType: "bytes32",
+                  name: "authorizationRef",
+                  type: "bytes32",
+                },
+              ],
+              internalType: "struct DmrvRegistry.Article6",
+              name: "a",
+              type: "tuple",
+            },
+          ],
+          name: "setArticle6",
+          outputs: [],
+          stateMutability: "nonpayable",
+          type: "function",
+        },
+        {
+          inputs: [
+            {
+              internalType: "uint64",
+              name: "topic",
+              type: "uint64",
+            },
+          ],
+          name: "setAuditTopic",
+          outputs: [],
+          stateMutability: "nonpayable",
+          type: "function",
+        },
+        {
+          inputs: [
+            {
+              internalType: "bytes32",
+              name: "projectId",
+              type: "bytes32",
+            },
+            {
+              internalType: "uint64",
+              name: "validUntil",
+              type: "uint64",
+            },
+            {
+              internalType: "bytes32",
+              name: "certificateHash",
+              type: "bytes32",
+            },
+          ],
+          name: "setCalibrationValidUntil",
+          outputs: [],
+          stateMutability: "nonpayable",
+          type: "function",
+        },
+        {
+          inputs: [
+            {
+              internalType: "uint256",
+              name: "attestationId",
+              type: "uint256",
+            },
+            {
+              internalType: "uint8",
+              name: "status",
+              type: "uint8",
+            },
+            {
+              internalType: "bytes32",
+              name: "ref",
+              type: "bytes32",
+            },
+          ],
+          name: "setCorrespondingAdjustment",
+          outputs: [],
+          stateMutability: "nonpayable",
+          type: "function",
+        },
+        {
+          inputs: [
+            {
+              internalType: "bytes32",
+              name: "projectId",
+              type: "bytes32",
+            },
+            {
+              internalType: "address",
+              name: "meter",
+              type: "address",
+            },
+          ],
+          name: "setMeter",
+          outputs: [],
+          stateMutability: "nonpayable",
+          type: "function",
+        },
+        {
+          inputs: [
+            {
+              internalType: "uint16",
+              name: "minCompletenessBps_",
+              type: "uint16",
+            },
+          ],
+          name: "setMinCompleteness",
+          outputs: [],
+          stateMutability: "nonpayable",
+          type: "function",
+        },
+        {
+          inputs: [
+            {
+              internalType: "contract IMethodology",
+              name: "module",
+              type: "address",
+            },
+            {
+              internalType: "bool",
+              name: "approved",
+              type: "bool",
+            },
+          ],
+          name: "setModuleApproved",
+          outputs: [],
+          stateMutability: "nonpayable",
+          type: "function",
+        },
+        {
+          inputs: [
+            {
+              internalType: "bytes32",
+              name: "projectId",
+              type: "bytes32",
+            },
+            {
+              internalType: "bool",
+              name: "active",
+              type: "bool",
+            },
+          ],
+          name: "setProjectActive",
+          outputs: [],
+          stateMutability: "nonpayable",
+          type: "function",
+        },
+        {
+          inputs: [
+            {
+              internalType: "address",
+              name: "verifier",
+              type: "address",
+            },
+            {
+              internalType: "bytes32",
+              name: "accreditationHash",
+              type: "bytes32",
+            },
+          ],
+          name: "setVerifierProfile",
+          outputs: [],
+          stateMutability: "nonpayable",
+          type: "function",
+        },
+        {
+          inputs: [
+            {
+              components: [
+                {
+                  internalType: "bytes32",
+                  name: "projectId",
+                  type: "bytes32",
+                },
+                {
+                  internalType: "uint32",
+                  name: "sequence",
+                  type: "uint32",
+                },
+                {
+                  internalType: "uint32",
+                  name: "intervals",
+                  type: "uint32",
+                },
+                {
+                  internalType: "uint32",
+                  name: "intervalSeconds",
+                  type: "uint32",
+                },
+                {
+                  internalType: "bytes32",
+                  name: "readingsDigest",
+                  type: "bytes32",
+                },
+                {
+                  internalType: "bytes32",
+                  name: "reportHash",
+                  type: "bytes32",
+                },
+                {
+                  internalType: "uint64",
+                  name: "hcsTopicNum",
+                  type: "uint64",
+                },
+                {
+                  internalType: "uint64",
+                  name: "hcsSequence",
+                  type: "uint64",
+                },
+                {
+                  internalType: "bytes32",
+                  name: "evidenceHash",
+                  type: "bytes32",
+                },
+                {
+                  components: [
+                    {
+                      internalType: "uint64",
+                      name: "periodStart",
+                      type: "uint64",
+                    },
+                    {
+                      internalType: "uint64",
+                      name: "periodEnd",
+                      type: "uint64",
+                    },
+                    {
+                      internalType: "bytes",
+                      name: "metered",
+                      type: "bytes",
+                    },
+                    {
+                      internalType: "bytes",
+                      name: "verified",
+                      type: "bytes",
+                    },
+                  ],
+                  internalType: "struct Measurement",
+                  name: "measurement",
+                  type: "tuple",
+                },
+                {
+                  internalType: "bytes",
+                  name: "meterSignature",
+                  type: "bytes",
+                },
+                {
+                  internalType: "bytes",
+                  name: "verifierSignature",
+                  type: "bytes",
+                },
+              ],
+              internalType: "struct DmrvRegistry.Submission",
+              name: "s",
+              type: "tuple",
+            },
+          ],
+          name: "submitAttestation",
+          outputs: [
+            {
+              internalType: "uint256",
+              name: "attestationId",
+              type: "uint256",
+            },
+          ],
+          stateMutability: "nonpayable",
+          type: "function",
+        },
+        {
+          inputs: [
+            {
+              internalType: "bytes4",
+              name: "interfaceId",
+              type: "bytes4",
+            },
+          ],
+          name: "supportsInterface",
+          outputs: [
+            {
+              internalType: "bool",
+              name: "",
+              type: "bool",
+            },
+          ],
+          stateMutability: "view",
+          type: "function",
+        },
+        {
+          inputs: [
+            {
+              internalType: "address payable",
+              name: "to",
+              type: "address",
+            },
+          ],
+          name: "sweepHbar",
+          outputs: [],
+          stateMutability: "nonpayable",
+          type: "function",
+        },
+        {
+          inputs: [],
+          name: "totalIssuedUnits",
+          outputs: [
+            {
+              internalType: "uint256",
+              name: "",
+              type: "uint256",
+            },
+          ],
+          stateMutability: "view",
+          type: "function",
+        },
+        {
+          inputs: [],
+          name: "totalRetiredUnits",
+          outputs: [
+            {
+              internalType: "uint256",
+              name: "",
+              type: "uint256",
+            },
+          ],
+          stateMutability: "view",
+          type: "function",
+        },
+        {
+          inputs: [
+            {
+              internalType: "address",
+              name: "verifier",
+              type: "address",
+            },
+          ],
+          name: "verifierProfileOf",
+          outputs: [
+            {
+              internalType: "bytes32",
+              name: "accreditationHash",
+              type: "bytes32",
+            },
+          ],
+          stateMutability: "view",
+          type: "function",
+        },
+        {
+          inputs: [
+            {
+              internalType: "uint256",
+              name: "units",
+              type: "uint256",
+            },
+          ],
+          name: "withdraw",
+          outputs: [],
+          stateMutability: "nonpayable",
+          type: "function",
+        },
+      ],
+      inheritedFunctions: {
+        DEFAULT_ADMIN_ROLE: "@openzeppelin/contracts/access/AccessControl.sol",
+        getRoleAdmin: "@openzeppelin/contracts/access/AccessControl.sol",
+        grantRole: "@openzeppelin/contracts/access/AccessControl.sol",
+        hasRole: "@openzeppelin/contracts/access/AccessControl.sol",
+        renounceRole: "@openzeppelin/contracts/access/AccessControl.sol",
+        revokeRole: "@openzeppelin/contracts/access/AccessControl.sol",
+        supportsInterface: "@openzeppelin/contracts/access/AccessControl.sol",
+      },
+      deployedOnBlock: 29,
+    },
+    HydroVmr0017Module: {
+      address: "0x9A9f2CCfdE556A7E9Ff0848998Aa4a0CFD8863AE",
+      abi: [
+        {
+          inputs: [
+            {
+              internalType: "uint64",
+              name: "grossWh",
+              type: "uint64",
+            },
+            {
+              internalType: "uint256",
+              name: "maxWh",
+              type: "uint256",
+            },
+          ],
+          name: "EnergyExceedsCapacity",
+          type: "error",
+        },
+        {
+          inputs: [],
+          name: "FuelNotRegistered",
+          type: "error",
+        },
+        {
+          inputs: [
+            {
+              internalType: "uint32",
+              name: "ef",
+              type: "uint32",
+            },
+          ],
+          name: "GridEmissionFactorOutOfRange",
+          type: "error",
+        },
+        {
+          inputs: [],
+          name: "InvalidBaseline",
+          type: "error",
+        },
+        {
+          inputs: [
+            {
+              internalType: "uint64",
+              name: "start",
+              type: "uint64",
+            },
+            {
+              internalType: "uint64",
+              name: "end",
+              type: "uint64",
+            },
+          ],
+          name: "InvalidCreditingPeriod",
+          type: "error",
+        },
+        {
+          inputs: [],
+          name: "InvalidParams",
+          type: "error",
+        },
+        {
+          inputs: [
+            {
+              internalType: "uint32",
+              name: "capacityKw",
+              type: "uint32",
+            },
+          ],
+          name: "MethodologyNotApplicable",
+          type: "error",
+        },
+        {
+          inputs: [],
+          name: "MissingCalibration",
+          type: "error",
+        },
+        {
+          inputs: [],
+          name: "MissingRegistrationRequest",
+          type: "error",
+        },
+        {
+          inputs: [
+            {
+              internalType: "int64",
+              name: "netWh",
+              type: "int64",
+            },
+            {
+              internalType: "uint64",
+              name: "grossWh",
+              type: "uint64",
+            },
+          ],
+          name: "NetExceedsGross",
+          type: "error",
+        },
+        {
+          inputs: [],
+          name: "NotMetered",
+          type: "error",
+        },
+        {
+          inputs: [],
+          name: "NotRenewable",
+          type: "error",
+        },
+        {
+          inputs: [],
+          name: "ParamsChanged",
+          type: "error",
+        },
+        {
+          inputs: [
+            {
+              internalType: "uint64",
+              name: "periodStart",
+              type: "uint64",
+            },
+            {
+              internalType: "uint64",
+              name: "periodEnd",
+              type: "uint64",
+            },
+          ],
+          name: "PeriodCrossesCreditingYear",
+          type: "error",
+        },
+        {
+          inputs: [
+            {
+              internalType: "uint256",
+              name: "addedW",
+              type: "uint256",
+            },
+            {
+              internalType: "uint256",
+              name: "addedArea",
+              type: "uint256",
+            },
+          ],
+          name: "PowerDensityTooLow",
+          type: "error",
+        },
+        {
+          inputs: [
+            {
+              internalType: "uint64",
+              name: "requestedAt",
+              type: "uint64",
+            },
+          ],
+          name: "RegistrationInTheFuture",
+          type: "error",
+        },
+        {
+          inputs: [],
+          name: "RenewalOverlap",
+          type: "error",
+        },
+        {
+          inputs: [],
+          name: "RenewalSpan",
+          type: "error",
+        },
+        {
+          inputs: [],
+          name: "ReservoirBelowBaseline",
+          type: "error",
+        },
+        {
+          inputs: [],
+          name: "StateOverflow",
+          type: "error",
+        },
+        {
+          inputs: [],
+          name: "CREDITING_YEAR",
+          outputs: [
+            {
+              internalType: "uint256",
+              name: "",
+              type: "uint256",
+            },
+          ],
+          stateMutability: "view",
+          type: "function",
+        },
+        {
+          inputs: [],
+          name: "MAX_GRID_EF_G_PER_MWH",
+          outputs: [
+            {
+              internalType: "uint32",
+              name: "",
+              type: "uint32",
+            },
+          ],
+          stateMutability: "view",
+          type: "function",
+        },
+        {
+          inputs: [],
+          name: "MIN_POWER_DENSITY",
+          outputs: [
+            {
+              internalType: "uint256",
+              name: "",
+              type: "uint256",
+            },
+          ],
+          stateMutability: "view",
+          type: "function",
+        },
+        {
+          inputs: [],
+          name: "RESERVOIR_EF_G_PER_MWH",
+          outputs: [
+            {
+              internalType: "uint32",
+              name: "",
+              type: "uint32",
+            },
+          ],
+          stateMutability: "view",
+          type: "function",
+        },
+        {
+          inputs: [],
+          name: "RESERVOIR_EMISSIONS_POWER_DENSITY",
+          outputs: [
+            {
+              internalType: "uint256",
+              name: "",
+              type: "uint256",
+            },
+          ],
+          stateMutability: "view",
+          type: "function",
+        },
+        {
+          inputs: [],
+          name: "VCS_FIVE_YEAR_FROM",
+          outputs: [
+            {
+              internalType: "uint64",
+              name: "",
+              type: "uint64",
+            },
+          ],
+          stateMutability: "view",
+          type: "function",
+        },
+        {
+          inputs: [],
+          name: "VMR0017_EMBODIED_HYDRO_G_PER_MWH",
+          outputs: [
+            {
+              internalType: "uint32",
+              name: "",
+              type: "uint32",
+            },
+          ],
+          stateMutability: "view",
+          type: "function",
+        },
+        {
+          inputs: [],
+          name: "VMR0017_MAX_HYDRO_KW",
+          outputs: [
+            {
+              internalType: "uint32",
+              name: "",
+              type: "uint32",
+            },
+          ],
+          stateMutability: "view",
+          type: "function",
+        },
+        {
+          inputs: [],
+          name: "VMR0017_RESERVOIR_EF_G_PER_MWH",
+          outputs: [
+            {
+              internalType: "uint32",
+              name: "",
+              type: "uint32",
+            },
+          ],
+          stateMutability: "view",
+          type: "function",
+        },
+        {
+          inputs: [
+            {
+              internalType: "bytes",
+              name: "params",
+              type: "bytes",
+            },
+          ],
+          name: "describe",
+          outputs: [
+            {
+              internalType: "string",
+              name: "",
+              type: "string",
+            },
+          ],
+          stateMutability: "pure",
+          type: "function",
+        },
+        {
+          inputs: [],
+          name: "methodologyId",
+          outputs: [
+            {
+              internalType: "bytes32",
+              name: "",
+              type: "bytes32",
+            },
+          ],
+          stateMutability: "pure",
+          type: "function",
+        },
+        {
+          inputs: [
+            {
+              internalType: "bytes",
+              name: "params",
+              type: "bytes",
+            },
+            {
+              internalType: "bytes32",
+              name: "state",
+              type: "bytes32",
+            },
+            {
+              components: [
+                {
+                  internalType: "uint64",
+                  name: "periodStart",
+                  type: "uint64",
+                },
+                {
+                  internalType: "uint64",
+                  name: "periodEnd",
+                  type: "uint64",
+                },
+                {
+                  internalType: "bytes",
+                  name: "metered",
+                  type: "bytes",
+                },
+                {
+                  internalType: "bytes",
+                  name: "verified",
+                  type: "bytes",
+                },
+              ],
+              internalType: "struct Measurement",
+              name: "m",
+              type: "tuple",
+            },
+          ],
+          name: "quantify",
+          outputs: [
+            {
+              components: [
+                {
+                  internalType: "int256",
+                  name: "reductionG",
+                  type: "int256",
+                },
+                {
+                  internalType: "bytes32",
+                  name: "newState",
+                  type: "bytes32",
+                },
+                {
+                  internalType: "bytes",
+                  name: "breakdown",
+                  type: "bytes",
+                },
+              ],
+              internalType: "struct QuantResult",
+              name: "result",
+              type: "tuple",
+            },
+          ],
+          stateMutability: "pure",
+          type: "function",
+        },
+        {
+          inputs: [],
+          name: "schemaHash",
+          outputs: [
+            {
+              internalType: "bytes32",
+              name: "",
+              type: "bytes32",
+            },
+          ],
+          stateMutability: "pure",
+          type: "function",
+        },
+        {
+          inputs: [
+            {
+              internalType: "bytes",
+              name: "params",
+              type: "bytes",
+            },
+          ],
+          name: "validateProject",
+          outputs: [
+            {
+              components: [
+                {
+                  internalType: "uint64",
+                  name: "creditingStart",
+                  type: "uint64",
+                },
+                {
+                  internalType: "uint64",
+                  name: "creditingEnd",
+                  type: "uint64",
+                },
+                {
+                  internalType: "uint64",
+                  name: "maxQuantityPerSecond",
+                  type: "uint64",
+                },
+                {
+                  internalType: "uint64",
+                  name: "calibrationValidUntil",
+                  type: "uint64",
+                },
+                {
+                  internalType: "uint64",
+                  name: "registrationRequestedAt",
+                  type: "uint64",
+                },
+              ],
+              internalType: "struct ProjectTerms",
+              name: "terms",
+              type: "tuple",
+            },
+          ],
+          stateMutability: "view",
+          type: "function",
+        },
+        {
+          inputs: [
+            {
+              internalType: "bytes",
+              name: "oldParams",
+              type: "bytes",
+            },
+            {
+              internalType: "bytes",
+              name: "newParams",
+              type: "bytes",
+            },
+            {
+              internalType: "uint64",
+              name: "prevStart",
+              type: "uint64",
+            },
+            {
+              internalType: "uint64",
+              name: "prevEnd",
+              type: "uint64",
+            },
+            {
+              internalType: "uint8",
+              name: "periods",
+              type: "uint8",
+            },
+          ],
+          name: "validateRenewal",
+          outputs: [
+            {
+              components: [
+                {
+                  internalType: "uint64",
+                  name: "creditingStart",
+                  type: "uint64",
+                },
+                {
+                  internalType: "uint64",
+                  name: "creditingEnd",
+                  type: "uint64",
+                },
+                {
+                  internalType: "uint64",
+                  name: "maxQuantityPerSecond",
+                  type: "uint64",
+                },
+                {
+                  internalType: "uint64",
+                  name: "calibrationValidUntil",
+                  type: "uint64",
+                },
+                {
+                  internalType: "uint64",
+                  name: "registrationRequestedAt",
+                  type: "uint64",
+                },
+              ],
+              internalType: "struct ProjectTerms",
+              name: "",
+              type: "tuple",
+            },
+          ],
+          stateMutability: "view",
+          type: "function",
+        },
+        {
+          inputs: [],
+          name: "version",
+          outputs: [
+            {
+              internalType: "uint32",
+              name: "",
+              type: "uint32",
+            },
+          ],
+          stateMutability: "pure",
+          type: "function",
+        },
+      ],
+      inheritedFunctions: {
+        describe: "contracts/interfaces/IMethodology.sol",
+        methodologyId: "contracts/interfaces/IMethodology.sol",
+        quantify: "contracts/interfaces/IMethodology.sol",
+        schemaHash: "contracts/interfaces/IMethodology.sol",
+        validateProject: "contracts/interfaces/IMethodology.sol",
+        validateRenewal: "contracts/interfaces/IMethodology.sol",
+        version: "contracts/interfaces/IMethodology.sol",
+      },
+      deployedOnBlock: 27,
+    },
+    MockSupraSValueFeed: {
+      address: "0x9A676e781A523b5d0C0e43731313A708CB607508",
+      abi: [
+        {
+          inputs: [],
+          name: "broken",
+          outputs: [
+            {
+              internalType: "bool",
+              name: "",
+              type: "bool",
+            },
+          ],
+          stateMutability: "view",
+          type: "function",
+        },
+        {
+          inputs: [
+            {
+              internalType: "uint256",
+              name: "pairIndex",
+              type: "uint256",
+            },
+          ],
+          name: "getSvalue",
+          outputs: [
+            {
+              components: [
+                {
+                  internalType: "uint256",
+                  name: "round",
+                  type: "uint256",
+                },
+                {
+                  internalType: "uint256",
+                  name: "decimals",
+                  type: "uint256",
+                },
+                {
+                  internalType: "uint256",
+                  name: "time",
+                  type: "uint256",
+                },
+                {
+                  internalType: "uint256",
+                  name: "price",
+                  type: "uint256",
+                },
+              ],
+              internalType: "struct ISupraSValueFeed.PriceFeed",
+              name: "",
+              type: "tuple",
+            },
+          ],
+          stateMutability: "view",
+          type: "function",
+        },
+        {
+          inputs: [
+            {
+              internalType: "bool",
+              name: "broken_",
+              type: "bool",
+            },
+          ],
+          name: "setBroken",
+          outputs: [],
+          stateMutability: "nonpayable",
+          type: "function",
+        },
+        {
+          inputs: [
+            {
+              internalType: "uint256",
+              name: "pairIndex",
+              type: "uint256",
+            },
+            {
+              internalType: "uint256",
+              name: "price",
+              type: "uint256",
+            },
+            {
+              internalType: "uint256",
+              name: "decimals",
+              type: "uint256",
+            },
+            {
+              internalType: "uint256",
+              name: "time",
+              type: "uint256",
+            },
+          ],
+          name: "setPrice",
+          outputs: [],
+          stateMutability: "nonpayable",
+          type: "function",
+        },
+      ],
+      inheritedFunctions: {
+        getSvalue: "contracts/interfaces/ISupraSValueFeed.sol",
+      },
+      deployedOnBlock: 22,
+    },
+    MockV3Aggregator: {
+      address: "0x0DCd1Bf9A1b36cE34237eEaFef220932846BCD82",
+      abi: [
+        {
+          inputs: [
+            {
+              internalType: "uint8",
+              name: "decimals_",
+              type: "uint8",
+            },
+            {
+              internalType: "int256",
+              name: "initialAnswer",
+              type: "int256",
+            },
+          ],
+          stateMutability: "nonpayable",
+          type: "constructor",
+        },
+        {
+          inputs: [],
+          name: "decimals",
+          outputs: [
+            {
+              internalType: "uint8",
+              name: "",
+              type: "uint8",
+            },
+          ],
+          stateMutability: "view",
+          type: "function",
+        },
+        {
+          inputs: [],
+          name: "description",
+          outputs: [
+            {
+              internalType: "string",
+              name: "",
+              type: "string",
+            },
+          ],
+          stateMutability: "pure",
+          type: "function",
+        },
+        {
+          inputs: [],
+          name: "latestRoundData",
+          outputs: [
+            {
+              internalType: "uint80",
+              name: "",
+              type: "uint80",
+            },
+            {
+              internalType: "int256",
+              name: "",
+              type: "int256",
+            },
+            {
+              internalType: "uint256",
+              name: "",
+              type: "uint256",
+            },
+            {
+              internalType: "uint256",
+              name: "",
+              type: "uint256",
+            },
+            {
+              internalType: "uint80",
+              name: "",
+              type: "uint80",
+            },
+          ],
+          stateMutability: "view",
+          type: "function",
+        },
+        {
+          inputs: [
+            {
+              internalType: "uint256",
+              name: "updatedAt",
+              type: "uint256",
+            },
+          ],
+          name: "setUpdatedAt",
+          outputs: [],
+          stateMutability: "nonpayable",
+          type: "function",
+        },
+        {
+          inputs: [
+            {
+              internalType: "int256",
+              name: "answer",
+              type: "int256",
+            },
+          ],
+          name: "updateAnswer",
+          outputs: [],
+          stateMutability: "nonpayable",
+          type: "function",
+        },
+      ],
+      inheritedFunctions: {
+        decimals: "contracts/interfaces/AggregatorV3Interface.sol",
+        description: "contracts/interfaces/AggregatorV3Interface.sol",
+        latestRoundData: "contracts/interfaces/AggregatorV3Interface.sol",
+      },
+      deployedOnBlock: 20,
+    },
+    ResilientHbarUsdFeed: {
+      address: "0x959922bE3CAee4b8Cd9a407cc3ac1C251C2007B1",
+      abi: [
+        {
+          inputs: [
+            {
+              internalType: "contract AggregatorV3Interface",
+              name: "primary",
+              type: "address",
+            },
+            {
+              internalType: "contract ISupraSValueFeed",
+              name: "fallbackFeed",
+              type: "address",
+            },
+            {
+              internalType: "uint256",
+              name: "fallbackPairId",
+              type: "uint256",
+            },
+            {
+              internalType: "uint256",
+              name: "maxAge",
+              type: "uint256",
+            },
+            {
+              internalType: "uint256",
+              name: "maxDeviationBps",
+              type: "uint256",
+            },
+          ],
+          stateMutability: "nonpayable",
+          type: "constructor",
+        },
+        {
+          inputs: [],
+          name: "InvalidConfig",
+          type: "error",
+        },
+        {
+          inputs: [],
+          name: "NoFreshPrice",
+          type: "error",
+        },
+        {
+          inputs: [
+            {
+              internalType: "int256",
+              name: "primaryAnswer",
+              type: "int256",
+            },
+            {
+              internalType: "int256",
+              name: "fallbackAnswer",
+              type: "int256",
+            },
+            {
+              internalType: "uint256",
+              name: "deviationBps",
+              type: "uint256",
+            },
+          ],
+          name: "PriceSourcesDisagree",
+          type: "error",
+        },
+        {
+          inputs: [],
+          name: "FALLBACK",
+          outputs: [
+            {
+              internalType: "contract ISupraSValueFeed",
+              name: "",
+              type: "address",
+            },
+          ],
+          stateMutability: "view",
+          type: "function",
+        },
+        {
+          inputs: [],
+          name: "FALLBACK_PAIR_ID",
+          outputs: [
+            {
+              internalType: "uint256",
+              name: "",
+              type: "uint256",
+            },
+          ],
+          stateMutability: "view",
+          type: "function",
+        },
+        {
+          inputs: [],
+          name: "MAX_AGE",
+          outputs: [
+            {
+              internalType: "uint256",
+              name: "",
+              type: "uint256",
+            },
+          ],
+          stateMutability: "view",
+          type: "function",
+        },
+        {
+          inputs: [],
+          name: "MAX_DEVIATION_BPS",
+          outputs: [
+            {
+              internalType: "uint256",
+              name: "",
+              type: "uint256",
+            },
+          ],
+          stateMutability: "view",
+          type: "function",
+        },
+        {
+          inputs: [],
+          name: "PRIMARY",
+          outputs: [
+            {
+              internalType: "contract AggregatorV3Interface",
+              name: "",
+              type: "address",
+            },
+          ],
+          stateMutability: "view",
+          type: "function",
+        },
+        {
+          inputs: [],
+          name: "PRIMARY_DECIMALS",
+          outputs: [
+            {
+              internalType: "uint8",
+              name: "",
+              type: "uint8",
+            },
+          ],
+          stateMutability: "view",
+          type: "function",
+        },
+        {
+          inputs: [],
+          name: "decimals",
+          outputs: [
+            {
+              internalType: "uint8",
+              name: "",
+              type: "uint8",
+            },
+          ],
+          stateMutability: "view",
+          type: "function",
+        },
+        {
+          inputs: [],
+          name: "description",
+          outputs: [
+            {
+              internalType: "string",
+              name: "",
+              type: "string",
+            },
+          ],
+          stateMutability: "pure",
+          type: "function",
+        },
+        {
+          inputs: [],
+          name: "latestRoundData",
+          outputs: [
+            {
+              internalType: "uint80",
+              name: "",
+              type: "uint80",
+            },
+            {
+              internalType: "int256",
+              name: "",
+              type: "int256",
+            },
+            {
+              internalType: "uint256",
+              name: "",
+              type: "uint256",
+            },
+            {
+              internalType: "uint256",
+              name: "",
+              type: "uint256",
+            },
+            {
+              internalType: "uint80",
+              name: "",
+              type: "uint80",
+            },
+          ],
+          stateMutability: "view",
+          type: "function",
+        },
+        {
+          inputs: [],
+          name: "readSources",
+          outputs: [
+            {
+              components: [
+                {
+                  internalType: "int256",
+                  name: "answer",
+                  type: "int256",
+                },
+                {
+                  internalType: "uint256",
+                  name: "updatedAt",
+                  type: "uint256",
+                },
+                {
+                  internalType: "bool",
+                  name: "fresh",
+                  type: "bool",
+                },
+              ],
+              internalType: "struct ResilientHbarUsdFeed.Reading",
+              name: "primary",
+              type: "tuple",
+            },
+            {
+              components: [
+                {
+                  internalType: "int256",
+                  name: "answer",
+                  type: "int256",
+                },
+                {
+                  internalType: "uint256",
+                  name: "updatedAt",
+                  type: "uint256",
+                },
+                {
+                  internalType: "bool",
+                  name: "fresh",
+                  type: "bool",
+                },
+              ],
+              internalType: "struct ResilientHbarUsdFeed.Reading",
+              name: "secondary",
+              type: "tuple",
+            },
+          ],
+          stateMutability: "view",
+          type: "function",
+        },
+        {
+          inputs: [],
+          name: "resolve",
+          outputs: [
+            {
+              components: [
+                {
+                  internalType: "int256",
+                  name: "answer",
+                  type: "int256",
+                },
+                {
+                  internalType: "uint256",
+                  name: "updatedAt",
+                  type: "uint256",
+                },
+                {
+                  internalType: "bool",
+                  name: "fresh",
+                  type: "bool",
+                },
+              ],
+              internalType: "struct ResilientHbarUsdFeed.Reading",
+              name: "answer",
+              type: "tuple",
+            },
+            {
+              internalType: "enum ResilientHbarUsdFeed.Source",
+              name: "source",
+              type: "uint8",
+            },
+          ],
+          stateMutability: "view",
+          type: "function",
+        },
+      ],
+      inheritedFunctions: {
+        decimals: "contracts/interfaces/AggregatorV3Interface.sol",
+        description: "contracts/interfaces/AggregatorV3Interface.sol",
+        latestRoundData: "contracts/interfaces/AggregatorV3Interface.sol",
+      },
+      deployedOnBlock: 25,
     },
   },
 } as const;

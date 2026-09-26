@@ -1,3 +1,4 @@
+import { MethodologyError } from "./errors";
 import { FUELS, type FuelType, co2EmissionFactorKgPerTj, netCalorificValue } from "./fuels";
 
 /**
@@ -34,6 +35,17 @@ export type FuelCoefficient = {
 const ceilClean = (value: number) => Math.ceil(Number(value.toFixed(6)));
 
 export function fuelCoefficient({ fuel, ncvGjPerT, co2KgPerTj }: OnSiteFuel): FuelCoefficient {
+  const spec = FUELS[fuel];
+  if (ncvGjPerT !== undefined && (ncvGjPerT < spec.ncv[1] || ncvGjPerT > spec.ncv[2])) {
+    throw new MethodologyError(
+      `NCV for ${spec.label} is outside the IPCC 95% interval (${spec.ncv[1]}–${spec.ncv[2]} GJ/t)`,
+    );
+  }
+  if (co2KgPerTj !== undefined && (co2KgPerTj < spec.co2[1] || co2KgPerTj > spec.co2[2])) {
+    throw new MethodologyError(
+      `EF_CO2 for ${spec.label} is outside the IPCC 95% interval (${spec.co2[1]}–${spec.co2[2]} kg/TJ)`,
+    );
+  }
   const ncv = ncvGjPerT ?? netCalorificValue(fuel, "upper");
   const co2 = co2KgPerTj ?? co2EmissionFactorKgPerTj(fuel, "upper");
   // GJ/t × kg/TJ = 10⁻³ kg/t = g/t, so the product of the two tabulated numbers is already g CO2 per tonne.

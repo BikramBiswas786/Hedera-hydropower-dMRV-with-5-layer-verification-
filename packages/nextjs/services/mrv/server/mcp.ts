@@ -1,19 +1,39 @@
 import { auditAttestation, reproduceAttestation } from "../audit";
 import { DEMO_PLANTS, demoMeteringFor, findDemoPlant } from "../demo";
+import { prepareDocumentSchema, publishDocumentSchema, waterRequestSchema } from "../documents/schema";
+import {
+  checkSignedDocument,
+  listDocuments,
+  prepareDocument,
+  publishDocument,
+  trustChainFor,
+} from "../documents/server";
+import { runPublicWork } from "../documents/work";
 import { ENGINE_VERSION } from "../engine";
+import { compareGuardianReport, compareReportSchema } from "../guardian/compare";
 import { METHODOLOGY_MARKDOWN } from "../methodology/document";
 import { gridEmissionFactorRequestSchema, projectDesignSchema } from "../methodology/schema";
 import { HYDRO_CHAIN_ID } from "../network";
 import { prepareAnchors } from "../pipeline";
-import { SCENARIOS, SCENARIO_NAMES, generateScenario } from "../scenarios";
-import { verifyRequestSchema } from "../schema";
+import { PREVIEW_METER_DOMAIN, SCENARIOS, SCENARIO_NAMES, generateScenario } from "../scenarios";
+import { attestRequestSchema, verifyRequestSchema } from "../schema";
 import { plantIdToBytes32 } from "../views";
-import { attestReadings } from "./attest";
+import { quantifySafeWater } from "../water/vmr0015";
+import { attestReadings, prepareApproval } from "./attest";
+import { readDexCheck } from "./dex";
 import { ApiError } from "./errors";
+import { verifyEvidence } from "./guardianBridge";
 import { getPlantDetail, getPortfolio, portfolioQuerySchema } from "./insights";
 import { getRetirementCertificate, preparePurchase, preparePurchaseSchema } from "./market";
 import { assessDesign, getProject, gridEmissionFactor } from "./methodology";
-import { getAttestation, getAttestations, getOpenListings, getPlant, getRegistryOverview } from "./registry";
+import {
+  getAttestation,
+  getAttestations,
+  getOpenListings,
+  getPlant,
+  getRegistryOverview,
+  registryAt,
+} from "./registry";
 import { McpServer } from "@modelcontextprotocol/server";
 import { z } from "zod";
 
@@ -25,16 +45,26 @@ Monitoring: generate_sample_telemetry (or real readings) -> verify_telemetry (5 
 quantification, safeguards). Only APPROVED periods can be attested. Raw readings and reports live on HCS;
 reproduce_attestation re-runs the engine on the published data and compares every figure with the contract.
 Credits are HTS tokens (1 token = 1 t CO2e, 1 unit = 1 kg) priced in USD per tonne and settled in HBAR through
-Chainlink HBAR/USD with a Supra fallback. Agents buy with their own wallet: list_open_listings -> prepare_purchase ->
-sign and send; retiring mints an HTS NFT certificate. get_plant and get_portfolio summarise a plant's issuance or a
-buyer's retirements for reporting. Registry tools read chain ${HYDRO_CHAIN_ID}.`;
+Chainlink HBAR/USD with a Supra fallback. prepare_purchase reads the SaucerSwap pair stored on CreditMarket and
+returns no transaction if that pair is more than 3% from the oracle. The contract then swaps through the SaucerSwap
+router; if the swap fails, nothing is sold. Attestations need two signatures: the
+plant's meter (EIP-712 MeterStatement) and an accredited VVB (VerifierApproval); approve_attestation returns the typed
+data a VVB signs, and the server never holds the VVB key. Agents buy with
+their own wallet: get_dex_price -> list_open_listings -> prepare_purchase -> sign and send; retiring mints an HTS
+NFT certificate. get_plant and get_portfolio summarise a plant's issuance or a buyer's retirements for reporting.
+Registry tools read chain ${HYDRO_CHAIN_ID}.`;
 
 function ok(data: unknown) {
-  return { content: [{ type: "text" as const, text: JSON.stringify(data, null, 2) }] };
+  return {
+    content: [{ type: "text" as const, text: JSON.stringify(data, null, 2) }],
+  };
 }
 
 function fail(error: unknown) {
-  return { isError: true, content: [{ type: "text" as const, text: (error as Error).message }] };
+  return {
+    isError: true,
+    content: [{ type: "text" as const, text: (error as Error).message }],
+  };
 }
 
 async function run(action: () => unknown) {
@@ -47,10 +77,11 @@ async function run(action: () => unknown) {
 
 const readOnly = { readOnlyHint: true, openWorldHint: true } as const;
 
-async function reproduce(attestationId: number) {
-  const attestation = await getAttestation(attestationId);
-  const plant = await getPlant(plantIdToBytes32(attestation.plantId));
-  return reproduceAttestation(attestation, fetch, plant?.design, plant?.meter);
+async function reproduce(attestationId: number, registryAddress?: string) {
+  const registry = registryAt(registryAddress);
+  const attestation = await getAttestation(attestationId, registry);
+  const plant = await getPlant(plantIdToBytes32(attestation.plantId), registry);
+  return { registry, ...(await reproduceAttestation(attestation, fetch, plant?.design, plant?.meter)) };
 }
 
 /** One server per request (stateless). `canWrite` is true only for requests carrying the MRV_API_KEY bearer token. */
@@ -60,8 +91,19 @@ export function buildMcpServer({ canWrite }: { canWrite: boolean }): McpServer {
   server.registerResource(
     "methodology",
     "hydro-dmrv://methodology",
-    { title: `Methodology as implemented (${ENGINE_VERSION})`, mimeType: "text/markdown" },
-    async uri => ({ contents: [{ uri: uri.href, mimeType: "text/markdown", text: METHODOLOGY_MARKDOWN }] }),
+    {
+      title: `Methodology as implemented (${ENGINE_VERSION})`,
+      mimeType: "text/markdown",
+    },
+    async uri => ({
+      contents: [
+        {
+          uri: uri.href,
+          mimeType: "text/markdown",
+          text: METHODOLOGY_MARKDOWN,
+        },
+      ],
+    }),
   );
 
   server.registerTool(
@@ -85,7 +127,7 @@ export function buildMcpServer({ canWrite }: { canWrite: boolean }): McpServer {
     {
       title: "Generate sample telemetry",
       description:
-        "Deterministic hourly monitoring data (gross generation, export/import, check meter, flow, head, fuel, water quality) for a demo plant, ending at the last whole hour and signed by the plant's demo meter key. The result is a ready verify_telemetry request; changing any reading invalidates the signature.",
+        "Deterministic hourly monitoring data for a demo plant, signed by the public demo meter for a preview domain. It verifies in verify_telemetry. The live registry will not accept it. The demo key is not a production meter.",
       inputSchema: z.object({
         scenario: z.enum(SCENARIO_NAMES),
         hours: z.number().int().min(1).max(168).default(24),
@@ -97,7 +139,15 @@ export function buildMcpServer({ canWrite }: { canWrite: boolean }): McpServer {
       run(() => {
         const plant = findDemoPlant(plantId);
         if (!plant) throw new ApiError(`Unknown demo plant ${plantId}`, 404);
-        return generateScenario(scenario, { hours, plant });
+        return {
+          ...generateScenario(scenario, {
+            hours,
+            plant,
+            domain: PREVIEW_METER_DOMAIN,
+          }),
+          demoMeterKeyPublic: true,
+          acceptedByLiveRegistry: false,
+        };
       }),
   );
 
@@ -209,15 +259,52 @@ export function buildMcpServer({ canWrite }: { canWrite: boolean }): McpServer {
   );
 
   server.registerTool(
+    "compare_guardian_report",
+    {
+      title: "Compare a Guardian figure",
+      description:
+        "Recompute a Guardian VMR0017 monitoring report (field3–7 grid and generation, field24–27 their BE, PE, LE and ER, in tonnes). Returns MATCH, MISMATCH or NOT_COMPARABLE and the tonne difference. Does not mint and does not sign. Use this before treating a Guardian number as the credit.",
+      inputSchema: compareReportSchema,
+      annotations: readOnly,
+    },
+    async input => run(() => compareGuardianReport(input)),
+  );
+
+  server.registerTool(
+    "verify_guardian_evidence",
+    {
+      title: "Verify Guardian evidence",
+      description:
+        "Verify a Hedera Guardian trust chain from the public mirror node and IPFS: pass a VP consensus timestamp, a mint transaction id (0.0.x@secs.nanos, followed through its memo) or nft:<tokenId>:<serial>, plus the policy topic ids. Checks topic, status and every Ed25519 signature, and refuses chains that contain a MintToken VC or a Monitoring Report without a MATCH cross-check.",
+      inputSchema: z.object({
+        ref: z.string().min(1).max(200),
+        topicIds: z
+          .array(z.string().regex(/^\d+\.\d+\.\d+$/))
+          .max(10)
+          .optional(),
+      }),
+      annotations: readOnly,
+    },
+    async ({ ref, topicIds }) => run(() => verifyEvidence(ref, topicIds ?? null)),
+  );
+
+  server.registerTool(
     "reproduce_attestation",
     {
       title: "Reproduce attestation",
       description:
         "Strongest check available: audit the report, fetch the raw readings it commits to from HCS (reassembling chunks), verify their hash, confirm they were quantified with the registered design, re-run the engine and compare decision, coverage, EG_facility, TEG, fuel, EG_PJ, BE, PE, ER and credits. 'reproduced' means the issuance follows from public data alone.",
-      inputSchema: z.object({ attestationId: z.number().int().min(0) }),
+      inputSchema: z.object({
+        attestationId: z.number().int().min(0),
+        registry: z
+          .string()
+          .regex(/^0x[0-9a-fA-F]{40}$/)
+          .optional()
+          .describe("Registry address; pass the legacy HydroCreditRegistry to reproduce pre-phase-1 evidence"),
+      }),
       annotations: readOnly,
     },
-    async ({ attestationId }) => run(() => reproduce(attestationId)),
+    async ({ attestationId, registry }) => run(() => reproduce(attestationId, registry)),
   );
 
   server.registerTool(
@@ -232,11 +319,22 @@ export function buildMcpServer({ canWrite }: { canWrite: boolean }): McpServer {
   );
 
   server.registerTool(
+    "get_dex_price",
+    {
+      title: "SaucerSwap HBAR price",
+      description:
+        "Spot HBAR/USD from the SaucerSwap pair stored on CreditMarket, and how far it sits from the oracle. accepted is false above 3%. Reading needs no key.",
+      annotations: readOnly,
+    },
+    async () => run(readDexCheck),
+  );
+
+  server.registerTool(
     "prepare_purchase",
     {
       title: "Prepare a credit purchase",
       description:
-        "Build an unsigned transaction that buys credits (amountKg) from a listing and by default retires them, minting an HTS NFT certificate to the buyer. Returns chainId, to, data and value (weibar, with a 1% buffer the contract refunds). Sign and send it with your own wallet; this server never holds your key.",
+        "Build an unsigned transaction that buys credits (amountKg) from a listing and by default retires them, minting an HTS NFT certificate to the buyer. Refuses if the SaucerSwap settlement pair is more than 3% from the oracle. The contract swaps the HBAR through the SaucerSwap router. Returns chainId, to, data and value (weibar, with a 1% buffer the contract refunds). Sign and send it with your own wallet; this server never holds your key.",
       inputSchema: preparePurchaseSchema,
       annotations: readOnly,
     },
@@ -267,17 +365,123 @@ export function buildMcpServer({ canWrite }: { canWrite: boolean }): McpServer {
     async query => run(() => getPortfolio(query)),
   );
 
+  server.registerTool(
+    "list_documents",
+    {
+      title: "List sealed documents",
+      description:
+        "VCS-shaped project description, validation, registry decision, monitoring report and verification report for a demo plant. Each later document cites the previous hash. Reading needs no key. These documents do not mint credits.",
+      inputSchema: z.object({ subjectId: z.string().optional() }),
+      annotations: readOnly,
+    },
+    async ({ subjectId }) => run(() => listDocuments(subjectId)),
+  );
+
+  server.registerTool(
+    "get_trust_chain",
+    {
+      title: "Trust chain for a project",
+      description:
+        "Walks the sealed documents in order and reports described, validated, registered, monitoring, issued, or broken.",
+      inputSchema: z.object({ subjectId: z.string().min(1) }),
+      annotations: readOnly,
+    },
+    async ({ subjectId }) => run(() => trustChainFor(subjectId)),
+  );
+
+  server.registerTool(
+    "prepare_document",
+    {
+      title: "Hash a document for wallet signing",
+      description: "Returns the exact message to sign. The caller signs it with their own wallet. Nothing is stored.",
+      inputSchema: prepareDocumentSchema,
+      annotations: readOnly,
+    },
+    async input => run(() => prepareDocument(input)),
+  );
+
+  server.registerTool(
+    "quantify_safe_water",
+    {
+      title: "Illustrative VMR0015 safe-water quantification",
+      description:
+        "AMS-III.AV as revised by VMR0015: 5.5 L/person/day cap, 26% TOOL30 discount, 90% water-quality gate. Not a hydro credit and not a Verra issuance.",
+      inputSchema: waterRequestSchema,
+      annotations: readOnly,
+    },
+    async input => run(() => quantifySafeWater(input)),
+  );
+
+  server.registerTool(
+    "check_document",
+    {
+      title: "Check a signed document",
+      description: "Confirms the hash and the wallet signature. Stores nothing and mints nothing. No operator key.",
+      inputSchema: publishDocumentSchema,
+      annotations: readOnly,
+    },
+    async input => run(() => checkSignedDocument(input)),
+  );
+
+  server.registerTool(
+    "run_public_work",
+    {
+      title: "Public multi-step job",
+      description:
+        "The describe, validate, register, monitor and verify playbook for a subject, with the document chain attached.",
+      inputSchema: z.object({
+        subjectId: z.string().min(1).default("HYDRO-DEMO-01"),
+      }),
+      annotations: readOnly,
+    },
+    async ({ subjectId }) => run(() => runPublicWork(subjectId)),
+  );
+
+  server.registerTool(
+    "approve_attestation",
+    {
+      title: "Preview the VVB approval for an attestation",
+      description:
+        "For a VVB: re-derive, from the readings and the step-1 anchor (reportHash, hcsTopicNum, hcsSequence, dataSequence), the exact EIP-712 VerifierApproval that DmrvRegistry will check, plus the report it covers. Holds no key and writes nothing; sign the typed data with your own secp256k1 key and pass it to submit_attestation as verifierSignature.",
+      inputSchema: attestRequestSchema,
+      annotations: readOnly,
+    },
+    async request => run(() => prepareApproval(request)),
+  );
+
   if (canWrite) {
     server.registerTool(
       "submit_attestation",
       {
         title: "Verify, anchor and attest",
         description:
-          "Verify readings against the plant's registered design and on-chain ledger; if APPROVED and the contract's own quantify() agrees, publish readings and report to HCS and call HydroCreditRegistry.submitAttestation, minting credits to the plant operator. Returns Hashscan links.",
-        inputSchema: verifyRequestSchema,
-        annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: false, openWorldHint: true },
+          "Two-step, two-signature attestation on DmrvRegistry. Without verifierSignature it refuses (409, nothing published) unless publishForApproval is true: then it verifies the readings against the registered design and on-chain ledger, checks the methodology module's preview() agrees, publishes readings and report to HCS and returns the VerifierApproval typed data and anchor. Call again with anchor + verifierSignature (from an accredited VVB) to relay submitAttestation and mint to the plant operator. Returns Hashscan links.",
+        inputSchema: attestRequestSchema,
+        annotations: {
+          readOnlyHint: false,
+          destructiveHint: false,
+          idempotentHint: false,
+          openWorldHint: true,
+        },
       },
       async request => run(() => attestReadings(request)),
+    );
+
+    server.registerTool(
+      "publish_document",
+      {
+        title: "Store a signed document",
+        description:
+          "Checks the hash and the wallet signature, then keeps the document for this server process. Requires the operator bearer token. Does not mint hydro credits.",
+        inputSchema: publishDocumentSchema,
+        annotations: {
+          readOnlyHint: false,
+          destructiveHint: false,
+          idempotentHint: true,
+          openWorldHint: false,
+        },
+      },
+      async input => run(() => publishDocument(input)),
     );
   }
 

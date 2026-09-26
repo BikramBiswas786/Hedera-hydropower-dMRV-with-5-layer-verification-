@@ -99,7 +99,7 @@ export const ReportView = ({ report }: { report: VerificationReport }) => {
         </table>
       </div>
 
-      <details className="collapse collapse-arrow bg-base-200" open>
+      <details className="collapse collapse-arrow bg-base-200">
         <summary className="collapse-title font-medium">Equation trace</summary>
         <div className="collapse-content overflow-x-auto">
           <table className="table table-xs">

@@ -44,13 +44,14 @@ const MethodologyPage: NextPage = () => (
         Each plant is registered under one of two rule sets. <strong>Verra VMR0017</strong> v
         {METHODOLOGIES.VMR0017.version} (23 April 2026), the demo plants&apos; methodology, is applied with{" "}
         <strong>{METHODOLOGIES.ACM0002.id}</strong> v{METHODOLOGIES.ACM0002.version} as it requires: hydro of 15 MW or
-        less in Least Developed Countries, VT0008 additionality, EF_Res 100 kg CO₂e/MWh and embodied-emission leakage.
-        The <strong>CDM</strong> rules (AMS-I.D v{METHODOLOGIES["AMS-I.D"].version} up to 15 MW, ACM0002 above) remain
-        available; Verra inactivates them as standalone methodologies on 1 January 2027. <strong>TOOL03</strong> prices
-        fossil fuel burnt on site. The grid factor follows <strong>TOOL07</strong> v7.0 for CDM plants and Verra&apos;s{" "}
-        <strong>VT0011</strong> v1.0 revision of it for VMR0017 plants (build margin over all units, hydro weights 0.4 /
-        0.6). The same integer arithmetic runs in this app, in the MCP server and inside the{" "}
-        <code>HydroCreditRegistry</code> contract, and shared test vectors keep them identical.
+        less in Least Developed Countries, VT0008 additionality (a ±10% sensitivity table and a ±50% capacity band),
+        EF_Res 100 kg CO₂e/MWh and embodied-emission leakage. The <strong>CDM</strong> rules (AMS-I.D v
+        {METHODOLOGIES["AMS-I.D"].version} up to 15 MW, ACM0002 above) remain available; Verra inactivates them as
+        standalone methodologies on 1 January 2027. <strong>TOOL03</strong> prices fossil fuel burnt on site. The grid
+        factor follows <strong>TOOL07</strong> v7.0 for CDM plants and Verra&apos;s <strong>VT0011</strong> v1.0
+        revision of it for VMR0017 plants (build margin over all units, hydro weights 0.4 / 0.6). The same integer
+        arithmetic runs in this app, in the MCP server and inside the <code>HydroVmr0017Module</code> contract, and
+        shared test vectors keep them identical.
       </p>
     </PageHeader>
 
@@ -64,7 +65,8 @@ PE_FF = Σ FC × NCV × EF_CO2             TOOL03, IPCC upper bounds
 PE_HP = EF_Res × TEG_y                  if ${MIN_POWER_DENSITY} < PD ≤ ${RESERVOIR_EMISSIONS_POWER_DENSITY} W/m², else 0
                                         EF_Res = 100 kg CO2e/MWh (VMR0017), 90 (CDM)
 LE_y  = EG × EF_embodied                VMR0017 §8.3, 21 g CO2e/kWh for hydro,
-                                        EG_facility (greenfield) or EG_PJ_Add (addition)
+                                        EG_facility (greenfield) or
+                                        max(EG_PJ, EG_facility × Cap_add / Cap_PJ)
 LE_y  = 0                               CDM; VMR0017 retrofit`}</Eq>
           <Eq>{`EG_PJ,y = EG_facility,y                        greenfield
 EG_PJ,y = EG_facility,y − (EG_historical + σ)  retrofit, addition
@@ -260,7 +262,7 @@ EG_facility = export − import at the grid meter, after QA/QC`}</Eq>
       <Card title="What the contract enforces on its own">
         <ul className="text-sm m-0 pl-4 list-disc flex flex-col gap-1">
           <li>Power density rule at registration (PD ≤ 4 W/m² reverts) and the PE_HP rate that follows from it.</li>
-          <li>Baseline fields per project type, grid EF range, crediting period of at most 10 × 365 days.</li>
+          <li>Baseline fields per project type, grid EF range, crediting span of exactly 5, 7 or 10 × 365 days.</li>
           <li>Periods inside the crediting period, inside one crediting year, never overlapping.</li>
           <li>Gross generation within nameplate × duration; net export never above gross.</li>
           <li>VMR0017 plants: at most 15 MW; EF_Res and EF_embodied fixed by the registered methodology.</li>

@@ -1,4 +1,4 @@
-import { Hash, SendTransactionParameters, TransactionReceipt, WalletClient } from "viem";
+import { Hash, TransactionReceipt, WalletClient, numberToHex } from "viem";
 import { Config, useWalletClient } from "wagmi";
 import { getPublicClient } from "wagmi/actions";
 import { SendTransactionMutate } from "wagmi/query";
@@ -64,7 +64,37 @@ export const useTransactor = (_walletClient?: WalletClient): TransactionFunc => 
         const result = await tx();
         transactionHash = result;
       } else if (tx != null) {
-        transactionHash = await walletClient.sendTransaction(tx as SendTransactionParameters);
+        // viem's sendTransaction tries wallet_sendTransaction, which HashPack and other
+        // Hedera WalletConnect sessions reject. eth_sendTransaction is the method they sign.
+        const from =
+          (typeof tx.account === "string" ? tx.account : tx.account?.address) ?? walletClient.account?.address;
+        if (!from || !tx.to) throw new Error("Incomplete transaction");
+        const value = typeof tx.value === "bigint" ? numberToHex(tx.value) : tx.value;
+        const gas = typeof tx.gas === "bigint" ? numberToHex(tx.gas) : tx.gas;
+        const request = walletClient.request as (args: {
+          method: "eth_sendTransaction";
+          params: [
+            {
+              from: `0x${string}`;
+              to: `0x${string}`;
+              data?: `0x${string}`;
+              value?: `0x${string}`;
+              gas?: `0x${string}`;
+            },
+          ];
+        }) => Promise<Hash>;
+        transactionHash = await request({
+          method: "eth_sendTransaction",
+          params: [
+            {
+              from: from as `0x${string}`,
+              to: tx.to as `0x${string}`,
+              data: tx.data,
+              value,
+              gas: typeof gas === "string" ? gas : undefined,
+            },
+          ],
+        });
       } else {
         throw new Error("Incorrect transaction passed to transactor");
       }

@@ -6,10 +6,11 @@ import {
   type RetirementView,
   plantIdToBytes32,
   toAttestationView,
+  toDmrvAttestationView,
   toRetirementView,
 } from "../views";
 import { ApiError } from "./errors";
-import { getPlant, requireDeployment } from "./registry";
+import { activeRegistry, getPlant, legacy, publicClient, requireDeployment } from "./registry";
 import { type Address, getAddress, isAddress, zeroAddress } from "viem";
 import { z } from "zod";
 
@@ -24,16 +25,33 @@ async function readPaged<T>(count: bigint, page: (start: bigint, size: bigint) =
   return out;
 }
 
+/** Every attestation on the active registry (the legacy one until the phase-1 redeploy). */
 export async function getAllAttestations(): Promise<AttestationView[]> {
+  if (activeRegistry().kind === "legacy") {
+    const client = publicClient();
+    const count = await client.readContract({ ...legacy, functionName: "attestationCount" });
+    const raw = await readPaged(count, (start, size) =>
+      client.readContract({ ...legacy, functionName: "getAttestations", args: [start, size] }),
+    );
+    return raw.map((attestation, i) => toAttestationView(attestation, i));
+  }
   const { address, abi, client } = requireDeployment();
   const count = await client.readContract({ address, abi, functionName: "attestationCount" });
   const raw = await readPaged(count, (start, size) =>
     client.readContract({ address, abi, functionName: "getAttestations", args: [start, size] }),
   );
-  return raw.map((attestation, i) => toAttestationView(attestation, i));
+  return raw.map((attestation, i) => toDmrvAttestationView(attestation, i));
 }
 
 export async function getAllRetirements(): Promise<RetirementView[]> {
+  if (activeRegistry().kind === "legacy") {
+    const client = publicClient();
+    const count = await client.readContract({ ...legacy, functionName: "retirementCount" });
+    const raw = await readPaged(count, (start, size) =>
+      client.readContract({ ...legacy, functionName: "getRetirements", args: [start, size] }),
+    );
+    return raw.map((retirement, i) => toRetirementView(retirement, i));
+  }
   const { address, abi, client } = requireDeployment();
   const count = await client.readContract({ address, abi, functionName: "retirementCount" });
   const raw = await readPaged(count, (start, size) =>
@@ -96,8 +114,13 @@ export function plantTotals(attestations: AttestationView[]): PlantTotals {
 }
 
 export async function listPlants(): Promise<PlantView[]> {
-  const { address, abi, client } = requireDeployment();
-  const ids = await client.readContract({ address, abi, functionName: "getPlantIds" });
+  const ids =
+    activeRegistry().kind === "legacy"
+      ? await publicClient().readContract({ ...legacy, functionName: "getPlantIds" })
+      : await (() => {
+          const { address, abi, client } = requireDeployment();
+          return client.readContract({ address, abi, functionName: "getProjectIds" });
+        })();
   const plants = await Promise.all(ids.map(id => getPlant(id)));
   return plants.filter((plant): plant is PlantView => plant !== null);
 }
@@ -107,7 +130,7 @@ export async function getPlantDetail(plantId: string): Promise<PlantDetail> {
   const [plant, all] = await Promise.all([getPlant(plantIdToBytes32(plantId)), getAllAttestations()]);
   if (!plant) throw new ApiError(`Plant ${plantId} is not registered`, 404);
 
-  const { address } = requireDeployment();
+  const { address } = activeRegistry();
   const attestations = all
     .filter(a => a.plantId === plantId)
     .map(a => ({
@@ -160,11 +183,25 @@ const normalise = (text: string) => text.trim().toLowerCase();
 export async function getPortfolio(input: z.input<typeof portfolioQuerySchema>): Promise<Portfolio> {
   const query = portfolioQuerySchema.parse(input);
   const account = query.account ? getAddress(query.account) : null;
-  const { address, abi, client } = requireDeployment();
+  const client = publicClient();
+  const read =
+    activeRegistry().kind === "legacy"
+      ? {
+          certificateToken: () => client.readContract({ ...legacy, functionName: "certificateToken" }),
+          custody: (who: Address) => client.readContract({ ...legacy, functionName: "custodyBalanceOf", args: [who] }),
+        }
+      : (() => {
+          const { address, abi } = requireDeployment();
+          return {
+            certificateToken: () => client.readContract({ address, abi, functionName: "certificateToken" }),
+            custody: (who: Address) =>
+              client.readContract({ address, abi, functionName: "custodyBalanceOf", args: [who] }),
+          };
+        })();
   const [all, token, custody] = await Promise.all([
     getAllRetirements(),
-    client.readContract({ address, abi, functionName: "certificateToken" }),
-    account ? client.readContract({ address, abi, functionName: "custodyBalanceOf", args: [account] }) : null,
+    read.certificateToken(),
+    account ? read.custody(account) : null,
   ]);
 
   const retirements = all

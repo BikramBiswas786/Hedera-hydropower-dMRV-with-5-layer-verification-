@@ -16,11 +16,12 @@ factor calculation).
    REJECTED. Works in the browser with no wallet.
 3. **Anchor** approved periods on an HCS topic as two messages: the raw readings with plant profile, metering and
    ledger (chunked), then the report committing to them. The SHA-256 of the report is the on-chain `reportHash`.
-4. **Issue** credits through `HydroCreditRegistry`, which stores the validated design, recomputes EG_PJ, BE, PE_HP,
-   PE_FF, LE and ER from the monitored inputs, carries remainders and deficits, and mints an HTS token
+4. **Issue** credits through `DmrvRegistry`, which stores the validated design, recomputes EG_PJ, BE, PE_HP,
+   PE_FF, LE and ER from the monitored inputs (via `HydroVmr0017Module`), carries remainders and deficits, and mints an HTS token
    (1 token = 1 t CO2e).
 5. **Trade and retire**: sellers list credits in USD per tonne; buyers pay HBAR converted by `ResilientHbarUsdFeed`
-   (Chainlink with a Supra fallback, refusing to price when fresh sources disagree). Retiring burns the HTS tokens,
+   (Chainlink with a Supra fallback, refusing to price when fresh sources disagree). `CreditMarket` sends that HBAR
+   through the SaucerSwap router and reverts if the pinned pair is more than 3% from the oracle. Retiring burns the HTS tokens,
    records the beneficiary and mints an HTS NFT certificate.
 6. **Reproduce**: anyone can fetch both HCS messages from the mirror node, check the hashes, confirm the registered
    design was used, re-run the engine and confirm every on-chain figure follows from public data.

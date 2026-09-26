@@ -17,7 +17,7 @@ export function prepareAnchors({
   metering = findDemoPlant(plant.plantId) ? demoMeteringFor(plant.plantId) : DEFAULT_METERING,
   ledger = toLedgerJson(EMPTY_LEDGER),
   signature,
-  domain = defaultMeterDomain(),
+  domain = defaultMeterDomain(ledger.attestations),
 }: VerifyRequest) {
   const report = verifyReadings(readings, plant, metering, ledger, signature, domain);
   const data = buildDataMessage(readings, plant, metering, ledger, report.engine, signature ?? null, domain);

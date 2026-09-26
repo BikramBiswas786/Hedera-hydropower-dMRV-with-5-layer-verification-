@@ -63,6 +63,7 @@ export const DEMO_GRID: Omit<Tool07Input, "projectKind" | "creditingPeriod"> = {
 const DEMO_ADDITIONALITY: AdditionalityEvidence = {
   tool: "VT0008",
   regulatorySurplus: true,
+  regulatorySurplusBasis: "Illustrative: no law requires this plant to be built",
   investment: {
     analysis: "benchmark",
     irr: "project",
@@ -71,11 +72,19 @@ const DEMO_ADDITIONALITY: AdditionalityEvidence = {
     benchmarkPct: 11.5,
     sensitivityConfirms: true,
     decisiveIncrease: true,
+    sensitivity: [
+      { parameter: "tariff", variationPct: -10, irrPct: 6.4 },
+      { parameter: "tariff", variationPct: 10, irrPct: 9.7 },
+      { parameter: "capex", variationPct: -10, irrPct: 9.9 },
+      { parameter: "capex", variationPct: 10, irrPct: 6.2 },
+    ],
   },
   commonPractice: {
     nAll: 12,
     nDiff: 10,
     basis: "Illustrative: grid-connected small hydro within ±50% of the design capacity in the host country",
+    geographicArea: "Uganda",
+    capacityBandPct: 50,
   },
   assessedBy: "none (illustrative demo data, not validated)",
 };
@@ -99,6 +108,7 @@ export const DEMO_DESIGNS: ProjectDesign[] = [
     equipmentTransferred: false,
     onSiteFuel: { fuel: "gas-diesel-oil" },
     crediting: { start: "2026-01-01T00:00:00Z", years: 7, period: 1 },
+    registrationRequest: "2026-01-01T00:00:00Z",
     grid: { source: "tool07", input: DEMO_GRID },
     hydraulics: { maxFlowM3s: 1.6, maxHeadM: 45, minEfficiency: 0.7, maxEfficiency: 0.92 },
   },
@@ -117,6 +127,12 @@ export const DEMO_DESIGNS: ProjectDesign[] = [
     equipmentTransferred: false,
     onSiteFuel: { fuel: "gas-diesel-oil" },
     crediting: { start: "2026-03-01T00:00:00Z", years: 7, period: 2 },
+    registrationRequest: "2026-03-01T00:00:00Z",
+    renewal: {
+      previousYears: 7,
+      baselineValidity: "illustrative TOOL11 reassessment, not a validation report",
+      regulatorySurplus: "illustrative: no new law requires the plant",
+    },
     grid: { source: "tool07", input: DEMO_GRID },
     hydraulics: { maxFlowM3s: 16, maxHeadM: 95, minEfficiency: 0.75, maxEfficiency: 0.93 },
   },
@@ -143,6 +159,10 @@ export const DEMO_METERING: Metering = {
   checkMeterAccuracyPct: 0.5,
   calibrationValidUntil: "2027-06-30T00:00:00Z",
   flowUncertaintyPct: 5,
+  // sha256 of fixed illustrative labels. Not a scanned certificate.
+  calibrationCertificateSha256: "060d5c7658ff4f1d0407516b426efe4533393cdd972cd14f65c61875d9b1a6e2",
+  invoiceCrossCheckSha256: "6d71c2b302ee45e3fc86894189fa83823cf6241f12cdb0ccc12a8ee1650b19ca",
+  lastCalibrationUncertaintyPct: 0.2,
 };
 
 /**

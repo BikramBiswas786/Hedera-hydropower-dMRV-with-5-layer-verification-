@@ -9,6 +9,7 @@ import {
   assessProject,
   commonPracticeOf,
   powerDensity,
+  vcsScopeOf,
 } from "./project";
 import { fuelCoefficient } from "./tool03";
 import { describe, expect, it } from "vitest";
@@ -40,6 +41,13 @@ describe("TOOL03 fuel coefficient", () => {
   it("prefers measured values and rounds the registered integer up", () => {
     expect(fuelCoefficient({ fuel: "gas-diesel-oil", ncvGjPerT: 42.91, co2KgPerTj: 74_100 }).coefGPerTonne).toBe(
       Math.ceil(42.91 * 74_100),
+    );
+  });
+
+  it("rejects a measured factor outside the IPCC 95% interval", () => {
+    expect(() => fuelCoefficient({ fuel: "gas-diesel-oil", ncvGjPerT: 50 })).toThrow(/outside the IPCC 95% interval/);
+    expect(() => fuelCoefficient({ fuel: "gas-diesel-oil", co2KgPerTj: 70_000 })).toThrow(
+      /outside the IPCC 95% interval/,
     );
   });
 });
@@ -84,6 +92,13 @@ describe("power density rule (PE_HP applicability)", () => {
 });
 
 describe("assessProject", () => {
+  const historical = {
+    commissionedAt: "2010-01-01T00:00:00Z",
+    referenceStart: "2018-01-01T00:00:00Z",
+    noChange: true,
+    remainingLifetimeBasis: "TOOL10: equipment remains in service past 2031",
+  };
+
   it("chooses AMS-I.D up to 15 MW and ACM0002 above", () => {
     expect(assessProject(design({ capacityKw: 15_000 })).methodology.id).toBe("AMS-I.D");
     expect(assessProject(design({ capacityKw: 15_001 })).methodology.id).toBe("ACM0002");
@@ -100,6 +115,7 @@ describe("assessProject", () => {
         baselineCapacityKw: 8_000,
         historicalGenerationMwh: history,
         baselineRetrofitDate: "2031-06-30T00:00:00Z",
+        historical,
       }),
     );
     const sd = Math.sqrt(12.4e6 / 4);
@@ -117,6 +133,7 @@ describe("assessProject", () => {
     expect(assessment.failures).toEqual([
       "EG_historical needs at least five years of annual generation data",
       "DATE_BaselineRetrofit is required for retrofits and additions",
+      "ACM0002 ¶8(b): record the existing plant's commissioning date, the historical reference start, a no-change attestation and the TOOL10 basis for DATE_BaselineRetrofit",
     ]);
   });
 
@@ -158,6 +175,7 @@ describe("VMR0017 v1.0 (with ACM0002 v22.0)", () => {
   const evidence: NonNullable<ProjectDesign["additionality"]> = {
     tool: "VT0008",
     regulatorySurplus: true,
+    regulatorySurplusBasis: "No law requires this plant",
     investment: {
       analysis: "benchmark",
       irr: "project",
@@ -166,11 +184,43 @@ describe("VMR0017 v1.0 (with ACM0002 v22.0)", () => {
       benchmarkPct: 11,
       sensitivityConfirms: true,
       decisiveIncrease: true,
+      sensitivity: [
+        { parameter: "tariff", variationPct: -10, irrPct: 6 },
+        { parameter: "tariff", variationPct: 10, irrPct: 9.5 },
+      ],
     },
-    commonPractice: { nAll: 12, nDiff: 10, basis: "test" },
+    commonPractice: {
+      nAll: 12,
+      nDiff: 10,
+      basis: "test",
+      geographicArea: "host country",
+      capacityBandPct: 50,
+    },
+    assessedBy: "independent assessor",
+  };
+  const historical = {
+    commissionedAt: "2010-01-01T00:00:00Z",
+    referenceStart: "2018-01-01T00:00:00Z",
+    noChange: true,
+    remainingLifetimeBasis: "TOOL10: equipment remains in service past 2031",
   };
   const vmr = (overrides: Partial<ProjectDesign> = {}) =>
-    assessProject(design({ methodology: "VMR0017", hostCountry: "UG", additionality: evidence, ...overrides }));
+    assessProject(
+      design({
+        methodology: "VMR0017",
+        registrationRequest: "2026-01-01T00:00:00Z",
+        hostCountry: "UG",
+        additionality: evidence,
+        grid: {
+          source: "published",
+          efTPerMwh: 0.6,
+          reference: "illustrative factor",
+          validFrom: "2020-01-01T00:00:00Z",
+          validTo: "2035-01-01T00:00:00Z",
+        },
+        ...overrides,
+      }),
+    );
 
   it("registers under methodology code 1 with EF_Res 100 kg/MWh and embodied leakage", () => {
     const a = vmr({ reservoirAreaM2: 1_800_000 });
@@ -221,7 +271,10 @@ describe("VMR0017 v1.0 (with ACM0002 v22.0)", () => {
     expect(vmr({ additionality: investment({ irrWithCreditsPct: 7 }) }).failures.join()).toMatch(
       /cannot be below the IRR without it/,
     );
-    const counts = { ...evidence, commonPractice: { nAll: 3, nDiff: 4, basis: "test" } };
+    const counts = {
+      ...evidence,
+      commonPractice: { nAll: 3, nDiff: 4, basis: "test", geographicArea: "host country", capacityBandPct: 50 },
+    };
     expect(vmr({ additionality: counts }).failures.join()).toMatch(/N_diff cannot exceed N_all/);
   });
 
@@ -233,7 +286,12 @@ describe("VMR0017 v1.0 (with ACM0002 v22.0)", () => {
     expect(commonPracticeOf({ nAll: 20, nDiff: 16 })).toEqual({ factor: 0.2, commonPractice: false });
     expect(commonPracticeOf({ nAll: 0, nDiff: 0 })).toEqual({ factor: 0, commonPractice: false });
 
-    const common = vmr({ additionality: { ...evidence, commonPractice: { nAll: 10, nDiff: 2, basis: "test" } } });
+    const common = vmr({
+      additionality: {
+        ...evidence,
+        commonPractice: { nAll: 10, nDiff: 2, basis: "test", geographicArea: "host country", capacityBandPct: 50 },
+      },
+    });
     expect(common.failures.join()).toMatch(/common practice \(F = 80\.0% > 20% and N_all − N_diff = 8 > 3\)/);
     const passing = vmr();
     expect(passing.additionality.commonPracticeFactor).toBeCloseTo(1 / 6);
@@ -255,14 +313,174 @@ describe("VMR0017 v1.0 (with ACM0002 v22.0)", () => {
     expect(assessProject(design({})).additionality.ccpInvestmentConditions).toBeNull();
   });
 
-  it("has no embodied-emission equation for retrofits", () => {
-    const a = vmr({
-      projectType: "retrofit",
+  it("has no embodied-emission equation for an end-of-life refurbishment", () => {
+    const history = {
+      projectType: "retrofit" as const,
       baselineCapacityKw: 8_000,
       historicalGenerationMwh: [40_000, 41_000, 39_500, 40_200, 40_800],
       baselineRetrofitDate: "2031-01-01T00:00:00Z",
+      historical,
+    };
+    const bare = vmr(history);
+    expect(bare.failures.join()).toMatch(/end-of-life refurbishment/);
+    expect(bare.failures.join()).toMatch(/P1, P2 and P3/);
+
+    const wrongOutcome = vmr({
+      ...history,
+      endOfLifeRefurbishment: true,
+      baselineAlternatives: { p1: true, p2: true, p3: true, outcome: "P1" },
+    });
+    expect(wrongOutcome.failures.join()).toMatch(/continuation of the current situation \(P2\)/);
+
+    const a = vmr({
+      ...history,
+      endOfLifeRefurbishment: true,
+      baselineAlternatives: { p1: true, p2: true, p3: true, outcome: "P2" },
     });
     expect(a.failures).toEqual([]);
     expect(a.leakage.basis).toMatch(/LE_y = 0 for a retrofit/);
+  });
+
+  it("requires VT0009 P2 for a VMR0017 capacity addition and bounds its leakage", () => {
+    const addition = {
+      projectType: "capacity-addition" as const,
+      baselineCapacityKw: 8_000,
+      historicalGenerationMwh: [40_000, 41_000, 39_500, 40_200, 40_800],
+      baselineRetrofitDate: "2031-01-01T00:00:00Z",
+      baselineAlternatives: { p1: true, p2: true, p3: true, outcome: "P2" as const },
+      historical,
+    };
+    const a = vmr(addition);
+    expect(a.failures).toEqual([]);
+    expect(a.leakage.basis).toMatch(/max\(EG_PJ,y, EG_facility,y × Cap_add \/ Cap_PJ\)/);
+    expect(vmr({ ...addition, baselineAlternatives: undefined }).failures.join()).toMatch(/P1, P2 and P3/);
+  });
+
+  it("uses a 5-year period for a VMR0017 registration request on or after 1 January 2027", () => {
+    const seven = vmr({
+      registrationRequest: "2027-01-01T00:00:00Z",
+      crediting: { start: "2026-01-01T00:00:00Z", years: 7, period: 1 },
+    });
+    expect(seven.eligible).toBe(false);
+    expect(seven.failures.join()).toMatch(/5-year crediting period/);
+
+    const five = vmr({
+      registrationRequest: "2027-01-01T00:00:00Z",
+      crediting: { start: "2027-01-01T00:00:00Z", years: 5, period: 1 },
+    });
+    expect(five.failures).toEqual([]);
+    expect(five.crediting.end - five.crediting.start).toBe(5 * CREDITING_YEAR_SECONDS);
+    // A request filed before 2027 can still use the 7-year period.
+    expect(vmr().failures).toEqual([]);
+  });
+
+  it("rejects a VMR0017 published factor with no validity window, or one that does not cover the crediting start", () => {
+    const missing = vmr({ grid: { source: "published", efTPerMwh: 0.6, reference: "ASB0054-2022" } });
+    expect(missing.failures.join()).toMatch(/validFrom and validTo/);
+    const expired = vmr({
+      grid: {
+        source: "published",
+        efTPerMwh: 0.137,
+        reference: "ASB0054-2022",
+        validFrom: "2022-08-10T00:00:00Z",
+        validTo: "2025-08-09T00:00:00Z",
+      },
+    });
+    expect(expired.failures.join()).toMatch(/validity window/);
+  });
+
+  it("requires the VT0008 sensitivity table, geographic area, capacity band and assessor", () => {
+    const thin = {
+      ...evidence,
+      investment: {
+        ...evidence.investment,
+        sensitivity: [{ parameter: "tariff", variationPct: 5, irrPct: 8.2 }],
+      },
+    };
+    expect(vmr({ additionality: thin }).failures.join()).toMatch(/−10% and \+10%/);
+    const crosses = {
+      ...evidence,
+      investment: {
+        ...evidence.investment,
+        sensitivity: [
+          { parameter: "tariff", variationPct: -10, irrPct: 6 },
+          { parameter: "tariff", variationPct: 10, irrPct: 11 },
+        ],
+      },
+    };
+    expect(vmr({ additionality: crosses }).failures.join()).toMatch(/how likely that scenario is/);
+    const noted = {
+      ...crosses,
+      investment: { ...crosses.investment, sensitivityProbability: "The VVB judges this tariff unlikely" },
+    };
+    expect(vmr({ additionality: noted }).failures).toEqual([]);
+    const narrow = vmr({
+      additionality: {
+        ...evidence,
+        commonPractice: { ...evidence.commonPractice, capacityBandPct: 20 },
+      },
+    });
+    expect(narrow.failures.join()).toMatch(/at least ±50%/);
+  });
+
+  it("rejects a VMR0017 design without a registration request date (the module needs registrationRequestedAt)", () => {
+    const missing = vmr({ registrationRequest: undefined });
+    expect(missing.eligible).toBe(false);
+    expect(missing.failures.join()).toMatch(/registration request date/);
+    expect(vmr().registration.registrationRequestedAt).toBe(Date.parse("2026-01-01T00:00:00Z") / 1000);
+  });
+
+  it("rejects a renewal whose length differs from the period it renews (RenewalSpan)", () => {
+    const renewal = { baselineValidity: "TOOL11 reassessment", regulatorySurplus: "no new law" };
+    const mismatch = vmr({
+      crediting: { start: "2026-01-01T00:00:00Z", years: 7, period: 2 },
+      renewal: { ...renewal, previousYears: 5 },
+    });
+    expect(mismatch.eligible).toBe(false);
+    expect(mismatch.failures.join()).toMatch(/keeps the length .*RenewalSpan/);
+    const same = vmr({
+      crediting: { start: "2026-01-01T00:00:00Z", years: 7, period: 2 },
+      renewal: { ...renewal, previousYears: 7 },
+    });
+    expect(same.failures).toEqual([]);
+  });
+
+  it("requires a baseline-validity reference when the crediting period is renewed", () => {
+    const renewed = { start: "2026-01-01T00:00:00Z", years: 7 as const, period: 2 as const };
+    expect(vmr({ crediting: renewed }).failures.join()).toMatch(/baseline-validity reference/);
+    const withEvidence = vmr({
+      crediting: renewed,
+      renewal: { baselineValidity: "TOOL11 reassessment", regulatorySurplus: "no new law" },
+    });
+    expect(withEvidence.failures).toEqual([]);
+  });
+
+  it("rejects a historical window that starts after the plant or after crediting", () => {
+    const addition = {
+      projectType: "capacity-addition" as const,
+      baselineCapacityKw: 8_000,
+      historicalGenerationMwh: [40_000, 41_000, 39_500, 40_200, 40_800],
+      baselineRetrofitDate: "2031-01-01T00:00:00Z",
+      baselineAlternatives: { p1: true, p2: true, p3: true, outcome: "P2" as const },
+      historical: {
+        commissionedAt: "2020-01-01T00:00:00Z",
+        referenceStart: "2018-01-01T00:00:00Z",
+        noChange: false,
+        remainingLifetimeBasis: "TOOL10",
+      },
+    };
+    const failures = vmr(addition).failures.join();
+    expect(failures).toMatch(/no capacity expansion/);
+    expect(failures).toMatch(/before the historical reference period/);
+  });
+});
+
+describe("VCS scope", () => {
+  it("is only small-scale hydro in an LDC under VMR0017", () => {
+    const start = Math.floor(Date.parse("2026-01-01T00:00:00Z") / 1000);
+    expect(vcsScopeOf({ capacityKw: 12_000, hostCountry: "UG" }, "VMR0017", start).inScope).toBe(true);
+    expect(vcsScopeOf({ capacityKw: 12_000, hostCountry: "IN" }, "AMS-I.D", start).inScope).toBe(false);
+    expect(vcsScopeOf({ capacityKw: 50_000, hostCountry: "UG" }, "ACM0002", start).inScope).toBe(false);
+    expect(assessProject(design({ capacityKw: 50_000 })).vcs.inScope).toBe(false);
   });
 });

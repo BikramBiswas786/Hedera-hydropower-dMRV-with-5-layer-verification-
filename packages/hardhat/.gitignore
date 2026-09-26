@@ -28,3 +28,4 @@ deployments
 
 # other
 temp
+.secrets/

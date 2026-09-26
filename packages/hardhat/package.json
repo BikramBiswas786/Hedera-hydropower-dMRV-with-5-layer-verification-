@@ -16,10 +16,13 @@
     "format": "prettier --write './**/*.(ts|sol)'",
     "lint": "eslint",
     "lint-staged": "eslint",
+    "meter-keys": "ts-node scripts/generateMeterKeys.ts",
+    "size": "hardhat compile && ts-node scripts/checkContractSizes.ts",
     "test": "hardhat test",
     "verify": "hardhat verify",
     "verify:testnet": "hardhat verify --network hederaTestnet",
     "verify:mainnet": "hardhat verify --network hederaMainnet",
+    "verify:sourcify": "ts-node scripts/verifySourcify.ts",
     "test:fork": "HEDERA_FORKING=true hardhat test",
     "test:gas": "REPORT_GAS=true hardhat test",
     "chain:offline": "hardhat node --network hardhat --no-deploy"

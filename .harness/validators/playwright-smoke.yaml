@@ -26,6 +26,14 @@ routes:
     path: /portfolio
   - name: audit
     path: /audit
+  - name: blog
+    path: /blog
+  - name: documents
+    path: /documents
+  - name: work
+    path: /work
+  - name: water
+    path: /water
   - name: certificate
     path: /certificate/0
   - name: debug

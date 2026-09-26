@@ -21,6 +21,8 @@ jobs:
       - run: yarn next:check-types
       - run: yarn hardhat:check-types
       - run: yarn hardhat:test
+      # Fails if any deployable contract's runtime bytecode exceeds 24,064 B (EIP-170 minus a 512 B margin).
+      - run: yarn hardhat:size
       - run: yarn next:test
       - run: yarn next:build
 
@@ -40,25 +42,30 @@ jobs:
         run: |
           git config --global user.name "ci"
           git config --global user.email "ci@example.com"
+          corepack enable
 
-      - name: Scaffold from this checkout
+      # The judged command, `npm create scaffold-hbar@latest --template BikramBiswas786/Hedera-hydropower-dMRV-with-5-layer-verification-`,
+      # made non-interactive (project name + --ci flags), as in the README Quick start. CREATE_SCAFFOLD_HBAR_TEMPLATE_DIR
+      # points it at this checkout, so the branch or pull request under test is what gets scaffolded.
+      - name: Scaffold with the judged command
         env:
           CREATE_SCAFFOLD_HBAR_TEMPLATE_DIR: ${{ github.workspace }}/template
-        run: >
-          npx --yes create-scaffold-hbar@latest scaffolded --yes --skip-install --skip-hedera-skills
-          --template ${{ github.repository }} --solidity-framework hardhat --frontend nextjs-app
-
-      - name: Install, lint, test and build the scaffolded project
-        working-directory: scaffolded
         run: |
-          corepack enable
-          yarn install
+          npm create scaffold-hbar@latest -- hydro-dmrv \
+            --template BikramBiswas786/Hedera-hydropower-dMRV-with-5-layer-verification- \
+            --ci --package-manager yarn --solidity-framework hardhat --skip-hedera-skills
+
+      - name: Test the scaffolded project from the lockfile
+        working-directory: hydro-dmrv
+        run: |
+          yarn install --immutable
           yarn lint --max-warnings=0
           yarn test
+          yarn hardhat:size
           yarn next:build
 
       - name: No template manifest or secrets left behind
-        working-directory: scaffolded
+        working-directory: hydro-dmrv
         run: |
           test ! -f template.json
           test ! -f .env && test ! -f packages/nextjs/.env.local && test ! -f packages/hardhat/.env

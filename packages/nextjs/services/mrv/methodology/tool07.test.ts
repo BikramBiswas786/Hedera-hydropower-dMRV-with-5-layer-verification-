@@ -223,6 +223,41 @@ describe("VT0011 v1.0 revision of TOOL07", () => {
     expect(result.combinedMargin.efTPerMwh).toBeCloseTo(expected, 12);
     expect(result.combinedMargin.efGPerMwh).toBe(Math.floor(expected * 1e6));
   });
+
+  it("counts net and Annex I imports at 0 t/MWh, uses the lowest fuel factor, and drops PBWA", () => {
+    const coalAndGas = unitEmissionFactor(
+      { id: "MF", source: "other-bituminous-coal", commissioned: 2016, efficiency: 0.36, fuels: ["natural-gas"] },
+      { mwh: 300 },
+      "VT0011",
+    );
+    // Lowest factor is natural gas, still divided by the unit's efficiency.
+    expect(coalAndGas.efTPerMwh).toBeCloseTo((0.0543 * 3.6) / 0.36, 12);
+
+    const withImports = calculateGridEmissionFactor(
+      smallGrid({
+        tool: "VT0011",
+        years: [2023, 2024, 2025].map(year => ({
+          year,
+          units: sameEveryYear,
+          importsMwh: 100,
+          annexIImportsMwh: 50,
+        })),
+      }),
+    );
+    const fossil = (100 * EF_GAS_50 + 300 * EF_COAL_36) / 550;
+    expect(withImports.operatingMargin.efTPerMwh).toBeCloseTo(fossil, 12);
+    expect(withImports.operatingMargin.perYear[0].importsMwh).toBe(150);
+
+    const wheeled = calculateGridEmissionFactor(
+      smallGrid({
+        years: [2023, 2024, 2025].map(year => ({
+          year,
+          units: { G1: { mwh: 100 }, C1: { mwh: 300, pbwaMwh: 300 }, H1: { mwh: 600 } },
+        })),
+      }),
+    );
+    expect(wheeled.operatingMargin.efTPerMwh).toBeCloseTo(EF_GAS_50, 12);
+  });
 });
 
 describe("TOOL07 combined margin", () => {

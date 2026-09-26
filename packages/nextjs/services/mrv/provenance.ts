@@ -7,6 +7,7 @@ import {
   bytesToHex,
   encodeAbiParameters,
   hashMessage,
+  hashTypedData,
   hexToBytes,
   isAddressEqual,
   keccak256,
@@ -26,9 +27,12 @@ import { publicKeyToAddress } from "viem/accounts";
  * the contract checks the same signature and only accepts figures at least as conservative as the statement, so a
  * verifier key on its own cannot mint.
  *
- * Signatures are EIP-191 `personal_sign` over a 32-byte hash, so any Ethereum library, hardware wallet or secure
- * element that speaks secp256k1 can act as the signer. Verification is synchronous (no I/O) to keep the engine pure.
- * Data messages published before readings@5 carry the earlier batch signature (over the readings digest alone).
+ * `DmrvRegistry` (phase 1) uses EIP-712 typed data: domain `DmrvRegistry` v1 bound to the chain and registry, type
+ * `MeterStatement` (below). A registered VVB then signs a `VerifierApproval` that embeds the meter statement's
+ * digest (`approval.ts`), and the registry needs both signatures to mint. A domain with a `sequence` selects this
+ * scheme. Without one, statements use the legacy `HydroCreditRegistry` (5b7fe3f) EIP-191 hash, so historic HCS
+ * data keeps verifying. Data messages published before readings@5 carry the earlier batch signature (over the
+ * readings digest alone). Verification is synchronous (no I/O) to keep the engine pure.
  */
 export const METER_BATCH_SCHEMA = "hydro-dmrv/meter-batch@1";
 
@@ -50,8 +54,11 @@ export const milliCeil = (value: number) => Math.ceil(Number((value * 1_000).toF
 export const METER_STATEMENT_SCHEMA = "hydro-dmrv/meter-statement@1";
 const METER_STATEMENT_TAG = keccak256(stringToBytes(METER_STATEMENT_SCHEMA));
 
-/** The registry a statement is signed for, so it cannot be replayed on another chain or deployment. */
-export type MeterDomain = { chainId: number; registry: Address };
+/**
+ * The registry a statement is signed for, so it cannot be replayed on another chain or deployment. `sequence` is
+ * the project's attestation count at signing time (DmrvRegistry EIP-712 scheme); absent for the legacy registry.
+ */
+export type MeterDomain = { chainId: number; registry: Address; sequence?: number };
 
 /** What the meter signs: raw totals before any QA/QC, the period, and the digest of the readings. */
 export type MeterStatement = {
@@ -64,6 +71,9 @@ export type MeterStatement = {
   /** Σ fuel, rounded up. */
   fuelG: number;
   readingsDigest: Hex;
+  /** Readings in the batch and the shortest interval (s); the registry computes completeness from them. */
+  intervals: number;
+  intervalSeconds: number;
 };
 
 /** The batch period in unix seconds: from the start of the earliest interval to the end of the latest. */
@@ -81,10 +91,86 @@ export function meterStatementOf(plantId: string, readings: Reading[]): MeterSta
     netWh: milliFloor(sum(r => r.exportKwh - (r.importKwh ?? 0))),
     fuelG: milliCeil(sum(r => r.fuelKg ?? 0)),
     readingsDigest: readingsDigest(plantId, readings),
+    intervals: readings.length,
+    intervalSeconds: Math.min(...readings.map(r => Math.round(r.intervalMinutes * 60))),
   };
 }
 
-/** Byte-for-byte `HydroCreditRegistry.meterStatementHash`. */
+// ─── DmrvRegistry: EIP-712 ────────────────────────────────────────────────
+
+export const DMRV_EIP712_NAME = "DmrvRegistry";
+export const DMRV_EIP712_VERSION = "1";
+
+export const METER_STATEMENT_TYPES = {
+  MeterStatement: [
+    { name: "projectId", type: "bytes32" },
+    { name: "sequence", type: "uint32" },
+    { name: "periodStart", type: "uint64" },
+    { name: "periodEnd", type: "uint64" },
+    { name: "intervals", type: "uint32" },
+    { name: "intervalSeconds", type: "uint32" },
+    { name: "meteredHash", type: "bytes32" },
+    { name: "readingsDigest", type: "bytes32" },
+  ],
+} as const;
+
+export function dmrvDomain(domain: MeterDomain) {
+  return {
+    name: DMRV_EIP712_NAME,
+    version: DMRV_EIP712_VERSION,
+    chainId: BigInt(domain.chainId),
+    verifyingContract: domain.registry,
+  } as const;
+}
+
+/** Hydro module encoding of energy figures: `abi.encode(int64 netWh, uint64 grossWh, uint64 fuelG, uint64 leakageG)`. */
+export function encodeEnergy(e: {
+  netWh: number | bigint;
+  grossWh: number | bigint;
+  fuelG: number | bigint;
+  leakageG: number | bigint;
+}): Hex {
+  return encodeAbiParameters(
+    [{ type: "int64" }, { type: "uint64" }, { type: "uint64" }, { type: "uint64" }],
+    [BigInt(e.netWh), BigInt(e.grossWh), BigInt(e.fuelG), BigInt(e.leakageG)],
+  );
+}
+
+/** What the meter signs as `metered`: its raw totals, with no leakage (the VVB adds that). */
+export const meteredEnergyOf = (statement: MeterStatement): Hex =>
+  encodeEnergy({ netWh: statement.netWh, grossWh: statement.grossWh, fuelG: statement.fuelG, leakageG: 0 });
+
+export function meterTypedData(domain: MeterDomain, plantId: string, statement: MeterStatement) {
+  return {
+    domain: dmrvDomain(domain),
+    types: METER_STATEMENT_TYPES,
+    primaryType: "MeterStatement" as const,
+    message: {
+      projectId: plantIdHex(plantId),
+      sequence: domain.sequence ?? 0,
+      periodStart: BigInt(statement.periodStart),
+      periodEnd: BigInt(statement.periodEnd),
+      intervals: statement.intervals,
+      intervalSeconds: statement.intervalSeconds,
+      meteredHash: keccak256(meteredEnergyOf(statement)),
+      readingsDigest: statement.readingsDigest,
+    },
+  };
+}
+
+/** Byte-for-byte `DmrvRegistry.meterStatementDigest`. */
+export function meterStatementDigest(domain: MeterDomain, plantId: string, statement: MeterStatement): Hex {
+  return hashTypedData(meterTypedData(domain, plantId, statement));
+}
+
+/** The hash a meter signs for `domain`: EIP-712 for DmrvRegistry, the legacy EIP-191 hash otherwise. */
+function statementSigningHash(domain: MeterDomain, plantId: string, statement: MeterStatement): Hex {
+  return domain.sequence === undefined
+    ? hashMessage({ raw: meterStatementHash(domain, plantId, statement) })
+    : meterStatementDigest(domain, plantId, statement);
+}
+
+/** Byte-for-byte legacy `HydroCreditRegistry.meterStatementHash` (5b7fe3f), signed with EIP-191. */
 export function meterStatementHash(domain: MeterDomain, plantId: string, statement: MeterStatement): Hex {
   return keccak256(
     encodeAbiParameters(
@@ -117,7 +203,7 @@ export function meterStatementHash(domain: MeterDomain, plantId: string, stateme
 }
 
 /** The registry's bytes32 plant id: the ASCII id, right-padded with zeros (as `encodeBytes32String`). */
-function plantIdHex(plantId: string): Hex {
+export function plantIdHex(plantId: string): Hex {
   const bytes = stringToBytes(plantId);
   if (bytes.length > 31) throw new Error(`Plant id ${plantId} is longer than 31 bytes`);
   const padded = new Uint8Array(32);
@@ -125,12 +211,14 @@ function plantIdHex(plantId: string): Hex {
   return bytesToHex(padded);
 }
 
-function sign(privateKey: Hex, hash32: Hex): Hex {
-  const signature = secp256k1.sign(hexToBytes(hashMessage({ raw: hash32 })), hexToBytes(privateKey));
+/** Signs a final 32-byte digest (65-byte r‖s‖v, v = 27/28). Synchronous, so the engine stays pure. */
+export function signDigest(privateKey: Hex, digest: Hex): Hex {
+  const signature = secp256k1.sign(hexToBytes(digest), hexToBytes(privateKey));
   return `${bytesToHex(signature.toCompactRawBytes())}${numberToHex(27 + signature.recovery).slice(2)}` as Hex;
 }
 
-function recover(hash32: Hex, signature: Hex): Address | null {
+/** Recovers the signer of a final 32-byte digest, or null for a malformed signature. */
+export function recoverDigest(digest: Hex, signature: Hex): Address | null {
   try {
     const bytes = hexToBytes(signature);
     if (bytes.length !== 65) return null;
@@ -139,21 +227,21 @@ function recover(hash32: Hex, signature: Hex): Address | null {
     if (recovery !== 0 && recovery !== 1) return null;
     const point = secp256k1.Signature.fromCompact(bytes.slice(0, 64))
       .addRecoveryBit(recovery)
-      .recoverPublicKey(hexToBytes(hashMessage({ raw: hash32 })));
+      .recoverPublicKey(hexToBytes(digest));
     return publicKeyToAddress(bytesToHex(point.toRawBytes(false)));
   } catch {
     return null;
   }
 }
 
-/** Signs a batch's statement as the meter would (65-byte r‖s‖v signature, v = 27/28). */
+/** Signs a batch's statement as the meter would, for the registry in `domain`. */
 export function signMeterStatement(privateKey: Hex, domain: MeterDomain, plantId: string, readings: Reading[]): Hex {
-  return sign(privateKey, meterStatementHash(domain, plantId, meterStatementOf(plantId, readings)));
+  return signDigest(privateKey, statementSigningHash(domain, plantId, meterStatementOf(plantId, readings)));
 }
 
 /** Legacy (readings@2–@4): the signature covered the readings digest only. */
 export function signReadings(privateKey: Hex, plantId: string, readings: Reading[]): Hex {
-  return sign(privateKey, readingsDigest(plantId, readings));
+  return signDigest(privateKey, hashMessage({ raw: readingsDigest(plantId, readings) }));
 }
 
 export type ProvenanceCheck =
@@ -175,10 +263,10 @@ export function checkProvenance(
 ): ProvenanceCheck {
   if (!device) return { status: "unregistered" };
   if (!signature) return { status: "missing", device };
-  const hash = domain
-    ? meterStatementHash(domain, plantId, meterStatementOf(plantId, readings))
-    : readingsDigest(plantId, readings);
-  const signer = recover(hash, signature);
+  const digest = domain
+    ? statementSigningHash(domain, plantId, meterStatementOf(plantId, readings))
+    : hashMessage({ raw: readingsDigest(plantId, readings) });
+  const signer = recoverDigest(digest, signature);
   return signer && isAddressEqual(signer, device)
     ? { status: "signed", device }
     : { status: "invalid", device, signer };

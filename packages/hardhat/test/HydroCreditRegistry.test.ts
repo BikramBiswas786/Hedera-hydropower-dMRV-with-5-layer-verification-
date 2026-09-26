@@ -74,6 +74,7 @@ async function readyFixture() {
     METER.address,
     await plantDesign(),
   );
+  await ctx.registry.setAuditTopic(4_242_424);
   const token = new ethers.Contract(await ctx.registry.creditToken(), HTS_TOKEN_ABI, ethers.provider);
   return { ...ctx, token };
 }
@@ -155,8 +156,8 @@ describe("HydroCreditRegistry", function () {
           id,
           label,
           operator.address,
-          METER.address,
-          await plantDesign({ capacityKw: 12_000, reservoirAreaM2 }),
+          new ethers.Wallet(ethers.id(label)).address,
+          await plantDesign({ capacityKw: 12_000, reservoirAreaM2, designHash: ethers.id(label) }),
         );
         return (await registry.getPlant(id)).reservoirGPerMwh;
       };
@@ -170,7 +171,13 @@ describe("HydroCreditRegistry", function () {
       const { registry, operator } = await loadFixture(readyFixture);
       const vmr = { methodology: METHODOLOGY.Vmr0017, capacityKw: 12_000, reservoirAreaM2: 1_800_000 };
       const id = ethers.encodeBytes32String("VMR0017");
-      await registry.registerPlant(id, "vmr", operator.address, METER.address, await plantDesign(vmr));
+      await registry.registerPlant(
+        id,
+        "vmr",
+        operator.address,
+        new ethers.Wallet(ethers.id("vmr meter")).address,
+        await plantDesign({ ...vmr, designHash: ethers.id("vmr") }),
+      );
       const plant = await registry.getPlant(id);
       expect(plant.design.methodology).to.equal(METHODOLOGY.Vmr0017);
       expect(plant.reservoirGPerMwh).to.equal(100_000);
@@ -193,8 +200,8 @@ describe("HydroCreditRegistry", function () {
         other,
         "x",
         operator.address,
-        METER.address,
-        await plantDesign({ capacityKw: 15_001 }),
+        new ethers.Wallet(ethers.id("cdm large")).address,
+        await plantDesign({ capacityKw: 15_001, designHash: ethers.id("cdm-large") }),
       );
     });
 
@@ -251,8 +258,8 @@ describe("HydroCreditRegistry", function () {
         other,
         "x",
         operator.address,
-        METER.address,
-        await plantDesign({ ...retrofit, baselineEndsAt: 1n }),
+        new ethers.Wallet(ethers.id("retrofit meter")).address,
+        await plantDesign({ ...retrofit, baselineEndsAt: 1n, designHash: ethers.id("retrofit") }),
       );
     });
 
@@ -280,6 +287,106 @@ describe("HydroCreditRegistry", function () {
       ).to.be.revertedWithCustomError(registry, "InvalidCreditingPeriod");
     });
 
+    it("accepts only 5-, 7- and 10-year spans, and a 5-year VMR0017 period from 2027", async function () {
+      const { registry, operator } = await loadFixture(readyFixture);
+      const VCS_FIVE_YEAR_FROM = 1_798_761_600n;
+      const register = async (label: string, design: Partial<DesignInput>) =>
+        registry.registerPlant(
+          ethers.encodeBytes32String(label),
+          label,
+          operator.address,
+          new ethers.Wallet(ethers.id(`${label} meter`)).address,
+          await plantDesign({ designHash: ethers.id(label), ...design }),
+        );
+
+      const early = VCS_FIVE_YEAR_FROM - BigInt(8 * CREDITING_YEAR);
+      await expect(
+        register("span-6", { creditingStart: early, creditingEnd: early + BigInt(6 * CREDITING_YEAR) }),
+      ).to.be.revertedWithCustomError(registry, "InvalidCreditingPeriod");
+      await register("span-5", { creditingStart: early, creditingEnd: early + BigInt(5 * CREDITING_YEAR) });
+      await register("span-10", { creditingStart: early, creditingEnd: early + BigInt(10 * CREDITING_YEAR) });
+
+      const fixedId = ethers.encodeBytes32String("span-10");
+      const fixedEnd = (await registry.getPlant(fixedId)).design.creditingEnd;
+      await expect(
+        registry.renewCreditingPeriod(
+          fixedId,
+          540_000,
+          fixedEnd,
+          fixedEnd + BigInt(7 * CREDITING_YEAR),
+          ethers.id("no"),
+        ),
+      ).to.be.revertedWithCustomError(registry, "InvalidCreditingPeriod");
+
+      const after = VCS_FIVE_YEAR_FROM;
+      await expect(
+        register("vmr-7-2027", {
+          methodology: METHODOLOGY.Vmr0017,
+          capacityKw: 12_000,
+          creditingStart: after,
+          creditingEnd: after + BigInt(7 * CREDITING_YEAR),
+        }),
+      ).to.be.revertedWithCustomError(registry, "InvalidCreditingPeriod");
+      await register("vmr-5-2027", {
+        methodology: METHODOLOGY.Vmr0017,
+        capacityKw: 12_000,
+        creditingStart: after,
+        creditingEnd: after + BigInt(5 * CREDITING_YEAR),
+      });
+
+      const pre = VCS_FIVE_YEAR_FROM - BigInt(7 * CREDITING_YEAR);
+      await register("vmr-pre", {
+        methodology: METHODOLOGY.Vmr0017,
+        capacityKw: 12_000,
+        creditingStart: pre,
+        creditingEnd: VCS_FIVE_YEAR_FROM,
+      });
+      const preId = ethers.encodeBytes32String("vmr-pre");
+      await expect(
+        registry.renewCreditingPeriod(
+          preId,
+          540_000,
+          VCS_FIVE_YEAR_FROM,
+          VCS_FIVE_YEAR_FROM + BigInt(7 * CREDITING_YEAR),
+          ethers.id("vmr-pre-7"),
+        ),
+      ).to.be.revertedWithCustomError(registry, "InvalidCreditingPeriod");
+      await registry.renewCreditingPeriod(
+        preId,
+        540_000,
+        VCS_FIVE_YEAR_FROM,
+        VCS_FIVE_YEAR_FROM + BigInt(5 * CREDITING_YEAR),
+        ethers.id("vmr-pre-5"),
+      );
+    });
+
+    it("renews a 5-year period at most twice", async function () {
+      const { registry, operator } = await loadFixture(readyFixture);
+      const id = ethers.encodeBytes32String("FIVE");
+      const start = 1_700_000_000n;
+      await registry.registerPlant(
+        id,
+        "five",
+        operator.address,
+        new ethers.Wallet(ethers.id("five meter")).address,
+        await plantDesign({
+          creditingStart: start,
+          creditingEnd: start + BigInt(5 * CREDITING_YEAR),
+          designHash: ethers.id("five"),
+        }),
+      );
+      let from = start + BigInt(5 * CREDITING_YEAR);
+      for (const n of [2, 3]) {
+        const end = from + BigInt(5 * CREDITING_YEAR);
+        await registry.renewCreditingPeriod(id, 540_000, from, end, ethers.id(`five-${n}`));
+        from = end;
+      }
+      await expect(
+        registry.renewCreditingPeriod(id, 540_000, from, from + BigInt(5 * CREDITING_YEAR), ethers.id("five-4")),
+      ).to.be.revertedWithCustomError(registry, "InvalidCreditingPeriod");
+      expect((await registry.getPlant(id)).creditingPeriods).to.equal(3);
+    });
+
     it("rejects duplicates, empty ids and missing operators", async function () {
       const { registry, operator } = await loadFixture(readyFixture);
       const design = await plantDesign();
@@ -293,6 +400,24 @@ describe("HydroCreditRegistry", function () {
       await expect(
         registry.registerPlant(other, "x", ethers.ZeroAddress, METER.address, design),
       ).to.be.revertedWithCustomError(registry, "InvalidPlant");
+      await expect(
+        registry.registerPlant(
+          other,
+          "x",
+          operator.address,
+          METER.address,
+          await plantDesign({ designHash: ethers.id("second") }),
+        ),
+      ).to.be.revertedWithCustomError(registry, "MeterAlreadyRegistered");
+      await expect(
+        registry.registerPlant(
+          other,
+          "x",
+          operator.address,
+          new ethers.Wallet(ethers.id("free meter")).address,
+          design,
+        ),
+      ).to.be.revertedWithCustomError(registry, "DesignAlreadyRegistered");
     });
 
     it("renews the crediting period with a new EF and restarts the crediting-year count", async function () {
@@ -304,6 +429,9 @@ describe("HydroCreditRegistry", function () {
       await expect(
         registry.renewCreditingPeriod(PLANT_ID, 540_000, start - 1n, end, ethers.ZeroHash),
       ).to.be.revertedWithCustomError(registry, "InvalidCreditingPeriod");
+      await expect(
+        registry.renewCreditingPeriod(PLANT_ID, 0, start, end, ethers.id("renewal")),
+      ).to.be.revertedWithCustomError(registry, "GridEmissionFactorOutOfRange");
       await expect(registry.renewCreditingPeriod(PLANT_ID, 540_000, start, end, ethers.id("renewal")))
         .to.emit(registry, "CreditingPeriodRenewed")
         .withArgs(PLANT_ID, 540_000, start, end, ethers.id("renewal"));
@@ -382,18 +510,25 @@ describe("HydroCreditRegistry", function () {
           creditingEnd: start + BigInt(7 * CREDITING_YEAR),
           designHash: ethers.id(vector.name),
         };
-        await registry.registerPlant(plantId, vector.name, operator.address, METER.address, design);
+        const vectorMeter = new ethers.Wallet(ethers.id(`vector ${vector.name}`));
+        await registry.registerPlant(plantId, vector.name, operator.address, vectorMeter.address, design);
 
         for (const [sequence, p] of vector.periods.entries()) {
-          const input = await attestationInput(registry, plantId, {
-            plantSequence: sequence,
-            periodStart: start + BigInt(p.startDay * DAY),
-            periodEnd: start + BigInt((p.startDay + 1) * DAY),
-            netEnergyWh: BigInt(p.netWh),
-            grossEnergyWh: BigInt(p.grossWh),
-            fuelG: BigInt(p.fuelG),
-            leakageG: BigInt(p.leakageG),
-          });
+          const input = await attestationInput(
+            registry,
+            plantId,
+            {
+              plantSequence: sequence,
+              periodStart: start + BigInt(p.startDay * DAY),
+              periodEnd: start + BigInt((p.startDay + 1) * DAY),
+              netEnergyWh: BigInt(p.netWh),
+              grossEnergyWh: BigInt(p.grossWh),
+              fuelG: BigInt(p.fuelG),
+              leakageG: BigInt(p.leakageG),
+            },
+            {},
+            vectorMeter,
+          );
           const preview = await registry.quantify(plantId, input);
           await registry.submitAttestation(input);
           const stored = await registry.getAttestation(Number(await registry.attestationCount()) - 1);
@@ -431,7 +566,13 @@ describe("HydroCreditRegistry", function () {
     it("keeps periods inside the crediting period and within one crediting year", async function () {
       const { registry, operator } = await loadFixture(readyFixture);
       const late = ethers.encodeBytes32String("LATE");
-      await registry.registerPlant(late, "late", operator.address, METER.address, await plantDesign({}, -1)); // starts tomorrow
+      await registry.registerPlant(
+        late,
+        "late",
+        operator.address,
+        new ethers.Wallet(ethers.id("late meter")).address,
+        await plantDesign({ designHash: ethers.id("late") }, -1),
+      ); // starts tomorrow
       await expect(registry.submitAttestation(await attestationInput(registry, late))).to.be.revertedWithCustomError(
         registry,
         "OutsideCreditingPeriod",
@@ -439,8 +580,11 @@ describe("HydroCreditRegistry", function () {
 
       const now = BigInt(await time.latest());
       const year = ethers.encodeBytes32String("YEAR");
-      const design = await plantDesign({ creditingStart: now - BigInt(CREDITING_YEAR) - 1_800n });
-      await registry.registerPlant(year, "year", operator.address, METER.address, {
+      const design = await plantDesign({
+        creditingStart: now - BigInt(CREDITING_YEAR) - 1_800n,
+        designHash: ethers.id("year"),
+      });
+      await registry.registerPlant(year, "year", operator.address, new ethers.Wallet(ethers.id("year meter")).address, {
         ...design,
         creditingEnd: design.creditingStart + BigInt(7 * CREDITING_YEAR),
       });
@@ -486,8 +630,8 @@ describe("HydroCreditRegistry", function () {
         noFuel,
         "no fuel",
         operator.address,
-        METER.address,
-        await plantDesign({ fuelCoefGPerTonne: 0 }),
+        new ethers.Wallet(ethers.id("nofuel meter")).address,
+        await plantDesign({ fuelCoefGPerTonne: 0, designHash: ethers.id("nofuel") }),
       );
       await expect(
         registry.submitAttestation(await attestationInput(registry, noFuel, { fuelG: 1n })),
@@ -674,6 +818,18 @@ describe("HydroCreditRegistry", function () {
         await attestationInput(registry, PLANT_ID, { plantSequence: 1 }, {}, replacement),
       );
     });
+  });
+
+  it("requires the registered HCS topic and bounds the oracle age", async function () {
+    const { registry } = await loadFixture(readyFixture);
+    await expect(
+      registry.submitAttestation(await attestationInput(registry, PLANT_ID, { hcsTopicNum: 1n })),
+    ).to.be.revertedWithCustomError(registry, "Unanchored");
+    await expect(registry.setMaxPriceAge(0)).to.be.revertedWithCustomError(registry, "PriceAgeOutOfRange");
+    await expect(registry.setMaxPriceAge(3 * 24 * 60 * 60)).to.be.revertedWithCustomError(
+      registry,
+      "PriceAgeOutOfRange",
+    );
   });
 
   describe("oracle-priced marketplace", function () {
