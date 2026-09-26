@@ -1,26 +1,6 @@
 import { auditAttestation, reproduceAttestation } from "../audit";
 import { DEMO_PLANTS, demoMeteringFor, findDemoPlant } from "../demo";
-import { ENGINE_VERSION } from "../engine";
-import { METHODOLOGY_MARKDOWN } from "../methodology/document";
-import {
-  gridEmissionFactorRequestSchema,
-  projectDesignSchema,
-} from "../methodology/schema";
-import { HYDRO_CHAIN_ID } from "../network";
-import { prepareAnchors } from "../pipeline";
-import {
-  PREVIEW_METER_DOMAIN,
-  SCENARIOS,
-  SCENARIO_NAMES,
-  generateScenario,
-} from "../scenarios";
-import { verifyRequestSchema } from "../schema";
-import { plantIdToBytes32 } from "../views";
-import {
-  prepareDocumentSchema,
-  publishDocumentSchema,
-  waterRequestSchema,
-} from "../documents/schema";
+import { prepareDocumentSchema, publishDocumentSchema, waterRequestSchema } from "../documents/schema";
 import {
   checkSignedDocument,
   listDocuments,
@@ -29,24 +9,23 @@ import {
   trustChainFor,
 } from "../documents/server";
 import { runPublicWork } from "../documents/work";
+import { ENGINE_VERSION } from "../engine";
+import { METHODOLOGY_MARKDOWN } from "../methodology/document";
+import { gridEmissionFactorRequestSchema, projectDesignSchema } from "../methodology/schema";
+import { HYDRO_CHAIN_ID } from "../network";
+import { prepareAnchors } from "../pipeline";
+import { PREVIEW_METER_DOMAIN, SCENARIOS, SCENARIO_NAMES, generateScenario } from "../scenarios";
+import { verifyRequestSchema } from "../schema";
+import { plantIdToBytes32 } from "../views";
 import { quantifySafeWater } from "../water/vmr0015";
 import { attestReadings } from "./attest";
 import { readDexCheck } from "./dex";
 import { ApiError } from "./errors";
+import { verifyEvidence } from "./guardianBridge";
 import { getPlantDetail, getPortfolio, portfolioQuerySchema } from "./insights";
-import {
-  getRetirementCertificate,
-  preparePurchase,
-  preparePurchaseSchema,
-} from "./market";
+import { getRetirementCertificate, preparePurchase, preparePurchaseSchema } from "./market";
 import { assessDesign, getProject, gridEmissionFactor } from "./methodology";
-import {
-  getAttestation,
-  getAttestations,
-  getOpenListings,
-  getPlant,
-  getRegistryOverview,
-} from "./registry";
+import { getAttestation, getAttestations, getOpenListings, getPlant, getRegistryOverview } from "./registry";
 import { McpServer } from "@modelcontextprotocol/server";
 import { z } from "zod";
 
@@ -95,10 +74,7 @@ async function reproduce(attestationId: number) {
 
 /** One server per request (stateless). `canWrite` is true only for requests carrying the MRV_API_KEY bearer token. */
 export function buildMcpServer({ canWrite }: { canWrite: boolean }): McpServer {
-  const server = new McpServer(
-    { name: "hydro-dmrv", version: "2.0.0" },
-    { instructions: INSTRUCTIONS },
-  );
+  const server = new McpServer({ name: "hydro-dmrv", version: "2.0.0" }, { instructions: INSTRUCTIONS });
 
   server.registerResource(
     "methodology",
@@ -107,7 +83,7 @@ export function buildMcpServer({ canWrite }: { canWrite: boolean }): McpServer {
       title: `Methodology as implemented (${ENGINE_VERSION})`,
       mimeType: "text/markdown",
     },
-    async (uri) => ({
+    async uri => ({
       contents: [
         {
           uri: uri.href,
@@ -129,12 +105,7 @@ export function buildMcpServer({ canWrite }: { canWrite: boolean }): McpServer {
     async () =>
       ok({
         plants: DEMO_PLANTS,
-        metering: Object.fromEntries(
-          DEMO_PLANTS.map((plant) => [
-            plant.plantId,
-            demoMeteringFor(plant.plantId),
-          ]),
-        ),
+        metering: Object.fromEntries(DEMO_PLANTS.map(plant => [plant.plantId, demoMeteringFor(plant.plantId)])),
         scenarios: SCENARIOS,
       }),
   );
@@ -177,7 +148,7 @@ export function buildMcpServer({ canWrite }: { canWrite: boolean }): McpServer {
       inputSchema: verifyRequestSchema,
       annotations: { readOnlyHint: true },
     },
-    async (request) =>
+    async request =>
       run(() => {
         const { report, data, preview } = prepareAnchors(request);
         return {
@@ -199,7 +170,7 @@ export function buildMcpServer({ canWrite }: { canWrite: boolean }): McpServer {
       inputSchema: projectDesignSchema,
       annotations: { readOnlyHint: true },
     },
-    async (design) => run(() => assessDesign(design)),
+    async design => run(() => assessDesign(design)),
   );
 
   server.registerTool(
@@ -211,7 +182,7 @@ export function buildMcpServer({ canWrite }: { canWrite: boolean }): McpServer {
       inputSchema: gridEmissionFactorRequestSchema,
       annotations: { readOnlyHint: true },
     },
-    async (input) => run(() => gridEmissionFactor(input)),
+    async input => run(() => gridEmissionFactor(input)),
   );
 
   server.registerTool(
@@ -253,8 +224,7 @@ export function buildMcpServer({ canWrite }: { canWrite: boolean }): McpServer {
     "list_attestations",
     {
       title: "List attestations",
-      description:
-        "Paginated on-chain attestations: monitored inputs, EG_PJ, BE, PE, LE, ER, credits and HCS anchors.",
+      description: "Paginated on-chain attestations: monitored inputs, EG_PJ, BE, PE, LE, ER, credits and HCS anchors.",
       inputSchema: z.object({
         start: z.number().int().min(0).default(0),
         count: z.number().int().min(1).max(100).default(20),
@@ -273,8 +243,25 @@ export function buildMcpServer({ canWrite }: { canWrite: boolean }): McpServer {
       inputSchema: z.object({ attestationId: z.number().int().min(0) }),
       annotations: readOnly,
     },
-    async ({ attestationId }) =>
-      run(async () => auditAttestation(await getAttestation(attestationId))),
+    async ({ attestationId }) => run(async () => auditAttestation(await getAttestation(attestationId))),
+  );
+
+  server.registerTool(
+    "verify_guardian_evidence",
+    {
+      title: "Verify Guardian evidence",
+      description:
+        "Verify a Hedera Guardian trust chain from the public mirror node and IPFS: pass a VP consensus timestamp, a mint transaction id (0.0.x@secs.nanos, followed through its memo) or nft:<tokenId>:<serial>, plus the policy topic ids. Checks topic, status and every Ed25519 signature, and refuses chains that contain a MintToken VC or a Monitoring Report without a MATCH cross-check.",
+      inputSchema: z.object({
+        ref: z.string().min(1).max(200),
+        topicIds: z
+          .array(z.string().regex(/^\d+\.\d+\.\d+$/))
+          .max(10)
+          .optional(),
+      }),
+      annotations: readOnly,
+    },
+    async ({ ref, topicIds }) => run(() => verifyEvidence(ref, topicIds ?? null)),
   );
 
   server.registerTool(
@@ -320,7 +307,7 @@ export function buildMcpServer({ canWrite }: { canWrite: boolean }): McpServer {
       inputSchema: preparePurchaseSchema,
       annotations: readOnly,
     },
-    async (request) => run(() => preparePurchase(request)),
+    async request => run(() => preparePurchase(request)),
   );
 
   server.registerTool(
@@ -332,8 +319,7 @@ export function buildMcpServer({ canWrite }: { canWrite: boolean }): McpServer {
       inputSchema: z.object({ retirementId: z.number().int().min(0) }),
       annotations: readOnly,
     },
-    async ({ retirementId }) =>
-      run(() => getRetirementCertificate(retirementId)),
+    async ({ retirementId }) => run(() => getRetirementCertificate(retirementId)),
   );
 
   server.registerTool(
@@ -345,7 +331,7 @@ export function buildMcpServer({ canWrite }: { canWrite: boolean }): McpServer {
       inputSchema: portfolioQuerySchema,
       annotations: readOnly,
     },
-    async (query) => run(() => getPortfolio(query)),
+    async query => run(() => getPortfolio(query)),
   );
 
   server.registerTool(
@@ -376,12 +362,11 @@ export function buildMcpServer({ canWrite }: { canWrite: boolean }): McpServer {
     "prepare_document",
     {
       title: "Hash a document for wallet signing",
-      description:
-        "Returns the exact message to sign. The caller signs it with their own wallet. Nothing is stored.",
+      description: "Returns the exact message to sign. The caller signs it with their own wallet. Nothing is stored.",
       inputSchema: prepareDocumentSchema,
       annotations: readOnly,
     },
-    async (input) => run(() => prepareDocument(input)),
+    async input => run(() => prepareDocument(input)),
   );
 
   server.registerTool(
@@ -393,19 +378,18 @@ export function buildMcpServer({ canWrite }: { canWrite: boolean }): McpServer {
       inputSchema: waterRequestSchema,
       annotations: readOnly,
     },
-    async (input) => run(() => quantifySafeWater(input)),
+    async input => run(() => quantifySafeWater(input)),
   );
 
   server.registerTool(
     "check_document",
     {
       title: "Check a signed document",
-      description:
-        "Confirms the hash and the wallet signature. Stores nothing and mints nothing. No operator key.",
+      description: "Confirms the hash and the wallet signature. Stores nothing and mints nothing. No operator key.",
       inputSchema: publishDocumentSchema,
       annotations: readOnly,
     },
-    async (input) => run(() => checkSignedDocument(input)),
+    async input => run(() => checkSignedDocument(input)),
   );
 
   server.registerTool(
@@ -437,7 +421,7 @@ export function buildMcpServer({ canWrite }: { canWrite: boolean }): McpServer {
           openWorldHint: true,
         },
       },
-      async (request) => run(() => attestReadings(request)),
+      async request => run(() => attestReadings(request)),
     );
 
     server.registerTool(
@@ -454,7 +438,7 @@ export function buildMcpServer({ canWrite }: { canWrite: boolean }): McpServer {
           openWorldHint: false,
         },
       },
-      async (input) => run(() => publishDocument(input)),
+      async input => run(() => publishDocument(input)),
     );
   }
 
