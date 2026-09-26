@@ -40,25 +40,28 @@ jobs:
         run: |
           git config --global user.name "ci"
           git config --global user.email "ci@example.com"
+          corepack enable
 
-      - name: Scaffold from this checkout
+      # Same command as the README Quick start. CREATE_SCAFFOLD_HBAR_TEMPLATE_DIR
+      # points it at this checkout so a pull request is what gets scaffolded.
+      - name: Scaffold with the judged command
         env:
           CREATE_SCAFFOLD_HBAR_TEMPLATE_DIR: ${{ github.workspace }}/template
-        run: >
-          npx --yes create-scaffold-hbar@latest scaffolded --yes --skip-install --skip-hedera-skills
-          --template ${{ github.repository }} --solidity-framework hardhat --frontend nextjs-app
-
-      - name: Install, lint, test and build the scaffolded project
-        working-directory: scaffolded
         run: |
-          corepack enable
-          yarn install
+          npm create scaffold-hbar@latest -- hydro-dmrv \
+            --template BikramBiswas786/Hedera-hydropower-dMRV-with-5-layer-verification- \
+            --ci --package-manager yarn --solidity-framework hardhat --skip-hedera-skills
+
+      - name: Test the scaffolded project from the lockfile
+        working-directory: hydro-dmrv
+        run: |
+          yarn install --immutable
           yarn lint --max-warnings=0
           yarn test
           yarn next:build
 
       - name: No template manifest or secrets left behind
-        working-directory: scaffolded
+        working-directory: hydro-dmrv
         run: |
           test ! -f template.json
           test ! -f .env && test ! -f packages/nextjs/.env.local && test ! -f packages/hardhat/.env

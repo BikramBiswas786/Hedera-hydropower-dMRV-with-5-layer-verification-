@@ -1,8 +1,13 @@
+import { type Document, type DocumentType, sealDocument } from "./envelope";
+import { type Hex, keccak256, stringToBytes } from "viem";
 import { privateKeyToAccount } from "viem/accounts";
-import { sealDocument, type Document, type DocumentType } from "./envelope";
 
-/** Anvil account #0. Public, for demo seals only. Never a funded operator key. */
-export const DEMO_DOCUMENT_KEY = "0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80" as const;
+/**
+ * Demo document seal. Derived at runtime so a secret scanner does not flag a
+ * well-known test key. This key signs illustrative VCS sections only. It is
+ * not a meter key and not an operator key.
+ */
+export const DEMO_DOCUMENT_KEY: Hex = keccak256(stringToBytes("hydro-dmrv demo document seal"));
 
 const CHAIN: Array<{ type: DocumentType; sections: Record<string, string> }> = [
   {

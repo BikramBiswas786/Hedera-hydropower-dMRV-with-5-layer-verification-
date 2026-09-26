@@ -125,6 +125,11 @@ yarn hardhat:test:fork            # contract tests against Hedera's HTS emulatio
 Use the Scaffold-HBAR hooks in `packages/nextjs/hooks/scaffold-hbar` with the names that exist:
 `useScaffoldReadContract`, `useScaffoldWriteContract`, `useDeployedContractInfo`, `useTransactor`.
 
+Reads go through the hooks. Purchases do not. `POST /api/market/prepare-purchase` (MCP: `prepare_purchase`)
+builds the unsigned transaction and refuses it when the SaucerSwap WHBAR/USDC spot is more than 3% from the
+settlement price. The caller signs `to`, `data` and `value` with their own wallet. Do not call `buy` or
+`buyAndRetire` with a value the UI invented.
+
 ```typescript
 const { data: custody } = useScaffoldReadContract({
   contractName: "HydroCreditRegistry",
@@ -132,9 +137,26 @@ const { data: custody } = useScaffoldReadContract({
   args: [address],
 });
 
-const { writeContractAsync } = useScaffoldWriteContract({ contractName: "HydroCreditRegistry" });
-await writeContractAsync({ functionName: "buyAndRetire", args: [listingId, units, beneficiary], value });
+const writeTx = useTransactor();
+
+const response = await fetch("/api/market/prepare-purchase", {
+  method: "POST",
+  headers: { "content-type": "application/json" },
+  body: JSON.stringify({ listingId, amountKg, retire: true, beneficiary }),
+});
+const prepared = await response.json();
+if (!response.ok) throw new Error(prepared.error ?? "prepare_purchase refused");
+
+await writeTx({
+  account: address,
+  to: prepared.to,
+  data: prepared.data,
+  value: BigInt(prepared.value),
+});
 ```
+
+`ListingCard.tsx` is the reference. Agents use the same flow without a browser:
+`get_dex_price` → `list_open_listings` → `prepare_purchase` → sign and send.
 
 Contract types are generated for the **first** network in `scaffold.config.ts` `targetNetworks`. Until the registry is
 deployed there, hook results are loosely typed; annotate arrays with the `Raw*` types from `services/mrv/views.ts`

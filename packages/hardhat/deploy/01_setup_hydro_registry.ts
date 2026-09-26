@@ -56,14 +56,15 @@ const setupHydroRegistry: DeployFunction = async function (hre: HardhatRuntimeEn
 
   const network = hre.network.name;
   const live = network === "hederaTestnet" || network === "hederaMainnet";
-  const registerDemo = network !== "hederaMainnet" || process.env.REGISTER_DEMO_PLANTS === "true";
+  if (network === "hederaMainnet" && process.env.REGISTER_DEMO_PLANTS === "true") {
+    throw new Error("Refusing demo plants on hederaMainnet. Their meter keys are public and exist for testing only.");
+  }
+  const registerDemo = network !== "hederaMainnet";
   if (!registerDemo) {
-    console.warn(
-      "Skipping demo plants on hederaMainnet. Their meter keys are public. Set REGISTER_DEMO_PLANTS=true only for a throwaway deployment.",
-    );
+    console.warn("Skipping demo plants on hederaMainnet. Their meter keys are public and exist for testing only.");
   } else if (live) {
     console.warn(
-      "Demo plants use public meter keys derived from the plant id. A verifier key can sign any period for them. Do not treat those credits as metered.",
+      "Demo plants use public meter keys derived from the plant id. They are for testing only. A verifier key can sign any period for them. Do not treat those credits as metered.",
     );
   }
   if (live && (!process.env.VERIFIER_ADDRESS || !process.env.ADMIN_ADDRESS)) {
