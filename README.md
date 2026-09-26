@@ -137,7 +137,7 @@ Each plant is registered on-chain under one of two rule sets, and the contract a
 | Grid emission factor | VT0011 v1.0 with TOOL07 v7.0: BM over all units including VCS and CDM ones, hydro weights 0.4 / 0.6, then 0.25 / 0.75 | TOOL07 v7.0 |
 
 Verra inactivates ACM0002 and AMS-I.D as standalone methodologies on 1 January 2027, so new projects register under
-VMR0017. The CDM path stays for existing registrations and for comparison. The **Methodology** page (`/methodology`) shows all of it on the demo
+VMR0017. The CDM path stays for existing registrations and for comparison. It is not a VCS registration: the scope note allows grid hydro only at 15 MW or less in a UN Least Developed Country, which is the VMR0017 path. `assessProject` reports that as `vcs.inScope`. The contract stores the methodology code and the design hash. It does not store the host country. The **Methodology** page (`/methodology`) shows all of it on the demo
 data, and the MCP resource `hydro-dmrv://methodology` gives it to agents.
 
 ### Emission reductions
@@ -146,6 +146,7 @@ data, and the MCP resource `hydro-dmrv://methodology` gives it to agents.
 ER_y  = BE_y − PE_y − LE_y
 BE_y  = EG_PJ,y × EF_grid,CM,y                        rounded down
 PE_y  = PE_FF,y + PE_HP,y                             rounded up
+Imports are subtracted from export before BE. VT0010 would instead charge EC × EF × (1 + TDL) (20% unless the grid publishes a loss). That term is implemented as `projectElectricityG` and is not minted: the registry recomputes from the meter net.
 PE_FF = Σ FC × COEF,  COEF = NCV × EF_CO2             TOOL03 option B, IPCC upper 95% bounds
 PE_HP = EF_Res × TEG_y  if 4 < PD ≤ 10 W/m², else 0   EF_Res = 100 kg CO2e/MWh (VMR0017), 90 (CDM)
 LE_y  = EG × EF_embodied                              VMR0017: 21 g CO2e/kWh; EG_facility (greenfield) or

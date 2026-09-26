@@ -9,6 +9,7 @@ import {
   assessProject,
   commonPracticeOf,
   powerDensity,
+  vcsScopeOf,
 } from "./project";
 import { fuelCoefficient } from "./tool03";
 import { describe, expect, it } from "vitest";
@@ -264,5 +265,15 @@ describe("VMR0017 v1.0 (with ACM0002 v22.0)", () => {
     });
     expect(a.failures).toEqual([]);
     expect(a.leakage.basis).toMatch(/LE_y = 0 for a retrofit/);
+  });
+});
+
+describe("VCS scope", () => {
+  it("is only small-scale hydro in an LDC under VMR0017", () => {
+    const start = Math.floor(Date.parse("2026-01-01T00:00:00Z") / 1000);
+    expect(vcsScopeOf({ capacityKw: 12_000, hostCountry: "UG" }, "VMR0017", start).inScope).toBe(true);
+    expect(vcsScopeOf({ capacityKw: 12_000, hostCountry: "IN" }, "AMS-I.D", start).inScope).toBe(false);
+    expect(vcsScopeOf({ capacityKw: 50_000, hostCountry: "UG" }, "ACM0002", start).inScope).toBe(false);
+    expect(assessProject(design({ capacityKw: 50_000 })).vcs.inScope).toBe(false);
   });
 });

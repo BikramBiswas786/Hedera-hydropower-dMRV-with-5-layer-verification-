@@ -198,7 +198,9 @@ export type ProjectAssessment = {
     baselineWh: number;
     endsAt: number;
   };
-  projectEmissions: { fuel: FuelCoefficient | null; reservoir: string };
+  projectEmissions: { fuel: FuelCoefficient | null; reservoir: string; gridUse: string };
+  /** VCS Program scope for grid-connected hydro. Separate from `eligible`, which is the methodology. */
+  vcs: { inScope: boolean; basis: string };
   leakage: { basis: string; embodiedGPerMwh: number };
   additionality: {
     basis: string;
@@ -390,6 +392,36 @@ function baselineOf(design: ProjectDesign, failures: string[]): ProjectAssessmen
   };
 }
 
+/** Grid hydro is in the VCS scope note only at 15 MW or less in a UN LDC. CDM paths are not that scope. */
+export function vcsScopeOf(
+  design: Pick<ProjectDesign, "capacityKw" | "authorizedCapacityKw" | "hostCountry">,
+  methodologyId: MethodologyId,
+  creditingStart: number,
+): { inScope: boolean; basis: string } {
+  if (methodologyId !== "VMR0017") {
+    return {
+      inScope: false,
+      basis:
+        "Not VCS-eligible. The scope note excludes grid-connected hydro except a plant of 15 MW or less in a UN LDC, which this template registers under VMR0017. ACM0002 and AMS-I.D stay for CDM comparison.",
+    };
+  }
+  const capacityKw = Math.max(design.capacityKw, design.authorizedCapacityKw ?? 0);
+  if (capacityKw > VMR0017_MAX_HYDRO_KW) {
+    return { inScope: false, basis: "Not VCS-eligible: large-scale grid hydro is excluded." };
+  }
+  if (!design.hostCountry || !isLeastDevelopedCountry(design.hostCountry, creditingStart)) {
+    return {
+      inScope: false,
+      basis:
+        "Not VCS-eligible: the host must be a UN Least Developed Country at the crediting start. The contract does not store the country. It is inside the design document whose hash is registered.",
+    };
+  }
+  return {
+    inScope: true,
+    basis: `VCS scope: ${design.hostCountry}, ${capacityKw / 1_000} MW or less, under VMR0017. The host country is in the design hash, not its own contract field.`,
+  };
+}
+
 export function assessProject(design: ProjectDesign): ProjectAssessment {
   const failures: string[] = [];
   const integers = {
@@ -472,9 +504,12 @@ export function assessProject(design: ProjectDesign): ProjectAssessment {
     projectEmissions: {
       fuel,
       reservoir: pd.basis,
+      gridUse:
+        "Imports are netted 1:1 inside EG_facility (TDL = 0). VT0010 equation (5) is projectElectricityG: EC × EF × (1 + TDL), default TDL 20%. That term is not in the credited integer, because the registry recomputes ER from the meter net.",
     },
     leakage: { basis: leakageBasis, embodiedGPerMwh: embodiedEfGPerMwh(code) },
     additionality,
+    vcs: vcsScopeOf(design, methodologyId, creditingStart),
     crediting: { start: creditingStart, end: creditingEnd, years, period },
     registration: {
       projectType: PROJECT_TYPE_CODE[design.projectType],
