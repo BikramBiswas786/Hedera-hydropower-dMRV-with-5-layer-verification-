@@ -14,7 +14,11 @@
     "mrv:create-topic": "tsx scripts/mrv.ts create-topic",
     "mrv:attest": "tsx scripts/mrv.ts attest",
     "mrv:meter-key": "tsx scripts/mrv.ts meter-key",
-    "mrv:sign": "tsx scripts/mrv.ts sign"
+    "mrv:sign": "tsx scripts/mrv.ts sign",
+    "mrv:approve": "tsx scripts/mrv.ts approve",
+    "mrv:submit": "tsx scripts/mrv.ts submit",
+    "admin:threshold": "tsx scripts/createThresholdAdmin.ts",
+    "admin:exec": "tsx scripts/adminExec.ts"
   },
   "dependencies": {
     "@heroicons/react": "^2.1.5",

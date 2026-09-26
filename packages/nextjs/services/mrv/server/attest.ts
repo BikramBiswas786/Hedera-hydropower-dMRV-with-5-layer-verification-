@@ -311,9 +311,11 @@ export async function attestReadings(request: AttestRequest): Promise<AttestOutc
     }
   } else {
     const dataReceipt = operator ? await publishMessage(operator, data.message) : null;
-    final = dataReceipt
-      ? buildHcsMessage(report, { hash: data.dataHash, sequence: Number(dataReceipt.sequenceNumber) })
-      : preview;
+    // Without HCS (a local chain) the data message is numbered 1, so step 2 re-derives the same report hash.
+    final = buildHcsMessage(report, {
+      hash: data.dataHash,
+      sequence: dataReceipt ? Number(dataReceipt.sequenceNumber) : 1,
+    });
     const reportReceipt = operator ? await publishMessage(operator, final.message) : null;
     anchor = {
       reportHash: final.reportHash as Hex,

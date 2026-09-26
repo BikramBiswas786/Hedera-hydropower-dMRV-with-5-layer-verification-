@@ -192,8 +192,21 @@ export function decodeHydroParams(params: Hex): HydroParams {
 
 /** The design integers the engine compares with a plant profile (the hydro params minus metering fields). */
 export function registeredDesignOf(p: HydroParams): RegisteredDesign {
-  const { calibrationValidUntil: _c, meteringHash: _m, designHash: _d, ...design } = p;
-  return design;
+  return {
+    projectType: p.projectType,
+    methodology: p.methodology,
+    capacityKw: p.capacityKw,
+    baselineCapacityKw: p.baselineCapacityKw,
+    reservoirAreaM2: p.reservoirAreaM2,
+    baselineReservoirAreaM2: p.baselineReservoirAreaM2,
+    efGridGPerMwh: p.efGridGPerMwh,
+    fuelCoefGPerTonne: p.fuelCoefGPerTonne,
+    baselineWh: p.baselineWh,
+    baselineEndsAt: p.baselineEndsAt,
+    creditingStart: p.creditingStart,
+    creditingEnd: p.creditingEnd,
+    registrationRequestedAt: p.registrationRequestedAt,
+  };
 }
 
 /** DmrvRegistry `Attestation` struct. */

@@ -67,8 +67,8 @@ export function buildApproval(input: ApprovalInput, decision = DECISION_APPROVED
 
 /** Byte-for-byte `DmrvRegistry.approvalDigest`. */
 export function approvalDigest(input: ApprovalInput, decision = DECISION_APPROVED): Hex {
-  const { verified: _verified, ...typed } = buildApproval(input, decision);
-  return hashTypedData(typed);
+  const { domain, types, primaryType, message } = buildApproval(input, decision);
+  return hashTypedData({ domain, types, primaryType, message });
 }
 
 /** Signs the approval with the VVB's secp256k1 key. */
