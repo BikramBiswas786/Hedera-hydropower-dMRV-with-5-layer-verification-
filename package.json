@@ -36,6 +36,7 @@
     "hardhat:verify": "yarn workspace @sh/hardhat verify",
     "hardhat:verify:mainnet": "yarn workspace @sh/hardhat verify:mainnet",
     "hardhat:verify:testnet": "yarn workspace @sh/hardhat verify:testnet",
+    "hardhat:verify:sourcify": "yarn workspace @sh/hardhat verify:sourcify",
     "harness:doctor": "hedera-harness doctor",
     "harness:run": "hedera-harness run",
     "harness:validate": "hedera-harness validate",

@@ -59,18 +59,31 @@ Live app: [hydro-dmrv.vercel.app](https://hydro-dmrv.vercel.app). MCP: `https://
 
 ## What is on testnet
 
-Two registries, and the evidence stays linked to the one that produced it:
+Two registries (plus a superseded, unused parallel deploy listed last), and the evidence stays linked to the one that produced it:
 
 | | Legacy `HydroCreditRegistry` (phase 0) | `DmrvRegistry` + `CreditMarket` (phase 1, this source) |
 | --- | --- | --- |
-| Address | [`0x9cdB5782…84107a5`](https://hashscan.io/testnet/contract/0x9cdB5782a10c41a103B722d1B8fa9CfaF84107a5), read-only from the app | [`0xe34BeFc4…ac512b9`](https://hashscan.io/testnet/contract/0xe34BeFc4081a8e751271C3549B861e03Fac512b9) |
+| Address | [`0x9cdB5782…84107a5`](https://hashscan.io/testnet/contract/0x9cdB5782a10c41a103B722d1B8fa9CfaF84107a5) (0.0.10726070), read-only from the app | `DmrvRegistry` [`0xc427610c…7ef84a`](https://hashscan.io/testnet/contract/0xc427610cFfBC919dC0B2c3f71644a4fDcB7ef84a) (0.0.10727585), `CreditMarket` [`0xd94157D9…2cf39E`](https://hashscan.io/testnet/contract/0xd94157D9FEA7c1e572e3674c2854B404a82cf39E) (0.0.10727588), redeployed 26 Sep 2026 |
 | Who can mint | One verifier key | Meter key + VVB key (EIP-712), neither alone |
-| Meter keys | Public demo derivation | Per plant, generated at deploy. Not the public demo derivation |
-| Admin | Deployer | The operator account for this deploy. A 2-of-3 handover (`yarn admin:threshold`) was not done |
-| SaucerSwap check | Off-chain in `prepare_purchase` only | The V2 testnet pool is stored on `CreditMarket` and **not enforced**. Settlement is Chainlink/Supra. See [Buying](#buying) |
-| Evidence | The two mints and the retirement below | The two mints and the retirement in the next table |
+| Meter keys | Public demo derivation | Per plant, generated; the deploy refuses demo keys on Hedera |
+| Admin | Deployer | Testnet: the operator account 0.0.10727555 for now; hand it to a 2-of-3 threshold account (`yarn admin:threshold`, then redeploy setup with `ADMIN_ADDRESS`, or `grantRole` + `renounceRole`) |
+| SaucerSwap check | Off-chain in `prepare_purchase` only | Also in `CreditMarket.settlementPrice()`; configurable and admin-disableable. Off on testnet (see [Buying](#buying)) |
+| Evidence | The two mints and the retirement in the legacy table | The two mints, VVB approvals and buy-and-retire in the phase-1 table |
 
-The app reads `DmrvRegistry` once this branch is what Vercel builds. `/api/registry/attestations/{id}/reproduce?registry=0x9cdB…` still reads the legacy registry. Do not point the app at the older registry `0xAEA76b83ea8e71621d443053A5Ee20D7AF8Ce746`. Link the transactions below, not a contract's transaction list.
+The app now reads the phase-1 registry (`deployedContracts.ts`, chain 296). `/api/registry/attestations/{id}/reproduce?registry=0x9cdB…` still reads the legacy registry, and both legacy mints still reproduce. Do not point the app at the older registry `0xAEA76b83ea8e71621d443053A5Ee20D7AF8Ce746`. Link the transactions below, not the contract's transaction list (that list also shows a failed 1-tinybar probe).
+
+| What (phase-1 registry, 26 Sep 2026) | Where |
+| --- | --- |
+| `DmrvRegistry` · `CreditMarket` · `HydroVmr0017Module` · `ResilientHbarUsdFeed` (all Sourcify exact match) | [0xc427610c…](https://hashscan.io/testnet/contract/0xc427610cFfBC919dC0B2c3f71644a4fDcB7ef84a) · [0xd94157D9…](https://hashscan.io/testnet/contract/0xd94157D9FEA7c1e572e3674c2854B404a82cf39E) · [0x176cB1d5…](https://hashscan.io/testnet/contract/0x176cB1d5AF441ffbEaFe2793c729533c17Cf7c92) · [0x4a6b2FE9…](https://hashscan.io/testnet/contract/0x4a6b2FE9D56B792b175Cc60b9267b33B8ac32f8a) |
+| HCS audit topic (`auditTopic`) | [0.0.10727574](https://hashscan.io/testnet/topic/0.0.10727574) |
+| Credits HYCC · certificates HYRET | [0.0.10727593](https://hashscan.io/testnet/token/0.0.10727593) · [0.0.10727596](https://hashscan.io/testnet/token/0.0.10727596) |
+| HYDRO-DEMO-01 `healthy`: readings, report | HCS messages [1](https://hashscan.io/testnet/topic/0.0.10727574/message/1), [5](https://hashscan.io/testnet/topic/0.0.10727574/message/5) |
+| HYDRO-DEMO-01: meter + VVB signed mint → 4.791 t (ER 4,791,648 g) | [0x1f2c350d…](https://hashscan.io/testnet/transaction/0x1f2c350d9f620360e9212501d4ccb377404bbbfc028e7e8320800f13e9476709) |
+| HYDRO-DEMO-02 `diesel-backup`: readings, report | HCS messages [6](https://hashscan.io/testnet/topic/0.0.10727574/message/6), [10](https://hashscan.io/testnet/topic/0.0.10727574/message/10) |
+| HYDRO-DEMO-02: meter + VVB signed mint → 73.388 t (ER 73,388,503 g) | [0xb25cd5c1…](https://hashscan.io/testnet/transaction/0xb25cd5c13b998431f4d6596fac6783ec12719d0b6bcb2edb464e9bf2a1b9d5c4) |
+| VVB approval (EIP-712, VVB `0x89bb9610…3e57c4`, `VERIFIER_ROLE` grant) | [0xe9e40def…](https://hashscan.io/testnet/transaction/0xe9e40def8ab230c1fee02a3205ea8b3b361d03719d07181bf3db0e9eda808362); each approval signature is verified inside the mint transaction above |
+| Listing #0, 1.000 t at $10/t | [0xdb10f74e…](https://hashscan.io/testnet/transaction/0xdb10f74e9e30ca78b9cbb173748a28d87e39caa2cbdc5bd6afaa098ecdd8a28a) |
+| `buyAndRetire`, 0.100 t by 0.0.10727556, HYRET serial 1 delivered | [0xe620a834…](https://hashscan.io/testnet/transaction/0xe620a8346b7ade59277cfde7bfc3cc0bf716fe57129002120fb814f745c7de4c) |
 
 | What (legacy registry `0x9cdB5782…`) | Where |
 | --- | --- |
@@ -78,7 +91,9 @@ The app reads `DmrvRegistry` once this branch is what Vercel builds. `/api/regis
 | Second mint, HYDRO-DEMO-02 `diesel-backup` → 73.386 t | [0x8fef0c11…](https://hashscan.io/testnet/transaction/0x8fef0c119c3b4b2b87aa704ca3c26c9dedecc2648b96853e6f7394fc425c0e42) |
 | Retirement, 1.000 t, HYRET serial 1 | [0x9f8979fb…](https://hashscan.io/testnet/transaction/0x9f8979fbb2eefbb278b2e305deec469d0ebe752d79a511290c44cea75bb7dac9) |
 
-| What (`DmrvRegistry` `0xe34BeFc4…`, 26 Sep 2026) | Where |
+Legacy credits stay on HTS [0.0.10726073](https://hashscan.io/testnet/token/0.0.10726073) (HYCC) and [0.0.10726074](https://hashscan.io/testnet/token/0.0.10726074) (HYRET). The legacy feed is [0xcAE7c6eA…ba77cbb8](https://hashscan.io/testnet/contract/0xcAE7c6eA987107543C1aD0F79802d02cba77cbb8).
+
+| What (superseded, unused: a parallel `DmrvRegistry` `0xe34BeFc4…` deploy, 26 Sep 2026; the app does not read it) | Where |
 | --- | --- |
 | Registry | [0xe34BeFc4…](https://hashscan.io/testnet/contract/0xe34BeFc4081a8e751271C3549B861e03Fac512b9) |
 | Methodology module | [0xD5F56249…](https://hashscan.io/testnet/contract/0xD5F56249f628080D4b0fF2Ff23809e1624F64950) |
@@ -89,11 +104,9 @@ The app reads `DmrvRegistry` once this branch is what Vercel builds. `/api/regis
 | Buy and retire, 1.000 t, from `0.0.10721162`, HYRET serial 1 | [0xc3bd20e5…](https://hashscan.io/testnet/transaction/0xc3bd20e54892791966451da1ad04719a781bf69871009f54bf03232ff7d0ac0a) |
 | Pool guard stored, not enforced | [0x6f7a464f…](https://hashscan.io/testnet/transaction/0x6f7a464f10d0948c1f30239b02bd9f21fc7770100af73dcc26106ab268db5d9e) |
 
-Credits on the new registry: HTS [0.0.10727597](https://hashscan.io/testnet/token/0.0.10727597). Certificates: HTS [0.0.10727601](https://hashscan.io/testnet/token/0.0.10727601), serial 1 held by [0.0.10721162](https://hashscan.io/testnet/account/0.0.10721162). The VVB that signed both mints is `0x437EB06f434aD8061DEDdfCDd0ecE68Ea435e84F`. It is a test key, not an accredited verifier. The meter addresses are `0x1a1b0B722a17C34BE6A08FE5efD636Dd54F848A2` and `0x485e9404831A05a072eeE80Aa4BfA05946fd6bF4`. Their private keys are not in the repository. Readings for the new mints are HCS messages [11](https://hashscan.io/testnet/topic/0.0.10726081/message/11) and [16](https://hashscan.io/testnet/topic/0.0.10726081/message/16) on topic [0.0.10726081](https://hashscan.io/testnet/topic/0.0.10726081).
+Superseded deploy only (unused): credits HTS [0.0.10727597](https://hashscan.io/testnet/token/0.0.10727597). Certificates: HTS [0.0.10727601](https://hashscan.io/testnet/token/0.0.10727601), serial 1 held by [0.0.10721162](https://hashscan.io/testnet/account/0.0.10721162). The VVB that signed both mints is `0x437EB06f434aD8061DEDdfCDd0ecE68Ea435e84F`. It is a test key, not an accredited verifier. The meter addresses are `0x1a1b0B722a17C34BE6A08FE5efD636Dd54F848A2` and `0x485e9404831A05a072eeE80Aa4BfA05946fd6bF4`. Their private keys are not in the repository. Readings for the new mints are HCS messages [11](https://hashscan.io/testnet/topic/0.0.10726081/message/11) and [16](https://hashscan.io/testnet/topic/0.0.10726081/message/16) on topic [0.0.10726081](https://hashscan.io/testnet/topic/0.0.10726081).
 
-Legacy credits stay on HTS [0.0.10726073](https://hashscan.io/testnet/token/0.0.10726073) (HYCC) and [0.0.10726074](https://hashscan.io/testnet/token/0.0.10726074) (HYRET). The legacy feed is [0xcAE7c6eA…ba77cbb8](https://hashscan.io/testnet/contract/0xcAE7c6eA987107543C1aD0F79802d02cba77cbb8).
-
-The legacy `HydroCreditRegistry` compiles to 24,551 B, 25 under Hedera's 24,576-byte limit. After the split, `yarn hardhat:size` (a CI gate at 24,064 B) reports: `DmrvRegistry` 20,862 B, `CreditMarket` 9,010 B, `HydroVmr0017Module` 7,028 B, `ResilientHbarUsdFeed` 2,534 B.
+The legacy `HydroCreditRegistry` compiles to 24,551 B, 25 under Hedera's 24,576-byte limit, so it could not take another feature. After the split, `yarn hardhat:size` (a CI gate at 24,064 B) reports: `DmrvRegistry` 20,862 B, `CreditMarket` 9,010 B, `HydroVmr0017Module` 7,028 B, `ResilientHbarUsdFeed` 2,534 B. Since the redeploy the live issuer is `DmrvRegistry`.
 
 Phase 1 enforces the following on-chain; the legacy registry does not:
 

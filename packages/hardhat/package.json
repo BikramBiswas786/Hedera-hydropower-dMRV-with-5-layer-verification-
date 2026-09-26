@@ -22,6 +22,7 @@
     "verify": "hardhat verify",
     "verify:testnet": "hardhat verify --network hederaTestnet",
     "verify:mainnet": "hardhat verify --network hederaMainnet",
+    "verify:sourcify": "ts-node scripts/verifySourcify.ts",
     "test:fork": "HEDERA_FORKING=true hardhat test",
     "test:gas": "REPORT_GAS=true hardhat test",
     "chain:offline": "hardhat node --network hardhat --no-deploy"

@@ -207,8 +207,8 @@ deployed there, hook results are loosely typed; annotate arrays with the `Raw*` 
 than reading struct fields ad hoc.
 
 Server code reads the chain with viem through `services/mrv/server/registry.ts`, which resolves the ABIs with
-`getRegistryDeployment()` / `getMarketDeployment()`. While `DmrvRegistry` is at the zero address (before the phase-1
-redeploy), read routes fall back to the legacy registry (`activeRegistry()`); `registryAt(address)` selects it
+`getRegistryDeployment()` / `getMarketDeployment()`. While `DmrvRegistry` is at the zero address for a chain (chain 296 was
+redeployed on 26 Sep 2026), read routes fall back to the legacy registry (`activeRegistry()`); `registryAt(address)` selects it
 explicitly for historic evidence.
 
 ## Adding things

@@ -18,7 +18,8 @@ The legacy testnet registry (`0x9cdB5782a10c41a103B722d1B8fa9CfaF84107a5`, 24,55
 `contracts/legacy/`) refuses a second plant on the same meter or design hash, a renewal with a zero grid factor, an
 oracle age of zero or above two days, and an attestation that does not cite topic `0.0.10726081`. It predates the
 crediting-span rule and the capacity-addition leakage bound; the older contract `0xAEA76b83…` enforces none of these.
-It stays the issuer until the phase-1 redeploy.
+It was the issuer until the phase-1 redeploy of 26 Sep 2026 (`DmrvRegistry` `0xc427610cFfBC919dC0B2c3f71644a4fDcB7ef84a`,
+`CreditMarket` `0xd94157D9FEA7c1e572e3674c2854B404a82cf39E`, audit topic `0.0.10727574`) and stays deployed and readable.
 
 ## Roles
 
@@ -141,7 +142,7 @@ addresses were read with `getPool(USDC, WHBAR, fee)` on each factory. Token orde
 | Network | Pool | WHBAR | State |
 | --- | --- | --- | --- |
 | Testnet | V2 WHBAR/USDC `0x914B98992d7eD602D1f5d9084ECe8160Fc0e741a` (factory 0.0.1197038, fee 3000) | `0x0000000000000000000000000000000000003aD2` (0.0.15058) | Stored, **disabled**. The pool priced HBAR at about $2.03 on 26 Sep 2026 (the V1 pair about $2.28), against about $0.094 on the market. `POOL_GUARD_ENABLED=true` enforces it anyway |
-| Mainnet | V2 WHBAR/USDC `0xc5b707348dA504E9Be1bD4E21525459830e7B11d` (factory 0.0.3946833, fee 1500) | `0x0000000000000000000000000000000000163B5a` (0.0.1456986) | Enabled, 300 bps. `minLiquidity` ships at 0 (only an empty pool counts as illiquid); raise it with `setPoolGuard` |
+| Mainnet | V2 WHBAR/USDC `0xC5B707348dA504E9Be1bD4E21525459830e7B11d` (factory 0.0.3946833, fee 1500) | `0x0000000000000000000000000000000000163B5a` (0.0.1456986) | Enabled, 300 bps. `minLiquidity` ships at 0 (only an empty pool counts as illiquid); raise it with `setPoolGuard` |
 
 A spot price can be moved inside one block. Someone who pushes the pool out of band can block sales (a denial of
 service), but cannot buy cheaper, because the payment is always computed from the oracle price. A TWAP would remove

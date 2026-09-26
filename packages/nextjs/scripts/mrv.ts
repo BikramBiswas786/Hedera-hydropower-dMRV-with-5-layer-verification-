@@ -131,20 +131,17 @@ async function attest(scenario: ScenarioName, plantId: string) {
   const hours = available >= 1 ? Math.min(MAX_HOURS, available) : MAX_HOURS;
   const domain = { chainId: HYDRO_CHAIN_ID, registry: address, sequence: plant.ledger.attestations };
   const generated = generateScenario(scenario, { end, hours, plant: profile, domain });
-  // On Hedera the public demo meter key is never registered: the server signs with METER_PRIVATE_KEYS instead.
-  const meterKeyHex = readMeterKey(plantId);
-  // Live plants are registered to a key that is not the public demo derivation. The scenario still
-  // names that public address; the statement the server signs must name the registered meter.
-  const request =
-    isLiveHederaChain() || meterKeyHex
-      ? {
-          ...generated,
-          signature: undefined,
-          ...(meterKeyHex
-            ? { metering: { ...generated.metering, deviceAddress: privateKeyToAddress(meterKeyHex) } }
-            : {}),
-        }
-      : generated;
+  // On Hedera the public demo meter key is never registered: the server signs with METER_PRIVATE_KEYS instead, so
+  // the metering record must name that key's address (the plant's registered meter), not the demo derivation.
+  const meterKey = readMeterKey(plantId);
+  if (isLiveHederaChain() && !meterKey) throw new Error(`Set METER_PRIVATE_KEYS with a key for ${plantId}`);
+  const request = meterKey
+    ? {
+        ...generated,
+        metering: { ...generated.metering, deviceAddress: privateKeyToAddress(meterKey) },
+        signature: undefined,
+      }
+    : generated;
   const demoVvb = Boolean(readDemoVvbKey(address));
 
   const outcome = await attestReadings({ ...request, publishForApproval: !demoVvb });
