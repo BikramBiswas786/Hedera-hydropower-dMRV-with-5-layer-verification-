@@ -80,7 +80,7 @@ Until the redeploy, the server's read routes fall back to the legacy registry. `
 
 Credits: HTS [0.0.10726073](https://hashscan.io/testnet/token/0.0.10726073) (HYCC). Certificates: HTS [0.0.10726074](https://hashscan.io/testnet/token/0.0.10726074) (HYRET). Settlement feed: [0xcAE7c6eA…ba77cbb8](https://hashscan.io/testnet/contract/0xcAE7c6eA987107543C1aD0F79802d02cba77cbb8) (Chainlink, Supra fallback). Readings and the report for the first mint are HCS messages [1](https://hashscan.io/testnet/topic/0.0.10726081/message/1) and [5](https://hashscan.io/testnet/topic/0.0.10726081/message/5). The redeploy creates new HTS tokens; the legacy ones stay where they are.
 
-The legacy registry was 507 bytes under Hedera's 24 KB limit. After the split, `yarn hardhat:size` (a CI gate at 24,064 B) reports: `DmrvRegistry` 20,862 B, `CreditMarket` 9,010 B, `HydroVmr0017Module` 7,028 B, `ResilientHbarUsdFeed` 2,534 B.
+The legacy `HydroCreditRegistry` compiles to 24,551 B, 25 under Hedera's 24,576-byte limit, so it could not take another feature. After the split, `yarn hardhat:size` (a CI gate at 24,064 B) reports: `DmrvRegistry` 20,862 B, `CreditMarket` 9,010 B, `HydroVmr0017Module` 7,028 B, `ResilientHbarUsdFeed` 2,534 B. Until the redeploy, the live issuer is still the legacy registry.
 
 Phase 1 enforces the following on-chain; the legacy registry does not:
 

@@ -14,6 +14,12 @@ The phase-0 contract lives on as `contracts/legacy/HydroCreditRegistry.sol`. It 
 testnet evidence keeps reproducing. The deployed price age is 25 hours (`MAX_PRICE_AGE_SECONDS`, default 90000). Two
 days is only the upper bound `CreditMarket` accepts (`MAX_PRICE_AGE`).
 
+The legacy testnet registry (`0x9cdB5782a10c41a103B722d1B8fa9CfaF84107a5`, 24,551 B compiled from
+`contracts/legacy/`) refuses a second plant on the same meter or design hash, a renewal with a zero grid factor, an
+oracle age of zero or above two days, and an attestation that does not cite topic `0.0.10726081`. It predates the
+crediting-span rule and the capacity-addition leakage bound; the older contract `0xAEA76b83…` enforces none of these.
+It stays the issuer until the phase-1 redeploy.
+
 ## Roles
 
 | Role | Holder (production) | Can |
