@@ -107,25 +107,19 @@ template.json                            create-scaffold-hbar manifest
 - **Another oracle.** Implement `AggregatorV3Interface`, or change the providers behind `ResilientHbarUsdFeed`.
 - **Mainnet.** Put `chains.hedera` first in `scaffold.config.ts` and deploy with `--network hederaMainnet`.
 
-## Phase-1 redeploy
+## What is deployed
 
-This needs the maintainer's keys; nothing here runs from CI. The legacy registry `0x9cdB5782…` stays deployed and
-readable; the app reads it whenever `deployedContracts.ts` has zero addresses for chain 296.
+The app reads `DmrvRegistry` `0xaf9C76B48B317cee770ED6AE038D516b269E0129` and `CreditMarket`
+`0x5aeDe76fc6625cfA3227FFf70197D4D7ff3e5030` (router swap, 26 Sep 2026). Topic `0.0.10729650`.
+HYCC `0.0.10729677`, HYRET `0.0.10729678`. Admin is operator `0.0.10721162` until a 2-of-3 account is set.
+The Hashscan links are in the README.
 
-**Testnet run, 26 Sep 2026 (14:55–15:05 IST).** Operator (deployer, plant operator and, for now, admin) 0.0.10727555
-`0xc85f772c547fE3BfDD96d4B9CEa1F0Af16412A5e`; audit topic `0.0.10727574`; `DmrvRegistry` `0xc427610cFfBC919dC0B2c3f71644a4fDcB7ef84a`
-(0.0.10727585), `CreditMarket` `0xd94157D9FEA7c1e572e3674c2854B404a82cf39E` (0.0.10727588), `HydroVmr0017Module`
-`0x176cB1d5AF441ffbEaFe2793c729533c17Cf7c92`, `ResilientHbarUsdFeed` `0x4a6b2FE9D56B792b175Cc60b9267b33B8ac32f8a`;
-HYCC `0.0.10727593`, HYRET `0.0.10727596`; VVB `0x89bb96102384BdC882313F11c7E6a4Ad8B3e57c4`. Step 3 was skipped: the
-operator account holds `DEFAULT_ADMIN_ROLE` on both contracts. To hand it over, create the 2-of-3 account and, from the
-operator, `grantRole(DEFAULT_ADMIN_ROLE, <threshold long-zero address>)` then `renounceRole(DEFAULT_ADMIN_ROLE, operator)`
-on `DmrvRegistry` and `CreditMarket` (or re-run the deploy with `ADMIN_ADDRESS`, which does both). Transaction links are
-in the README evidence table.
+An earlier testnet run the same day is not what the app reads. Operator `0.0.10727555`, topic `0.0.10727574`,
+`DmrvRegistry` `0xc427610cFfBC919dC0B2c3f71644a4fDcB7ef84a`, `CreditMarket` `0xd94157D9FEA7c1e572e3674c2854B404a82cf39E`.
+A second unused deploy is `DmrvRegistry` `0xe34BeFc4081a8e751271C3549B861e03Fac512b9`. The legacy registry
+`0x9cdB5782a10c41a103B722d1B8fa9CfaF84107a5` still reproduces.
 
-A second, parallel deploy the same day (`DmrvRegistry` `0xe34BeFc4081a8e751271C3549B861e03Fac512b9`, VVB
-`0x437EB06f434aD8061DEDdfCDd0ecE68Ea435e84F`, HYCC `0.0.10727597`, HYRET `0.0.10727601`, readings on the old topic
-`0.0.10726081`) is **superseded and unused**: the app does not read it, and it is listed in the README only for the
-record.
+## To deploy again
 
 1. **Meter keys.** `yarn hardhat:meter-keys --network hederaTestnet` writes `packages/hardhat/.secrets/meters.hederaTestnet.json`
    (gitignored). Put the private keys into the server's `METER_PRIVATE_KEYS`, or on the loggers.
@@ -137,8 +131,7 @@ record.
 4. **Deploy.** Create a topic first (`yarn mrv:create-topic`), then `HCS_TOPIC_ID=0.0.… VERIFIER_ADDRESS=… ADMIN_ADDRESS=… yarn deploy --network hederaTestnet`. It
    deploys the module, registry and market, creates new HTS tokens, registers both demo plants with the generated
    meters, stores the SaucerSwap testnet pool with the check on, grants the roles, and hands admin to the threshold
-   account. It regenerates `packages/nextjs/contracts/deployedContracts.ts` (chain 296 has zero-address placeholders
-   until then).
+   account. It regenerates `packages/nextjs/contracts/deployedContracts.ts`.
 5. **Verify.** `yarn hardhat:verify:sourcify hederaTestnet` (Sourcify v2 API, shown on HashScan; `yarn hardhat:verify:testnet`
    calls the retired v1 API and fails), then check the roles:
    `hasRole(VERIFIER_ROLE, VVB)`, `hasRole(DEFAULT_ADMIN_ROLE, threshold)`, and no admin role left on the deployer.

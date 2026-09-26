@@ -51,9 +51,9 @@ const BlogPage: NextPage = () => (
       <h2 className="text-2xl font-bold m-0">For an agent</h2>
       <p className="m-0">
         Read <code>AGENTS.md</code> first. One quantification lives in <code>methodology/quantify.ts</code> and again in{" "}
-        <code>HydroCreditRegistry.quantify</code>. Change both or neither. Do not hand-edit <code>demoPlants.ts</code>.
-        Do not add a second methodology file to look busy. <code>llms.txt</code>, the OpenAPI <code>operationId</code>s
-        and the MCP tool names are one list.
+        <code>HydroVmr0017Module.quantify</code> and the legacy <code>HydroCreditRegistry.quantify</code>. Change them
+        together. Do not hand-edit <code>demoPlants.ts</code>. Do not add a second methodology file to look busy.{" "}
+        <code>llms.txt</code>, the OpenAPI <code>operationId</code>s and the MCP tool names are one list.
       </p>
       <p className="m-0">
         Call <code>get_plant</code> and trust the methodology field you get back. A blog post is not a plant design.

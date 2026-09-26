@@ -56,12 +56,10 @@ const ORACLES: Record<"hederaTestnet" | "hederaMainnet", OracleSources> = {
   },
 };
 
-// SaucerSwap. Contract ids: https://docs.saucerswap.finance/developers/contracts . Interfaces:
-// V1 pair getReserves/token0/token1, github.com/saucerswaplabs/saucerswaplabs-core contracts/interfaces/IUniswapV2Pair.sol;
-// V2 pool slot0/liquidity, github.com/saucerswaplabs/saucerswaplabs-v2-core contracts/interfaces/pool/IUniswapV3PoolState.sol.
-// Pool addresses were read on 26 Sep 2026 with eth_call on the factories: testnet V2 factory 0.0.1197038
-// getPool(USDC 0.0.5449, WHBAR 0.0.15058, 3000) and mainnet V2 factory 0.0.3946833 getPool(USDC 0.0.456858,
-// WHBAR 0.0.1456986, 1500). In both pools token0 is USDC, so WHBAR is token1.
+// SaucerSwap V1, the router this market calls. Ids: https://docs.saucerswap.finance/developers/contracts
+// Testnet factory 0.0.9959, router 0.0.19264. Mainnet factory 0.0.1062784, router 0.0.3045981.
+// The mainnet pair is factory.getPair(USDC 0.0.456858, WHBAR 0.0.1456986) = 0.0.1462797.
+// On 26 Sep 2026 its spot was 9,481,356 and Chainlink was 9,503,637 (24 bps).
 export const POOL_GUARDS: Record<"hederaTestnet" | "hederaMainnet", PoolGuardConfig> = {
   hederaTestnet: {
     pool: "0xF98D0dF4eC60d57f24Ce7BD24eAcAdF045219869",
@@ -78,15 +76,15 @@ export const POOL_GUARDS: Record<"hederaTestnet" | "hederaMainnet", PoolGuardCon
     note: "SaucerSwap V1 pair seeded at the Chainlink price on 26 Sep 2026; enforced",
   },
   hederaMainnet: {
-    pool: "0xC5B707348dA504E9Be1bD4E21525459830e7B11d",
-    isV2: true,
+    pool: "0xdB34c1Ef944883f0e5A2fC18B6C1978B088bD31d",
+    isV2: false,
     whbar: "0x0000000000000000000000000000000000163B5a",
     whbarDecimals: 8,
     usdDecimals: 6,
     maxDeviationBps: 300,
-    minLiquidity: 0n,
+    minLiquidity: 1_000_000n,
     enabled: true,
-    note: "mainnet pool tracked the oracle price (about $0.094) on 26 Sep 2026; the contract will not sell without it",
+    note: "SaucerSwap V1 WHBAR/USDC 0.0.1462797; 24 bps from Chainlink on 26 Sep 2026",
   },
 };
 
@@ -122,7 +120,8 @@ export function getHydroNetworkConfig(hre: HardhatRuntimeEnvironment): HydroNetw
         nativeUnitsPerHbar: TINYBAR_PER_HBAR,
         maxPriceAgeSeconds,
         hashscanNetwork: "mainnet",
-        saucerFactory: "0x00000000000000000000000000000000003c3951", // V2 factory 0.0.3946833
+        saucerFactory: "0x0000000000000000000000000000000000103780", // V1 factory 0.0.1062784
+        saucerRouter: "0x00000000000000000000000000000000002e7a5d", // V1 router 0.0.3045981
         poolGuard: POOL_GUARDS.hederaMainnet,
       };
     default:

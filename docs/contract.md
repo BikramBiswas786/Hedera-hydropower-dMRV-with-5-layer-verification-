@@ -6,7 +6,7 @@ Phase 1 splits the phase-0 `HydroCreditRegistry` into four contracts:
 | --- | --- | --- |
 | `DmrvRegistry.sol` | Projects, meters, verifiers, module approval, two-signature attestation, anchoring, custody, retirement, certificates, and every HTS call (only here) | 20,862 B |
 | `modules/HydroVmr0017Module.sol` | Stateless `IMethodology`: VMR0017 / ACM0002 / AMS-I.D registration rules and integer quantification | 7,028 B |
-| `CreditMarket.sol` | Listings, oracle settlement, SaucerSwap pool guard, proceeds | 9,010 B |
+| `CreditMarket.sol` | Listings, oracle quote, SaucerSwap router swap, pool guard | 10,131 B |
 | `ResilientHbarUsdFeed.sol` | Chainlink HBAR/USD with a Supra fallback | 2,534 B |
 
 CI fails any contract above 24,064 B (512 B under EIP-170), and `ContractSize.test.ts` keeps `DmrvRegistry` ≤ 21,504 B.
@@ -15,11 +15,12 @@ testnet evidence keeps reproducing. The deployed price age is 25 hours (`MAX_PRI
 days is only the upper bound `CreditMarket` accepts (`MAX_PRICE_AGE`).
 
 The legacy testnet registry (`0x9cdB5782a10c41a103B722d1B8fa9CfaF84107a5`, 24,551 B compiled from
-`contracts/legacy/`) refuses a second plant on the same meter or design hash, a renewal with a zero grid factor, an
-oracle age of zero or above two days, and an attestation that does not cite topic `0.0.10726081`. It predates the
-crediting-span rule and the capacity-addition leakage bound; the older contract `0xAEA76b83…` enforces none of these.
-It was the issuer until the phase-1 redeploy of 26 Sep 2026 (`DmrvRegistry` `0xc427610cFfBC919dC0B2c3f71644a4fDcB7ef84a`,
-`CreditMarket` `0xd94157D9FEA7c1e572e3674c2854B404a82cf39E`, audit topic `0.0.10727574`) and stays deployed and readable.
+`contracts/legacy/`) stays readable. It predates the crediting-span rule and the capacity-addition leakage bound.
+The app does not read it. The issuer since 26 Sep 2026 is `DmrvRegistry`
+`0xaf9C76B48B317cee770ED6AE038D516b269E0129` and `CreditMarket`
+`0x5aeDe76fc6625cfA3227FFf70197D4D7ff3e5030`, which swaps through SaucerSwap router `0.0.19264`.
+Earlier phase-1 deploys (`0xc427610cFfBC919dC0B2c3f71644a4fDcB7ef84a`, `0xe34BeFc4081a8e751271C3549B861e03Fac512b9`)
+are unused.
 
 ## Roles
 
@@ -118,7 +119,7 @@ yet, the NFT waits for `claimCertificate`.
 | --- | --- | --- |
 | `createListing(units, usdCentsPerTonne)` · `cancelListing(id)` | holder | Moves units between registry custody and the market's custody |
 | `quote(listingId, units)` | view | Native cost at the settlement price, rounded up in the seller's favour |
-| `buy` · `buyAndRetire` (payable) | anyone | Settlement price (fresh oracle and a SaucerSwap pool within 3%); rejects underpayment; escrows proceeds; refunds excess |
+| `buy` · `buyAndRetire` (payable) | anyone | Sends the oracle HBAR amount to the SaucerSwap router. Reverts if the pool is more than 3% off or the swap fails |
 | `withdrawProceeds()` | seller | Pull payment |
 | `setMaxPriceAge` · `setPoolGuard(...)` · `setPoolGuardEnabled(bool)` · `sweepHbar(to)` | admin | `sweepHbar` never touches owed proceeds |
 
@@ -136,13 +137,12 @@ configured, and `PoolPriceDeviation(poolPrice, oraclePrice, bps)` when the pool 
   (sqrtPriceX96 / 2⁹⁶)² in token1 per token0 base units, scaled by the decimals.
 - **Token order** is read from `token0()` / `token1()` when the guard is set, so either order works.
 
-Pools configured by the deploy. The factory ids come from [SaucerSwap's contract list](https://docs.saucerswap.finance/developers/contracts); the pool
-addresses were read with `getPool(USDC, WHBAR, fee)` on each factory. Token order was checked on-chain on 26 Sep 2026: token0 = USDC, token1 = WHBAR.
+Pools the deploy script writes. Testnet is the pair the live market already swaps. Mainnet is the V1 WHBAR/USDC pair `getPair` returns; it is not deployed.
 
 | Network | Pool | WHBAR | State |
 | --- | --- | --- | --- |
-| Testnet | V1 pair `0xF98D0dF4eC60d57f24Ce7BD24eAcAdF045219869` on factory 0.0.9959, QUSD `0.0.10729568` / WHBAR. Seeded 26 Sep 2026 at the Chainlink price | `0x0000000000000000000000000000000000003aD2` (0.0.15058) | Next deploy enforces it. The market already deployed does not have this rule |
-| Mainnet | V2 WHBAR/USDC `0xC5B707348dA504E9Be1bD4E21525459830e7B11d` (factory 0.0.3946833, fee 1500) | `0x0000000000000000000000000000000000163B5a` (0.0.1456986) | Enabled, 300 bps. `minLiquidity` ships at 0 (only an empty pool counts as illiquid); raise it with `setPoolGuard` |
+| Testnet | V1 pair `0xF98D0dF4eC60d57f24Ce7BD24eAcAdF045219869` on factory 0.0.9959. The live market `0x5aeDe76f…` swaps through router 0.0.19264 | `0x0000000000000000000000000000000000003aD2` (0.0.15058) | Enforced. Seeded at the Chainlink price on 26 Sep 2026 |
+| Mainnet | V1 WHBAR/USDC `0xdB34c1Ef944883f0e5A2fC18B6C1978B088bD31d` (0.0.1462797, factory 0.0.1062784, router 0.0.3045981) | `0x0000000000000000000000000000000000163B5a` (0.0.1456986) | Next mainnet deploy. Spot was 24 bps from Chainlink on 26 Sep 2026. Nothing is deployed on mainnet |
 
 A spot price can be moved inside one block. Someone who pushes the pool out of band can block sales (a denial of
 service), but cannot buy cheaper, because the payment is always computed from the oracle price. A TWAP would remove

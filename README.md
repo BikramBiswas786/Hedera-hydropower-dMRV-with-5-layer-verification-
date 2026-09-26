@@ -86,7 +86,7 @@ The VVB `0x437EB06f434aD8061DEDdfCDd0ecE68Ea435e84F` is a labelled test key, not
 
 Earlier phase-1 deploys, which the app no longer reads: [`0xc427610c…`](https://hashscan.io/testnet/contract/0xc427610cFfBC919dC0B2c3f71644a4fDcB7ef84a) (guard off) and [`0xe34BeFc4…`](https://hashscan.io/testnet/contract/0xe34BeFc4081a8e751271C3549B861e03Fac512b9). Legacy `HydroCreditRegistry` [`0x9cdB5782…`](https://hashscan.io/testnet/contract/0x9cdB5782a10c41a103B722d1B8fa9CfaF84107a5) still reproduces. `/api/registry/attestations/{id}/reproduce?registry=0x9cdB…` reads it.
 
-The legacy `HydroCreditRegistry` compiles to 24,551 B, 25 under Hedera's 24,576-byte limit, so it could not take another feature. After the split, `yarn hardhat:size` (a CI gate at 24,064 B) reports: `DmrvRegistry` 20,862 B, `CreditMarket` 9,010 B, `HydroVmr0017Module` 7,028 B, `ResilientHbarUsdFeed` 2,534 B. Since the redeploy the live issuer is `DmrvRegistry`.
+The legacy `HydroCreditRegistry` compiles to 24,551 B, 25 under Hedera's 24,576-byte limit, so it could not take another feature. After the split, `yarn hardhat:size` (a CI gate at 24,064 B) reports: `DmrvRegistry` 20,862 B, `CreditMarket` 10,131 B, `HydroVmr0017Module` 7,028 B, `ResilientHbarUsdFeed` 2,534 B. Since the redeploy the live issuer is `DmrvRegistry`.
 
 Phase 1 enforces the following on-chain; the legacy registry does not:
 
