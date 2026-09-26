@@ -43,7 +43,7 @@ export const ContractUI = ({ contractName }: ContractUIProps) => {
         ...deployedContractData,
         abi: deployedContractData.abi.filter(
           item => !("name" in item) || !PURCHASE.has(String(item.name)),
-        ) as typeof deployedContractData.abi,
+        ) as unknown as typeof deployedContractData.abi,
       }
     : deployedContractData;
 
