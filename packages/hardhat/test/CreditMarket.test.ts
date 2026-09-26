@@ -199,6 +199,15 @@ describe("CreditMarket", function () {
       await expect(market.quote(0, 1)).to.be.revertedWithCustomError(market, "PoolIlliquid");
     });
 
+    it("reverts the quote when Bonzo's WHBAR reserve is not the pinned active aToken", async function () {
+      const { market, bonzo } = await loadFixture(withV1Pool);
+      await market.quote(0, 1);
+      await bonzo.setActive(false);
+      await expect(market.quote(0, 1)).to.be.revertedWithCustomError(market, "BonzoReserve");
+      await bonzo.setActive(true);
+      await market.quote(0, 1);
+    });
+
     it("cannot be switched off, even when the pool is far from the oracle", async function () {
       const { market, pair, stranger } = await loadFixture(withV1Pool);
       await pair.setReserves(2_280_000n * 10n ** 6n, 1_000_000n * 10n ** 8n); // testnet-like $2.28

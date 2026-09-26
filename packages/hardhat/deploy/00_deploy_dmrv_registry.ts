@@ -87,6 +87,24 @@ const deployDmrv: DeployFunction = async function (hre: HardhatRuntimeEnvironmen
     gasPrice,
   });
 
+  const bonzo = config.bonzo;
+  let bonzoPool = bonzo?.pool;
+  let bonzoWhbar = bonzo?.whbar;
+  let bonzoAToken = bonzo?.aToken;
+  if (!bonzoPool || !bonzoWhbar || !bonzoAToken) {
+    const mockAToken = deployer;
+    const mock = await deploy("MockBonzoPool", {
+      from: deployer,
+      args: [mockAToken],
+      log: true,
+      autoMine: true,
+      gasPrice,
+    });
+    bonzoPool = mock.address;
+    bonzoWhbar = deployer;
+    bonzoAToken = mockAToken;
+  }
+
   const market = await deploy("CreditMarket", {
     from: deployer,
     args: [
@@ -97,6 +115,9 @@ const deployDmrv: DeployFunction = async function (hre: HardhatRuntimeEnvironmen
       config.maxPriceAgeSeconds,
       config.saucerFactory ?? deployer,
       config.saucerRouter ?? deployer,
+      bonzoPool,
+      bonzoWhbar,
+      bonzoAToken,
     ],
     log: true,
     autoMine: true,
