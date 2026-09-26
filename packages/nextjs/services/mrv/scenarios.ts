@@ -3,6 +3,12 @@ import { defaultMeterDomain } from "./network";
 import { type MeterDomain, signMeterStatement } from "./provenance";
 import type { Metering, PlantProfile, Reading } from "./schema";
 
+/** Public samples are signed for this domain. The live registry will not accept them. */
+export const PREVIEW_METER_DOMAIN: MeterDomain = {
+  chainId: 1,
+  registry: "0x0000000000000000000000000000000000000000",
+};
+
 export const SCENARIOS = {
   healthy: "24 h of normal operation with main and check meters in agreement. Should be APPROVED.",
   "diesel-backup":

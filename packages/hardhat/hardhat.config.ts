@@ -1,30 +1,30 @@
-import * as dotenv from "dotenv";
-dotenv.config();
-
-import { HardhatUserConfig, task } from "hardhat/config";
-import "@nomicfoundation/hardhat-ethers";
+import generateTsAbis from "./scripts/generateTsAbis";
 import "@nomicfoundation/hardhat-chai-matchers";
+import "@nomicfoundation/hardhat-ethers";
 import "@nomicfoundation/hardhat-verify";
 import "@typechain/hardhat";
+import * as dotenv from "dotenv";
+import "hardhat-deploy";
+import "hardhat-deploy-ethers";
 import "hardhat-gas-reporter";
+import { HardhatUserConfig, task } from "hardhat/config";
 import "solidity-coverage";
+
+dotenv.config();
+
 // Only load the Hedera forking plugin when starting the local node (yarn hardhat:chain / yarn hardhat:fork).
 // Deploying to an already-running node doesn't need it and would fail with EADDRINUSE.
 if (process.env.HEDERA_FORKING === "true") {
   // eslint-disable-next-line @typescript-eslint/no-require-imports -- conditional plugin load
   require("@hashgraph/system-contracts-forking/plugin");
 }
-import "hardhat-deploy";
-import "hardhat-deploy-ethers";
-
-import generateTsAbis from "./scripts/generateTsAbis";
 
 // Hedera JSON-RPC URL (testnet default). Set HEDERA_RPC_URL in .env for mainnet.
 const hederaRpcUrl = process.env.HEDERA_RPC_URL || "https://testnet.hashio.io/api";
 
 // Deployer key: run `yarn account:generate` or `yarn account:import`, or set __RUNTIME_DEPLOYER_PRIVATE_KEY at runtime.
-const deployerPrivateKey =
-  process.env.__RUNTIME_DEPLOYER_PRIVATE_KEY ?? "0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80";
+// Live networks have no account unless a key is supplied. The well-known Hardhat key is not a fallback.
+const deployerPrivateKey = process.env.__RUNTIME_DEPLOYER_PRIVATE_KEY;
 
 const config: HardhatUserConfig = {
   solidity: {
@@ -60,12 +60,12 @@ const config: HardhatUserConfig = {
     },
     hederaTestnet: {
       url: "https://testnet.hashio.io/api",
-      accounts: [deployerPrivateKey],
+      accounts: deployerPrivateKey ? [deployerPrivateKey] : [],
       chainId: 296,
     },
     hederaMainnet: {
       url: "https://mainnet.hashio.io/api",
-      accounts: [deployerPrivateKey],
+      accounts: deployerPrivateKey ? [deployerPrivateKey] : [],
       chainId: 295,
     },
   },

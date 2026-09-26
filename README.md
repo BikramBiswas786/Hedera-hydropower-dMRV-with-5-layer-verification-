@@ -240,8 +240,9 @@ The totals are raw, before any QA/QC. Two independent checks use the same signat
 | `HydroCreditRegistry.submitAttestation` | the signer is the plant's registered meter; EG_facility ≤ the metered net export; FC ≥ the metered fuel; TEG = the metered gross, capped only at what the nameplate can produce in the period |
 
 QA/QC may only make figures more conservative, and the contract enforces that direction. A stolen or misbehaving
-verifier key alone cannot mint anything: it cannot invent a period the meter did not sign, inflate export, hide fuel,
-understate TEG to shrink reservoir emissions, or replay a statement on another chain or registry.
+verifier key cannot mint a period the meter did not sign, inflate export, hide fuel, understate TEG to shrink reservoir
+emissions, or replay a statement on another chain or registry. That holds only while the meter key is private. The two
+demo plants do not have that property: their keys are derived from the plant id, below.
 
 ```bash
 yarn mrv:meter-key                                   # new meter key; register its address with the plant
@@ -258,7 +259,7 @@ A real meter's key never leaves its device.
 | --- | --- | --- | --- |
 | Meter (per plant) | sign what it measured | mint, or change a registration | in the data logger / secure element |
 | Verifier (`VERIFIER_ROLE`) | attest periods the meter signed, never more generous | register plants, change meters, move anyone's credits | on the attesting server |
-| Admin (`DEFAULT_ADMIN_ROLE`) | register plants and meters, renew crediting periods, grant roles | move anyone's credits, mint without a meter statement | a Hedera account with a threshold key, e.g. 2 of 3 |
+| Admin (`DEFAULT_ADMIN_ROLE`) | register plants and meters, renew crediting periods, grant roles | move anyone's credits, or mint without a statement from the meter it registered | a Hedera account with a threshold key, e.g. 2 of 3 |
 | Buyers and agents | buy, retire, withdraw with their own wallet | anything else | their own wallet; the app never asks for it |
 
 `yarn deploy` does the split when `VERIFIER_ADDRESS` and `ADMIN_ADDRESS` are set: the verifier gets
@@ -329,7 +330,8 @@ The sequence for one day of monitoring:
    stores: grid EF from TOOL07, TOOL03 COEF, EG_historical + σ, crediting dates. `registerPlant` re-checks the power
    density and baseline rules and stores them with `designHash`, the SHA-256 of the design document.
 2. **Verify.** The engine runs the five stages against the registered design and the plant's **on-chain ledger**.
-   Anything but APPROVED stops here.
+   Anything but APPROVED stops the server path. A direct `submitAttestation` still has to pass the contract: the meter
+   statement, the period, the nameplate, and the quantification. It does not re-run every engine stage.
 3. **Agree.** `submitAttestation` is simulated, and the contract's own `quantify()` must return the engine's ER and
    credits to the gram. A disagreement stops the pipeline before anything is published.
 4. **Anchor.** The raw readings, plant profile, metering data and ledger go to HCS (up to 20 chunks), then the report,
@@ -750,13 +752,14 @@ template.json                            create-scaffold-hbar manifest
 
 ## Security model and limitations
 
-- **The verifier cannot hide its work, or mint beyond what the meter signed.** Readings, reports and hashes are
-  public, the engine is deterministic, the contract recomputes the credits and only accepts figures at least as
-  conservative as the registered meter's signed statement. The trust that remains is in the *meter hardware* (a
-  meter key that is extracted, or a sensor that is physically manipulated, can still sign false numbers; physics
-  checks bound how far) and in the *registration*: an admin can register a plant with a meter it controls, so hold
-  `DEFAULT_ADMIN_ROLE` in a threshold-key account and have a VVB validate the design and the meter before
-  `registerPlant`.
+- **The verifier cannot hide its work, or mint beyond what the registered meter signed.** Readings, reports and
+  hashes are public, the engine is deterministic, and the contract only accepts figures at least as conservative as
+  that statement. This does not hold for the demo plants: their meter keys are `keccak256("hydro-dmrv demo meter " +
+  plant id)` and are registered on the public testnet deployment, so a verifier key can sign any period for them up
+  to the nameplate. A production plant needs a key that never leaves the logger. The other trust is registration:
+  an admin chooses the meter, so hold `DEFAULT_ADMIN_ROLE` in a threshold-key account and have a VVB validate the
+  design and the meter before `registerPlant`. The setup script refuses demo plants on Hedera mainnet unless
+  `REGISTER_DEMO_PLANTS=true`, and it refuses a mainnet deploy that leaves both roles on the deployer.
 - **Nobody shares a private key.** Buyers and agents sign with their own wallets (`prepare_purchase` returns unsigned
   transactions); the public deployment holds no server keys; the burner wallet is offered only on a local chain.
 - **Public API.** Read and verify endpoints are unauthenticated and bounded by input limits (2 000 readings per

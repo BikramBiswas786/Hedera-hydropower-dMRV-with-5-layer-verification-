@@ -1,8 +1,7 @@
-import type { HardhatRuntimeEnvironment } from "hardhat/types";
-import type { DeployFunction } from "hardhat-deploy/types";
-
 import { DEMO_PLANTS } from "../utils/demoPlants";
 import { getHydroNetworkConfig, hashscanTx } from "../utils/hydroNetworkConfig";
+import type { DeployFunction } from "hardhat-deploy/types";
+import type { HardhatRuntimeEnvironment } from "hardhat/types";
 
 /** HTS tokens have long-zero EVM addresses (0x000…0<num>) that map 1:1 to Hedera entity ids 0.0.<num>. */
 function describeToken(address: string): string {
@@ -55,9 +54,28 @@ const setupHydroRegistry: DeployFunction = async function (hre: HardhatRuntimeEn
     console.log(`Created HTS NFT certificate collection ${describeToken(token)}: ${hashscanTx(config, tx.hash)}`);
   }
 
+  const network = hre.network.name;
+  const live = network === "hederaTestnet" || network === "hederaMainnet";
+  const registerDemo = network !== "hederaMainnet" || process.env.REGISTER_DEMO_PLANTS === "true";
+  if (!registerDemo) {
+    console.warn(
+      "Skipping demo plants on hederaMainnet. Their meter keys are public. Set REGISTER_DEMO_PLANTS=true only for a throwaway deployment.",
+    );
+  } else if (live) {
+    console.warn(
+      "Demo plants use public meter keys derived from the plant id. A verifier key can sign any period for them. Do not treat those credits as metered.",
+    );
+  }
+  if (live && (!process.env.VERIFIER_ADDRESS || !process.env.ADMIN_ADDRESS)) {
+    const message =
+      "Set VERIFIER_ADDRESS and ADMIN_ADDRESS. Otherwise one key keeps both the verifier and the admin role.";
+    if (network === "hederaMainnet") throw new Error(message);
+    console.warn(message);
+  }
+
   const registered = new Set(await registry.getPlantIds());
   const operator = process.env.PLANT_OPERATOR_ADDRESS ?? deployer;
-  for (const plant of DEMO_PLANTS) {
+  for (const plant of registerDemo ? DEMO_PLANTS : []) {
     const plantId = hre.ethers.encodeBytes32String(plant.plantId);
     if (registered.has(plantId)) continue;
     const tx = await registry.registerPlant(plantId, plant.name, operator, plant.meter, plant.design, {
