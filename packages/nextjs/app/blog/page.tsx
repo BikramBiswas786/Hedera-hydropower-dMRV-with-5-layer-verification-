@@ -29,8 +29,9 @@ const BlogPage: NextPage = () => (
           <code>@3</code> messages still reproduce; they are not what the screen writes today.
         </li>
         <li>
-          <Link href="/market">Market</Link> shows Chainlink, Supra, and the SaucerSwap WHBAR/USDC spot. A buy is refused
-          when that pool is more than 3% from the settlement price. Retirements minted HYRET serial 1 and serial 2.
+          <Link href="/market">Market</Link> shows Chainlink, Supra, and the SaucerSwap WHBAR/USDC spot. A buy is
+          refused when that pool is more than 3% from the settlement price. Retirements minted HYRET serial 1 and serial
+          2.
         </li>
       </ol>
     </section>

@@ -63,8 +63,8 @@ const GuidePage: NextPage = async () => {
           </li>
           <li>
             a verification engine <strong>checks</strong> them (gaps, meters that disagree, physically impossible
-            numbers). Demo plants use Verra VMR0017 v1.0 with ACM0002 v22.0. A CDM registration still splits AMS-I.D
-            and ACM0002 at 15 MW;
+            numbers). Demo plants use Verra VMR0017 v1.0 with ACM0002 v22.0. A CDM registration still splits AMS-I.D and
+            ACM0002 at 15 MW;
           </li>
           <li>
             the readings and the result are <strong>published</strong> on the Hedera Consensus Service, and a smart
@@ -143,7 +143,7 @@ const GuidePage: NextPage = async () => {
             </Link>
             , pick a listing, enter how many tonnes and the name to put on the certificate (for example your company),
             and choose <strong>Buy &amp; retire</strong>. Prices are in US dollars per tonne and paid in HBAR at the
-            live Chainlink rate, cross-checked with Supra. The buy is not built if SaucerSwap's WHBAR/USDC pool is
+            live Chainlink rate, cross-checked with Supra. The buy is not built if the SaucerSwap WHBAR/USDC pool is
             more than 3% from that rate. Retiring burns the credits so nobody can sell them again.
           </Step>
           <Step n={3} title="Keep the proof">
@@ -165,8 +165,8 @@ const GuidePage: NextPage = async () => {
           <Step n={1} title="Check the project qualifies">
             Describe the plant (capacity, reservoir area, start date, grid data) and post it to{" "}
             <code>/api/methodology/assess</code>, or ask an agent to call <code>assess_project</code>. You get the
-            methodology. VMR0017, which the demo plants use, applies ACM0002 v22.0, limits hydro to 15 MW, and only in
-            a least developed country. CDM uses AMS-I.D up to 15 MW and ACM0002 above. You also get the grid emission
+            methodology. VMR0017, which the demo plants use, applies ACM0002 v22.0, limits hydro to 15 MW, and only in a
+            least developed country. CDM uses AMS-I.D up to 15 MW and ACM0002 above. You also get the grid emission
             factor, reservoir rules and the exact numbers to register on-chain.
           </Step>
           <Step n={2} title="Register it">
