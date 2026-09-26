@@ -7,7 +7,7 @@ import { GenericContractsDeclaration } from "~~/utils/scaffold-hbar/contract";
 const deployedContracts = {
   296: {
     HydroCreditRegistry: {
-      address: "0xAEA76b83ea8e71621d443053A5Ee20D7AF8Ce746",
+      address: "0x9cdB5782a10c41a103B722d1B8fa9CfaF84107a5",
       abi: [
         {
           inputs: [
@@ -83,6 +83,17 @@ const deployedContracts = {
           type: "error",
         },
         {
+          inputs: [
+            {
+              internalType: "bytes32",
+              name: "designHash",
+              type: "bytes32",
+            },
+          ],
+          name: "DesignAlreadyRegistered",
+          type: "error",
+        },
+        {
           inputs: [],
           name: "ECDSAInvalidSignature",
           type: "error",
@@ -107,6 +118,11 @@ const deployedContracts = {
             },
           ],
           name: "ECDSAInvalidSignatureS",
+          type: "error",
+        },
+        {
+          inputs: [],
+          name: "EmptyDesignHash",
           type: "error",
         },
         {
@@ -327,6 +343,17 @@ const deployedContracts = {
         {
           inputs: [
             {
+              internalType: "address",
+              name: "meter",
+              type: "address",
+            },
+          ],
+          name: "MeterAlreadyRegistered",
+          type: "error",
+        },
+        {
+          inputs: [
+            {
               internalType: "enum HydroCreditRegistry.Methodology",
               name: "methodology",
               type: "uint8",
@@ -502,6 +529,17 @@ const deployedContracts = {
           type: "error",
         },
         {
+          inputs: [
+            {
+              internalType: "uint32",
+              name: "maxPriceAge",
+              type: "uint32",
+            },
+          ],
+          name: "PriceAgeOutOfRange",
+          type: "error",
+        },
+        {
           inputs: [],
           name: "ReentrancyGuardReentrantCall",
           type: "error",
@@ -562,6 +600,22 @@ const deployedContracts = {
         {
           inputs: [],
           name: "TokenNotCreated",
+          type: "error",
+        },
+        {
+          inputs: [
+            {
+              internalType: "uint64",
+              name: "topic",
+              type: "uint64",
+            },
+            {
+              internalType: "uint64",
+              name: "sequence",
+              type: "uint64",
+            },
+          ],
+          name: "Unanchored",
           type: "error",
         },
         {
@@ -627,6 +681,19 @@ const deployedContracts = {
             },
           ],
           name: "AttestationSubmitted",
+          type: "event",
+        },
+        {
+          anonymous: false,
+          inputs: [
+            {
+              indexed: false,
+              internalType: "uint64",
+              name: "topic",
+              type: "uint64",
+            },
+          ],
+          name: "AuditTopicSet",
           type: "event",
         },
         {
@@ -1224,6 +1291,19 @@ const deployedContracts = {
         },
         {
           inputs: [],
+          name: "MAX_PRICE_AGE",
+          outputs: [
+            {
+              internalType: "uint32",
+              name: "",
+              type: "uint32",
+            },
+          ],
+          stateMutability: "view",
+          type: "function",
+        },
+        {
+          inputs: [],
           name: "METER_STATEMENT_TAG",
           outputs: [
             {
@@ -1360,6 +1440,19 @@ const deployedContracts = {
               internalType: "uint256",
               name: "",
               type: "uint256",
+            },
+          ],
+          stateMutability: "view",
+          type: "function",
+        },
+        {
+          inputs: [],
+          name: "auditTopic",
+          outputs: [
+            {
+              internalType: "uint64",
+              name: "",
+              type: "uint64",
             },
           ],
           stateMutability: "view",
@@ -2325,6 +2418,44 @@ const deployedContracts = {
         {
           inputs: [
             {
+              internalType: "bytes32",
+              name: "designHash",
+              type: "bytes32",
+            },
+          ],
+          name: "plantOfDesign",
+          outputs: [
+            {
+              internalType: "bytes32",
+              name: "plantId",
+              type: "bytes32",
+            },
+          ],
+          stateMutability: "view",
+          type: "function",
+        },
+        {
+          inputs: [
+            {
+              internalType: "address",
+              name: "meter",
+              type: "address",
+            },
+          ],
+          name: "plantOfMeter",
+          outputs: [
+            {
+              internalType: "bytes32",
+              name: "plantId",
+              type: "bytes32",
+            },
+          ],
+          stateMutability: "view",
+          type: "function",
+        },
+        {
+          inputs: [
+            {
               internalType: "address",
               name: "seller",
               type: "address",
@@ -2744,6 +2875,19 @@ const deployedContracts = {
         {
           inputs: [
             {
+              internalType: "uint64",
+              name: "topic",
+              type: "uint64",
+            },
+          ],
+          name: "setAuditTopic",
+          outputs: [],
+          stateMutability: "nonpayable",
+          type: "function",
+        },
+        {
+          inputs: [
+            {
               internalType: "uint32",
               name: "maxPriceAge_",
               type: "uint32",
@@ -3041,10 +3185,10 @@ const deployedContracts = {
         revokeRole: "@openzeppelin/contracts/access/AccessControl.sol",
         supportsInterface: "@openzeppelin/contracts/access/AccessControl.sol",
       },
-      deployedOnBlock: 40978237,
+      deployedOnBlock: 40999113,
     },
     ResilientHbarUsdFeed: {
-      address: "0x5A07AE6219509948fBdab08cc65ccd1b6897A591",
+      address: "0xcAE7c6eA987107543C1aD0F79802d02cba77cbb8",
       abi: [
         {
           inputs: [
@@ -3338,7 +3482,7 @@ const deployedContracts = {
         description: "contracts/interfaces/AggregatorV3Interface.sol",
         latestRoundData: "contracts/interfaces/AggregatorV3Interface.sol",
       },
-      deployedOnBlock: 40939828,
+      deployedOnBlock: 40999106,
     },
   },
 } as const;

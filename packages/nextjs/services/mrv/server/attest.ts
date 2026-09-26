@@ -1,4 +1,5 @@
 import { DEMO_PLANT } from "../demo";
+import { monitoringDocumentDraft } from "../documents/server";
 import type { VerificationReport } from "../engine";
 import type { RegisteredDesign } from "../methodology/project";
 import { HYDRO_CHAIN_ID, hashscan, isLiveHederaChain } from "../network";
@@ -6,7 +7,6 @@ import { prepareAnchors } from "../pipeline";
 import { buildHcsMessage } from "../report";
 import type { VerifyRequest } from "../schema";
 import { plantIdToBytes32 } from "../views";
-import { monitoringDocumentDraft } from "../documents/server";
 import { readOperatorConfig, readVerifierKey } from "./config";
 import { ApiError, revertReason } from "./errors";
 import { publishMessage } from "./hcs";
@@ -102,6 +102,13 @@ export async function attestReadings(request: VerifyRequest): Promise<AttestOutc
     throw new ApiError("HEDERA_OPERATOR_ID and HEDERA_OPERATOR_KEY are required to anchor reports on HCS", 503);
   }
 
+  if (isLiveHederaChain() && !operator?.topicId) {
+    throw new ApiError("HCS_TOPIC_ID is required. The registry will not mint until that topic is set on it.", 503);
+  }
+  // The sequence is assigned by consensus after publish. The dry-run only needs a non-zero sequence on the
+  // configured topic; the transaction below sends the real one.
+  const plannedTopic = operator?.topicId ? BigInt(operator.topicId.replace(/^0\.0\./, "")) : 0n;
+
   const account = privateKeyToAccount(verifierKey);
   const input = {
     plantId,
@@ -114,8 +121,8 @@ export async function attestReadings(request: VerifyRequest): Promise<AttestOutc
     leakageG: BigInt(report.monitored.leakageG),
     completenessBps: report.completenessBps,
     reportHash: preview.reportHash,
-    hcsTopicNum: 0n,
-    hcsSequence: 0n,
+    hcsTopicNum: plannedTopic,
+    hcsSequence: plannedTopic === 0n ? 0n : 1n,
     // What the meter signed; the contract accepts the figures above only if they are at least this conservative.
     meter: {
       grossEnergyWh: BigInt(report.meterStatement.grossWh),

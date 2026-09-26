@@ -59,24 +59,25 @@ Deployed with `yarn deploy --network hederaTestnet` and attested with `yarn mrv:
 The app at [hydro-dmrv.vercel.app](https://hydro-dmrv.vercel.app) runs against it with no server keys, so it can
 read, verify, audit and prepare purchases but never attest; open [`/audit`](https://hydro-dmrv.vercel.app/audit) and
 press **Check evidence** to reproduce the attestations below from HCS in your browser. Live demo plants are
-**VMR0017** (`design.methodology = 1`). HYRET total supply is 2 (retirements #0 and #1).
+**VMR0017** (`design.methodology = 1`). HYRET total supply is 1 (retirement #0, serial 1). The demo meter keys are still
+public. The registry checks below are on this contract: one meter and one design hash, a non-zero grid factor at
+renewal, an oracle age of at most two days, and an attestation must cite topic `0.0.10726081`.
 
 | What | Hashscan |
 | --- | --- |
-| `HydroCreditRegistry` | [0xAEA76b83…AF8Ce746](https://hashscan.io/testnet/contract/0xAEA76b83ea8e71621d443053A5Ee20D7AF8Ce746) |
-| `ResilientHbarUsdFeed` (Chainlink + Supra) | [0x5A07AE62…6b897A591](https://hashscan.io/testnet/contract/0x5A07AE6219509948fBdab08cc65ccd1b6897A591) |
-| HTS credit token 0.0.10718574 (HYCC), created by the contract | [creation](https://hashscan.io/testnet/transaction/0x223fb823267ffa2683b876932a6f1f307aecb3d02e85cac27d4d5804d0a71229) · [token](https://hashscan.io/testnet/token/0.0.10718574) |
-| HTS NFT certificate collection 0.0.10718577 (HYRET) | [creation](https://hashscan.io/testnet/transaction/0x3a9d6cddd39739ce2cd46e24ecfdf932e7b54cec126e0ab17eff793b1f6137ac) · [token](https://hashscan.io/testnet/token/0.0.10718577) |
-| Retirement #0 — 1.000 t CO₂e, beneficiary “Scaffold-HBAR template exhibit”, **HYRET serial 1** delivered to 0.0.10015230 | [buyAndRetire](https://hashscan.io/testnet/transaction/0xca804d3d31a3446c2bfa0b544ecb484049e92d4f9bc68c7164f903a1498b75dd) · [serial 1](https://hashscan.io/testnet/token/0.0.10718577/1) |
-| Retirement #1 — 1.000 t CO₂e, beneficiary “Northwind Municipal Utility”, **HYRET serial 2** delivered to 0.0.10720552, not the operator | [buyAndRetire](https://hashscan.io/testnet/transaction/0x2cc68e9bba770042ded66dc772c85bb892ffa1db272c2f20e00ffc0f1048bc36) · [serial 2](https://hashscan.io/testnet/token/0.0.10718577/2) |
-| Plant registrations (VMR0017 + ACM0002, design hash) | [HYDRO-DEMO-01](https://hashscan.io/testnet/transaction/0x62bd9fa95fe0c9853915577cf0a23db8c63842be05920edf1d59232f4b470845) · [HYDRO-DEMO-02](https://hashscan.io/testnet/transaction/0xf34c9a13b8020f73c75de6db319b77de0482767f01928df5b35318928dbe92dd) |
-| HCS audit topic (attestations #0/#1 on this topic) | [0.0.10704510](https://hashscan.io/testnet/topic/0.0.10704510) |
-| Attestation #0 — HYDRO-DEMO-01, `healthy`: BE 4.973561 t, PE 0, LE 0.182157 t, ER 4.791404 t → **4.791 t minted** | [contract call](https://hashscan.io/testnet/transaction/0xeaac039c94ecfc3020887abe3d70ab96e1e9b4403cd4a180157f0978aa00806f) · [HCS readings](https://hashscan.io/testnet/topic/0.0.10704510/message/13) · [HCS report](https://hashscan.io/testnet/topic/0.0.10704510/message/17) |
-| Attestation #1 — HYDRO-DEMO-02, `diesel-backup`: BE 94.772051 t, PE 18.587126 t, LE 3.795191 t, ER 72.389734 t → **72.389 t minted** | [contract call](https://hashscan.io/testnet/transaction/0x7040ae195ee457f2d9d2717e68f01fa23caae71640ba1d9a6b0da34d48003d69) · [HCS readings](https://hashscan.io/testnet/topic/0.0.10704510/message/18) · [HCS report](https://hashscan.io/testnet/topic/0.0.10704510/message/22) |
+| `HydroCreditRegistry` | [0x9cdB5782…F84107a5](https://hashscan.io/testnet/contract/0x9cdB5782a10c41a103B722d1B8fa9CfaF84107a5) |
+| `ResilientHbarUsdFeed` (Chainlink + Supra) | [0xcAE7c6eA…ba77cbb8](https://hashscan.io/testnet/contract/0xcAE7c6eA987107543C1aD0F79802d02cba77cbb8) |
+| HTS credit token 0.0.10726073 (HYCC), created by the contract | [creation](https://hashscan.io/testnet/transaction/0x3e304f1e0831143547b2671e3d4c66b005497a42e537591e98a7021dbf6667da) · [token](https://hashscan.io/testnet/token/0.0.10726073) |
+| HTS NFT certificate collection 0.0.10726074 (HYRET) | [creation](https://hashscan.io/testnet/transaction/0xb3f5a136eca8589e6d598a09c6b085ac51ff5ddd7e04a0fcb8df7ade308c3148) · [token](https://hashscan.io/testnet/token/0.0.10726074) |
+| Audit topic set on the registry | [setAuditTopic](https://hashscan.io/testnet/transaction/0xa7e7bbd731f387600b4372bb8cfd7af20a97d9a09ded5934cac8c4a2618068d9) |
+| Retirement #0 — 1.000 t CO₂e, beneficiary “Scaffold-HBAR template exhibit”, **HYRET serial 1** delivered to 0.0.10015230 | [buyAndRetire](https://hashscan.io/testnet/transaction/0x9f8979fbb2eefbb278b2e305deec469d0ebe752d79a511290c44cea75bb7dac9) · [serial 1](https://hashscan.io/testnet/token/0.0.10726074/1) |
+| Plant registrations (VMR0017, design hash) | [HYDRO-DEMO-01](https://hashscan.io/testnet/transaction/0xce249a385f3373405bdf6d9450b9fc0988097c4ae8bb4fdb20eebeb77ee971d5) · [HYDRO-DEMO-02](https://hashscan.io/testnet/transaction/0xee01411345e1b1077e6a5bd8f17ff0ecfacae04ee5d11ad0ca9cf7793a5538b3) |
+| HCS audit topic | [0.0.10726081](https://hashscan.io/testnet/topic/0.0.10726081) |
+| Attestation #0 — HYDRO-DEMO-01, `healthy`: BE 4.973705 t, PE 0, LE 0.182163 t, ER 4.791542 t → **4.791 t minted** | [contract call](https://hashscan.io/testnet/transaction/0xb473de5821d62467f4cc76339c81f1109b6baff2d77f70aea7b8156ea64f19f2) · [HCS readings](https://hashscan.io/testnet/topic/0.0.10726081/message/1) · [HCS report](https://hashscan.io/testnet/topic/0.0.10726081/message/5) |
+| Attestation #1 — HYDRO-DEMO-02, `diesel-backup`: BE 96.072621 t, PE 18.838913 t, LE 3.847273 t, ER 73.386435 t → **73.386 t minted** | [contract call](https://hashscan.io/testnet/transaction/0x8fef0c119c3b4b2b87aa704ca3c26c9dedecc2648b96853e6f7394fc425c0e42) · [HCS readings](https://hashscan.io/testnet/topic/0.0.10726081/message/6) · [HCS report](https://hashscan.io/testnet/topic/0.0.10726081/message/10) |
 
-Messages 1–12 and 5–8 on this topic are the previous CDM registry's history (and one orphaned run). Audit follows
-only the report sequence an attestation stores. Keep `HCS_TOPIC_ID=0.0.10704510` so `/audit` can reproduce #0 and #1.
-Topic `0.0.10719120` exists but has no messages; do not switch the app to it until a later period is attested there.
+Audit follows the report sequence stored on the attestation. An earlier registry, `0xAEA76b83ea8e71621d443053A5Ee20D7AF8Ce746`,
+does not have these checks. Do not point the app back at it.
 
 ---
 
@@ -545,8 +546,8 @@ with `viaIR` to stay under the 24 KB limit).
 
 A registry compiled from this source refuses a second plant on the same meter or the same design hash, refuses a
 renewal whose grid factor is zero, refuses an oracle age of zero or above two days, and refuses an attestation that
-does not cite the HCS topic stored by `setAuditTopic`. The testnet contract in the table above was deployed before
-those checks. Its attestations stay reproducible. That address will not revert if a meter is reused.
+does not cite the HCS topic stored by `setAuditTopic`. The testnet registry in the table above was deployed from
+this source. `setAuditTopic` points it at `0.0.10726081`. The older contract `0xAEA76b83…` does not enforce these.
 
 **Units.** 1 HYCC token = 1 t CO₂e; 3 decimals, so one base unit is 1 kg. `quantify(plantId, input)` is public, so any
 wallet or agent can preview exactly what an attestation will mint.
