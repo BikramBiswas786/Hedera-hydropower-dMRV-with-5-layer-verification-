@@ -1,7 +1,7 @@
 {
   "name": "hydro-dmrv",
-  "description": "Carbon-credit dMRV for grid-connected hydropower under CDM AMS-I.D / ACM0002 with TOOL07 and TOOL03: a 5-stage engine verifies monitoring data and computes ER = BE − PE − LE, raw readings and reports go to HCS so anyone can reproduce them, a Solidity registry recomputes the reductions from the registered design and mints HTS credits (1 token = 1 t CO2e) and NFT retirement certificates, and Chainlink HBAR/USD with a Supra fallback settles USD-priced sales in HBAR. Ships an MCP server so AI agents can assess designs, verify, reproduce and buy with their own wallets.",
-  "version": "2.0.0",
+  "description": "Carbon-credit dMRV for grid-connected hydropower under Verra VMR0017 v1.0 (ACM0002 v22.0). A 5-stage engine and HydroCreditRegistry.quantify share one integer set for ER = BE − PE − LE. Raw readings and reports go to HCS so anyone can reproduce a mint. The contract creates HTS credits (1 token = 1 t CO2e) and NFT retirement certificates. A sale is not built unless Chainlink and Supra agree and the SaucerSwap WHBAR/USDC pool is within 3%. Ships an MCP server so agents can assess designs, verify, reproduce and prepare purchases with their own wallets.",
+  "version": "2.1.0",
   "create-scaffold-hbar": {
     "capabilities": {
       "frontend": [
@@ -27,7 +27,7 @@
         {
           "steps": [
             {
-              "text": "Hydro dMRV composes HCS (raw readings + reports, reproducible by anyone), HTS (credit token and NFT certificates created by the contract) and Chainlink + Supra oracles (USD-priced settlement) around a CDM AMS-I.D / ACM0002 methodology engine. README.md walks through the methodology and the whole flow; AGENTS.md briefs coding agents."
+              "text": "Hydro dMRV composes HCS (raw readings + reports), HTS (credit token and NFT certificates created by the contract), Chainlink + Supra (USD-priced settlement) and a SaucerSwap reserve check around a VMR0017 engine. README.md is the human brief; AGENTS.md is the only agent policy."
             }
           ]
         },
