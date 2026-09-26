@@ -92,6 +92,23 @@ const setupHydroRegistry: DeployFunction = async function (hre: HardhatRuntimeEn
   const verifierRole = await registry.VERIFIER_ROLE();
   const adminRole = await registry.DEFAULT_ADMIN_ROLE();
   const isAdmin = await registry.hasRole(adminRole, deployer);
+  const topicEnv = process.env.HCS_TOPIC_ID?.trim();
+  const topicNum = topicEnv ? BigInt(topicEnv.replace(/^0\.0\./, "")) : 0n;
+  if (live && topicNum === 0n) {
+    console.warn("HCS_TOPIC_ID is unset. This source rejects attestations until setAuditTopic.");
+  }
+  if (topicNum > 0n && isAdmin) {
+    try {
+      const current = await registry.auditTopic();
+      if (current !== topicNum) {
+        const tx = await registry.setAuditTopic(topicNum, { gasLimit: 200_000 });
+        await tx.wait();
+        console.log(`Set audit topic ${topicNum}: ${hashscanTx(config, tx.hash)}`);
+      }
+    } catch {
+      console.warn("Audit topic was not set. This deployment has no setAuditTopic.");
+    }
+  }
   if (process.env.VERIFIER_ADDRESS && isAdmin) {
     const verifier = evmAddress(process.env.VERIFIER_ADDRESS);
     if (!(await registry.hasRole(verifierRole, verifier))) {

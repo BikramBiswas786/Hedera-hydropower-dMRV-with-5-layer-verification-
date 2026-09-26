@@ -52,6 +52,8 @@ contract HydroCreditRegistry is AccessControl, ReentrancyGuard {
     uint256 public constant RESERVOIR_EMISSIONS_POWER_DENSITY = 10;
     /// @notice Sanity ceiling for a grid emission factor (2 t CO2/MWh is above any real grid's combined margin).
     uint32 public constant MAX_GRID_EF_G_PER_MWH = 2_000_000;
+    /// @notice The admin cannot switch the settlement staleness check off. Two days covers a missed heartbeat.
+    uint32 public constant MAX_PRICE_AGE = 2 * 24 * 60 * 60;
     uint256 private constant WH_PER_MWH = 1e6;
     uint256 private constant G_PER_TONNE = 1e6;
     /// @notice Domain tag of the meter statement; the signed hash also binds the chain id and this registry.
@@ -221,6 +223,11 @@ contract HydroCreditRegistry is AccessControl, ReentrancyGuard {
     mapping(address seller => uint256 native) public proceedsOf;
 
     mapping(bytes32 plantId => Plant) private _plants;
+    /// @dev A meter key and a design hash each belong to one plant. Stops the same generation being registered twice.
+    mapping(address meter => bytes32 plantId) public plantOfMeter;
+    mapping(bytes32 designHash => bytes32 plantId) public plantOfDesign;
+    /// @dev HCS topic attestations must use. Zero until the admin sets it; submission reverts until then.
+    uint64 public auditTopic;
     bytes32[] private _plantIds;
     Attestation[] private _attestations;
     Listing[] private _listings;
@@ -248,6 +255,7 @@ contract HydroCreditRegistry is AccessControl, ReentrancyGuard {
     event MeterStatementAccepted(uint256 indexed attestationId, address indexed meter, bytes32 readingsDigest);
     event MinCompletenessChanged(uint16 minCompletenessBps);
     event MaxPriceAgeChanged(uint32 maxPriceAge);
+    event AuditTopicSet(uint64 topic);
     event AttestationSubmitted(
         uint256 indexed attestationId,
         bytes32 indexed plantId,
@@ -305,6 +313,11 @@ contract HydroCreditRegistry is AccessControl, ReentrancyGuard {
     error ZeroAddress();
     error NoCertificateToClaim(uint256 retirementId);
     error NotRetirementOwner(uint256 retirementId);
+    error MeterAlreadyRegistered(address meter);
+    error DesignAlreadyRegistered(bytes32 designHash);
+    error EmptyDesignHash();
+    error Unanchored(uint64 topic, uint64 sequence);
+    error PriceAgeOutOfRange(uint32 maxPriceAge);
 
     /// @param admin Account granted DEFAULT_ADMIN_ROLE and VERIFIER_ROLE.
     /// @param hbarUsdFeed HBAR/USD AggregatorV3 feed (e.g. `ResilientHbarUsdFeed`).
@@ -320,6 +333,7 @@ contract HydroCreditRegistry is AccessControl, ReentrancyGuard {
     ) {
         if (admin == address(0) || address(hbarUsdFeed) == address(0)) revert ZeroAddress();
         if (minCompletenessBps_ > MAX_BPS) revert InvalidCompleteness(minCompletenessBps_);
+        if (maxPriceAge_ == 0 || maxPriceAge_ > MAX_PRICE_AGE) revert PriceAgeOutOfRange(maxPriceAge_);
 
         HBAR_USD_FEED = hbarUsdFeed;
         NATIVE_UNITS_PER_HBAR = nativeUnitsPerHbar;
@@ -380,6 +394,8 @@ contract HydroCreditRegistry is AccessControl, ReentrancyGuard {
         if (meter == address(0)) revert ZeroAddress();
         if (_plants[plantId].operator != address(0)) revert PlantAlreadyRegistered(plantId);
         uint32 reservoirRate = _validateDesign(design);
+        _claimDesign(plantId, design.designHash);
+        _claimMeter(plantId, meter);
 
         Plant storage plant = _plants[plantId];
         plant.name = name;
@@ -406,7 +422,12 @@ contract HydroCreditRegistry is AccessControl, ReentrancyGuard {
     /// @notice Replaces a plant's meter key, e.g. after the data logger is swapped and re-validated on site.
     function setPlantMeter(bytes32 plantId, address meter) external onlyRole(DEFAULT_ADMIN_ROLE) {
         if (meter == address(0)) revert ZeroAddress();
-        _existingPlant(plantId).meter = meter;
+        Plant storage plant = _existingPlant(plantId);
+        if (meter != plant.meter) {
+            _claimMeter(plantId, meter);
+            plantOfMeter[plant.meter] = bytes32(0);
+            plant.meter = meter;
+        }
         emit PlantMeterChanged(plantId, meter);
     }
 
@@ -422,12 +443,17 @@ contract HydroCreditRegistry is AccessControl, ReentrancyGuard {
         Plant storage plant = _existingPlant(plantId);
         if (creditingStart < plant.design.creditingEnd) revert InvalidCreditingPeriod(creditingStart, creditingEnd);
         _validateCrediting(creditingStart, creditingEnd);
-        if (efGridGPerMwh > MAX_GRID_EF_G_PER_MWH) revert GridEmissionFactorOutOfRange(efGridGPerMwh);
+        if (efGridGPerMwh == 0 || efGridGPerMwh > MAX_GRID_EF_G_PER_MWH) {
+            revert GridEmissionFactorOutOfRange(efGridGPerMwh);
+        }
+        if (designHash != plant.design.designHash) _claimDesign(plantId, designHash);
 
         plant.design.efGridGPerMwh = efGridGPerMwh;
         plant.design.creditingStart = creditingStart;
         plant.design.creditingEnd = creditingEnd;
+        bytes32 previousHash = plant.design.designHash;
         plant.design.designHash = designHash;
+        if (previousHash != designHash) plantOfDesign[previousHash] = bytes32(0);
         plant.creditingYear = 0;
         plant.yearNetWh = 0;
         emit CreditingPeriodRenewed(plantId, efGridGPerMwh, creditingStart, creditingEnd, designHash);
@@ -445,8 +471,16 @@ contract HydroCreditRegistry is AccessControl, ReentrancyGuard {
     }
 
     function setMaxPriceAge(uint32 maxPriceAge_) external onlyRole(DEFAULT_ADMIN_ROLE) {
+        if (maxPriceAge_ == 0 || maxPriceAge_ > MAX_PRICE_AGE) revert PriceAgeOutOfRange(maxPriceAge_);
         maxPriceAge = maxPriceAge_;
         emit MaxPriceAgeChanged(maxPriceAge_);
+    }
+
+    /// @notice Fixes the HCS topic every later attestation must cite. It cannot be cleared.
+    function setAuditTopic(uint64 topic) external onlyRole(DEFAULT_ADMIN_ROLE) {
+        if (topic == 0) revert Unanchored(0, 0);
+        auditTopic = topic;
+        emit AuditTopicSet(topic);
     }
 
     /// @notice Recovers HBAR that is not owed to sellers (e.g. change from the HTS creation fee).
@@ -806,6 +840,9 @@ contract HydroCreditRegistry is AccessControl, ReentrancyGuard {
             revert CompletenessTooLow(input.completenessBps, minCompletenessBps);
         }
         if (input.reportHash == bytes32(0)) revert EmptyReportHash();
+        if (auditTopic == 0 || input.hcsTopicNum != auditTopic || input.hcsSequence == 0) {
+            revert Unanchored(input.hcsTopicNum, input.hcsSequence);
+        }
 
         uint256 maxEnergyWh = (uint256(design.capacityKw) * (input.periodEnd - input.periodStart) * 1_000) / 3_600;
         if (input.grossEnergyWh > maxEnergyWh) revert EnergyExceedsCapacity(input.grossEnergyWh, maxEnergyWh);
@@ -828,6 +865,19 @@ contract HydroCreditRegistry is AccessControl, ReentrancyGuard {
             input.fuelG < input.meter.fuelG ||
             input.grossEnergyWh != (meteredGross < maxEnergyWh ? meteredGross : maxEnergyWh)
         ) revert NotMetered(input.grossEnergyWh, input.netEnergyWh, input.fuelG);
+    }
+
+    function _claimDesign(bytes32 plantId, bytes32 designHash) private {
+        if (designHash == bytes32(0)) revert EmptyDesignHash();
+        bytes32 holder = plantOfDesign[designHash];
+        if (holder != bytes32(0) && holder != plantId) revert DesignAlreadyRegistered(designHash);
+        plantOfDesign[designHash] = plantId;
+    }
+
+    function _claimMeter(bytes32 plantId, address meter) private {
+        bytes32 holder = plantOfMeter[meter];
+        if (holder != bytes32(0) && holder != plantId) revert MeterAlreadyRegistered(meter);
+        plantOfMeter[meter] = plantId;
     }
 
     function _existingPlant(bytes32 plantId) private view returns (Plant storage plant) {

@@ -543,6 +543,11 @@ The same function backs the Audit page, `GET /api/registry/attestations/{id}/rep
 `packages/hardhat/contracts/HydroCreditRegistry.sol` (OpenZeppelin `AccessControl` + `ReentrancyGuard`, compiled
 with `viaIR` to stay under the 24 KB limit).
 
+A registry compiled from this source refuses a second plant on the same meter or the same design hash, refuses a
+renewal whose grid factor is zero, refuses an oracle age of zero or above two days, and refuses an attestation that
+does not cite the HCS topic stored by `setAuditTopic`. The testnet contract in the table above was deployed before
+those checks. Its attestations stay reproducible. That address will not revert if a meter is reused.
+
 **Units.** 1 HYCC token = 1 t CO₂e; 3 decimals, so one base unit is 1 kg. `quantify(plantId, input)` is public, so any
 wallet or agent can preview exactly what an attestation will mint.
 

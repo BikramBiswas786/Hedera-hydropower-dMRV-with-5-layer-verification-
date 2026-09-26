@@ -31,6 +31,52 @@ async function createTopic() {
   if (!operator) throw new Error("Set HEDERA_OPERATOR_ID and HEDERA_OPERATOR_KEY in packages/nextjs/.env.local");
   const topicId = await createAuditTopic(operator);
   console.log(`Created HCS topic ${topicId}\nAdd this to packages/nextjs/.env.local:\n\nHCS_TOPIC_ID=${topicId}`);
+  await registerAuditTopic(topicId);
+}
+
+/** Points a registry compiled with setAuditTopic at this topic. Older deployments ignore the call. */
+async function registerAuditTopic(topicId: string) {
+  const { readVerifierKey } = await import("~~/services/mrv/server/config");
+  const { hydroChain, hydroTransport, requireDeployment } = await import("~~/services/mrv/server/registry");
+  const { createPublicClient, createWalletClient } = await import("viem");
+  const { privateKeyToAccount } = await import("viem/accounts");
+  const key = readVerifierKey();
+  if (!key) return;
+  const abi = [
+    { type: "function", name: "auditTopic", stateMutability: "view", inputs: [], outputs: [{ type: "uint64" }] },
+    {
+      type: "function",
+      name: "setAuditTopic",
+      stateMutability: "nonpayable",
+      inputs: [{ name: "topic", type: "uint64" }],
+      outputs: [],
+    },
+  ] as const;
+  const client = createPublicClient({ chain: hydroChain(), transport: hydroTransport() });
+  const topic = BigInt(topicId.replace(/^0\.0\./, ""));
+  try {
+    const deployment = requireDeployment();
+    const current = await client.readContract({ address: deployment.address, abi, functionName: "auditTopic" });
+    if (current === topic) return;
+    if (current !== 0n) {
+      console.warn(`The registry already cites topic ${current}. Leaving it.`);
+      return;
+    }
+    const wallet = createWalletClient({
+      account: privateKeyToAccount(key),
+      chain: hydroChain(),
+      transport: hydroTransport(),
+    });
+    const hash = await wallet.writeContract({
+      address: deployment.address,
+      abi,
+      functionName: "setAuditTopic",
+      args: [topic],
+    });
+    console.log(`Registered audit topic ${topic} on the registry: ${hash}`);
+  } catch {
+    console.warn("This registry has no setAuditTopic. Put the topic id in .env.local anyway.");
+  }
 }
 
 /** Starts where the last attestation ended so repeated runs never overlap on-chain. */
