@@ -1,66 +1,40 @@
 import { expect } from "chai";
 import { ethers } from "hardhat";
 import { loadFixture, time } from "@nomicfoundation/hardhat-network-helpers";
+import { isolateClock } from "./helpers/clock";
 import { HOUR, METER, attestationInput, plantDesign } from "./helpers/registry";
 import { ensureHts } from "./helpers/hts";
+import { FIVE_YEAR_FROM, YEAR, type HydroParams, encodeEnergy, encodeParams } from "./helpers/dmrv";
+import { QUANTIFICATION_VECTORS } from "./fixtures/quantificationVectors";
+import { LIVE_ATTESTATIONS } from "./fixtures/liveAttestations";
 
 const PLANT_ID = ethers.encodeBytes32String("PLANT-DEMO-01");
-const PARAMS =
-  "tuple(uint8 projectType,uint8 methodology,uint32 capacityKw,uint32 baselineCapacityKw,uint64 reservoirAreaM2,uint64 baselineReservoirAreaM2,uint32 efGridGPerMwh,uint32 fuelCoefGPerTonne,uint64 baselineWh,uint64 baselineEndsAt,uint64 creditingStart,uint64 creditingEnd,uint64 registrationRequestedAt,uint64 calibrationValidUntil,bytes32 meteringHash,bytes32 designHash)";
-const FIVE_YEAR_FROM = 1_798_761_600n;
-const YEAR = 365n * 86_400n;
+const BREAKDOWN = ["uint32", "int256", "int256", "uint256", "uint256", "uint256", "int256", "uint256", "int256"];
 
-function encodeParams(
-  design: {
-    projectType: number;
-    methodology: number;
-    capacityKw: number;
-    baselineCapacityKw: number;
-    reservoirAreaM2: number;
-    baselineReservoirAreaM2: number;
-    efGridGPerMwh: number;
-    fuelCoefGPerTonne: number;
-    baselineWh: bigint;
-    baselineEndsAt: bigint;
-    creditingStart: bigint;
-    creditingEnd: bigint;
-    designHash: string;
-  },
+function paramsFromDesign(
+  design: Omit<HydroParams, "registrationRequestedAt" | "calibrationValidUntil" | "meteringHash">,
   registrationRequestedAt: bigint,
 ) {
-  return ethers.AbiCoder.defaultAbiCoder().encode(
-    [PARAMS],
-    [
-      [
-        design.projectType,
-        design.methodology,
-        design.capacityKw,
-        design.baselineCapacityKw,
-        design.reservoirAreaM2,
-        design.baselineReservoirAreaM2,
-        design.efGridGPerMwh,
-        design.fuelCoefGPerTonne,
-        design.baselineWh,
-        design.baselineEndsAt,
-        design.creditingStart,
-        design.creditingEnd,
-        registrationRequestedAt,
-        design.creditingEnd,
-        ethers.ZeroHash,
-        design.designHash,
-      ],
-    ],
-  );
+  return encodeParams({
+    ...design,
+    registrationRequestedAt,
+    calibrationValidUntil: design.creditingEnd,
+    meteringHash: ethers.ZeroHash,
+  });
 }
 
-function encodeEnergy(netWh: bigint, grossWh: bigint, fuelG: bigint, leakageG: bigint) {
-  return ethers.AbiCoder.defaultAbiCoder().encode(
-    ["int64", "uint64", "uint64", "uint64"],
-    [netWh, grossWh, fuelG, leakageG],
-  );
+function energy(netWh: bigint, grossWh: bigint, fuelG: bigint, leakageG: bigint) {
+  return encodeEnergy({ netWh, grossWh, fuelG, leakageG });
+}
+
+function decodeBreakdown(breakdown: string) {
+  const [year, projectWh, baselineG, reservoirG, fossilG, leakageG, reductionG, units, balanceG] =
+    ethers.AbiCoder.defaultAbiCoder().decode(BREAKDOWN, breakdown);
+  return { year, projectWh, baselineG, reservoirG, fossilG, leakageG, reductionG, units, balanceG };
 }
 
 describe("HydroVmr0017Module", function () {
+  isolateClock();
   async function fixture() {
     await ensureHts();
     const [admin, operator] = await ethers.getSigners();
@@ -83,13 +57,13 @@ describe("HydroVmr0017Module", function () {
   it("recomputes the registry's ER, including the carried ledger", async function () {
     const { registry, module, design } = await loadFixture(fixture);
     const first = await attestationInput(registry, PLANT_ID);
-    const params = encodeParams(design, design.creditingStart);
-    const energy = encodeEnergy(first.netEnergyWh, first.grossEnergyWh, first.fuelG, first.leakageG);
+    const params = paramsFromDesign(design, design.creditingStart);
+    const energy1 = energy(first.netEnergyWh, first.grossEnergyWh, first.fuelG, first.leakageG);
     const preview = await module.quantify(params, ethers.ZeroHash, {
       periodStart: first.periodStart,
       periodEnd: first.periodEnd,
-      metered: energy,
-      verified: energy,
+      metered: energy1,
+      verified: energy1,
     });
     const onChain = await registry.quantify(PLANT_ID, first);
     expect(preview.reductionG).to.equal(onChain.reductionG);
@@ -97,7 +71,7 @@ describe("HydroVmr0017Module", function () {
     await registry.submitAttestation(first);
     await time.increase(HOUR);
     const second = await attestationInput(registry, PLANT_ID, { plantSequence: 1 });
-    const energy2 = encodeEnergy(second.netEnergyWh, second.grossEnergyWh, second.fuelG, second.leakageG);
+    const energy2 = energy(second.netEnergyWh, second.grossEnergyWh, second.fuelG, second.leakageG);
     const again = await module.quantify(params, preview.newState, {
       periodStart: second.periodStart,
       periodEnd: second.periodEnd,
@@ -114,19 +88,19 @@ describe("HydroVmr0017Module", function () {
     await time.increaseTo(FIVE_YEAR_FROM + 86_400n);
     const start = FIVE_YEAR_FROM;
     const base = await plantDesign({ methodology: 1, creditingStart: start, creditingEnd: start + 7n * YEAR });
-    const seven = encodeParams(base, FIVE_YEAR_FROM);
+    const seven = paramsFromDesign(base, FIVE_YEAR_FROM);
     await expect(module.validateProject(seven)).to.be.revertedWithCustomError(module, "InvalidCreditingPeriod");
 
     const fiveDesign = { ...base, creditingEnd: start + 5n * YEAR };
-    const terms = await module.validateProject(encodeParams(fiveDesign, FIVE_YEAR_FROM));
+    const terms = await module.validateProject(paramsFromDesign(fiveDesign, FIVE_YEAR_FROM));
     expect(terms.creditingEnd - terms.creditingStart).to.equal(5n * YEAR);
   });
 
   it("renews only with the same span, and never after a 10-year period", async function () {
     const { module, design } = await loadFixture(fixture);
-    const params = encodeParams(design, design.creditingStart);
+    const params = paramsFromDesign(design, design.creditingStart);
     const nextStart = design.creditingEnd;
-    const longer = encodeParams(
+    const longer = paramsFromDesign(
       { ...design, creditingStart: nextStart, creditingEnd: nextStart + 10n * YEAR },
       design.creditingStart,
     );
@@ -134,7 +108,7 @@ describe("HydroVmr0017Module", function () {
       module.validateRenewal(params, longer, design.creditingStart, design.creditingEnd, 1),
     ).to.be.revertedWithCustomError(module, "RenewalSpan");
 
-    const ten = encodeParams(
+    const ten = paramsFromDesign(
       {
         ...design,
         creditingStart: design.creditingStart,
@@ -145,5 +119,228 @@ describe("HydroVmr0017Module", function () {
     await expect(
       module.validateRenewal(ten, ten, design.creditingStart, design.creditingStart + 10n * YEAR, 1),
     ).to.be.revertedWithCustomError(module, "NotRenewable");
+  });
+
+  describe("greenfield parity with the legacy registry", function () {
+    for (const live of LIVE_ATTESTATIONS) {
+      it(`reproduces live attestation #${live.id} (${live.plantId}): ${live.expected.reductionG} g`, async function () {
+        const module = await ethers.deployContract("HydroVmr0017Module");
+        const params = paramsFromDesign(
+          { ...live.design, baselineWh: 0n, baselineEndsAt: 0n },
+          live.design.creditingStart,
+        );
+        const e = energy(live.netEnergyWh, live.grossEnergyWh, live.fuelG, 0n);
+        const q = await module.quantify(params, ethers.ZeroHash, {
+          periodStart: live.periodStart,
+          periodEnd: live.periodEnd,
+          metered: e,
+          verified: e,
+        });
+        const b = decodeBreakdown(q.breakdown);
+        expect(q.reductionG).to.equal(live.expected.reductionG);
+        expect(b.baselineG).to.equal(live.expected.baselineG);
+        expect(b.reservoirG).to.equal(live.expected.reservoirG);
+        expect(b.fossilG).to.equal(live.expected.fossilFuelG);
+        expect(b.leakageG).to.equal(live.expected.leakageG);
+        expect(b.units).to.equal(live.expected.unitsMinted);
+        expect(b.balanceG).to.equal(live.expected.balanceG);
+      });
+    }
+
+    for (const vector of QUANTIFICATION_VECTORS) {
+      it(`matches the shared vectors: ${vector.name}`, async function () {
+        const module = await ethers.deployContract("HydroVmr0017Module");
+        const start = 1_700_000_000n;
+        const { baselineEndsAtDay, ...integers } = vector.design;
+        const params = paramsFromDesign(
+          {
+            ...integers,
+            baselineWh: BigInt(integers.baselineWh),
+            baselineEndsAt: baselineEndsAtDay === null ? 0n : start + BigInt(baselineEndsAtDay * 86_400),
+            creditingStart: start,
+            creditingEnd: start + 7n * YEAR,
+            designHash: ethers.id(vector.name),
+          },
+          start,
+        );
+        let state = ethers.ZeroHash;
+        for (const p of vector.periods) {
+          const e = energy(BigInt(p.netWh), BigInt(p.grossWh), BigInt(p.fuelG), BigInt(p.leakageG));
+          const q = await module.quantify(params, state, {
+            periodStart: start + BigInt(p.startDay * 86_400),
+            periodEnd: start + BigInt((p.startDay + 1) * 86_400),
+            metered: e,
+            verified: e,
+          });
+          const b = decodeBreakdown(q.breakdown);
+          expect(b.projectWh, `day ${p.startDay} EG_PJ`).to.equal(p.expected.egProjectWh);
+          expect(b.baselineG, `day ${p.startDay} BE`).to.equal(p.expected.baselineG);
+          expect(b.reservoirG, `day ${p.startDay} PE_HP`).to.equal(p.expected.reservoirG);
+          expect(b.fossilG, `day ${p.startDay} PE_FF`).to.equal(p.expected.fossilFuelG);
+          expect(b.leakageG, `day ${p.startDay} LE`).to.equal(p.expected.leakageG);
+          expect(q.reductionG, `day ${p.startDay} ER`).to.equal(p.expected.reductionG);
+          expect(b.units, `day ${p.startDay} units`).to.equal(p.expected.unitsMinted);
+          expect(b.balanceG, `day ${p.startDay} balance`).to.equal(p.expected.balanceG);
+          state = q.newState;
+        }
+      });
+    }
+  });
+
+  describe("metering rules", function () {
+    const START = 1_700_000_000n;
+    async function setup() {
+      const module = await ethers.deployContract("HydroVmr0017Module");
+      const design = {
+        projectType: 0,
+        methodology: 1,
+        capacityKw: 500,
+        baselineCapacityKw: 0,
+        reservoirAreaM2: 0,
+        baselineReservoirAreaM2: 0,
+        efGridGPerMwh: 573_378,
+        fuelCoefGPerTonne: 3_238_840,
+        baselineWh: 0n,
+        baselineEndsAt: 0n,
+        creditingStart: START,
+        creditingEnd: START + 7n * YEAR,
+        designHash: ethers.id("metering"),
+      };
+      return { module, design, params: paramsFromDesign(design, START) };
+    }
+    const hour = (metered: string, verified = metered, periodStart = START, periodEnd = START + 3_600n) => ({
+      periodStart,
+      periodEnd,
+      metered,
+      verified,
+    });
+
+    it("rejects gross generation above nameplate × period", async function () {
+      const { module, params } = await setup();
+      const e = energy(400_000n, 500_001n, 0n, 0n); // 500 kW × 1 h = 500,000 Wh
+      await expect(module.quantify(params, ethers.ZeroHash, hour(e))).to.be.revertedWithCustomError(
+        module,
+        "EnergyExceedsCapacity",
+      );
+    });
+
+    it("rejects net export above gross generation", async function () {
+      const { module, params } = await setup();
+      const e = energy(460_001n, 460_000n, 0n, 0n);
+      await expect(module.quantify(params, ethers.ZeroHash, hour(e))).to.be.revertedWithCustomError(
+        module,
+        "NetExceedsGross",
+      );
+    });
+
+    it("lets the verifier lower net export and raise fuel and leakage", async function () {
+      const { module, params } = await setup();
+      const metered = energy(450_000n, 460_000n, 0n, 0n);
+      const lowered = energy(400_000n, 460_000n, 10n, 5n);
+      const full = await module.quantify(params, ethers.ZeroHash, hour(metered));
+      const q = await module.quantify(params, ethers.ZeroHash, hour(metered, lowered));
+      expect(q.reductionG).to.be.lessThan(full.reductionG);
+    });
+
+    it("rejects a verifier figure that raises net export or lowers fuel, leakage or gross", async function () {
+      const { module, params } = await setup();
+      const metered = energy(450_000n, 460_000n, 10n, 5n);
+      for (const verified of [
+        energy(450_001n, 460_000n, 10n, 5n),
+        energy(450_000n, 460_000n, 9n, 5n),
+        energy(450_000n, 460_000n, 10n, 4n),
+        energy(450_000n, 459_999n, 10n, 5n),
+      ]) {
+        await expect(module.quantify(params, ethers.ZeroHash, hour(metered, verified))).to.be.revertedWithCustomError(
+          module,
+          "NotMetered",
+        );
+      }
+    });
+
+    it("rejects fuel on a plant without a registered fuel coefficient", async function () {
+      const { module, design } = await setup();
+      const params = paramsFromDesign({ ...design, fuelCoefGPerTonne: 0 }, START);
+      const e = energy(450_000n, 460_000n, 1n, 0n);
+      await expect(module.quantify(params, ethers.ZeroHash, hour(e))).to.be.revertedWithCustomError(
+        module,
+        "FuelNotRegistered",
+      );
+    });
+
+    it("rejects a period that spans two crediting years", async function () {
+      const { module, params } = await setup();
+      const e = energy(1n, 1n, 0n, 0n);
+      const boundary = START + YEAR;
+      await expect(
+        module.quantify(params, ethers.ZeroHash, hour(e, e, boundary - 60n, boundary + 60n)),
+      ).to.be.revertedWithCustomError(module, "PeriodCrossesCreditingYear");
+    });
+  });
+
+  describe("project validation", function () {
+    it("requires a registration-request date and a calibration certificate", async function () {
+      const module = await ethers.deployContract("HydroVmr0017Module");
+      const design = await plantDesign({ methodology: 1 });
+      await expect(module.validateProject(paramsFromDesign(design, 0n))).to.be.revertedWithCustomError(
+        module,
+        "MissingRegistrationRequest",
+      );
+      const noCalibration = encodeParams({
+        ...design,
+        registrationRequestedAt: design.creditingStart,
+        calibrationValidUntil: 0n,
+        meteringHash: ethers.ZeroHash,
+      });
+      await expect(module.validateProject(noCalibration)).to.be.revertedWithCustomError(module, "MissingCalibration");
+    });
+
+    it("rejects a registration request dated in the future", async function () {
+      const module = await ethers.deployContract("HydroVmr0017Module");
+      const design = await plantDesign({ methodology: 1 });
+      const future = BigInt(await time.latest()) + 86_400n;
+      await expect(module.validateProject(paramsFromDesign(design, future))).to.be.revertedWithCustomError(
+        module,
+        "RegistrationInTheFuture",
+      );
+    });
+
+    it("keeps 7- and 10-year VMR0017 periods for requests before 1 Jan 2027", async function () {
+      const module = await ethers.deployContract("HydroVmr0017Module");
+      const design = await plantDesign({ methodology: 1 });
+      const requested = design.creditingStart;
+      expect(requested < FIVE_YEAR_FROM).to.equal(true);
+      const terms = await module.validateProject(paramsFromDesign(design, requested));
+      expect(terms.creditingEnd - terms.creditingStart).to.equal(7n * YEAR);
+      const ten = { ...design, creditingEnd: design.creditingStart + 10n * YEAR };
+      const t10 = await module.validateProject(paramsFromDesign(ten, requested));
+      expect(t10.creditingEnd - t10.creditingStart).to.equal(10n * YEAR);
+    });
+
+    it("renews only the grid factor, the dates and the calibration, at most three periods in total", async function () {
+      const module = await ethers.deployContract("HydroVmr0017Module");
+      const design = await plantDesign({ methodology: 1 });
+      const params = paramsFromDesign(design, design.creditingStart);
+      const next = { ...design, creditingStart: design.creditingEnd, creditingEnd: design.creditingEnd + 7n * YEAR };
+      const ok = paramsFromDesign({ ...next, efGridGPerMwh: 600_000 }, design.creditingStart);
+      await time.increaseTo(design.creditingEnd);
+      const terms = await module.validateRenewal(params, ok, design.creditingStart, design.creditingEnd, 1);
+      expect(terms.creditingStart).to.equal(design.creditingEnd);
+
+      const bigger = paramsFromDesign({ ...next, capacityKw: 600 }, design.creditingStart);
+      await expect(
+        module.validateRenewal(params, bigger, design.creditingStart, design.creditingEnd, 1),
+      ).to.be.revertedWithCustomError(module, "ParamsChanged");
+      const overlap = paramsFromDesign(
+        { ...next, creditingStart: design.creditingEnd - 1n, creditingEnd: design.creditingEnd - 1n + 7n * YEAR },
+        design.creditingStart,
+      );
+      await expect(
+        module.validateRenewal(params, overlap, design.creditingStart, design.creditingEnd, 1),
+      ).to.be.revertedWithCustomError(module, "RenewalOverlap");
+      await expect(
+        module.validateRenewal(params, ok, design.creditingStart, design.creditingEnd, 3),
+      ).to.be.revertedWithCustomError(module, "NotRenewable");
+    });
   });
 });

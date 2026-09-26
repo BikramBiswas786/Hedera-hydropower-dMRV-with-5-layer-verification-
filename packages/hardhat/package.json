@@ -16,6 +16,7 @@
     "format": "prettier --write './**/*.(ts|sol)'",
     "lint": "eslint",
     "lint-staged": "eslint",
+    "size": "hardhat compile && ts-node scripts/checkContractSizes.ts",
     "test": "hardhat test",
     "verify": "hardhat verify",
     "verify:testnet": "hardhat verify --network hederaTestnet",

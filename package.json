@@ -29,6 +29,7 @@
     "hardhat:lint": "yarn workspace @sh/hardhat lint",
     "hardhat:lint-staged": "yarn workspace @sh/hardhat lint-staged",
     "hardhat:test": "yarn workspace @sh/hardhat test",
+    "hardhat:size": "yarn workspace @sh/hardhat size",
     "hardhat:test:fork": "yarn workspace @sh/hardhat test:fork",
     "hardhat:test:gas": "yarn workspace @sh/hardhat test:gas",
     "hardhat:verify": "yarn workspace @sh/hardhat verify",

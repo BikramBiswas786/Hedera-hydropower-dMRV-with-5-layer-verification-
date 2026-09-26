@@ -32,3 +32,6 @@ dist
 .skill-cache/
 .harness-skills/
 .harness-context/
+
+# Per-plant meter keys and other local-only key material (never commit)
+.secrets/

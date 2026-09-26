@@ -4,10 +4,13 @@ pragma solidity ^0.8.28;
 import { AccessControl } from "@openzeppelin/contracts/access/AccessControl.sol";
 import { ReentrancyGuard } from "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 import { ECDSA } from "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
-import { AggregatorV3Interface } from "./interfaces/AggregatorV3Interface.sol";
-import { HederaTokenLib } from "./lib/HederaTokenLib.sol";
+import { AggregatorV3Interface } from "../interfaces/AggregatorV3Interface.sol";
+import { HederaTokenLib } from "../lib/HederaTokenLib.sol";
 
-/// @title HydroCreditRegistry
+/// @title HydroCreditRegistry (legacy)
+/// @notice LEGACY. This is the source of the live testnet registry 0x9cdB5782a10c41a103B722d1B8fa9CfaF84107a5 (commit
+/// 5b7fe3f). New deployments use `DmrvRegistry` + `HydroVmr0017Module` + `CreditMarket`. It stays compiled so the
+/// parity tests can prove the module reproduces its arithmetic, and so the app can read and reproduce old evidence.
 /// @notice Carbon-credit registry for grid-connected hydropower under CDM ACM0002 (large scale) and AMS-I.D
 /// (small scale), or Verra VMR0017 v1.0 applied with ACM0002 v22.0. Each plant is registered with its methodology
 /// and validated design: project type, reservoir areas, the ex-ante
