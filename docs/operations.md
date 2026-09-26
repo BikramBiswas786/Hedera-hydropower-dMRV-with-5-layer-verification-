@@ -149,15 +149,14 @@ Admin changes after the handover go through the threshold account:
 
 ### SaucerSwap guard
 
-The on-chain guard compares a SaucerSwap WHBAR/USDC pool with the oracle consensus and reverts beyond 3%.
+The on-chain guard compares the pair stored on `CreditMarket` with the oracle and reverts beyond 3%.
 `setPoolGuardEnabled(false)` reverts. The admin can repoint the pool only.
 
-- **This source.** A quote with no pool reverts. The next deploy stores the testnet V2 pool with the check on.
-- **Testnet price.** On 26 Sep 2026 that pool priced HBAR near $2 against an oracle near $0.094, so sales on a new
-  deploy revert until the pool is within 3%. The market already deployed does not have this rule.
-- **Mainnet.** The V2 WHBAR/USDC pool tracked the oracle on the same date.
-- **Limits.** A spot price can be moved in one block, so the guard can block sales. It cannot make them cheaper,
-  because payment uses the oracle price.
+The live market `0x5aeDe76fc6625cfA3227FFf70197D4D7ff3e5030` has this rule. It swaps through router `0.0.19264` and the pair is `0xF98D0dF4eC60d57f24Ce7BD24eAcAdF045219869`.
+
+The public testnet V1 WHBAR/USDC pair (`0x87664e55d9606657f049139FF654390A72657667`, factory `0.0.9959`) priced HBAR at $2.28 on 26 Sep 2026. The oracle was about $0.094. Pointing the guard at that pair would reject every sale. The exhibit uses a pair seeded on the same factory at the Chainlink price. A mainnet deploy uses the public V1 pair `0.0.1462797`, which was 24 bps from Chainlink the same day. Nothing is deployed on mainnet.
+
+A spot price can be moved in one block, so the guard can block sales. It cannot make them cheaper, because payment uses the oracle price.
 
 ## Security model and limitations
 

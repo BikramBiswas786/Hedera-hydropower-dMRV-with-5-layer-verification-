@@ -47,7 +47,7 @@ What the tests pin down:
   registry's 4 791 542 g and 73 386 435 g.
 - **CreditMarket**: escrow in registry custody, oracle-priced settlement, refunds, proceeds, buy-and-retire, and the
   SaucerSwap guard: V1 `getReserves` and V2 `slot0` (WHBAR as token0 and token1) read in feed decimals, settlement
-  within 3%, blocked beyond 3% in either direction and on an illiquid pool, admin-disableable, config validation.
+  within 3%, blocked beyond 3% in either direction and on an illiquid pool, cannot be switched off, config validation.
 - **Contract size**: every deployable contract outside `mocks/` and `legacy/` is covered by the 24,064 B guard.
 - **Legacy HydroCreditRegistry** (kept for evidence): registration rules (PD, baselines, EF range, crediting period, renewal), on-chain ER with
   fuel and leakage, remainders and deficits, crediting-year and stale-ledger guards, nameplate and net ≤ gross,

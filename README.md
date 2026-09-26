@@ -59,32 +59,23 @@ Live app: [hydro-dmrv.vercel.app](https://hydro-dmrv.vercel.app). MCP: `https://
 
 ## What is on testnet
 
-Two registries (plus a superseded, unused parallel deploy listed last), and the evidence stays linked to the one that produced it:
+The app reads one registry. Older ones stay on chain so their mints still reproduce. Link the transactions below, not a contract's full history.
 
-| | Legacy `HydroCreditRegistry` (phase 0) | `DmrvRegistry` + `CreditMarket` (this deploy) |
-| --- | --- | --- |
-| Address | [`0x9cdB5782…84107a5`](https://hashscan.io/testnet/contract/0x9cdB5782a10c41a103B722d1B8fa9CfaF84107a5) (0.0.10726070), read-only | `DmrvRegistry` [`0xaf9C76B4…9E0129`](https://hashscan.io/testnet/contract/0xaf9C76B48B317cee770ED6AE038D516b269E0129), `CreditMarket` [`0x5aeDe76f…3e5030`](https://hashscan.io/testnet/contract/0x5aeDe76fc6625cfA3227FFf70197D4D7ff3e5030), 26 Sep 2026 |
-| Who can mint | One verifier key | Meter key + VVB key (EIP-712), neither alone |
-| Admin | Deployer | Operator `0.0.10721162` for now. Hand it to a 2-of-3 account with `ADMIN_ADDRESS` |
-| SaucerSwap check | Off-chain only | The purchase calls the SaucerSwap router. If the swap fails, nothing is sold |
-| Evidence | Legacy table | The mint and the buy-and-retire in the first table |
-
-The app reads this registry (`deployedContracts.ts`, chain 296). Older registries stay readable by address. Link the transactions below, not a contract's full transaction list.
-
-| What (this deploy, 26 Sep 2026) | Where |
+| What (26 Sep 2026) | Where |
 | --- | --- |
 | `DmrvRegistry` · module · feed | [0xaf9C76B4…](https://hashscan.io/testnet/contract/0xaf9C76B48B317cee770ED6AE038D516b269E0129) · [0x8D574327…](https://hashscan.io/testnet/contract/0x8D57432792aD39Ef2d2e104904e31b157846261d) · [0x9529A018…](https://hashscan.io/testnet/contract/0x9529A0189654834949cf78f9ce25336be59F8AbB) |
-| `CreditMarket` (this one swaps) · earlier market, guard only | [0x5aeDe76f…](https://hashscan.io/testnet/contract/0x5aeDe76fc6625cfA3227FFf70197D4D7ff3e5030) · [0x2c3F315E…](https://hashscan.io/testnet/contract/0x2c3F315E693342C5572b6859A6a8F378691c9a81) |
+| `CreditMarket` | [0x5aeDe76f…](https://hashscan.io/testnet/contract/0x5aeDe76fc6625cfA3227FFf70197D4D7ff3e5030) |
 | HCS audit topic | [0.0.10729650](https://hashscan.io/testnet/topic/0.0.10729650) |
 | Credits HYCC · certificates HYRET | [0.0.10729677](https://hashscan.io/testnet/token/0.0.10729677) · [0.0.10729678](https://hashscan.io/testnet/token/0.0.10729678) |
-| SaucerSwap V1 pair, reserves at the Chainlink price ($0.093973), guard enforced | [0xF98D0dF4…](https://hashscan.io/testnet/contract/0xF98D0dF4eC60d57f24Ce7BD24eAcAdF045219869) · [set](https://hashscan.io/testnet/transaction/0xa3640f2300cd96e0eae38715285f1ad643aea562d81ce053750fa3d271321135) |
-| HYDRO-DEMO-01 `healthy`: readings, report | HCS [1](https://hashscan.io/testnet/topic/0.0.10729650/message/1), [5](https://hashscan.io/testnet/topic/0.0.10729650/message/5) |
+| SaucerSwap V1 pair the purchase swaps | [0xF98D0dF4…](https://hashscan.io/testnet/contract/0xF98D0dF4eC60d57f24Ce7BD24eAcAdF045219869) |
 | Meter + VVB signed mint → 4.791 t | [0x321b6d20…](https://hashscan.io/testnet/transaction/0x321b6d20db7b24eaee672160fcb9643d6fafd357c204934e892446ac6db11b6e) |
-| `buyAndRetire` 0.020 t. The HBAR is swapped on SaucerSwap router `0.0.19264`. The seller received the QUSD. HYRET serial 2 | [0x47358084…](https://hashscan.io/testnet/transaction/0x4735808481bde453a2354b4ed395a00ba72112fdcbb0b96c9a1196e4c5753fab) |
+| `buyAndRetire` 0.020 t on router `0.0.19264`. HYRET serial 2 | [0x47358084…](https://hashscan.io/testnet/transaction/0x4735808481bde453a2354b4ed395a00ba72112fdcbb0b96c9a1196e4c5753fab) |
 
-The VVB `0x437EB06f434aD8061DEDdfCDd0ecE68Ea435e84F` is a labelled test key, not an accredited verifier. The meter addresses are `0x1a1b0B722a17C34BE6A08FE5efD636Dd54F848A2` and `0x485e9404831A05a072eeE80Aa4BfA05946fd6bF4`. Their private keys are not in the repository.
+The public testnet WHBAR/USDC pair priced HBAR at $2.28 that day. The oracle was $0.094, so the contract would refuse every sale against it. The pair above was created on SaucerSwap factory `0.0.9959` at the Chainlink price. The seller was paid that pair's token, not USDC.
 
-Earlier phase-1 deploys, which the app no longer reads: [`0xc427610c…`](https://hashscan.io/testnet/contract/0xc427610cFfBC919dC0B2c3f71644a4fDcB7ef84a) (guard off) and [`0xe34BeFc4…`](https://hashscan.io/testnet/contract/0xe34BeFc4081a8e751271C3549B861e03Fac512b9). Legacy `HydroCreditRegistry` [`0x9cdB5782…`](https://hashscan.io/testnet/contract/0x9cdB5782a10c41a103B722d1B8fa9CfaF84107a5) still reproduces. `/api/registry/attestations/{id}/reproduce?registry=0x9cdB…` reads it.
+The VVB `0x437EB06f434aD8061DEDdfCDd0ecE68Ea435e84F` is a labelled test key, not an accredited verifier. The meter addresses are `0x1a1b0B722a17C34BE6A08FE5efD636Dd54F848A2` and `0x485e9404831A05a072eeE80Aa4BfA05946fd6bF4`. Their private keys are not in the repository. Admin is operator `0.0.10721162` until a 2-of-3 account is set.
+
+Older deploys, not read by the app, are in [docs/operations.md](docs/operations.md). The legacy registry [`0x9cdB5782…`](https://hashscan.io/testnet/contract/0x9cdB5782a10c41a103B722d1B8fa9CfaF84107a5) still reproduces the same two greenfield amounts.
 
 The legacy `HydroCreditRegistry` compiles to 24,551 B, 25 under Hedera's 24,576-byte limit, so it could not take another feature. After the split, `yarn hardhat:size` (a CI gate at 24,064 B) reports: `DmrvRegistry` 20,862 B, `CreditMarket` 10,131 B, `HydroVmr0017Module` 7,028 B, `ResilientHbarUsdFeed` 2,534 B. Since the redeploy the live issuer is `DmrvRegistry`.
 
