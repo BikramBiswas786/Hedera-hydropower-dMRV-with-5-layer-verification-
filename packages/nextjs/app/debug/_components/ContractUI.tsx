@@ -11,8 +11,11 @@ type ContractUIProps = {
   className?: string;
 };
 
+const PURCHASE = new Set(["buy", "buyAndRetire"]);
+
 /**
  * UI component to interface with deployed contracts.
+ * Purchases are left off the registry so this page cannot skip the SaucerSwap check.
  **/
 export const ContractUI = ({ contractName }: ContractUIProps) => {
   const { targetNetwork } = useTargetNetwork();
@@ -34,5 +37,25 @@ export const ContractUI = ({ contractName }: ContractUIProps) => {
     );
   }
 
-  return <Contract contractName={contractName as string} contract={deployedContractData} chainId={targetNetwork.id} />;
+  const hidePurchase = contractName === "HydroCreditRegistry";
+  const contract = hidePurchase
+    ? {
+        ...deployedContractData,
+        abi: deployedContractData.abi.filter(
+          item => !("name" in item) || !PURCHASE.has(String(item.name)),
+        ) as typeof deployedContractData.abi,
+      }
+    : deployedContractData;
+
+  return (
+    <div className="flex flex-col gap-3">
+      {hidePurchase ? (
+        <p className="m-0 text-sm">
+          Buy and buy-and-retire are not on this page. Use the market. It will not build a purchase unless the
+          SaucerSwap pool is inside 3% of the settlement price.
+        </p>
+      ) : null}
+      <Contract contractName={contractName as string} contract={contract} chainId={targetNetwork.id} />
+    </div>
+  );
 };

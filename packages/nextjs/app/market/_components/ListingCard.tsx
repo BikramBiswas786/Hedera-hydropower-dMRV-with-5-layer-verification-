@@ -53,6 +53,7 @@ export const ListingCard = ({ listing, isOwn, nativeUnitsPerHbar, dex }: Props) 
     if (!canBuy || !address || units === null) return;
     setSending(true);
     setGateError(null);
+    let built = false;
     try {
       const response = await fetch("/api/market/prepare-purchase", {
         method: "POST",
@@ -69,6 +70,7 @@ export const ListingCard = ({ listing, isOwn, nativeUnitsPerHbar, dex }: Props) 
         setGateError(body.error ?? "No purchase transaction was built.");
         return;
       }
+      built = true;
       await writeTx({
         account: address,
         to: body.to,
@@ -76,7 +78,7 @@ export const ListingCard = ({ listing, isOwn, nativeUnitsPerHbar, dex }: Props) 
         value: BigInt(body.value),
       });
     } catch {
-      setGateError("No purchase transaction was built.");
+      if (!built) setGateError("No purchase transaction was built.");
     } finally {
       setSending(false);
     }
