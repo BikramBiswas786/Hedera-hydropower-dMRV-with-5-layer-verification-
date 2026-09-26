@@ -28,6 +28,8 @@ contract CreditMarket is AccessControl, ReentrancyGuard {
 
     DmrvRegistry public immutable REGISTRY;
     AggregatorV3Interface public immutable HBAR_USD_FEED;
+    /// @notice SaucerSwap factory. `setPoolGuard` reverts unless the pool's `factory()` is this address.
+    address public immutable SAUCER_FACTORY;
     /// @notice Native units per HBAR as seen by `msg.value`: 1e8 (tinybar) on Hedera, 1e18 on a local Hardhat EVM.
     uint256 public immutable NATIVE_UNITS_PER_HBAR;
 
@@ -93,14 +95,21 @@ contract CreditMarket is AccessControl, ReentrancyGuard {
         DmrvRegistry registry,
         AggregatorV3Interface hbarUsdFeed,
         uint256 nativeUnitsPerHbar,
-        uint32 maxPriceAge_
+        uint32 maxPriceAge_,
+        address saucerFactory
     ) {
-        if (admin == address(0) || address(registry) == address(0) || address(hbarUsdFeed) == address(0)) {
+        if (
+            admin == address(0) ||
+            address(registry) == address(0) ||
+            address(hbarUsdFeed) == address(0) ||
+            saucerFactory == address(0)
+        ) {
             revert ZeroAddress();
         }
         if (maxPriceAge_ == 0 || maxPriceAge_ > MAX_PRICE_AGE) revert PriceAgeOutOfRange(maxPriceAge_);
         REGISTRY = registry;
         HBAR_USD_FEED = hbarUsdFeed;
+        SAUCER_FACTORY = saucerFactory;
         NATIVE_UNITS_PER_HBAR = nativeUnitsPerHbar;
         maxPriceAge = maxPriceAge_;
         _grantRole(DEFAULT_ADMIN_ROLE, admin);
@@ -130,6 +139,7 @@ contract CreditMarket is AccessControl, ReentrancyGuard {
         if (!enabled || maxDeviationBps == 0 || maxDeviationBps > MAX_POOL_DEVIATION_BPS) revert InvalidPoolGuard();
         if (whbarDecimals > 18 || usdDecimals > 18) revert InvalidPoolGuard();
         address token0 = ISaucerSwapV1Pair(pool).token0();
+        if (ISaucerSwapV1Pair(pool).factory() != SAUCER_FACTORY) revert InvalidPoolGuard();
         bool whbarIsToken0 = token0 == whbar;
         if (!whbarIsToken0 && ISaucerSwapV1Pair(pool).token1() != whbar) revert InvalidPoolGuard();
         poolGuard = PoolGuard({

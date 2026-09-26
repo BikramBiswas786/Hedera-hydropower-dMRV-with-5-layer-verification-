@@ -5,6 +5,7 @@ import { ISaucerSwapV1Pair, ISaucerSwapV2Pool } from "../interfaces/ISaucerSwap.
 
 /// @notice Settable SaucerSwap V1 pair for tests.
 contract MockSaucerSwapV1Pair is ISaucerSwapV1Pair {
+    address public override factory;
     address public immutable override token0;
     address public immutable override token1;
     uint112 private _reserve0;
@@ -13,6 +14,10 @@ contract MockSaucerSwapV1Pair is ISaucerSwapV1Pair {
     constructor(address token0_, address token1_) {
         token0 = token0_;
         token1 = token1_;
+    }
+
+    function setFactory(address factory_) external {
+        factory = factory_;
     }
 
     function setReserves(uint112 reserve0, uint112 reserve1) external {
@@ -27,6 +32,7 @@ contract MockSaucerSwapV1Pair is ISaucerSwapV1Pair {
 
 /// @notice Settable SaucerSwap V2 pool for tests.
 contract MockSaucerSwapV2Pool is ISaucerSwapV2Pool {
+    address public override factory;
     address public immutable override token0;
     address public immutable override token1;
     uint160 private _sqrtPriceX96;
@@ -35,6 +41,10 @@ contract MockSaucerSwapV2Pool is ISaucerSwapV2Pool {
     constructor(address token0_, address token1_) {
         token0 = token0_;
         token1 = token1_;
+    }
+
+    function setFactory(address factory_) external {
+        factory = factory_;
     }
 
     function setState(uint160 sqrtPriceX96, uint128 liquidity_) external {

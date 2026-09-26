@@ -2,7 +2,7 @@ import { expect } from "chai";
 import { ethers } from "hardhat";
 import { loadFixture, time } from "@nomicfoundation/hardhat-network-helpers";
 import { isolateClock } from "./helpers/clock";
-import { HBAR_USD, HOUR, PROJECT_ID, deployReady, periodInput, submitPeriod } from "./helpers/dmrv";
+import { HBAR_USD, HOUR, PROJECT_ID, SAUCER_FACTORY, deployReady, periodInput, submitPeriod } from "./helpers/dmrv";
 
 const HTS_NFT_ABI = ["function ownerOf(uint256) view returns (address)", "function associate() returns (uint256)"];
 const PRICE_CENTS_PER_TONNE = 1_500n; // $15/t
@@ -38,6 +38,7 @@ async function listed() {
   const pair = await ethers.deployContract("MockSaucerSwapV1Pair", [USDC, WHBAR]);
   // 250,000 USDC against 1,000,000 WHBAR: $0.25/HBAR, equal to the oracle.
   await pair.setReserves(250_000n * 10n ** 6n, 1_000_000n * 10n ** 8n);
+  await pair.setFactory(SAUCER_FACTORY);
   await ctx.market.setPoolGuard(await pair.getAddress(), false, WHBAR, 8, 6, 300, 10_000n * 10n ** 6n, true);
   return { ...ctx, pair };
 }
@@ -206,6 +207,7 @@ describe("CreditMarket", function () {
       const pool = await ethers.deployContract("MockSaucerSwapV2Pool", [USDC, WHBAR]);
       const [num, den] = usdcPerWhbar(HBAR_USD);
       await pool.setState(sqrtPriceX96(den, num), 10n ** 12n); // token1/token0 = WHBAR per USDC
+      await pool.setFactory(SAUCER_FACTORY);
       await market.setPoolGuard(await pool.getAddress(), true, WHBAR, 8, 6, 300, 10n ** 9n, true);
       const price = await market.poolHbarUsd(8);
       expect(price).to.be.closeTo(HBAR_USD, 2n);
@@ -222,6 +224,7 @@ describe("CreditMarket", function () {
       const pool = await ethers.deployContract("MockSaucerSwapV2Pool", [WHBAR, USDC]);
       const [num, den] = usdcPerWhbar(HBAR_USD);
       await pool.setState(sqrtPriceX96(num, den), 10n ** 12n);
+      await pool.setFactory(SAUCER_FACTORY);
       await market.setPoolGuard(await pool.getAddress(), true, WHBAR, 8, 6, 300, 0, true);
       expect(await market.poolHbarUsd(8)).to.be.closeTo(HBAR_USD, 2n);
       const g = await market.poolGuard();
@@ -251,6 +254,16 @@ describe("CreditMarket", function () {
       await expect(
         market.connect(stranger).setPoolGuard(pairAddress, false, WHBAR, 8, 6, 300, 0, true),
       ).to.be.revertedWithCustomError(market, "AccessControlUnauthorizedAccount");
+    });
+
+    it("refuses a pool SaucerSwap did not create", async function () {
+      const { market, pair } = await loadFixture(withV1Pool);
+      const pairAddress = await pair.getAddress();
+      await pair.setFactory(ethers.ZeroAddress);
+      await expect(market.setPoolGuard(pairAddress, false, WHBAR, 8, 6, 300, 0, true)).to.be.revertedWithCustomError(
+        market,
+        "InvalidPoolGuard",
+      );
     });
 
     it("refuses a quote until a SaucerSwap pool is set", async function () {

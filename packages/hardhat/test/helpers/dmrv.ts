@@ -15,6 +15,8 @@ export const FEED_DECIMALS = 8;
 export const HBAR_USD = 25_000_000n; // $0.25
 export const NATIVE_PER_HBAR = 10n ** 18n; // local Hardhat EVM
 export const MIN_COMPLETENESS_BPS = 9_000;
+/** SaucerSwap V1 factory on testnet (0.0.9959). Tests point mock pools at this. */
+export const SAUCER_FACTORY = "0x00000000000000000000000000000000000026e7";
 
 /** Test keys. The meter and VVB are separate secp256k1 keys, as on a real deployment. */
 export const METER = new ethers.Wallet(ethers.id("dmrv test meter"));
@@ -262,6 +264,7 @@ export async function deployCore(): Promise<Ctx> {
     await feed.getAddress(),
     NATIVE_PER_HBAR,
     HOUR,
+    SAUCER_FACTORY,
   ]);
   return { registry, market, module, feed, admin, operator, buyer, stranger, mocked };
 }

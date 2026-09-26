@@ -89,7 +89,14 @@ const deployDmrv: DeployFunction = async function (hre: HardhatRuntimeEnvironmen
 
   const market = await deploy("CreditMarket", {
     from: deployer,
-    args: [deployer, registry.address, feed.address, config.nativeUnitsPerHbar, config.maxPriceAgeSeconds],
+    args: [
+      deployer,
+      registry.address,
+      feed.address,
+      config.nativeUnitsPerHbar,
+      config.maxPriceAgeSeconds,
+      config.saucerFactory ?? deployer,
+    ],
     log: true,
     autoMine: true,
     gasLimit: 3_000_000,

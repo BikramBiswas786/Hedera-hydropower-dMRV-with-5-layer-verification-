@@ -16,6 +16,8 @@ export type HydroNetworkConfig = {
   /** Oracle answers older than this cannot be used for settlement. Tune to the feed heartbeat. */
   maxPriceAgeSeconds: number;
   hashscanNetwork?: "testnet" | "mainnet";
+  /** SaucerSwap factory. A pool whose `factory()` is not this address cannot be set. */
+  saucerFactory?: string;
   /** SaucerSwap WHBAR/USDC pool the market cross-checks the oracle against. `undefined` on local chains. */
   poolGuard?: PoolGuardConfig;
 };
@@ -108,6 +110,7 @@ export function getHydroNetworkConfig(hre: HardhatRuntimeEnvironment): HydroNetw
         nativeUnitsPerHbar: TINYBAR_PER_HBAR,
         maxPriceAgeSeconds,
         hashscanNetwork: "testnet",
+        saucerFactory: "0x00000000000000000000000000000000001243ee", // V2 factory 0.0.1197038
         poolGuard: POOL_GUARDS.hederaTestnet,
       };
     case "hederaMainnet":
@@ -116,6 +119,7 @@ export function getHydroNetworkConfig(hre: HardhatRuntimeEnvironment): HydroNetw
         nativeUnitsPerHbar: TINYBAR_PER_HBAR,
         maxPriceAgeSeconds,
         hashscanNetwork: "mainnet",
+        saucerFactory: "0x00000000000000000000000000000000003c3951", // V2 factory 0.0.3946833
         poolGuard: POOL_GUARDS.hederaMainnet,
       };
     default:
