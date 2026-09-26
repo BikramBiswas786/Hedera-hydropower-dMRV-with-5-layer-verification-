@@ -57,9 +57,35 @@ const encode = (body: unknown) => {
 
 export type ProjectMessage = { schema: typeof PROJECT_SCHEMA; design: ProjectDesign };
 
+/**
+ * `designHash` is the SHA-256 of the project@1 document. Fields added after the testnet registration
+ * (the sensitivity table, the geographic area, the capacity band, the historical window, the renewal
+ * references) are checked by `assessProject` and are not part of this hash. Putting them in would make
+ * the published plants stop matching the registry.
+ */
+function projectDocument(design: ProjectDesign): ProjectDesign {
+  const copy = structuredClone(design);
+  if (copy.additionality) {
+    const additionality = copy.additionality as {
+      regulatorySurplusBasis?: string;
+      investment: { sensitivity?: unknown; sensitivityProbability?: string };
+      commonPractice: { geographicArea?: string; capacityBandPct?: number };
+    };
+    delete additionality.regulatorySurplusBasis;
+    delete additionality.investment.sensitivity;
+    delete additionality.investment.sensitivityProbability;
+    delete additionality.commonPractice.geographicArea;
+    delete additionality.commonPractice.capacityBandPct;
+  }
+  delete (copy as { renewal?: unknown }).renewal;
+  delete (copy as { historical?: unknown }).historical;
+  delete (copy as { historicalYears?: unknown }).historicalYears;
+  return copy;
+}
+
 /** `designHash` stored on-chain is the SHA-256 of exactly these bytes. */
 export function buildProjectMessage(design: ProjectDesign) {
-  const body: ProjectMessage = { schema: PROJECT_SCHEMA, design };
+  const body: ProjectMessage = { schema: PROJECT_SCHEMA, design: projectDocument(design) };
   const { message, hash } = encode(body);
   return { message, designHash: hash, body };
 }

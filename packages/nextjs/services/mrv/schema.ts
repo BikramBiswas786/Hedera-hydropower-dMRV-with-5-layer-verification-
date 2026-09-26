@@ -23,6 +23,11 @@ export const readingSchema = z.object({
   headM: z.number().nonnegative(),
   /** On-site fossil fuel burnt in the interval (kg), for PE_FF via TOOL03. */
   fuelKg: z.number().nonnegative().optional(),
+  /**
+   * Electricity supplied to a captive user in the interval (kWh), not to the grid. When any interval sets this,
+   * the period must still deliver more than half of (export + captive) to the grid.
+   */
+  captiveKwh: z.number().nonnegative().optional(),
   /** Environmental safeguard monitoring. Reported, never used to compute emission reductions. */
   ph: z.number().min(0).max(14).optional(),
   turbidityNtu: z.number().nonnegative().optional(),
@@ -38,6 +43,18 @@ export const meteringSchema = z.object({
   calibrationValidUntil: z.iso.datetime({ offset: true }),
   /** Uncertainty of the flow measurement in %, widening the hydraulic upper bound. */
   flowUncertaintyPct: z.number().nonnegative().max(50),
+  /** sha256 of the calibration certificate. Absent while calibration is in date, the engine records that gap. */
+  calibrationCertificateSha256: z
+    .string()
+    .regex(/^[0-9a-fA-F]{64}$/)
+    .optional(),
+  /** sha256 of the utility invoice or statement used to cross-check the revenue meter. */
+  invoiceCrossCheckSha256: z
+    .string()
+    .regex(/^[0-9a-fA-F]{64}$/)
+    .optional(),
+  /** Expanded uncertainty from the last calibration (%). Wider than the meter class is reported, not substituted. */
+  lastCalibrationUncertaintyPct: z.number().nonnegative().max(5).optional(),
   /**
    * Address of the data logger's secp256k1 key, recorded at validation like a calibration certificate. When set,
    * every batch must carry that key's signature (`provenance.ts`), or the engine rejects it.

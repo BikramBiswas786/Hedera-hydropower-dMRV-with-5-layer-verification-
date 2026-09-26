@@ -44,13 +44,14 @@ const MethodologyPage: NextPage = () => (
         Each plant is registered under one of two rule sets. <strong>Verra VMR0017</strong> v
         {METHODOLOGIES.VMR0017.version} (23 April 2026), the demo plants&apos; methodology, is applied with{" "}
         <strong>{METHODOLOGIES.ACM0002.id}</strong> v{METHODOLOGIES.ACM0002.version} as it requires: hydro of 15 MW or
-        less in Least Developed Countries, VT0008 additionality, EF_Res 100 kg CO₂e/MWh and embodied-emission leakage.
-        The <strong>CDM</strong> rules (AMS-I.D v{METHODOLOGIES["AMS-I.D"].version} up to 15 MW, ACM0002 above) remain
-        available; Verra inactivates them as standalone methodologies on 1 January 2027. <strong>TOOL03</strong> prices
-        fossil fuel burnt on site. The grid factor follows <strong>TOOL07</strong> v7.0 for CDM plants and Verra&apos;s{" "}
-        <strong>VT0011</strong> v1.0 revision of it for VMR0017 plants (build margin over all units, hydro weights 0.4 /
-        0.6). The same integer arithmetic runs in this app, in the MCP server and inside the{" "}
-        <code>HydroCreditRegistry</code> contract, and shared test vectors keep them identical.
+        less in Least Developed Countries, VT0008 additionality (a ±10% sensitivity table and a ±50% capacity band),
+        EF_Res 100 kg CO₂e/MWh and embodied-emission leakage. The <strong>CDM</strong> rules (AMS-I.D v
+        {METHODOLOGIES["AMS-I.D"].version} up to 15 MW, ACM0002 above) remain available; Verra inactivates them as
+        standalone methodologies on 1 January 2027. <strong>TOOL03</strong> prices fossil fuel burnt on site. The grid
+        factor follows <strong>TOOL07</strong> v7.0 for CDM plants and Verra&apos;s <strong>VT0011</strong> v1.0
+        revision of it for VMR0017 plants (build margin over all units, hydro weights 0.4 / 0.6). The same integer
+        arithmetic runs in this app, in the MCP server and inside the <code>HydroCreditRegistry</code> contract, and
+        shared test vectors keep them identical.
       </p>
     </PageHeader>
 

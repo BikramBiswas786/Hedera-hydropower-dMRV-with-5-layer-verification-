@@ -38,6 +38,11 @@ export type PowerUnit = {
   cdm?: boolean;
   /** Net electrical efficiency, for option A2 when fuel consumption is not reported. */
   efficiency?: number;
+  /**
+   * Other fuels burnt in the same unit. VT0011 ¶50 option A2, for a project that supplies the grid: use the fuel
+   * with the lowest CO2 emission factor. `source` is included in that choice.
+   */
+  fuels?: FuelType[];
   /** VT0011 ¶79: the TOOL09 Table 2 default efficiency, required if the unit is in the BM sample and > 10 years old. */
   tool09Efficiency?: number;
 };
@@ -47,6 +52,11 @@ export type UnitGeneration = {
   mwh: number;
   /** Fuel burnt, FC_i,m,y (t), for option A1. */
   fuelT?: number;
+  /**
+   * Electricity supplied under a purpose-built wheeling agreement (MWh). Excluded from the grid factor where it
+   * is known (VT0011 footnote to ¶45; VT0010).
+   */
+  pbwaMwh?: number;
 };
 
 export type GridYear = {
@@ -54,6 +64,13 @@ export type GridYear = {
   units: Record<string, UnitGeneration>;
   /** λ_y for the simple adjusted OM: hours per year in which LCMR sources are on the margin / 8 760. */
   lambda?: number;
+  /**
+   * Net imports from a connected electricity system (MWh). Counted at 0 t CO2/MWh: VT0011 ¶25(a1) for a project
+   * that supplies the grid. Do not also list Annex I imports here.
+   */
+  importsMwh?: number;
+  /** Imports from a system located partly or wholly in an Annex I country. Always 0 t CO2/MWh (VT0011 ¶16). */
+  annexIImportsMwh?: number;
 };
 
 export type OperatingMarginMethod = "simple" | "simple-adjusted" | "average";
@@ -97,7 +114,7 @@ export type Tool07Result = {
     method: OperatingMarginMethod;
     efTPerMwh: number;
     lowCostMustRunShare: number;
-    perYear: { year: number; efTPerMwh: number; generationMwh: number; lambda?: number }[];
+    perYear: { year: number; efTPerMwh: number; generationMwh: number; lambda?: number; importsMwh: number }[];
   };
   buildMargin: {
     efTPerMwh: number;
@@ -123,6 +140,27 @@ const weightedAverage = (items: { mwh: number; efTPerMwh: number }[]) => {
 };
 
 /**
+ * VT0011 ¶50, option A2 for a project that supplies the grid: several fuels in one unit take the lowest CO2 factor.
+ * `source` is always a candidate. This template does not serve projects that increase grid consumption (those
+ * would take the highest factor).
+ */
+function lowestSupplyFuel(unit: PowerUnit): FuelType {
+  const fuels = [unit.source as FuelType, ...(unit.fuels ?? [])];
+  return fuels.reduce((best, fuel) =>
+    co2EmissionFactorTPerGj(fuel, "lower") < co2EmissionFactorTPerGj(best, "lower") ? fuel : best,
+  );
+}
+
+/** Drops purpose-built wheeling from the MWh that enter the grid factor. */
+function gridGeneration(id: string, data: UnitGeneration): UnitGeneration {
+  const pbwa = data.pbwaMwh ?? 0;
+  if (pbwa < 0 || pbwa > data.mwh) {
+    throw new MethodologyError(`Unit ${id}: purpose-built wheeling cannot exceed generation or be negative`);
+  }
+  return pbwa === 0 ? data : { ...data, mwh: data.mwh - pbwa };
+}
+
+/**
  * EF_EL,m,y: option A1 from fuel burnt, option A2 from efficiency; LCMR units emit nothing at the margin. Under
  * VT0011 a unit with generation data only takes option A3 (0 t CO2/MWh for a project supplying the grid).
  */
@@ -131,15 +169,26 @@ export function unitEmissionFactor(
   data: UnitGeneration,
   tool: GridEmissionFactorTool = "TOOL07",
 ): UnitFactor {
-  const base = { id: unit.id, source: unit.source, commissioned: unit.commissioned, cdm: !!unit.cdm, mwh: data.mwh };
+  const delivered = gridGeneration(unit.id, data);
+  const base = {
+    id: unit.id,
+    source: unit.source,
+    commissioned: unit.commissioned,
+    cdm: !!unit.cdm,
+    mwh: delivered.mwh,
+  };
   if (isLowCostMustRun(unit.source)) return { ...base, efTPerMwh: 0, option: "LCMR" };
 
-  const fuel = unit.source as FuelType;
+  const fuel = lowestSupplyFuel(unit);
   const ef = co2EmissionFactorTPerGj(fuel, "lower");
-  if (data.fuelT !== undefined) {
-    if (data.mwh <= 0) throw new MethodologyError(`Unit ${unit.id}: fuel reported without generation`);
+  if (delivered.fuelT !== undefined) {
+    if (delivered.mwh <= 0) throw new MethodologyError(`Unit ${unit.id}: fuel reported without generation`);
     // A1: EF_EL = Σ FC × NCV × EF_CO2 / EG
-    return { ...base, efTPerMwh: (data.fuelT * netCalorificValue(fuel, "lower") * ef) / data.mwh, option: "A1" };
+    return {
+      ...base,
+      efTPerMwh: (delivered.fuelT * netCalorificValue(fuel, "lower") * ef) / delivered.mwh,
+      option: "A1",
+    };
   }
   if (unit.efficiency !== undefined) {
     if (unit.efficiency <= 0 || unit.efficiency > 1) {
@@ -156,8 +205,16 @@ export function unitEmissionFactor(
 
 function factorsForYear(input: Tool07Input, year: GridYear): UnitFactor[] {
   return input.units
-    .filter(unit => (year.units[unit.id]?.mwh ?? 0) > 0)
+    .filter(unit => gridGeneration(unit.id, year.units[unit.id] ?? { mwh: 0 }).mwh > 0)
     .map(unit => unitEmissionFactor(unit, year.units[unit.id], input.tool));
+}
+
+/** Net imports, including Annex I systems. Both are 0 t CO2/MWh on this supply-side path. */
+function importMwhOf(year: GridYear): number {
+  const imports = year.importsMwh ?? 0;
+  const annexI = year.annexIImportsMwh ?? 0;
+  if (imports < 0 || annexI < 0) throw new MethodologyError(`${year.year}: net imports cannot be negative`);
+  return imports + annexI;
 }
 
 function operatingMargin(input: Tool07Input) {
@@ -172,19 +229,33 @@ function operatingMargin(input: Tool07Input) {
     const factors = factorsForYear(input, year);
     const fossil = factors.filter(f => f.option !== "LCMR");
     const lcmr = factors.filter(f => f.option === "LCMR");
-    const generationMwh = sum(factors.map(f => f.mwh));
+    const importsMwh = importMwhOf(year);
+    const imported = importsMwh > 0 ? [{ mwh: importsMwh, efTPerMwh: 0 }] : [];
+    const generationMwh = sum(factors.map(f => f.mwh)) + importsMwh;
     switch (input.operatingMargin) {
-      case "simple":
-        return { year: year.year, efTPerMwh: weightedAverage(fossil), generationMwh: sum(fossil.map(f => f.mwh)) };
+      case "simple": {
+        const set = [...fossil, ...imported];
+        return {
+          year: year.year,
+          efTPerMwh: weightedAverage(set),
+          generationMwh: sum(set.map(row => row.mwh)),
+          importsMwh,
+        };
+      }
       case "average":
-        return { year: year.year, efTPerMwh: weightedAverage(factors), generationMwh };
+        return {
+          year: year.year,
+          efTPerMwh: weightedAverage([...factors, ...imported]),
+          generationMwh,
+          importsMwh,
+        };
       case "simple-adjusted": {
         const lambda = year.lambda;
         if (lambda === undefined || lambda < 0 || lambda > 1) {
           throw new MethodologyError(`Simple adjusted OM needs λ in [0, 1] for ${year.year}`);
         }
-        const efTPerMwh = (1 - lambda) * weightedAverage(fossil) + lambda * weightedAverage(lcmr);
-        return { year: year.year, efTPerMwh, generationMwh, lambda };
+        const efTPerMwh = (1 - lambda) * weightedAverage([...fossil, ...imported]) + lambda * weightedAverage(lcmr);
+        return { year: year.year, efTPerMwh, generationMwh, lambda, importsMwh };
       }
     }
   });
@@ -325,7 +396,12 @@ function validate(input: Tool07Input) {
   for (const year of input.years) {
     for (const [id, data] of Object.entries(year.units)) {
       if (!ids.has(id)) throw new MethodologyError(`${year.year}: unknown power unit ${id}`);
-      if (data.mwh < 0 || (data.fuelT ?? 0) < 0) throw new MethodologyError(`${year.year}: ${id} has negative data`);
+      if (data.mwh < 0 || (data.fuelT ?? 0) < 0 || (data.pbwaMwh ?? 0) < 0) {
+        throw new MethodologyError(`${year.year}: ${id} has negative data`);
+      }
+      if ((data.pbwaMwh ?? 0) > data.mwh) {
+        throw new MethodologyError(`${year.year}: ${id} purpose-built wheeling exceeds generation`);
+      }
     }
   }
 }

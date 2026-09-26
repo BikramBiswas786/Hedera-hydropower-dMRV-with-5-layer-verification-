@@ -58,6 +58,8 @@ Credits: HTS [0.0.10726073](https://hashscan.io/testnet/token/0.0.10726073) (HYC
 
 Two rules in the current source are **not** on that registry yet: a crediting span of exactly 5, 7 or 10 × 365 days, and capacity-addition leakage as the higher of EG_PJ and EG_facility × Cap_add / Cap_PJ. Greenfield figures are unchanged, so the two mints still match the engine.
 
+Design assessment also checks, off-chain only, the VT0008 sensitivity table (at least ±10%), the geographic area and a capacity band of at least ±50%, the ACM0002 historical window for a retrofit or capacity addition, and a baseline-validity reference when a crediting period is renewed. A monitoring batch that reports captive supply must deliver more than half of it to the grid. The grid factor counts net imports and Annex I imports at 0 t CO2/MWh, takes the lowest fuel factor for a multi-fuel unit, and leaves purpose-built wheeling out. A measured fuel factor outside the IPCC 95% interval is refused. None of this changes a greenfield credited amount. Those evidence fields are not inside the on-chain `designHash`: that hash is the project document the testnet plants were registered with.
+
 ## Meter keys are for testing
 
 Demo meter keys are `keccak256("hydro-dmrv demo meter " + plant id)`. They are public. A verifier key can sign any period for those plants, up to the nameplate. Do not treat the testnet credits as metered production tonnes.

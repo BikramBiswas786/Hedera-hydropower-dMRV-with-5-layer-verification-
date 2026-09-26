@@ -95,6 +95,8 @@ export type Hydraulics = {
 export type AdditionalityEvidence = {
   tool: "VT0008";
   regulatorySurplus: boolean;
+  /** Which laws were checked. Required with `regulatorySurplus` under VT0008 Step 1. */
+  regulatorySurplusBasis: string;
   /**
    * Step 3, benchmark analysis (§5.4.2), which must use the project or equity IRR. (a) The IRR without carbon credit
    * revenue is below the benchmark, confirmed by the sensitivity analysis; for Core Carbon Principles labels also
@@ -108,13 +110,31 @@ export type AdditionalityEvidence = {
     benchmarkPct: number;
     sensitivityConfirms: boolean;
     decisiveIncrease: boolean;
+    /**
+     * VT0008 ¶23–24. Variables above 20% of cost or revenue, each varied by at least ±10% when no market study
+     * sets a tighter range. `irrPct` is the indicator at that variation.
+     */
+    sensitivity: { parameter: string; variationPct: number; irrPct: number }[];
+    /** VT0008 ¶25. Required when any variation reaches the benchmark. */
+    sensitivityProbability?: string;
   };
   /**
    * Step 4b (renewable power is a technology switch, §5.5.1): N_all similar projects in the applicable geographic
    * area not under the VCS Program, N_diff of them with essential distinctions. Common practice when
    * F = 1 − N_diff / N_all > 20 % and N_all − N_diff > 3.
    */
-  commonPractice: { nAll: number; nDiff: number; basis: string };
+  commonPractice: {
+    nAll: number;
+    nDiff: number;
+    basis: string;
+    /** Applicable geographic area the counts were taken from (VT0008 Step 4). */
+    geographicArea: string;
+    /**
+     * Similar projects are those inside this ± capacity band. At least 50, the default in the CDM common-practice
+     * guidance, unless a published study uses a wider net.
+     */
+    capacityBandPct: number;
+  };
   /** Validation/verification body and the report the evidence comes from. */
   assessedBy?: string;
   reportUri?: string;
@@ -140,8 +160,24 @@ export type ProjectDesign = {
   baselineReservoirAreaM2: number;
   /** Retrofit / capacity addition: annual net generation of the existing plant, at least the 5 latest years. */
   historicalGenerationMwh?: number[];
+  /** Same series with calendar years, when the monitoring report names them. Must match `historicalGenerationMwh`. */
+  historicalYears?: { year: number; mwh: number }[];
   /** Retrofit / capacity addition: DATE_BaselineRetrofit, when the existing equipment would have been replaced. */
   baselineRetrofitDate?: string;
+  /**
+   * ACM0002 ¶8(b) for a retrofit or capacity addition: the existing plant was already operating before a historical
+   * reference period of at least five years, and nothing was expanded or refurbished in between.
+   */
+  historical?: {
+    /** Commercial operation of the existing plant. Must precede `referenceStart`. */
+    commissionedAt: string;
+    /** Start of the minimum historical reference period. */
+    referenceStart: string;
+    /** No capacity expansion, retrofit or rehabilitation between `referenceStart` and this project. */
+    noChange: boolean;
+    /** TOOL10 (remaining lifetime of equipment), or the study that fixes DATE_BaselineRetrofit. */
+    remainingLifetimeBasis: string;
+  };
   /** Generating equipment moved here from another activity (AMS-I.D then requires a leakage assessment). */
   equipmentTransferred: boolean;
   /**
@@ -154,6 +190,11 @@ export type ProjectDesign = {
   /** Fossil fuel burnt on site (back-up generators, black start); null when none is used. */
   onSiteFuel: OnSiteFuel | null;
   crediting: { start: string; years: 5 | 7 | 10; period: 1 | 2 | 3 };
+  /**
+   * Second or third crediting period. ACM0002 §5.8 and the CDM baseline-validity tool: the original baseline is
+   * reassessed, and regulatory surplus is checked again.
+   */
+  renewal?: { baselineValidity: string; regulatorySurplus: string };
   /** When the registration request is filed. Defaults to the crediting start. VCS Table 8 keys off this date. */
   registrationRequest?: string;
   grid: GridEmissionFactorSource;
@@ -314,6 +355,9 @@ function additionalityOf(
   }
   const { investment } = evidence;
   if (!evidence.regulatorySurplus) failures.push("VT0008: the project must demonstrate regulatory surplus");
+  if (evidence.regulatorySurplus && evidence.regulatorySurplusBasis.trim().length < 8) {
+    failures.push("VT0008 Step 1: name the laws checked for regulatory surplus");
+  }
   if (investment.irrWithoutCreditsPct >= investment.benchmarkPct) {
     failures.push(
       `VT0008 §5.4.2(2)(a): the ${investment.irr} IRR without carbon credit revenue (${investment.irrWithoutCreditsPct}%) must be below the benchmark (${investment.benchmarkPct}%)`,
@@ -322,11 +366,31 @@ function additionalityOf(
   if (!investment.sensitivityConfirms) {
     failures.push("VT0008 §5.4.2(3): the sensitivity analysis must confirm the result under reasonable variations");
   }
+  const sensitivity = investment.sensitivity ?? [];
+  const coversTen = sensitivity.some(row => row.variationPct <= -10) && sensitivity.some(row => row.variationPct >= 10);
+  if (!coversTen) {
+    failures.push(
+      "VT0008 ¶24: the sensitivity table must vary a critical variable by at least −10% and +10% when no market study sets the range",
+    );
+  }
+  const crossesBenchmark = sensitivity.some(row => row.irrPct >= investment.benchmarkPct);
+  if (crossesBenchmark && !investment.sensitivityProbability?.trim()) {
+    failures.push("VT0008 ¶25: a variation reaches the benchmark, so the VVB must assess how likely that scenario is");
+  }
   if (investment.irrWithCreditsPct < investment.irrWithoutCreditsPct) {
     failures.push("VT0008: the IRR with carbon credit revenue cannot be below the IRR without it");
   }
   if (evidence.commonPractice.nDiff > evidence.commonPractice.nAll) {
     failures.push("VT0008 §5.5.2: N_diff cannot exceed N_all");
+  }
+  if (!evidence.commonPractice.geographicArea.trim()) {
+    failures.push("VT0008 Step 4: the applicable geographic area is required");
+  }
+  if (evidence.commonPractice.capacityBandPct < 50) {
+    failures.push("VT0008 Step 4: the capacity band used to select similar projects must be at least ±50%");
+  }
+  if (!evidence.assessedBy?.trim()) {
+    failures.push("VT0008: name the independent assessor who checked the additionality evidence");
   }
   const { factor, commonPractice } = commonPracticeOf(evidence.commonPractice);
   if (commonPractice) {
@@ -399,13 +463,46 @@ function baselineOf(design: ProjectDesign, failures: string[]): ProjectAssessmen
     return { projectType: "greenfield", equation: "EG_PJ,y = EG_facility,y", baselineWh: 0, endsAt: 0 };
   }
 
-  const history = design.historicalGenerationMwh ?? [];
+  let history = design.historicalGenerationMwh ?? [];
+  if (design.historicalYears?.length) {
+    const fromYears = design.historicalYears.map(row => row.mwh);
+    const mismatches =
+      history.length > 0 &&
+      (history.length !== fromYears.length || history.some((mwh, index) => mwh !== fromYears[index]));
+    if (mismatches) {
+      failures.push("historicalYears must list the same MWh figures, in the same order, as historicalGenerationMwh");
+    }
+    if (history.length === 0) history = fromYears;
+  }
   if (design.baselineCapacityKw <= 0) failures.push(`A ${design.projectType} needs the existing capacity Cap_BL`);
   if (design.projectType === "capacity-addition" && design.capacityKw <= design.baselineCapacityKw) {
     failures.push("A capacity addition must increase installed capacity");
   }
   if (history.length < 5) failures.push("EG_historical needs at least five years of annual generation data");
   if (!design.baselineRetrofitDate) failures.push("DATE_BaselineRetrofit is required for retrofits and additions");
+  const window = design.historical;
+  if (!window) {
+    failures.push(
+      "ACM0002 ¶8(b): record the existing plant's commissioning date, the historical reference start, a no-change attestation and the TOOL10 basis for DATE_BaselineRetrofit",
+    );
+  } else {
+    if (!window.noChange) {
+      failures.push(
+        "ACM0002 ¶8(b): no capacity expansion, retrofit or rehabilitation between the historical reference start and the project",
+      );
+    }
+    if (!window.remainingLifetimeBasis.trim()) {
+      failures.push("DATE_BaselineRetrofit needs a TOOL10 remaining-lifetime basis");
+    }
+    const commissioned = toUnix(window.commissionedAt);
+    const reference = toUnix(window.referenceStart);
+    if (commissioned > reference) {
+      failures.push("The existing plant must have started commercial operation before the historical reference period");
+    }
+    if (reference >= toUnix(design.crediting.start)) {
+      failures.push("The historical reference period must start before the crediting period");
+    }
+  }
 
   const historicalMeanMwh = history.length ? mean(history) : 0;
   const historicalSdMwh = history.length > 1 ? sampleSd(history) : 0;
@@ -473,6 +570,14 @@ export function assessProject(design: ProjectDesign): ProjectAssessment {
 
   const { years, period } = design.crediting;
   if (years === 10 && period !== 1) failures.push("A fixed 10-year crediting period cannot be renewed");
+  if (period > 1) {
+    const renewal = design.renewal;
+    if (!renewal?.baselineValidity.trim() || !renewal.regulatorySurplus.trim()) {
+      failures.push(
+        "A renewed crediting period needs a baseline-validity reference (TOOL11) and a fresh regulatory-surplus check",
+      );
+    }
+  }
   const creditingStart = toUnix(design.crediting.start);
   const creditingEnd = creditingStart + years * CREDITING_YEAR_SECONDS;
   const requestAt = design.registrationRequest ? toUnix(design.registrationRequest) : creditingStart;

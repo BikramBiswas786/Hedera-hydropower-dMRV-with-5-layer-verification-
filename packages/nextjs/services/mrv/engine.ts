@@ -365,6 +365,34 @@ export function verifyReadings(
       "info",
       `Main meter calibration expired: export reduced and import increased by its ±${metering.mainMeterAccuracyPct}% maximum permissible error in ${calibrationIntervals} interval(s)`,
     );
+  } else if (!metering.calibrationCertificateSha256) {
+    add(
+      "integrity",
+      "info",
+      "The main meter's calibration is in date, but the record has no calibration-certificate hash",
+    );
+  }
+  if (
+    metering.lastCalibrationUncertaintyPct !== undefined &&
+    metering.lastCalibrationUncertaintyPct > metering.mainMeterAccuracyPct
+  ) {
+    add(
+      "integrity",
+      "info",
+      `The last calibration expanded uncertainty (±${metering.lastCalibrationUncertaintyPct}%) is wider than the meter class (±${metering.mainMeterAccuracyPct}%)`,
+    );
+  }
+
+  if (readings.some(reading => reading.captiveKwh !== undefined)) {
+    const exported = readings.reduce((sum, reading) => sum + reading.exportKwh, 0);
+    const captive = readings.reduce((sum, reading) => sum + (reading.captiveKwh ?? 0), 0);
+    if (exported + captive > 0 && exported * 2 <= exported + captive) {
+      add(
+        "integrity",
+        "reject",
+        `ACM0002, AMS-I.D and VMR0017 apply when more than half the electricity is delivered to the grid. This period exports ${fmt(exported)} kWh and supplies ${fmt(captive)} kWh to a captive user`,
+      );
+    }
   }
 
   const excludedIntervals = intervals.filter(i => i.excluded).map(i => i.index);

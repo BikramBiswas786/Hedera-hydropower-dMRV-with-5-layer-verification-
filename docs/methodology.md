@@ -33,10 +33,10 @@ Each plant is registered on-chain under one of two rule sets, and the contract a
 | --- | --- | --- |
 | Base | "Must be used with ACM0002, v22.0"; ACM0002 applies unless VMR0017 changes it | AMS-I.D up to 15 MW, ACM0002 above |
 | Hydro eligibility | 15 MW or less (rated or authorized), Least Developed Countries only (Table 1) | any size, any host country |
-| Additionality | VT0008: regulatory surplus, benchmark analysis on project or equity IRR with a sensitivity analysis, common practice (no barrier analysis, no TOOL32) | TOOL01 / TOOL02 at validation |
+| Additionality | VT0008: regulatory surplus (laws named), benchmark analysis on project or equity IRR, a sensitivity table of at least ±10%, common practice in a named area and a capacity band of at least ±50% (no barrier analysis, no TOOL32) | TOOL01 / TOOL02 at validation |
 | EF_Res (reservoirs) | 100 kg CO₂e/MWh (§9.1) | 90 kg CO₂e/MWh |
 | Leakage | embodied emissions, 21 g CO₂e/kWh of EG_facility (greenfield) or the higher of EG_PJ and EG_facility × Cap_add / Cap_PJ (capacity addition); none for retrofits (§8.3) | 0 |
-| Grid emission factor | VT0011 v1.0 with TOOL07 v7.0: BM over all units including VCS and CDM ones, hydro weights 0.4 / 0.6, then 0.25 / 0.75 | TOOL07 v7.0 |
+| Grid emission factor | VT0011 v1.0 with TOOL07 v7.0: BM over all units including VCS and CDM ones, hydro weights 0.4 / 0.6, then 0.25 / 0.75; net and Annex I imports at 0 t CO₂/MWh; lowest fuel factor; purpose-built wheeling excluded | TOOL07 v7.0 |
 
 Verra inactivates ACM0002 and AMS-I.D as standalone methodologies on 1 January 2027, so new projects register under
 VMR0017. The CDM path stays for existing registrations and for comparison. It is not a VCS registration: the scope note allows grid hydro only at 15 MW or less in a UN Least Developed Country, which is the VMR0017 path. `assessProject` reports that as `vcs.inScope`. The contract stores the methodology code and the design hash. It does not store the host country. The **Methodology** page (`/methodology`) shows all of it on the demo
