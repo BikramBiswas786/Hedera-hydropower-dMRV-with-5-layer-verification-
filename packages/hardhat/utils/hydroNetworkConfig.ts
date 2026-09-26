@@ -60,7 +60,7 @@ const ORACLES: Record<"hederaTestnet" | "hederaMainnet", OracleSources> = {
 // WHBAR 0.0.1456986, 1500). In both pools token0 is USDC, so WHBAR is token1.
 export const POOL_GUARDS: Record<"hederaTestnet" | "hederaMainnet", PoolGuardConfig> = {
   hederaTestnet: {
-    pool: "0x914b98992D7ed602D1F5D9084ECE8160Fc0E741A",
+    pool: "0x914B98992d7eD602D1f5d9084ECe8160Fc0e741a",
     isV2: true,
     whbar: "0x0000000000000000000000000000000000003aD2",
     whbarDecimals: 8,
@@ -73,7 +73,7 @@ export const POOL_GUARDS: Record<"hederaTestnet" | "hederaMainnet", PoolGuardCon
     note: "testnet pool is illiquid and far from the market price; stored but not enforced (set POOL_GUARD_ENABLED=true to enforce)",
   },
   hederaMainnet: {
-    pool: "0xc5b707348dA504E9Be1bD4E21525459830e7B11d",
+    pool: "0xC5B707348dA504E9Be1bD4E21525459830e7B11d",
     isV2: true,
     whbar: "0x0000000000000000000000000000000000163B5a",
     whbarDecimals: 8,

@@ -67,7 +67,7 @@ beforeEach(() => {
     if (functionName === "quote") return 1_000_000n;
     if (functionName === "NATIVE_UNITS_PER_HBAR") return 100_000_000n;
     if (functionName === "poolGuard")
-      return ["0x914b98992D7ed602D1F5D9084ECE8160Fc0E741A", true, false, false, 8, 6, 300, 0n];
+      return ["0x914B98992d7eD602D1f5d9084ECe8160Fc0e741a", true, false, false, 8, 6, 300, 0n];
     throw new Error(functionName);
   });
 });
@@ -94,7 +94,7 @@ describe("prepare_purchase", () => {
     expect(prepared.functionName).toBe("buyAndRetire");
     expect(prepared.dex.accepted).toBe(true);
     expect(prepared.onChainPoolGuard).toEqual({
-      pool: "0x914b98992D7ed602D1F5D9084ECE8160Fc0E741A",
+      pool: "0x914B98992d7eD602D1f5d9084ECe8160Fc0e741a",
       version: "V2",
       enabled: false,
       maxDeviationBps: 300,

@@ -7,7 +7,7 @@ import { GenericContractsDeclaration } from "~~/utils/scaffold-hbar/contract";
 const deployedContracts = {
   296: {
     CreditMarket: {
-      address: "0x0000000000000000000000000000000000000000",
+      address: "0xcfFD810Ee8d6a17b2C711D41f967e14EEEa5d767",
       abi: [
         {
           inputs: [
@@ -1175,10 +1175,10 @@ const deployedContracts = {
         revokeRole: "@openzeppelin/contracts/access/AccessControl.sol",
         supportsInterface: "@openzeppelin/contracts/access/AccessControl.sol",
       },
-      deployedOnBlock: 0,
+      deployedOnBlock: 41003503,
     },
     DmrvRegistry: {
-      address: "0x0000000000000000000000000000000000000000",
+      address: "0xe34BeFc4081a8e751271C3549B861e03Fac512b9",
       abi: [
         {
           inputs: [
@@ -3981,10 +3981,10 @@ const deployedContracts = {
         revokeRole: "@openzeppelin/contracts/access/AccessControl.sol",
         supportsInterface: "@openzeppelin/contracts/access/AccessControl.sol",
       },
-      deployedOnBlock: 0,
+      deployedOnBlock: 41003500,
     },
     HydroVmr0017Module: {
-      address: "0x0000000000000000000000000000000000000000",
+      address: "0xD5F56249f628080D4b0fF2Ff23809e1624F64950",
       abi: [
         {
           inputs: [
@@ -4524,10 +4524,10 @@ const deployedContracts = {
         validateRenewal: "contracts/interfaces/IMethodology.sol",
         version: "contracts/interfaces/IMethodology.sol",
       },
-      deployedOnBlock: 0,
+      deployedOnBlock: 41003497,
     },
     ResilientHbarUsdFeed: {
-      address: "0xcAE7c6eA987107543C1aD0F79802d02cba77cbb8",
+      address: "0x1671e29973A8E38beA1DeADf3125E60930da0046",
       abi: [
         {
           inputs: [
@@ -4821,7 +4821,7 @@ const deployedContracts = {
         description: "contracts/interfaces/AggregatorV3Interface.sol",
         latestRoundData: "contracts/interfaces/AggregatorV3Interface.sol",
       },
-      deployedOnBlock: 40999106,
+      deployedOnBlock: 41003495,
     },
   },
   31337: {

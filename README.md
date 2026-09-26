@@ -63,24 +63,37 @@ Two registries, and the evidence stays linked to the one that produced it:
 
 | | Legacy `HydroCreditRegistry` (phase 0) | `DmrvRegistry` + `CreditMarket` (phase 1, this source) |
 | --- | --- | --- |
-| Address | [`0x9cdB5782…84107a5`](https://hashscan.io/testnet/contract/0x9cdB5782a10c41a103B722d1B8fa9CfaF84107a5), read-only from the app | **Pending redeploy** with the maintainer's key (steps in [docs/operations.md](docs/operations.md#phase-1-redeploy)) |
+| Address | [`0x9cdB5782…84107a5`](https://hashscan.io/testnet/contract/0x9cdB5782a10c41a103B722d1B8fa9CfaF84107a5), read-only from the app | [`0xe34BeFc4…ac512b9`](https://hashscan.io/testnet/contract/0xe34BeFc4081a8e751271C3549B861e03Fac512b9) |
 | Who can mint | One verifier key | Meter key + VVB key (EIP-712), neither alone |
-| Meter keys | Public demo derivation | Per plant, generated; the deploy refuses demo keys on Hedera |
-| Admin | Deployer | 2-of-3 threshold account (`yarn admin:threshold`) |
-| SaucerSwap check | Off-chain in `prepare_purchase` only | Also in `CreditMarket.settlementPrice()`; configurable and admin-disableable. Off on testnet (see [Buying](#buying)) |
-| Evidence | The two mints and the retirement below | Produced after the redeploy |
+| Meter keys | Public demo derivation | Per plant, generated at deploy. Not the public demo derivation |
+| Admin | Deployer | The operator account for this deploy. A 2-of-3 handover (`yarn admin:threshold`) was not done |
+| SaucerSwap check | Off-chain in `prepare_purchase` only | The V2 testnet pool is stored on `CreditMarket` and **not enforced**. Settlement is Chainlink/Supra. See [Buying](#buying) |
+| Evidence | The two mints and the retirement below | The two mints and the retirement in the next table |
 
-Until the redeploy, the server's read routes fall back to the legacy registry. `/api/registry/attestations/{id}/reproduce?registry=0x9cdB…` always reads it. Do not point the app at the older registry `0xAEA76b83ea8e71621d443053A5Ee20D7AF8Ce746`. Link the transactions below, not the contract's transaction list (that list also shows a failed 1-tinybar probe).
+The app reads `DmrvRegistry` once this branch is what Vercel builds. `/api/registry/attestations/{id}/reproduce?registry=0x9cdB…` still reads the legacy registry. Do not point the app at the older registry `0xAEA76b83ea8e71621d443053A5Ee20D7AF8Ce746`. Link the transactions below, not a contract's transaction list.
 
-| What (legacy registry) | Where |
+| What (legacy registry `0x9cdB5782…`) | Where |
 | --- | --- |
 | Mint, HYDRO-DEMO-01 `healthy` → 4.791 t | [0xb473de58…](https://hashscan.io/testnet/transaction/0xb473de5821d62467f4cc76339c81f1109b6baff2d77f70aea7b8156ea64f19f2) |
 | Second mint, HYDRO-DEMO-02 `diesel-backup` → 73.386 t | [0x8fef0c11…](https://hashscan.io/testnet/transaction/0x8fef0c119c3b4b2b87aa704ca3c26c9dedecc2648b96853e6f7394fc425c0e42) |
 | Retirement, 1.000 t, HYRET serial 1 | [0x9f8979fb…](https://hashscan.io/testnet/transaction/0x9f8979fbb2eefbb278b2e305deec469d0ebe752d79a511290c44cea75bb7dac9) |
 
-Credits: HTS [0.0.10726073](https://hashscan.io/testnet/token/0.0.10726073) (HYCC). Certificates: HTS [0.0.10726074](https://hashscan.io/testnet/token/0.0.10726074) (HYRET). Settlement feed: [0xcAE7c6eA…ba77cbb8](https://hashscan.io/testnet/contract/0xcAE7c6eA987107543C1aD0F79802d02cba77cbb8) (Chainlink, Supra fallback). Readings and the report for the first mint are HCS messages [1](https://hashscan.io/testnet/topic/0.0.10726081/message/1) and [5](https://hashscan.io/testnet/topic/0.0.10726081/message/5). The redeploy creates new HTS tokens; the legacy ones stay where they are.
+| What (`DmrvRegistry` `0xe34BeFc4…`, 26 Sep 2026) | Where |
+| --- | --- |
+| Registry | [0xe34BeFc4…](https://hashscan.io/testnet/contract/0xe34BeFc4081a8e751271C3549B861e03Fac512b9) |
+| Methodology module | [0xD5F56249…](https://hashscan.io/testnet/contract/0xD5F56249f628080D4b0fF2Ff23809e1624F64950) |
+| Market | [0xcfFD810E…](https://hashscan.io/testnet/contract/0xcfFD810Ee8d6a17b2C711D41f967e14EEEa5d767) |
+| Oracle feed | [0x1671e299…](https://hashscan.io/testnet/contract/0x1671e29973A8E38beA1DeADf3125E60930da0046) |
+| Mint, HYDRO-DEMO-01 `healthy` → 4.791 t | [0xfcc6a982…](https://hashscan.io/testnet/transaction/0xfcc6a9820736816427a899e1f2e722128a78b0c76b14ca3da58bed14679ce948) |
+| Second mint, HYDRO-DEMO-02 `diesel-backup` → 73.388 t | [0xb307eccf…](https://hashscan.io/testnet/transaction/0xb307eccf40feca7dae2c5cec6e576ad5605393eccb9570824249defc2ed95647) |
+| Buy and retire, 1.000 t, from `0.0.10721162`, HYRET serial 1 | [0xc3bd20e5…](https://hashscan.io/testnet/transaction/0xc3bd20e54892791966451da1ad04719a781bf69871009f54bf03232ff7d0ac0a) |
+| Pool guard stored, not enforced | [0x6f7a464f…](https://hashscan.io/testnet/transaction/0x6f7a464f10d0948c1f30239b02bd9f21fc7770100af73dcc26106ab268db5d9e) |
 
-The legacy `HydroCreditRegistry` compiles to 24,551 B, 25 under Hedera's 24,576-byte limit, so it could not take another feature. After the split, `yarn hardhat:size` (a CI gate at 24,064 B) reports: `DmrvRegistry` 20,862 B, `CreditMarket` 9,010 B, `HydroVmr0017Module` 7,028 B, `ResilientHbarUsdFeed` 2,534 B. Until the redeploy, the live issuer is still the legacy registry.
+Credits on the new registry: HTS [0.0.10727597](https://hashscan.io/testnet/token/0.0.10727597). Certificates: HTS [0.0.10727601](https://hashscan.io/testnet/token/0.0.10727601), serial 1 held by [0.0.10721162](https://hashscan.io/testnet/account/0.0.10721162). The VVB that signed both mints is `0x437EB06f434aD8061DEDdfCDd0ecE68Ea435e84F`. It is a test key, not an accredited verifier. The meter addresses are `0x1a1b0B722a17C34BE6A08FE5efD636Dd54F848A2` and `0x485e9404831A05a072eeE80Aa4BfA05946fd6bF4`. Their private keys are not in the repository. Readings for the new mints are HCS messages [11](https://hashscan.io/testnet/topic/0.0.10726081/message/11) and [16](https://hashscan.io/testnet/topic/0.0.10726081/message/16) on topic [0.0.10726081](https://hashscan.io/testnet/topic/0.0.10726081).
+
+Legacy credits stay on HTS [0.0.10726073](https://hashscan.io/testnet/token/0.0.10726073) (HYCC) and [0.0.10726074](https://hashscan.io/testnet/token/0.0.10726074) (HYRET). The legacy feed is [0xcAE7c6eA…ba77cbb8](https://hashscan.io/testnet/contract/0xcAE7c6eA987107543C1aD0F79802d02cba77cbb8).
+
+The legacy `HydroCreditRegistry` compiles to 24,551 B, 25 under Hedera's 24,576-byte limit. After the split, `yarn hardhat:size` (a CI gate at 24,064 B) reports: `DmrvRegistry` 20,862 B, `CreditMarket` 9,010 B, `HydroVmr0017Module` 7,028 B, `ResilientHbarUsdFeed` 2,534 B.
 
 Phase 1 enforces the following on-chain; the legacy registry does not:
 

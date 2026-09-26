@@ -104,8 +104,7 @@ template.json                            create-scaffold-hbar manifest
 
 ## Phase-1 redeploy
 
-This needs the maintainer's keys, and nothing below has been run from CI or by an agent. The legacy registry
-`0x9cdB5782…` stays deployed and readable; the app reads it until `deployedContracts.ts` has the new addresses.
+The 26 Sep 2026 testnet deploy is recorded in the README. Admin on that deploy is the operator account, not a threshold account. The steps below are how to repeat it. `deployedContracts.ts` on this branch has the deployed addresses for chain 296.
 
 1. **Meter keys.** `yarn hardhat:meter-keys --network hederaTestnet` writes `packages/hardhat/.secrets/meters.hederaTestnet.json`
    (gitignored). Put the private keys into the server's `METER_PRIVATE_KEYS`, or on the loggers.
