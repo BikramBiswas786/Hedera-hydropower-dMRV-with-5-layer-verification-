@@ -16,6 +16,8 @@ export type HydroNetworkConfig = {
   /** Oracle answers older than this cannot be used for settlement. Tune to the feed heartbeat. */
   maxPriceAgeSeconds: number;
   hashscanNetwork?: "testnet" | "mainnet";
+  /** SaucerSwap factory. The market pins `pool.factory()` to this address. */
+  saucerFactory?: string;
   /** SaucerSwap V1 router. A purchase swaps through it. */
   saucerRouter?: string;
   /** SaucerSwap WHBAR/USDC pool the market cross-checks the oracle against. `undefined` on local chains. */
