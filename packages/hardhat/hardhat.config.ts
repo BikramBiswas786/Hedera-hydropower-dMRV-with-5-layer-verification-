@@ -52,12 +52,18 @@ const config: HardhatUserConfig = {
     hardhat: {
       forking: {
         url: hederaRpcUrl,
-        enabled: process.env.HEDERA_FORKING === "true",
-        // A block the mirror node has already indexed; "latest" can be ahead of it and read as empty state.
-        blockNumber: process.env.HEDERA_FORK_BLOCK ? Number(process.env.HEDERA_FORK_BLOCK) : undefined,
+        // HEDERA_FORKING loads the plugin's HTS emulation. HEDERA_FORK_NETWORK=mainnet forks plain EVM state
+        // without it: the plugin reads every long-zero address that is not a token as empty, and SaucerSwap's
+        // factory is one.
+        enabled: process.env.HEDERA_FORKING === "true" || process.env.HEDERA_FORK_NETWORK === "mainnet",
         // @ts-expect-error - custom property for hedera-forking plugin
-        chainId: process.env.HEDERA_FORK_NETWORK === "mainnet" ? 295 : 296,
+        chainId: 296,
         workerPort: 10001,
+      },
+      // Without the plugin Hardhat has no hardfork history for Hedera's chain ids; Hedera's EVM is at Cancun.
+      chains: {
+        295: { hardforkHistory: { cancun: 0 } },
+        296: { hardforkHistory: { cancun: 0 } },
       },
     },
     hederaTestnet: {

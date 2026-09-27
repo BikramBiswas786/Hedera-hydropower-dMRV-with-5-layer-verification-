@@ -1,7 +1,7 @@
 name: Mainnet fork
 
 # CreditMarket against the real Hedera mainnet SaucerSwap factory, its public WHBAR/USDC pair and Chainlink's
-# HBAR/USD feed, on a fork. Reads only; no key and no HBAR are needed.
+# HBAR/USD feed, on a plain Hardhat fork of mainnet. No key and no HBAR are needed.
 on:
   push:
     branches: [main]
@@ -24,21 +24,8 @@ jobs:
 
       - run: yarn install --immutable
 
-      - name: Pin the fork a minute behind the head
-        run: |
-          rpc() { curl -s -X POST -H 'content-type: application/json' --data "$1" https://mainnet.hashio.io/api; }
-          head=$(rpc '{"jsonrpc":"2.0","id":1,"method":"eth_blockNumber","params":[]}' | jq -r .result)
-          block=$(( head - 30 ))
-          echo "HEDERA_FORK_BLOCK=$block" >> "$GITHUB_ENV"
-          echo "head $((head)), fork block $block"
-          for a in 0x0000000000000000000000000000000000103780 0xdB34c1Ef944883f0e5A2fC18B6C1978B088bD31d 0xAF685FB45C12b92b5054ccb9313e135525F9b5d5; do
-            code=$(rpc "{\"jsonrpc\":\"2.0\",\"id\":1,\"method\":\"eth_getCode\",\"params\":[\"$a\",\"$(printf '0x%x' $block)\"]}" | jq -r .result)
-            echo "$a code bytes: $(( (${#code} - 2) / 2 ))"
-          done
-
       - name: CreditMarket on a Hedera mainnet fork
         env:
-          HEDERA_FORKING: "true"
           HEDERA_FORK_NETWORK: mainnet
           HEDERA_RPC_URL: https://mainnet.hashio.io/api
         run: yarn workspace @sh/hardhat hardhat test test/MainnetFork.test.ts
