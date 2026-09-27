@@ -1,10 +1,11 @@
 import { hashscan, isLiveHederaChain } from "../network";
 import { formatHbar, quoteToTxValue } from "../pricing";
 import { type RetirementView, formatTonnes, toRetirementView } from "../views";
+import { type SellerReadiness, readSellerReadiness } from "./association";
 import { type DexCheck, readDexCheck } from "./dex";
 import { ApiError, revertReason } from "./errors";
 import { activeRegistry, legacy, publicClient, requireDeployment, requireMarket } from "./registry";
-import { type Address, type Hex, encodeFunctionData, zeroAddress } from "viem";
+import { type Address, type Hex, encodeFunctionData, parseAbi, zeroAddress } from "viem";
 import { z } from "zod";
 
 export const preparePurchaseSchema = z.object({
@@ -32,7 +33,27 @@ export type PreparedPurchase = {
    * purchase whose pool price is more than `maxDeviationBps` from the Chainlink/Supra consensus.
    */
   onChainPoolGuard: OnChainPoolGuard;
+  /** Whether the seller can receive the pool's USD token; "unknown" when the mirror node could not say. */
+  seller: SellerReadiness;
 };
+
+const PAIR_ABI = parseAbi(["function token0() view returns (address)", "function token1() view returns (address)"]);
+
+/** The seller of a listing and the USD token the swap pays them. */
+async function sellerAndUsdToken(listingId: number): Promise<{ seller: Address; usdToken: Address }> {
+  const { address, abi, client } = requireMarket();
+  const [listing, guard] = await Promise.all([
+    client.readContract({ address, abi, functionName: "getListing", args: [BigInt(listingId)] }),
+    client.readContract({ address, abi, functionName: "poolGuard" }),
+  ]);
+  const [pool, , whbarIsToken0] = guard;
+  const usdToken = await client.readContract({
+    address: pool,
+    abi: PAIR_ABI,
+    functionName: whbarIsToken0 ? "token1" : "token0",
+  });
+  return { seller: listing.seller, usdToken };
+}
 
 export type OnChainPoolGuard = {
   pool: Address;
@@ -86,6 +107,16 @@ export async function preparePurchase(input: z.input<typeof preparePurchaseSchem
       409,
     );
   }
+  const { seller: sellerAddress, usdToken } = await sellerAndUsdToken(listingId);
+  const seller = isLiveHederaChain()
+    ? await readSellerReadiness(sellerAddress, usdToken)
+    : ({ status: "unknown", reason: "local chain" } as const);
+  if (seller.status === "not-associated") {
+    throw new ApiError(
+      `The seller of listing ${listingId} has not associated ${seller.tokenId}, the USD token the swap pays them, so the purchase would revert. No purchase transaction was built.`,
+      409,
+    );
+  }
   return {
     chainId: client.chain.id,
     to: address,
@@ -97,6 +128,7 @@ export async function preparePurchase(input: z.input<typeof preparePurchaseSchem
     summary: `${retire ? "Buy and retire" : "Buy"} ${formatTonnes(units)} t CO2e from listing #${listingId} for ${exactCostHbar} HBAR`,
     dex,
     onChainPoolGuard,
+    seller,
   };
 }
 

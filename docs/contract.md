@@ -29,7 +29,7 @@ are unused.
 | `DEFAULT_ADMIN_ROLE` | 2-of-3 threshold account (`ADMIN_ADDRESS`, `yarn admin:threshold`) on both contracts | Approve modules, register and renew projects, set meters and calibration, grant `VERIFIER_ROLE`, set the audit topic, Article 6 fields, pool guard, sweep stray HBAR |
 | `VERIFIER_ROLE` | Each accredited VVB's secp256k1 key (`VERIFIER_ADDRESS`) | Sign `VerifierApproval`s. It never sends a transaction and cannot mint alone |
 | Meter | One generated key per project (`setMeter`) | Sign `MeterStatement`s |
-| `MARKET_ROLE` | `CreditMarket` | Move custody for listings and purchases, retire on a buyer's behalf |
+| `market` (set once by `setMarket`) | `CreditMarket` | Move custody for listings and purchases, retire on a buyer's behalf |
 | Relayer | Anyone (the server's operator key in practice) | Send `submitAttestation`; it cannot change a signed figure |
 
 The registry rejects an approval from the project's operator or meter (`VerifierIsParty`).
@@ -105,7 +105,7 @@ same shared vectors. The two live testnet mints reproduce through it to the gram
 | `submitAttestation(Submission)` | anyone (relayer) | Everything under "Attestation" above, then the module's `quantify`; mints ⌊(balance + ER) / 1000⌋ kg into the operator's custody and carries the remainder |
 | `preview(id, measurement)` · `meterStatementDigest(s)` · `approvalDigest(s)` | view | What an attestation would mint; the digests the two keys sign |
 | `retire(units, beneficiary)` · `claimCertificate(id)` · `withdraw(units)` | holder | Burn + certificate NFT (best-effort delivery); HTS transfer out of custody |
-| `moveCustody` · `retireFor` | `MARKET_ROLE` | Used by `CreditMarket` only |
+| `moveCustody` · `retireFor` | `market` | Used by `CreditMarket` only; `setMarket` works once, so no role grant can add a caller |
 
 **Units.** 1 HYCC token = 1 t CO₂e with 3 decimals, so one base unit is 1 kg. **Registry custody**: minted credits
 stay in the registry (the HTS treasury) and are tracked per account. Buyers need no HTS association to buy or
