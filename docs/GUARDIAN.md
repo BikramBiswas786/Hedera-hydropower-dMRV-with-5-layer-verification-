@@ -9,6 +9,19 @@ There are two ways to connect a policy:
 
 Target: **Guardian 3.7.0**. Everything marked [src] was read in the Guardian source at tag `3.7.0`.
 
+## Which Guardian: Managed Guardian cannot call out
+
+Managed Guardian (guardianservice.app) refuses every `httpRequestBlock` at validation: `There is no allowed protocols configured in environment variable ALLOWED_PROTOCOLS`. The block reads that variable on the instance [src `policy-service/src/policy-engine/block-validators/blocks/http-request-block.ts`], and a tenant cannot set it. Guardian's own quickstart sets `ALLOWED_PROTOCOLS="https"` and `BLOCK_PRIVATE_IP="false"` [src `configs/.env.quickstart.guardian.system`], so a self-hosted instance on Hedera testnet can call this app:
+
+```bash
+git clone https://github.com/hashgraph/guardian.git && cd guardian
+# An ED25519 testnet account from portal.hedera.com; Guardian pays its HCS and HTS fees from it.
+printf 'OPERATOR_ID=0.0.<id>\nOPERATOR_KEY=302e0201…\n' > .env
+docker compose -f docker-compose-quickstart.yml up --pull=always -d   # then http://localhost:3000
+```
+
+Everything Guardian writes still goes to Hedera testnet (the policy topic, the result VC's message), so the stored cross-check result is public on the mirror node like any other Guardian document. Then follow steps 1–7 below against that instance.
+
 ## Issuer of record: one mint, not two
 
 For every bridged project, **our registry is the issuer of record** and mints the HYCC credit. Guardian cross-checks and records; it must **not** mint the same tonnes. Each result VC says `issuerOfRecord: "DMRV"`. The evidence verifier refuses any Guardian chain that contains a `MintToken` VC. Patch step 5 below switches off your policy's own mint for bridged projects.
