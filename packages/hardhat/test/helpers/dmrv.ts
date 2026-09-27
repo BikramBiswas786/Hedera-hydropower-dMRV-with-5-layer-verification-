@@ -1,12 +1,7 @@
 import { TypedDataEncoder, type Wallet } from "ethers";
 import { ethers } from "hardhat";
 import { time } from "@nomicfoundation/hardhat-network-helpers";
-import type {
-  CreditMarket,
-  DmrvRegistry,
-  HydroVmr0017Module,
-  MockSaucerRouter,
-} from "../../typechain-types";
+import type { CreditMarket, DmrvRegistry, HydroVmr0017Module, MockSaucerRouter } from "../../typechain-types";
 import { ensureHts } from "./hts";
 
 export const DAY = 86_400;

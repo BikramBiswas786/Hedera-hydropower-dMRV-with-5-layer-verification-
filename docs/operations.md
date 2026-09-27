@@ -188,7 +188,8 @@ A spot price can be moved in one block, so the guard can block sales. It cannot 
   other instrument for the same generation.
 - **Registry custody** means the registry holds credits and undelivered certificates for accounts. The contracts are
   not upgradeable. The only path that moves someone else's balance is `MARKET_ROLE` (held by `CreditMarket`, for
-  listings and purchases the owner initiated).
+  listings and purchases the owner initiated). The admin grants that role, so an admin that granted it to another
+  address could move custody balances: this is why the admin must be a threshold-key account.
 - **Oracle risk** is bounded by two independent providers, a deviation guard, staleness checks and the
   seller-favouring round-up. Tune `MAX_PRICE_AGE_SECONDS` and `MAX_ORACLE_DEVIATION_BPS` to the feeds' heartbeats.
   `CreditMarket` enforces a SaucerSwap pool check on-chain on every quote and purchase (testnet and mainnet; see
