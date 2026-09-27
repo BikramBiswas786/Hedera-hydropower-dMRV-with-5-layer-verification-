@@ -1,5 +1,5 @@
 import { expect } from "chai";
-import { ethers } from "hardhat";
+import { ethers, network } from "hardhat";
 
 /**
  * CreditMarket against the real Hedera mainnet contracts, on a plain Hardhat fork: SaucerSwap V1's factory and its
@@ -28,6 +28,11 @@ const FACTORY_ABI = ["function getPair(address, address) view returns (address)"
 
 (FORKED ? describe : describe.skip)("Mainnet fork: SaucerSwap and Chainlink settle the sale", function () {
   this.timeout(600_000);
+
+  // Calls then run on a local block rather than the forked Hedera block itself.
+  before(async function () {
+    await network.provider.send("evm_mine");
+  });
 
   async function deploy() {
     const [admin] = await ethers.getSigners();

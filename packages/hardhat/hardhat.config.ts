@@ -60,10 +60,11 @@ const config: HardhatUserConfig = {
         chainId: 296,
         workerPort: 10001,
       },
-      // Without the plugin Hardhat has no hardfork history for Hedera's chain ids; Hedera's EVM is at Cancun.
+      // Without the plugin Hardhat has no hardfork history for Hedera's chain ids. Shanghai, because Hedera block
+      // headers carry no blob-gas fields and Hardhat panics executing a Cancun call at a forked block without them.
       chains: {
-        295: { hardforkHistory: { cancun: 0 } },
-        296: { hardforkHistory: { cancun: 0 } },
+        295: { hardforkHistory: { shanghai: 0 } },
+        296: { hardforkHistory: { shanghai: 0 } },
       },
     },
     hederaTestnet: {
