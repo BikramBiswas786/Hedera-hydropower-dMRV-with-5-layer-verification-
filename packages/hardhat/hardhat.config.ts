@@ -53,6 +53,8 @@ const config: HardhatUserConfig = {
       forking: {
         url: hederaRpcUrl,
         enabled: process.env.HEDERA_FORKING === "true",
+        // A block the mirror node has already indexed; "latest" can be ahead of it and read as empty state.
+        blockNumber: process.env.HEDERA_FORK_BLOCK ? Number(process.env.HEDERA_FORK_BLOCK) : undefined,
         // @ts-expect-error - custom property for hedera-forking plugin
         chainId: process.env.HEDERA_FORK_NETWORK === "mainnet" ? 295 : 296,
         workerPort: 10001,
