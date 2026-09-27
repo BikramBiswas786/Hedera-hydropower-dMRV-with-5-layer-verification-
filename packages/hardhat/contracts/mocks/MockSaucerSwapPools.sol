@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.28;
 
-import { ISaucerSwapV1Pair } from "../interfaces/ISaucerSwap.sol";
+import { ISaucerFactory, ISaucerSwapV1Pair } from "../interfaces/ISaucerSwap.sol";
 
 /// @notice Settable SaucerSwap V1 pair for tests.
 contract MockSaucerSwapV1Pair is ISaucerSwapV1Pair {
@@ -27,5 +27,15 @@ contract MockSaucerSwapV1Pair is ISaucerSwapV1Pair {
 
     function getReserves() external view override returns (uint112, uint112, uint32) {
         return (_reserve0, _reserve1, uint32(block.timestamp));
+    }
+}
+
+/// @notice SaucerSwap V1 factory for tests: records pairs the way `createPair` would.
+contract MockSaucerFactory is ISaucerFactory {
+    mapping(address => mapping(address => address)) public override getPair;
+
+    function setPair(address tokenA, address tokenB, address pair) external {
+        getPair[tokenA][tokenB] = pair;
+        getPair[tokenB][tokenA] = pair;
     }
 }

@@ -52,10 +52,19 @@ const config: HardhatUserConfig = {
     hardhat: {
       forking: {
         url: hederaRpcUrl,
-        enabled: process.env.HEDERA_FORKING === "true",
+        // HEDERA_FORKING loads the plugin's HTS emulation. HEDERA_FORK_NETWORK=mainnet forks plain EVM state
+        // without it: the plugin reads every long-zero address that is not a token as empty, and SaucerSwap's
+        // factory is one.
+        enabled: process.env.HEDERA_FORKING === "true" || process.env.HEDERA_FORK_NETWORK === "mainnet",
         // @ts-expect-error - custom property for hedera-forking plugin
         chainId: 296,
         workerPort: 10001,
+      },
+      // Without the plugin Hardhat has no hardfork history for Hedera's chain ids. Shanghai, because Hedera block
+      // headers carry no blob-gas fields and Hardhat panics executing a Cancun call at a forked block without them.
+      chains: {
+        295: { hardforkHistory: { shanghai: 0 } },
+        296: { hardforkHistory: { shanghai: 0 } },
       },
     },
     hederaTestnet: {

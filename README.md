@@ -4,7 +4,7 @@ A Scaffold-HBAR template for the part of digital MRV a policy engine leaves off-
 
 The live market the app reads is [`0x5aeDe76f…5030`](https://hashscan.io/testnet/contract/0x5aeDe76fc6625cfA3227FFf70197D4D7ff3e5030), the same address as `packages/nextjs/contracts/deployedContracts.ts`. [This transaction](https://hashscan.io/testnet/transaction/0x4735808481bde453a2354b4ed395a00ba72112fdcbb0b96c9a1196e4c5753fab) is `buyAndRetire` of 0.020 t through SaucerSwap V1 router `0.0.19264`. Settlement is Chainlink (Supra fallback) plus that pair. There is no second market on the site.
 
-This sits next to [Hedera Guardian](https://github.com/hashgraph/guardian), it does not replace it. Guardian runs roles, verifiable credentials and the methodology library (including ACM0002, AMS-I.D, Tool 03 and Tool 07). A policy's Http Request Block can send its Monitoring Report VC to `/api/guardian/v1/cross-check` and get back a result VC signed by this app's own `did:hedera` DID, and `verify_guardian_evidence` checks a Guardian trust chain from the mirror node before our registry relies on it. The policy patch guide is [docs/GUARDIAN.md](docs/GUARDIAN.md). The worked example is hydropower under **Verra VMR0017 v1.0** with **ACM0002 v22.0**. That is an implementation of the equations, not a certification and not a Verra issuance.
+This sits next to [Hedera Guardian](https://github.com/hashgraph/guardian), it does not replace it. Guardian runs roles, verifiable credentials and the methodology library (including ACM0002, AMS-I.D, Tool 03 and Tool 07). A policy's Http Request Block can send its Monitoring Report VC to `/api/guardian/v1/cross-check` and get back a result VC signed by this app's own `did:hedera` DID, and `verify_guardian_evidence` checks a Guardian trust chain from the mirror node before our registry relies on it. No Guardian policy calls it yet: Managed Guardian refuses outbound HTTP calls, and without the four bridge variables the route answers 503. The patch guide, including a self-hosted setup that allows the call, is [docs/GUARDIAN.md](docs/GUARDIAN.md). The worked example is hydropower under **Verra VMR0017 v1.0** with **ACM0002 v22.0**. That is an implementation of the equations, not a certification and not a Verra issuance.
 
 | | Guardian | This template |
 | --- | --- | --- |
@@ -81,7 +81,7 @@ The VVB `0x437EB06f434aD8061DEDdfCDd0ecE68Ea435e84F` is a labelled test key, not
 
 Older deploys, not read by the app, are in [docs/operations.md](docs/operations.md). The legacy registry [`0x9cdB5782…`](https://hashscan.io/testnet/contract/0x9cdB5782a10c41a103B722d1B8fa9CfaF84107a5) still reproduces the same two greenfield amounts.
 
-The legacy `HydroCreditRegistry` compiles to 24,551 B, 25 under Hedera's 24,576-byte limit, so it could not take another feature. After the split, `yarn hardhat:size` (a CI gate at 24,064 B) reports: `DmrvRegistry` 20,862 B, `CreditMarket` 10,131 B, `HydroVmr0017Module` 7,028 B, `ResilientHbarUsdFeed` 2,534 B. Since the redeploy the live issuer is `DmrvRegistry`.
+The legacy `HydroCreditRegistry` compiles to 24,551 B, 25 under Hedera's 24,576-byte limit, so it could not take another feature. After the split, `yarn hardhat:size` (a CI gate at 24,064 B) reports: `DmrvRegistry` 20,984 B, `CreditMarket` 9,047 B, `HydroVmr0017Module` 7,028 B, `ResilientHbarUsdFeed` 2,534 B. Since the redeploy the live issuer is `DmrvRegistry`.
 
 Phase 1 enforces the following on-chain; the legacy registry does not:
 

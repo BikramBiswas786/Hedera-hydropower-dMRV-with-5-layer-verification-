@@ -13,6 +13,11 @@ interface ISaucerSwapV1Pair {
     function getReserves() external view returns (uint112 reserve0, uint112 reserve1, uint32 blockTimestampLast);
 }
 
+/// @notice SaucerSwap V1 factory (Uniswap V2 fork). `getPair` is the factory's own record of the pairs it created.
+interface ISaucerFactory {
+    function getPair(address tokenA, address tokenB) external view returns (address pair);
+}
+
 /// @notice SaucerSwap V1 router. A purchase calls `swapExactETHForTokens`; if this reverts, the sale reverts.
 interface ISaucerRouter {
     function swapExactETHForTokens(

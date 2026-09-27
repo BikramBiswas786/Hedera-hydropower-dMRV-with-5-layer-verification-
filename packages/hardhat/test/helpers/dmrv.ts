@@ -1,5 +1,5 @@
 import { TypedDataEncoder, type Wallet } from "ethers";
-import { ethers } from "hardhat";
+import { artifacts, ethers, network } from "hardhat";
 import { time } from "@nomicfoundation/hardhat-network-helpers";
 import type { CreditMarket, DmrvRegistry, HydroVmr0017Module, MockSaucerRouter } from "../../typechain-types";
 import { ensureHts } from "./hts";
@@ -253,8 +253,18 @@ async function deployFeed() {
 }
 
 /** Registry + module + market, wired, with no tokens and no projects. */
+/** Installs MockSaucerFactory at SAUCER_FACTORY so `getPair` answers like SaucerSwap's factory. */
+export async function ensureSaucerFactory() {
+  if ((await ethers.provider.getCode(SAUCER_FACTORY)) === "0x") {
+    const { deployedBytecode } = await artifacts.readArtifact("MockSaucerFactory");
+    await network.provider.send("hardhat_setCode", [SAUCER_FACTORY, deployedBytecode]);
+  }
+  return ethers.getContractAt("MockSaucerFactory", SAUCER_FACTORY);
+}
+
 export async function deployCore(): Promise<Ctx> {
   const { mocked } = await ensureHts();
+  await ensureSaucerFactory();
   const [admin, operator, buyer, stranger] = await ethers.getSigners();
   const registry = await ethers.deployContract("DmrvRegistry", [admin.address, MIN_COMPLETENESS_BPS]);
   const module = await ethers.deployContract("HydroVmr0017Module");

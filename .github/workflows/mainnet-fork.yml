@@ -1,0 +1,31 @@
+name: Mainnet fork
+
+# CreditMarket against the real Hedera mainnet SaucerSwap factory, its public WHBAR/USDC pair and Chainlink's
+# HBAR/USD feed, on a plain Hardhat fork of mainnet. No key and no HBAR are needed.
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+  schedule:
+    - cron: "17 6 * * *"
+
+jobs:
+  saucerswap-chainlink:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20.18.3
+          cache: yarn
+
+      - run: yarn install --immutable
+
+      - name: CreditMarket on a Hedera mainnet fork
+        env:
+          HEDERA_FORK_NETWORK: mainnet
+          HEDERA_RPC_URL: https://mainnet.hashio.io/api
+        run: yarn workspace @sh/hardhat hardhat test test/MainnetFork.test.ts
