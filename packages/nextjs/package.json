@@ -20,7 +20,8 @@
     "admin:threshold": "tsx scripts/createThresholdAdmin.ts",
     "admin:exec": "tsx scripts/adminExec.ts",
     "guardian:publish-did": "tsx scripts/publish-bridge-did.ts",
-    "guardian:schema": "tsx scripts/guardian-schema.ts"
+    "guardian:schema": "tsx scripts/guardian-schema.ts",
+    "pair:rebalance": "tsx scripts/rebalanceTestnetPair.ts"
   },
   "dependencies": {
     "@digitalbazaar/credentials-context": "3.2.0",

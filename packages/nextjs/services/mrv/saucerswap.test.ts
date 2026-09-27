@@ -1,4 +1,4 @@
-import { deviationBps, dexAccepted, hbarUsd8FromReserves } from "./saucerswap";
+import { amountOut, deviationBps, dexAccepted, hbarUsd8FromReserves, isqrt, rebalanceTrade } from "./saucerswap";
 import { describe, expect, it } from "vitest";
 
 describe("SaucerSwap WHBAR/USDC spot", () => {
@@ -11,5 +11,40 @@ describe("SaucerSwap WHBAR/USDC spot", () => {
   it("accepts the exact 3% bound and refuses one basis point past it", () => {
     expect(dexAccepted(10_000n, 10_300n)).toBe(true);
     expect(dexAccepted(10_000n, 10_301n)).toBe(false);
+  });
+});
+
+describe("keeping a seeded pair at the oracle price", () => {
+  // The testnet exhibit pair on 28 Sep 2026: $0.09105 against Chainlink $0.09479, 411 bps apart.
+  const whbar = 2_000_000_000n; // 20 HBAR
+  const usd = (whbar * 9_105_000n) / 10_000_000_000n; // priced at $0.09105
+
+  it("leaves a pair inside the band alone", () => {
+    expect(rebalanceTrade(usd, whbar, 9_110_000n)).toEqual({ side: "none", deviationBps: 5n });
+  });
+
+  it("sells the USD token when the pair prices HBAR below the oracle, and lands within a few bps", () => {
+    const trade = rebalanceTrade(usd, whbar, 9_479_000n);
+    expect(trade.side).toBe("usdIn");
+    if (trade.side !== "usdIn") return;
+    const out = amountOut(trade.amountIn, usd, whbar);
+    const after = hbarUsd8FromReserves(usd + trade.amountIn, whbar - out);
+    expect(deviationBps(9_479_000n, after)).toBeLessThanOrEqual(3n);
+  });
+
+  it("sells HBAR when the pair prices HBAR above the oracle, and lands within a few bps", () => {
+    const trade = rebalanceTrade(usd, whbar, 8_700_000n);
+    expect(trade.side).toBe("hbarIn");
+    if (trade.side !== "hbarIn") return;
+    const out = amountOut(trade.amountIn, whbar, usd);
+    const after = hbarUsd8FromReserves(usd - out, whbar + trade.amountIn);
+    expect(deviationBps(8_700_000n, after)).toBeLessThanOrEqual(3n);
+  });
+
+  it("takes exact integer square roots", () => {
+    expect(isqrt(0n)).toBe(0n);
+    expect(isqrt(15n)).toBe(3n);
+    expect(isqrt(16n)).toBe(4n);
+    expect(isqrt(10n ** 30n)).toBe(10n ** 15n);
   });
 });

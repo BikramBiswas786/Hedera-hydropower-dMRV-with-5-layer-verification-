@@ -29,5 +29,6 @@ factor calculation).
    purchases are returned unsigned so agents pay from their own wallets.
 
 ## Out of scope
-Real SCADA ingestion, device-level signatures, VVB workflow and registry (Verra / Gold Standard) integration, TOOL07
-option B / dispatch-data / ex-post OM, integrated hydro projects. The README lists these as extension points.
+Real SCADA ingestion (meters sign statements with software keys standing in for logger hardware), an accredited VVB
+and issuance by a standard (Verra / Gold Standard), TOOL07 option B / dispatch-data / ex-post OM, integrated hydro
+projects. The README lists these as extension points.
