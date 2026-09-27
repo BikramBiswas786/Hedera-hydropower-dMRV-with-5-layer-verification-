@@ -130,7 +130,8 @@ A second unused deploy is `DmrvRegistry` `0xe34BeFc4081a8e751271C3549B861e03Fac5
    address; that is `ADMIN_ADDRESS`.
 4. **Deploy.** Create a topic first (`yarn mrv:create-topic`), then `HCS_TOPIC_ID=0.0.… VERIFIER_ADDRESS=… ADMIN_ADDRESS=… yarn deploy --network hederaTestnet`. It
    deploys the module, registry and market, creates new HTS tokens, registers both demo plants with the generated
-   meters, stores the SaucerSwap testnet pool with the check on, grants the roles, and hands admin to the threshold
+   meters, stores the SaucerSwap testnet pool with the check on, names the market once (`setMarket`), grants
+   `VERIFIER_ROLE`, and hands admin to the threshold
    account. It regenerates `packages/nextjs/contracts/deployedContracts.ts`.
 5. **Verify.** `yarn hardhat:verify:sourcify hederaTestnet` (Sourcify v2 API, shown on HashScan; `yarn hardhat:verify:testnet`
    calls the retired v1 API and fails), then check the roles:
@@ -187,9 +188,9 @@ A spot price can be moved in one block, so the guard can block sales. It cannot 
   need them). Credits here are not issued by a standard; avoid double claiming with RECs or any
   other instrument for the same generation.
 - **Registry custody** means the registry holds credits and undelivered certificates for accounts. The contracts are
-  not upgradeable. The only path that moves someone else's balance is `MARKET_ROLE` (held by `CreditMarket`, for
-  listings and purchases the owner initiated). The admin grants that role, so an admin that granted it to another
-  address could move custody balances: this is why the admin must be a threshold-key account.
+  not upgradeable. The only path that moves someone else's balance is the market named once by `setMarket`
+  (`CreditMarket`, for listings and purchases the owner initiated). No role grant can add another caller. The
+  testnet registry deployed before this rule used a grantable `MARKET_ROLE`, so there the admin could.
 - **Oracle risk** is bounded by two independent providers, a deviation guard, staleness checks and the
   seller-favouring round-up. Tune `MAX_PRICE_AGE_SECONDS` and `MAX_ORACLE_DEVIATION_BPS` to the feeds' heartbeats.
   `CreditMarket` enforces a SaucerSwap pool check on-chain on every quote and purchase (testnet and mainnet; see

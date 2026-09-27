@@ -163,7 +163,7 @@ A real meter's key never leaves its device.
 | --- | --- | --- | --- |
 | Meter (per plant) | sign what it measured | mint, or change a registration | in the data logger / secure element |
 | Verifier (`VERIFIER_ROLE`) | attest periods the meter signed, never more generous | register plants, change meters, move anyone's credits | on the attesting server |
-| Admin (`DEFAULT_ADMIN_ROLE`) | register plants and meters, renew crediting periods, grant roles, including `MARKET_ROLE`, whose holder can move custody balances | mint without a statement from the meter it registered and an approval from a VVB that is neither operator nor meter | a Hedera account with a threshold key, e.g. 2 of 3 |
+| Admin (`DEFAULT_ADMIN_ROLE`) | register plants and meters, renew crediting periods, grant roles, name the market once | move anyone's credits (the market is fixed at `setMarket`), or mint without a statement from the meter it registered and an approval from a VVB that is neither operator nor meter | a Hedera account with a threshold key, e.g. 2 of 3 |
 | Buyers and agents | buy, retire, withdraw with their own wallet | anything else | their own wallet; the app never asks for it |
 
 `yarn deploy` does the split when `VERIFIER_ADDRESS` and `ADMIN_ADDRESS` are set: the verifier gets

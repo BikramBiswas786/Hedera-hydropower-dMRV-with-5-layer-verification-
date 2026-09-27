@@ -285,7 +285,7 @@ export async function deployReady(paramsOverrides: Partial<HydroParams> = {}) {
     value: ethers.parseEther("20"),
   });
   await registry.setModuleApproved(await module.getAddress(), true);
-  await registry.grantRole(await registry.MARKET_ROLE(), await market.getAddress());
+  await registry.setMarket(await market.getAddress());
   await registry.grantRole(await registry.VERIFIER_ROLE(), VVB.address);
   await registry.setAuditTopic(AUDIT_TOPIC);
   const params = await hydroParams(paramsOverrides);

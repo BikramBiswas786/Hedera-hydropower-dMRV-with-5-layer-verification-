@@ -5,6 +5,11 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const readDexCheck = vi.fn();
 const readContract = vi.fn();
+const readSellerReadiness = vi.fn();
+
+vi.mock("./association", () => ({
+  readSellerReadiness: (...args: unknown[]) => readSellerReadiness(...args),
+}));
 
 vi.mock("./dex", () => ({
   readDexCheck: (...args: unknown[]) => readDexCheck(...args),
@@ -80,11 +85,28 @@ beforeEach(() => {
     if (functionName === "NATIVE_UNITS_PER_HBAR") return 100_000_000n;
     if (functionName === "poolGuard")
       return ["0x914B98992d7eD602D1f5d9084ECe8160Fc0e741a", true, false, false, 8, 6, 300, 0n];
+    if (functionName === "getListing") return { seller: SELLER, unitsAvailable: 400n, active: true };
+    if (functionName === "token0") return QUSD;
+    if (functionName === "token1") return "0x0000000000000000000000000000000000003aD2";
     throw new Error(functionName);
   });
+  readSellerReadiness.mockReset();
+  readSellerReadiness.mockResolvedValue({ status: "ready", reason: "associated" });
 });
 
+const SELLER = "0x620b69e63699edf397146d1306e38fc9f289f981";
+const QUSD = "0x0000000000000000000000000000000000a3b8c0";
+
 describe("prepare_purchase", () => {
+  it("refuses when the seller cannot receive the pool's USD token, so the swap would revert", async () => {
+    readDexCheck.mockResolvedValue({ ...refused, accepted: true, deviationBps: 15, publicMainnet: mainnetOk });
+    readSellerReadiness.mockResolvedValue({ status: "not-associated", tokenId: "0.0.10729664" });
+    await expect(preparePurchase({ listingId: 0, amountKg: 1000, beneficiary: "Acme" })).rejects.toThrow(
+      /has not associated 0\.0\.10729664/,
+    );
+    expect(readSellerReadiness).toHaveBeenCalledWith(SELLER, QUSD);
+  });
+
   it("refuses a SaucerSwap spot more than 3% from settlement and returns no transaction", async () => {
     readDexCheck.mockResolvedValue(refused);
     try {

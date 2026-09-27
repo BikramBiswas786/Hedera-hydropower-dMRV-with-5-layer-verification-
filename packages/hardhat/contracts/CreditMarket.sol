@@ -5,7 +5,7 @@ import { AccessControl } from "@openzeppelin/contracts/access/AccessControl.sol"
 import { ReentrancyGuard } from "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 import { Math } from "@openzeppelin/contracts/utils/math/Math.sol";
 import { AggregatorV3Interface } from "./interfaces/AggregatorV3Interface.sol";
-import { ISaucerRouter, ISaucerSwapV1Pair, ISaucerSwapV2Pool } from "./interfaces/ISaucerSwap.sol";
+import { ISaucerRouter, ISaucerSwapV1Pair } from "./interfaces/ISaucerSwap.sol";
 import { DmrvRegistry } from "./DmrvRegistry.sol";
 
 /// @title CreditMarket
@@ -45,14 +45,15 @@ contract CreditMarket is AccessControl, ReentrancyGuard {
     /// @notice SaucerSwap WHBAR/USD-stablecoin pool used to cross-check the oracle.
     struct PoolGuard {
         address pool;
-        /// @dev false: V1 pair (`getReserves`); true: V2 concentrated-liquidity pool (`slot0`).
+        /// @dev Always false: purchases swap through the V1 router, so the guard must price the V1 pair it swaps.
+        /// Kept so the struct (and every reader of `poolGuard()`) keeps its shape.
         bool isV2;
         bool whbarIsToken0;
         bool enabled;
         uint8 whbarDecimals;
         uint8 usdDecimals;
         uint16 maxDeviationBps;
-        /// @dev V1: minimum USD-side reserve in base units. V2: minimum in-range `liquidity()`.
+        /// @dev Minimum USD-side reserve in base units.
         uint128 minLiquidity;
     }
 
@@ -139,7 +140,10 @@ contract CreditMarket is AccessControl, ReentrancyGuard {
         bool enabled
     ) external onlyRole(DEFAULT_ADMIN_ROLE) {
         if (pool == address(0) || whbar == address(0)) revert ZeroAddress();
-        if (!enabled || maxDeviationBps == 0 || maxDeviationBps > MAX_POOL_DEVIATION_BPS) revert InvalidPoolGuard();
+        // A V2 pool is not what the V1 router swaps through, so it cannot vouch for the swap.
+        if (isV2 || !enabled || maxDeviationBps == 0 || maxDeviationBps > MAX_POOL_DEVIATION_BPS) {
+            revert InvalidPoolGuard();
+        }
         if (whbarDecimals > 18 || usdDecimals > 18) revert InvalidPoolGuard();
         address token0 = ISaucerSwapV1Pair(pool).token0();
         if (ISaucerSwapV1Pair(pool).factory() != SAUCER_FACTORY) revert InvalidPoolGuard();
@@ -258,29 +262,19 @@ contract CreditMarket is AccessControl, ReentrancyGuard {
         if (deviationBps > g.maxDeviationBps) revert PoolPriceDeviation(poolPrice, answer, deviationBps);
     }
 
-    /// @notice HBAR price in USD implied by the configured SaucerSwap pool, scaled to `decimals`.
+    /// @notice HBAR price in USD implied by the configured SaucerSwap V1 pair's reserves, scaled to `decimals`.
     /// Reverts when the pool is below the configured liquidity floor.
     function poolHbarUsd(uint8 decimals) public view returns (uint256) {
         PoolGuard memory g = poolGuard;
         if (g.pool == address(0)) revert InvalidPoolGuard();
         uint256 scale = 10 ** (uint256(decimals) + g.whbarDecimals);
         uint256 usdUnit = 10 ** uint256(g.usdDecimals);
-        if (!g.isV2) {
-            (uint112 r0, uint112 r1, ) = ISaucerSwapV1Pair(g.pool).getReserves();
-            (uint256 hbarReserve, uint256 usdReserve) = g.whbarIsToken0
-                ? (uint256(r0), uint256(r1))
-                : (uint256(r1), uint256(r0));
-            if (hbarReserve == 0 || usdReserve < g.minLiquidity)
-                revert PoolIlliquid(g.pool, usdReserve, g.minLiquidity);
-            return Math.mulDiv(usdReserve, scale, hbarReserve * usdUnit);
-        }
-        (uint160 sqrtPriceX96, , , , , , ) = ISaucerSwapV2Pool(g.pool).slot0();
-        uint128 liquidity = ISaucerSwapV2Pool(g.pool).liquidity();
-        if (sqrtPriceX96 == 0 || liquidity < g.minLiquidity) revert PoolIlliquid(g.pool, liquidity, g.minLiquidity);
-        // token1 per token0, in base units, as a Q96 fixed-point number.
-        uint256 priceX96 = Math.mulDiv(sqrtPriceX96, sqrtPriceX96, 1 << 96);
-        if (g.whbarIsToken0) return Math.mulDiv(priceX96, scale, 1 << 96) / usdUnit;
-        return Math.mulDiv(1 << 96, scale, priceX96) / usdUnit;
+        (uint112 r0, uint112 r1, ) = ISaucerSwapV1Pair(g.pool).getReserves();
+        (uint256 hbarReserve, uint256 usdReserve) = g.whbarIsToken0
+            ? (uint256(r0), uint256(r1))
+            : (uint256(r1), uint256(r0));
+        if (hbarReserve == 0 || usdReserve < g.minLiquidity) revert PoolIlliquid(g.pool, usdReserve, g.minLiquidity);
+        return Math.mulDiv(usdReserve, scale, hbarReserve * usdUnit);
     }
 
     // ─── Views ───────────────────────────────────────────────────────────────
@@ -324,9 +318,9 @@ contract CreditMarket is AccessControl, ReentrancyGuard {
         address[] memory path = new address[](2);
         path[0] = whbar;
         path[1] = usd;
-        try ISaucerRouter(ROUTER).swapExactETHForTokens{ value: nativeCost }(minOut, path, seller, block.timestamp) returns (
-            uint256[] memory
-        ) {} catch {
+        try
+            ISaucerRouter(ROUTER).swapExactETHForTokens{ value: nativeCost }(minOut, path, seller, block.timestamp)
+        returns (uint256[] memory) {} catch {
             revert SwapFailed();
         }
     }

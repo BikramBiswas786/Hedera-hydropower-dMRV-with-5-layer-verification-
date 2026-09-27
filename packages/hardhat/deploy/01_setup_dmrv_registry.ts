@@ -20,7 +20,7 @@ function evmAddress(value: string): string {
  * Idempotent post-deploy setup, in this order (every step checks on-chain state first, so it is safe to re-run):
  *
  *   1. HTS credit token and NFT certificate collection (created by the registry, which is their treasury).
- *   2. Approve `HydroVmr0017Module`; grant `MARKET_ROLE` to `CreditMarket`.
+ *   2. Approve `HydroVmr0017Module`; name `CreditMarket` as the registry's market (once, for good).
  *   3. Audit topic from HCS_TOPIC_ID.
  *   4. Demo projects, each with its own meter address. On Hedera networks the meters come from METER_ADDRESSES or
  *      `.secrets/meters.<network>.json`; the public demo derivation is refused (the deploy throws).
@@ -103,12 +103,16 @@ const setupDmrv: DeployFunction = async function (hre: HardhatRuntimeEnvironment
     await tx.wait();
     console.log(`Approved HydroVmr0017Module ${moduleAddress}: ${hashscanTx(config, tx.hash)}`);
   }
-  const marketRole = await registry.MARKET_ROLE();
   const marketAddress = await market.getAddress();
-  if (!(await registry.hasRole(marketRole, marketAddress))) {
-    const tx = await registry.grantRole(marketRole, marketAddress, { gasLimit: 200_000 });
+  const currentMarket = await registry.market();
+  if (currentMarket === hre.ethers.ZeroAddress) {
+    const tx = await registry.setMarket(marketAddress, { gasLimit: 200_000 });
     await tx.wait();
-    console.log(`Granted MARKET_ROLE to CreditMarket ${marketAddress}: ${hashscanTx(config, tx.hash)}`);
+    console.log(`Set CreditMarket ${marketAddress} as the registry's only market: ${hashscanTx(config, tx.hash)}`);
+  } else if (currentMarket.toLowerCase() !== marketAddress.toLowerCase()) {
+    throw new Error(
+      `This registry's market is ${currentMarket} and cannot change; deploy a new registry to use ${marketAddress}`,
+    );
   }
 
   const topicEnv = process.env.HCS_TOPIC_ID?.trim();

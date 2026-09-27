@@ -8,28 +8,6 @@ const HTS_NFT_ABI = ["function ownerOf(uint256) view returns (address)", "functi
 const PRICE_CENTS_PER_TONNE = 1_500n; // $15/t
 const WHBAR = "0x0000000000000000000000000000000000003aD2"; // testnet WHBAR 0.0.15058 (8 decimals)
 const USDC = "0x0000000000000000000000000000000000001549"; // SaucerSwap testnet USDC 0.0.5449 (6 decimals)
-const Q96 = 1n << 96n;
-
-function isqrt(n: bigint): bigint {
-  if (n < 2n) return n;
-  let x = n;
-  let y = (x + 1n) / 2n;
-  while (y < x) {
-    x = y;
-    y = (x + n / x) / 2n;
-  }
-  return x;
-}
-
-/** sqrtPriceX96 for a raw token1/token0 price of num/den. */
-function sqrtPriceX96(num: bigint, den: bigint): bigint {
-  return isqrt((num * Q96 * Q96) / den);
-}
-
-/** Raw base-unit price for an HBAR price in 1e8 USD: USDC (6 dp) per WHBAR (8 dp). */
-function usdcPerWhbar(priceE8: bigint): [bigint, bigint] {
-  return [priceE8 * 10n ** 6n, 10n ** 8n * 10n ** 8n];
-}
 
 async function listed() {
   const ctx = await deployReady();
@@ -212,34 +190,12 @@ describe("CreditMarket", function () {
       ).to.be.revertedWithCustomError(market, "InvalidPoolGuard");
     });
 
-    it("reads a V2 pool's slot0 with WHBAR as token1 (the testnet and mainnet order)", async function () {
-      const { market } = await loadFixture(listed);
-      const pool = await ethers.deployContract("MockSaucerSwapV2Pool", [USDC, WHBAR]);
-      const [num, den] = usdcPerWhbar(HBAR_USD);
-      await pool.setState(sqrtPriceX96(den, num), 10n ** 12n); // token1/token0 = WHBAR per USDC
-      await pool.setFactory(SAUCER_FACTORY);
-      await market.setPoolGuard(await pool.getAddress(), true, WHBAR, 8, 6, 300, 10n ** 9n, true);
-      const price = await market.poolHbarUsd(8);
-      expect(price).to.be.closeTo(HBAR_USD, 2n);
-      await market.quote(0, 1);
-      const [n2, d2] = usdcPerWhbar(26_000_000n); // $0.26, +4%
-      await pool.setState(sqrtPriceX96(d2, n2), 10n ** 12n);
-      await expect(market.quote(0, 1)).to.be.revertedWithCustomError(market, "PoolPriceDeviation");
-      await pool.setState(sqrtPriceX96(den, num), 1n);
-      await expect(market.quote(0, 1)).to.be.revertedWithCustomError(market, "PoolIlliquid");
-    });
-
-    it("reads a V2 pool's slot0 with WHBAR as token0", async function () {
-      const { market } = await loadFixture(listed);
-      const pool = await ethers.deployContract("MockSaucerSwapV2Pool", [WHBAR, USDC]);
-      const [num, den] = usdcPerWhbar(HBAR_USD);
-      await pool.setState(sqrtPriceX96(num, den), 10n ** 12n);
-      await pool.setFactory(SAUCER_FACTORY);
-      await market.setPoolGuard(await pool.getAddress(), true, WHBAR, 8, 6, 300, 0, true);
-      expect(await market.poolHbarUsd(8)).to.be.closeTo(HBAR_USD, 2n);
-      const g = await market.poolGuard();
-      expect(g.whbarIsToken0).to.equal(true);
-      expect(g.isV2).to.equal(true);
+    it("refuses a V2 pool, which the V1 router does not swap through", async function () {
+      const { market, pair } = await loadFixture(withV1Pool);
+      await expect(
+        market.setPoolGuard(await pair.getAddress(), true, WHBAR, 8, 6, 300, 0, true),
+      ).to.be.revertedWithCustomError(market, "InvalidPoolGuard");
+      expect((await market.poolGuard()).isV2).to.equal(false);
     });
 
     it("validates the configuration", async function () {

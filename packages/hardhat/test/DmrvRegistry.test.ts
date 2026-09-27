@@ -752,13 +752,30 @@ describe("DmrvRegistry", function () {
         registry,
         "BeneficiaryTooLong",
       );
+      await expect(registry.connect(operator).moveCustody(operator.address, stranger.address, 1))
+        .to.be.revertedWithCustomError(registry, "NotMarket")
+        .withArgs(operator.address);
+      await expect(registry.connect(operator).retireFor(operator.address, 1, ""))
+        .to.be.revertedWithCustomError(registry, "NotMarket")
+        .withArgs(operator.address);
+    });
+
+    it("names its market once, so no role grant gives the admin a path to anyone's credits", async function () {
+      const { registry, market, admin, operator, stranger } = await loadFixture(attested);
+      expect(await registry.market()).to.equal(await market.getAddress());
+      await expect(registry.setMarket(await market.getAddress()))
+        .to.be.revertedWithCustomError(registry, "MarketAlreadySet")
+        .withArgs(await market.getAddress());
+      // Whatever role the admin hands itself, custody stays put.
+      await registry.grantRole(ethers.id("MARKET_ROLE"), admin.address);
       await expect(
-        registry.connect(operator).moveCustody(operator.address, stranger.address, 1),
-      ).to.be.revertedWithCustomError(registry, "AccessControlUnauthorizedAccount");
-      await expect(registry.connect(operator).retireFor(operator.address, 1, "")).to.be.revertedWithCustomError(
-        registry,
-        "AccessControlUnauthorizedAccount",
-      );
+        registry.connect(admin).moveCustody(operator.address, stranger.address, 1),
+      ).to.be.revertedWithCustomError(registry, "NotMarket");
+    });
+
+    it("refuses an externally owned account as its market", async function () {
+      const { registry, stranger } = await loadFixture(deployCore);
+      await expect(registry.setMarket(stranger.address)).to.be.revertedWithCustomError(registry, "ZeroAddress");
     });
   });
 });

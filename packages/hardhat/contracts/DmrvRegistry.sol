@@ -16,11 +16,10 @@ import { IMethodology, Measurement, ProjectTerms, QuantResult } from "./interfac
 /// contract mints Hedera Token Service credits (1 token = 1 t CO2e, 1 base unit = 1 kg CO2e) into registry custody.
 /// @dev Every HTS call lives in this contract's own code. The tokens use `contractId` keys, which Hedera honours only
 /// for code executing as this contract, so modules and the market never touch HTS (they are called with STATICCALL
-/// or call back through `MARKET_ROLE` hooks). The contract is not upgradeable: rule changes ship as new module
+/// or call back through the `market` hooks). The contract is not upgradeable: rule changes ship as new module
 /// versions that apply to new projects, and a core change is a new deployment.
 contract DmrvRegistry is AccessControl, ReentrancyGuard {
     bytes32 public constant VERIFIER_ROLE = keccak256("VERIFIER_ROLE");
-    bytes32 public constant MARKET_ROLE = keccak256("MARKET_ROLE");
 
     uint16 public constant MAX_BPS = 10_000;
     int32 public constant CREDIT_DECIMALS = 3;
@@ -127,6 +126,9 @@ contract DmrvRegistry is AccessControl, ReentrancyGuard {
         bytes32 authorizationRef;
     }
 
+    /// @notice The one market allowed to move custody (listing escrow, delivery, retire-on-purchase). Set once:
+    /// no role grant can add another, so the admin has no path to anyone's balance.
+    address public market;
     address public creditToken;
     address public certificateToken;
     uint16 public minCompletenessBps;
@@ -175,6 +177,7 @@ contract DmrvRegistry is AccessControl, ReentrancyGuard {
     event MinCompletenessChanged(uint16 minCompletenessBps);
     event CalibrationUpdated(bytes32 indexed projectId, uint64 validUntil, bytes32 certificateHash);
     event AuditTopicSet(uint64 topic);
+    event MarketSet(address indexed market);
     event VerifierProfileSet(address indexed verifier, bytes32 accreditationHash);
     event Article6Set(
         bytes32 indexed projectId,
@@ -235,6 +238,8 @@ contract DmrvRegistry is AccessControl, ReentrancyGuard {
     error NotRetirementOwner(uint256 retirementId);
     error InvalidAttestation(uint256 attestationId);
     error NativeTransferFailed();
+    error MarketAlreadySet(address market);
+    error NotMarket(address caller);
 
     /// @param admin Account granted DEFAULT_ADMIN_ROLE. Use a Hedera threshold-key account (e.g. 2-of-3).
     /// @param minCompletenessBps_ Minimum share of a period covered by accepted readings.
@@ -365,6 +370,14 @@ contract DmrvRegistry is AccessControl, ReentrancyGuard {
         if (minCompletenessBps_ > MAX_BPS) revert InvalidCompleteness(minCompletenessBps_);
         minCompletenessBps = minCompletenessBps_;
         emit MinCompletenessChanged(minCompletenessBps_);
+    }
+
+    /// @notice Names the market contract, once. A new market means a new registry deployment.
+    function setMarket(address market_) external onlyRole(DEFAULT_ADMIN_ROLE) {
+        if (market_ == address(0) || market_.code.length == 0) revert ZeroAddress();
+        if (market != address(0)) revert MarketAlreadySet(market);
+        market = market_;
+        emit MarketSet(market_);
     }
 
     /// @notice Fixes the HCS topic every later attestation must cite. It cannot be cleared.
@@ -545,7 +558,7 @@ contract DmrvRegistry is AccessControl, ReentrancyGuard {
     }
 
     /// @notice Market hook: moves custody between accounts (listing escrow, purchase delivery).
-    function moveCustody(address from, address to, uint256 units) external onlyRole(MARKET_ROLE) {
+    function moveCustody(address from, address to, uint256 units) external onlyMarket {
         if (to == address(0)) revert ZeroAddress();
         _debit(from, units);
         custodyBalanceOf[to] += units;
@@ -557,8 +570,13 @@ contract DmrvRegistry is AccessControl, ReentrancyGuard {
         address account,
         uint64 units,
         string calldata beneficiary
-    ) external onlyRole(MARKET_ROLE) nonReentrant returns (uint256) {
+    ) external onlyMarket nonReentrant returns (uint256) {
         return _retire(account, units, beneficiary);
+    }
+
+    modifier onlyMarket() {
+        if (msg.sender != market || market == address(0)) revert NotMarket(msg.sender);
+        _;
     }
 
     // ─── Views ───────────────────────────────────────────────────────────────
