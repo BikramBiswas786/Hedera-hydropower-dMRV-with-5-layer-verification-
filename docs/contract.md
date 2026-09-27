@@ -4,9 +4,9 @@ Phase 1 splits the phase-0 `HydroCreditRegistry` into four contracts:
 
 | Contract | Role | Size (`yarn hardhat:size`) |
 | --- | --- | --- |
-| `DmrvRegistry.sol` | Projects, meters, verifiers, module approval, two-signature attestation, anchoring, custody, retirement, certificates, and every HTS call (only here) | 20,862 B |
+| `DmrvRegistry.sol` | Projects, meters, verifiers, module approval, two-signature attestation, anchoring, custody, retirement, certificates, and every HTS call (only here) | 20,984 B |
 | `modules/HydroVmr0017Module.sol` | Stateless `IMethodology`: VMR0017 / ACM0002 / AMS-I.D registration rules and integer quantification | 7,028 B |
-| `CreditMarket.sol` | Listings, oracle quote, SaucerSwap router swap, pool guard | 10,131 B |
+| `CreditMarket.sol` | Listings, oracle quote, SaucerSwap router swap, pool guard | 9,047 B |
 | `ResilientHbarUsdFeed.sol` | Chainlink HBAR/USD with a Supra fallback | 2,534 B |
 
 CI fails any contract above 24,064 B (512 B under EIP-170), and `ContractSize.test.ts` keeps `DmrvRegistry` ≤ 21,504 B.

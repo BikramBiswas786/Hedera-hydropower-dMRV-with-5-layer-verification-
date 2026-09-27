@@ -217,7 +217,7 @@ explicitly for historic evidence.
   vector to `quantificationVectors.ts`. Bump `ENGINE_VERSION` and the report schema if the report changes.
 - **A contract function**: custom errors over strings, events for every state change, `nonReentrant` on anything
   that moves value, and tests for the happy path and each revert. Run `yarn deploy` to regenerate ABIs and
-  `yarn hardhat:size` to check the 24,064 B gate (`DmrvRegistry` is at 20,862 B).
+  `yarn hardhat:size` to check the 24,064 B gate (`DmrvRegistry` is at 20,984 B).
 - **A methodology**: implement `IMethodology` as a new stateless module, with its own params encoding and tests, and
   approve it with `setModuleApproved`. Do not add methodology rules to `DmrvRegistry`.
 - **An API route or MCP tool**: validate input with zod (`schema.ts`, or a schema next to the server function),

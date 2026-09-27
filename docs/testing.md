@@ -4,10 +4,10 @@
 
 ```bash
 yarn test              # contracts + frontend unit tests
-yarn hardhat:test      # 154 contract tests, hermetic (HTS mock at 0x167, oracle and SaucerSwap mocks)
+yarn hardhat:test      # 157 contract tests, hermetic (HTS mock at 0x167, oracle and SaucerSwap mocks)
 yarn hardhat:test:fork # same suite against Hedera's HTS emulation (HEDERA_FORKING, needs internet)
 yarn hardhat:test:gas  # with a gas report
-yarn next:test         # 238 vitest tests
+yarn next:test         # 304 vitest tests
 yarn hardhat:size      # runtime bytecode per contract; fails above 24,064 B (CI runs it)
 yarn lint && yarn next:build
 ```
