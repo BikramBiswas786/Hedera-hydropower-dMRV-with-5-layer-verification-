@@ -234,7 +234,7 @@ export function buildOpenApi(origin: string) {
       "/api/market/dex": get({
         operationId: "get_dex_price",
         tags: ["market"],
-        summary: "SaucerSwap settlement pair versus the oracle",
+        summary: "Settlement pair and the public mainnet WHBAR/USDC pair versus their oracles",
         responses: ok("Price, deviation in basis points, and whether a purchase may be built"),
       }),
       "/api/market/prepare-purchase": post({

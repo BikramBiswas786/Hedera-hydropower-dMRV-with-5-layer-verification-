@@ -323,7 +323,7 @@ export function buildMcpServer({ canWrite }: { canWrite: boolean }): McpServer {
     {
       title: "SaucerSwap HBAR price",
       description:
-        "Spot HBAR/USD from the SaucerSwap pair stored on CreditMarket, and how far it sits from the oracle. accepted is false above 3%. Reading needs no key.",
+        "Spot HBAR/USD from the SaucerSwap pair stored on CreditMarket, and from the public mainnet WHBAR/USDC pair 0.0.1462797 against mainnet Chainlink. accepted is false above 3% on either. Reading needs no key.",
       annotations: readOnly,
     },
     async () => run(readDexCheck),
@@ -334,7 +334,7 @@ export function buildMcpServer({ canWrite }: { canWrite: boolean }): McpServer {
     {
       title: "Prepare a credit purchase",
       description:
-        "Build an unsigned transaction that buys credits (amountKg) from a listing and by default retires them, minting an HTS NFT certificate to the buyer. Refuses if the SaucerSwap settlement pair is more than 3% from the oracle. The contract swaps the HBAR through the SaucerSwap router. Returns chainId, to, data and value (weibar, with a 1% buffer the contract refunds). Sign and send it with your own wallet; this server never holds your key.",
+        "Build an unsigned transaction that buys credits (amountKg) from a listing and by default retires them, minting an HTS NFT certificate to the buyer. Refuses if the settlement pair or the public mainnet WHBAR/USDC pair (0.0.1462797) is more than 3% from its oracle. The contract swaps the HBAR through the SaucerSwap router. Returns chainId, to, data and value (weibar, with a 1% buffer the contract refunds). Sign and send it with your own wallet; this server never holds your key.",
       inputSchema: preparePurchaseSchema,
       annotations: readOnly,
     },

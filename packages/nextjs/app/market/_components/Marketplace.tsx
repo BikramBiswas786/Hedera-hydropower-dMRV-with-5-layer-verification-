@@ -72,6 +72,12 @@ export const Marketplace = () => {
             {dex.maxDeviationBps}.
           </p>
         )}
+        {dex?.accepted && dex.publicMainnet && !dex.publicMainnet.accepted && (
+          <p className="m-0 text-error">
+            Public mainnet SaucerSwap WHBAR/USDC (0.0.1462797) is {dex.publicMainnet.deviationBps} bps from mainnet
+            Chainlink. Buy is not built until it is inside {dex.publicMainnet.maxDeviationBps}.
+          </p>
+        )}
         {open.length === 0 && (
           <p className="m-0 text-base-content/60">
             No open listings. Plant operators receive credits when an attestation is minted and can list them from their

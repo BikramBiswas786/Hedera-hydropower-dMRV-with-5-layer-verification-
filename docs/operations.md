@@ -154,7 +154,7 @@ The on-chain guard compares the pair stored on `CreditMarket` with the oracle an
 
 The live market `0x5aeDe76fc6625cfA3227FFf70197D4D7ff3e5030` has this rule. It swaps through router `0.0.19264` and the pair is `0xF98D0dF4eC60d57f24Ce7BD24eAcAdF045219869`.
 
-The public testnet V1 WHBAR/USDC pair (`0x87664e55d9606657f049139FF654390A72657667`, factory `0.0.9959`) priced HBAR at $2.28 on 26 Sep 2026. The oracle was about $0.094. Pointing the guard at that pair would reject every sale. The exhibit uses a pair seeded on the same factory at the Chainlink price. A mainnet deploy uses the public V1 pair `0.0.1462797`, which was 24 bps from Chainlink the same day. Nothing is deployed on mainnet.
+The public testnet V1 WHBAR/USDC pair (`0x87664e55d9606657f049139FF654390A72657667`, factory `0.0.9959`) priced HBAR at $2.28 on 26 Sep 2026. The oracle was about $0.094. Pointing the guard at that pair would reject every sale, because testnet USDC is not a dollar. The exhibit uses a pair seeded on the same factory at the Chainlink price. The purchase builder also refuses unless the public mainnet pair `0.0.1462797` is within 3% of mainnet Chainlink. On 27 Sep 2026 that was 15 bps ($0.09490 against $0.09504). A mainnet deploy uses that pair on-chain. Nothing is deployed on mainnet.
 
 A spot price can be moved in one block, so the guard can block sales. It cannot make them cheaper, because payment uses the oracle price.
 
@@ -192,8 +192,8 @@ A spot price can be moved in one block, so the guard can block sales. It cannot 
 - **Oracle risk** is bounded by two independent providers, a deviation guard, staleness checks and the
   seller-favouring round-up. Tune `MAX_PRICE_AGE_SECONDS` and `MAX_ORACLE_DEVIATION_BPS` to the feeds' heartbeats.
   `CreditMarket` enforces a SaucerSwap pool check on-chain on every quote and purchase (testnet and mainnet; see
-  [the guard](#saucerswap-guard)). The purchase builder additionally refuses when the
-  SaucerSwap pair stored on CreditMarket is more than 3% from the oracle.
+  [the guard](#saucerswap-guard)). The purchase builder also refuses when the pair stored on CreditMarket is more
+  than 3% from the oracle, or when the public mainnet pair `0.0.1462797` is more than 3% from mainnet Chainlink.
 - **Write endpoints** are disabled unless `MRV_API_KEY` is set and use a constant-time comparison. Put them behind
   your own authentication before exposing them publicly. Purchases never touch the server: agents sign their own.
 - **Not audited.** This is a starting point, not production-ready code.

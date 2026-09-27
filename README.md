@@ -73,7 +73,9 @@ The app reads one registry. Older ones stay on chain so their mints still reprod
 | Meter + VVB signed mint → 4.791 t | [0x321b6d20…](https://hashscan.io/testnet/transaction/0x321b6d20db7b24eaee672160fcb9643d6fafd357c204934e892446ac6db11b6e) |
 | `buyAndRetire` 0.020 t on router `0.0.19264`. HYRET serial 2 | [0x47358084…](https://hashscan.io/testnet/transaction/0x4735808481bde453a2354b4ed395a00ba72112fdcbb0b96c9a1196e4c5753fab) |
 
-The public testnet WHBAR/USDC pair priced HBAR at $2.28 that day. The oracle was $0.094, so the contract would refuse every sale against it. The pair above was created on SaucerSwap factory `0.0.9959` at the Chainlink price. The seller was paid that pair's token, not USDC.
+The public testnet WHBAR/USDC pair priced HBAR at $2.28 that day. The oracle was $0.094, so the contract would refuse every sale against it. The pair above was created on SaucerSwap factory `0.0.9959` at the Chainlink price. The seller was paid that pair's token, not USDC. Testnet USDC is not a dollar, so that public pair cannot be the price check.
+
+The purchase builder also reads the public mainnet pair [0.0.1462797](https://hashscan.io/mainnet/contract/0xdB34c1Ef944883f0e5A2fC18B6C1978B088bD31d) and will not return a transaction unless it is within 3% of [mainnet Chainlink](https://hashscan.io/mainnet/contract/0xAF685FB45C12b92b5054ccb9313e135525F9b5d5). On 27 Sep 2026 the pair was $0.09490 and Chainlink was $0.09504, 15 bps. A mainnet deploy uses that pair on-chain. Nothing is deployed on mainnet.
 
 The VVB `0x437EB06f434aD8061DEDdfCDd0ecE68Ea435e84F` is a labelled test key, not an accredited verifier. The meter addresses are `0x1a1b0B722a17C34BE6A08FE5efD636Dd54F848A2` and `0x485e9404831A05a072eeE80Aa4BfA05946fd6bF4`. Their private keys are not in the repository. Admin is operator `0.0.10721162` until a 2-of-3 account is set.
 

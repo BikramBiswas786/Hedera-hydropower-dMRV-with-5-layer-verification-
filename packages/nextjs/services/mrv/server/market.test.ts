@@ -49,6 +49,17 @@ vi.mock("./registry", () => ({
   }),
 }));
 
+const mainnetOk = {
+  pair: "0.0.1462797" as const,
+  pairAddress: "0xdb34c1ef944883f0e5a2fc18b6c1978b088bd31d" as const,
+  chainlink: "0xAF685FB45C12b92b5054ccb9313e135525F9b5d5" as const,
+  price: 0.0949,
+  oraclePrice: 0.09504,
+  deviationBps: 15,
+  maxDeviationBps: 300,
+  accepted: true,
+};
+
 const refused = {
   venue: "SaucerSwap V1" as const,
   pairId: "0.0.1462797" as const,
@@ -58,6 +69,7 @@ const refused = {
   deviationBps: 301,
   maxDeviationBps: 300,
   accepted: false,
+  publicMainnet: mainnetOk,
 };
 
 beforeEach(() => {
@@ -88,8 +100,26 @@ describe("prepare_purchase", () => {
     }
   });
 
+  it("refuses when the public mainnet pair is outside 3% of mainnet Chainlink", async () => {
+    readDexCheck.mockResolvedValue({
+      ...refused,
+      accepted: true,
+      deviationBps: 15,
+      publicMainnet: { ...mainnetOk, deviationBps: 301, accepted: false },
+    });
+    try {
+      await preparePurchase({ listingId: 0, amountKg: 1000, beneficiary: "Acme" });
+      throw new Error("expected a refusal");
+    } catch (error) {
+      expect(error).toBeInstanceOf(ApiError);
+      expect((error as ApiError).httpStatus).toBe(409);
+      expect((error as ApiError).message).toContain("0.0.1462797");
+      expect((error as ApiError).message).toContain("301 bps");
+    }
+  });
+
   it("returns an unsigned buyAndRetire when the spot is inside the band", async () => {
-    readDexCheck.mockResolvedValue({ ...refused, deviationBps: 300, accepted: true });
+    readDexCheck.mockResolvedValue({ ...refused, deviationBps: 300, accepted: true, publicMainnet: mainnetOk });
     const prepared = await preparePurchase({ listingId: 4, amountKg: 1000, beneficiary: "Acme" });
     expect(prepared.functionName).toBe("buyAndRetire");
     expect(prepared.dex.accepted).toBe(true);

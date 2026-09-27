@@ -148,9 +148,9 @@ Use the Scaffold-HBAR hooks in `packages/nextjs/hooks/scaffold-hbar` with the na
 
 Reads go through the hooks: custody, retirements and attestations on `DmrvRegistry`; listings and quotes on
 `CreditMarket`. Purchases do not. `POST /api/market/prepare-purchase` (MCP: `prepare_purchase`) builds the unsigned
-`CreditMarket` transaction and refuses it when the SaucerSwap WHBAR/USDC spot is more than 3% from the settlement
-price. It also reports the on-chain guard (`onChainPoolGuard`), which reverts the purchase itself when the pair is
-outside the band. The
+`CreditMarket` transaction and refuses it when the settlement pair is more than 3% from the settlement price, or when
+the public mainnet WHBAR/USDC pair `0.0.1462797` is more than 3% from mainnet Chainlink. It also reports the on-chain
+guard (`onChainPoolGuard`), which reverts the purchase itself when the pair is outside the band. The
 caller signs `to`, `data` and `value` with their own wallet. Do not call `buy` or `buyAndRetire` with a value the UI
 invented.
 

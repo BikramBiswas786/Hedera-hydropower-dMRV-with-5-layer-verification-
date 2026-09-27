@@ -181,8 +181,9 @@ reverting provider counts as unavailable instead of bubbling up. `readSources()`
 agents can always see both providers.
 
 The purchase builder reads the SaucerSwap pair stored on `CreditMarket` and will not return a transaction if that
-pair is more than 3% from the oracle. `GET /api/market/dex` and `get_dex_price` report that same pair. The contract
-then swaps through the SaucerSwap router. The mainnet WHBAR/USDC pair is not this check.
+pair is more than 3% from the oracle. It also reads the public mainnet WHBAR/USDC pair `0.0.1462797` and refuses
+when that pair is more than 3% from mainnet Chainlink. `GET /api/market/dex` and `get_dex_price` report both.
+The contract then swaps through the SaucerSwap router. The testnet swap uses the pair stored on the market.
 
 Settlement price for `units` kg listed at `p` US cents per tonne, with feed answer `a` at `d` decimals:
 

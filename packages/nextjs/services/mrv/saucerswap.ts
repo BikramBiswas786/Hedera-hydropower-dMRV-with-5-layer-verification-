@@ -1,7 +1,7 @@
 /**
  * Reserve maths for a V1 pair whose USD token has 6 decimals and whose WHBAR has 8.
- * The purchase builder reads the pair stored on `CreditMarket`, not the mainnet WHBAR/USDC pair.
- * These constants are the mainnet pair, kept so the reserve formula stays pinned to a published snapshot.
+ * The purchase builder reads the pair stored on `CreditMarket`, and also this public mainnet pair.
+ * Testnet USDC is not a dollar, so the public testnet pair cannot be the mainnet check.
  */
 export const SAUCERSWAP_PAIR_ID = "0.0.1462797";
 export const SAUCERSWAP_PAIR = "0xdb34c1ef944883f0e5a2fc18b6c1978b088bd31d" as const;

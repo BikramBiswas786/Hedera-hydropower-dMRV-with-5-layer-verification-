@@ -17,6 +17,7 @@ export type DexGate = {
   deviationBps: number;
   maxDeviationBps: number;
   pair?: string;
+  publicMainnet?: { accepted: boolean; deviationBps: number; maxDeviationBps: number };
 };
 
 type Prepared = {
@@ -47,7 +48,7 @@ export const ListingCard = ({ listing, isOwn, nativeUnitsPerHbar, dex }: Props) 
   const { writeContractAsync, isMining } = useScaffoldWriteContract({ contractName: "CreditMarket" });
   const writeTx = useTransactor();
 
-  const poolOk = dex?.accepted === true;
+  const poolOk = dex?.accepted === true && dex.publicMainnet?.accepted === true;
   const canBuy = units !== null && !tooMuch && quote !== undefined && !isMining && !sending && poolOk;
 
   const buy = async (retire: boolean) => {
@@ -137,6 +138,9 @@ export const ListingCard = ({ listing, isOwn, nativeUnitsPerHbar, dex }: Props) 
           <p className="m-0 text-sm min-h-5 text-error">
             {dex === null && "Reading SaucerSwap before a purchase can be built."}
             {dex && !dex.accepted && `SaucerSwap settlement pair is ${dex.deviationBps} bps off. Buy stays off.`}
+            {dex?.accepted && dex.publicMainnet && !dex.publicMainnet.accepted
+              ? `Public mainnet WHBAR/USDC is ${dex.publicMainnet.deviationBps} bps from Chainlink. Buy stays off.`
+              : ""}
             {gateError}
           </p>
           <div className="flex gap-2">
