@@ -5,7 +5,7 @@ import { AccessControl } from "@openzeppelin/contracts/access/AccessControl.sol"
 import { ReentrancyGuard } from "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 import { Math } from "@openzeppelin/contracts/utils/math/Math.sol";
 import { AggregatorV3Interface } from "./interfaces/AggregatorV3Interface.sol";
-import { ISaucerRouter, ISaucerSwapV1Pair } from "./interfaces/ISaucerSwap.sol";
+import { ISaucerFactory, ISaucerRouter, ISaucerSwapV1Pair } from "./interfaces/ISaucerSwap.sol";
 import { DmrvRegistry } from "./DmrvRegistry.sol";
 
 /// @title CreditMarket
@@ -26,7 +26,7 @@ contract CreditMarket is AccessControl, ReentrancyGuard {
 
     DmrvRegistry public immutable REGISTRY;
     AggregatorV3Interface public immutable HBAR_USD_FEED;
-    /// @notice SaucerSwap factory. `setPoolGuard` reverts unless the pool's `factory()` is this address.
+    /// @notice SaucerSwap factory. `setPoolGuard` reverts unless this factory's `getPair` returns the pool.
     address public immutable SAUCER_FACTORY;
     /// @notice SaucerSwap V1 router. Every purchase swaps through it.
     address public immutable ROUTER;
@@ -146,9 +146,11 @@ contract CreditMarket is AccessControl, ReentrancyGuard {
         }
         if (whbarDecimals > 18 || usdDecimals > 18) revert InvalidPoolGuard();
         address token0 = ISaucerSwapV1Pair(pool).token0();
-        if (ISaucerSwapV1Pair(pool).factory() != SAUCER_FACTORY) revert InvalidPoolGuard();
+        address token1 = ISaucerSwapV1Pair(pool).token1();
+        // Ask the factory, not the pool: a homemade contract can return SaucerSwap's address from `factory()`.
+        if (ISaucerFactory(SAUCER_FACTORY).getPair(token0, token1) != pool) revert InvalidPoolGuard();
         bool whbarIsToken0 = token0 == whbar;
-        if (!whbarIsToken0 && ISaucerSwapV1Pair(pool).token1() != whbar) revert InvalidPoolGuard();
+        if (!whbarIsToken0 && token1 != whbar) revert InvalidPoolGuard();
         poolGuard = PoolGuard({
             pool: pool,
             isV2: isV2,

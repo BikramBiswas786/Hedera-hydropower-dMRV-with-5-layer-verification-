@@ -2,7 +2,16 @@ import { expect } from "chai";
 import { ethers } from "hardhat";
 import { loadFixture, time } from "@nomicfoundation/hardhat-network-helpers";
 import { isolateClock } from "./helpers/clock";
-import { HBAR_USD, HOUR, PROJECT_ID, SAUCER_FACTORY, deployReady, periodInput, submitPeriod } from "./helpers/dmrv";
+import {
+  HBAR_USD,
+  HOUR,
+  PROJECT_ID,
+  SAUCER_FACTORY,
+  deployReady,
+  ensureSaucerFactory,
+  periodInput,
+  submitPeriod,
+} from "./helpers/dmrv";
 
 const HTS_NFT_ABI = ["function ownerOf(uint256) view returns (address)", "function associate() returns (uint256)"];
 const PRICE_CENTS_PER_TONNE = 1_500n; // $15/t
@@ -17,6 +26,7 @@ async function listed() {
   // 250,000 USDC against 1,000,000 WHBAR: $0.25/HBAR, equal to the oracle.
   await pair.setReserves(250_000n * 10n ** 6n, 1_000_000n * 10n ** 8n);
   await pair.setFactory(SAUCER_FACTORY);
+  await (await ensureSaucerFactory()).setPair(USDC, WHBAR, await pair.getAddress());
   await ctx.market.setPoolGuard(await pair.getAddress(), false, WHBAR, 8, 6, 300, 10_000n * 10n ** 6n, true);
   return { ...ctx, pair };
 }
@@ -222,14 +232,14 @@ describe("CreditMarket", function () {
       ).to.be.revertedWithCustomError(market, "AccessControlUnauthorizedAccount");
     });
 
-    it("refuses a pool SaucerSwap did not create", async function () {
-      const { market, pair } = await loadFixture(withV1Pool);
-      const pairAddress = await pair.getAddress();
-      await pair.setFactory(ethers.ZeroAddress);
-      await expect(market.setPoolGuard(pairAddress, false, WHBAR, 8, 6, 300, 0, true)).to.be.revertedWithCustomError(
-        market,
-        "InvalidPoolGuard",
-      );
+    it("refuses a pool SaucerSwap did not create, even one that names SaucerSwap's factory", async function () {
+      const { market } = await loadFixture(withV1Pool);
+      const impostor = await ethers.deployContract("MockSaucerSwapV1Pair", [USDC, WHBAR]);
+      await impostor.setReserves(250_000n * 10n ** 6n, 1_000_000n * 10n ** 8n);
+      await impostor.setFactory(SAUCER_FACTORY); // claims the real factory; the factory has no record of it
+      await expect(
+        market.setPoolGuard(await impostor.getAddress(), false, WHBAR, 8, 6, 300, 0, true),
+      ).to.be.revertedWithCustomError(market, "InvalidPoolGuard");
     });
 
     it("refuses a quote until a SaucerSwap pool is set", async function () {

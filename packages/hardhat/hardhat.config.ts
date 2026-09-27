@@ -54,7 +54,7 @@ const config: HardhatUserConfig = {
         url: hederaRpcUrl,
         enabled: process.env.HEDERA_FORKING === "true",
         // @ts-expect-error - custom property for hedera-forking plugin
-        chainId: 296,
+        chainId: process.env.HEDERA_FORK_NETWORK === "mainnet" ? 295 : 296,
         workerPort: 10001,
       },
     },
