@@ -1,0 +1,39 @@
+name: Testnet pair keeper
+
+# Holds the seeded testnet SaucerSwap pair at the oracle price, so the live market can settle
+# (packages/nextjs/scripts/rebalanceTestnetPair.ts). Without the TESTNET_REBALANCER_KEY secret it only reads and
+# reports; with it, it makes the one swap that brings the pair back when it has drifted past 1%.
+on:
+  schedule:
+    - cron: "41 */4 * * *"
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - packages/nextjs/scripts/rebalanceTestnetPair.ts
+      - packages/nextjs/services/mrv/saucerswap.ts
+      - .github/workflows/testnet-pair-keeper.yml
+
+jobs:
+  rebalance:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20.18.3
+          cache: yarn
+
+      - run: yarn install --immutable
+
+      - name: Keep the pair at the oracle price
+        env:
+          REBALANCER_PRIVATE_KEY: ${{ secrets.TESTNET_REBALANCER_KEY }}
+        run: |
+          if [ "${{ github.event_name }}" != "pull_request" ] && [ -n "$REBALANCER_PRIVATE_KEY" ]; then
+            yarn workspace @sh/nextjs pair:rebalance --execute
+          else
+            echo "::notice::Reading only (no TESTNET_REBALANCER_KEY, or a pull request)"
+            yarn workspace @sh/nextjs pair:rebalance
+          fi
