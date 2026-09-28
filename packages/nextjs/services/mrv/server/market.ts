@@ -101,7 +101,7 @@ export async function preparePurchase(input: z.input<typeof preparePurchaseSchem
       409,
     );
   }
-  if (!dex.publicMainnet?.accepted) {
+  if (dex.publicMainnet && !dex.publicMainnet.accepted) {
     throw new ApiError(
       `Public mainnet SaucerSwap WHBAR/USDC (0.0.1462797) is ${dex.publicMainnet?.deviationBps ?? "unavailable"} bps from mainnet Chainlink (max ${dex.publicMainnet?.maxDeviationBps ?? 300}). No purchase transaction was built.`,
       409,

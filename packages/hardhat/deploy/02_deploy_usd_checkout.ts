@@ -3,6 +3,7 @@ import type { DeployFunction } from "hardhat-deploy/types";
 
 import { getDeployGasPrice } from "../utils/getDeployGasPrice";
 import { getHydroNetworkConfig, hashscanContract, hashscanTx } from "../utils/hydroNetworkConfig";
+import { localPoolGuard } from "../utils/localSaucer";
 
 /**
  * Deploys `UsdCheckout`: the same oracle + SaucerSwap settlement as `CreditMarket`, for any HTS fungible token.
@@ -10,31 +11,26 @@ import { getHydroNetworkConfig, hashscanContract, hashscanTx } from "../utils/hy
  *
  *   yarn deploy --network localhost --tags UsdCheckout
  *
- * Local chains have no SaucerSwap pool, so a local checkout lists but cannot price until a pool guard is set.
+ * Local chains use the stand-in factory, pair and router from `utils/localSaucer.ts`.
  */
 const deployCheckout: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   const { deployer } = await hre.getNamedAccounts();
   const config = getHydroNetworkConfig(hre);
   const gasPrice = await getDeployGasPrice(hre);
   const feed = await hre.deployments.get("ResilientHbarUsdFeed");
+  const factory = config.saucerFactory ?? (await hre.deployments.get("MockSaucerFactory")).address;
+  const router = config.saucerRouter ?? (await hre.deployments.get("MockSaucerRouter")).address;
 
   const deployed = await hre.deployments.deploy("UsdCheckout", {
     from: deployer,
-    args: [
-      deployer,
-      feed.address,
-      config.nativeUnitsPerHbar,
-      config.maxPriceAgeSeconds,
-      config.saucerFactory ?? deployer,
-      config.saucerRouter ?? deployer,
-    ],
+    args: [deployer, feed.address, config.nativeUnitsPerHbar, config.maxPriceAgeSeconds, factory, router],
     log: true,
     autoMine: true,
     gasLimit: 3_000_000,
     gasPrice,
   });
 
-  const guard = config.poolGuard;
+  const guard = config.poolGuard ?? (await localPoolGuard(hre));
   if (guard) {
     const checkout = await hre.ethers.getContractAt(
       "UsdCheckout",

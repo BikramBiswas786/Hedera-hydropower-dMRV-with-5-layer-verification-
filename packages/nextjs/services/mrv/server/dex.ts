@@ -1,4 +1,4 @@
-import { getDeployment } from "../network";
+import { getDeployment, isLiveHederaChain } from "../network";
 import { deviationBps, dexAccepted, hbarUsd8FromReserves } from "../saucerswap";
 import { ApiError } from "./errors";
 import { type PublicMainnetPool, readPublicMainnetPool } from "./mainnetPool";
@@ -34,8 +34,9 @@ export type DexCheck = {
   deviationBps: number;
   maxDeviationBps: number;
   accepted: boolean;
-  /** Public mainnet WHBAR/USDC. A purchase is not built when this is outside 3% of mainnet Chainlink. */
-  publicMainnet: PublicMainnetPool;
+  /** Public mainnet WHBAR/USDC. On Hedera, a purchase is not built when this is outside 3% of mainnet Chainlink.
+   * Null on a local chain, which prices against the stand-in pair only (and may have no internet). */
+  publicMainnet: PublicMainnetPool | null;
 };
 
 /**
@@ -90,9 +91,9 @@ export async function readDexCheck(): Promise<DexCheck> {
 
   const maxBps = BigInt(maxDeviationBps);
   const bps = deviationBps(oracle8, dex8);
-  let publicMainnet: PublicMainnetPool;
+  let publicMainnet: PublicMainnetPool | null = null;
   try {
-    publicMainnet = await readPublicMainnetPool();
+    if (isLiveHederaChain()) publicMainnet = await readPublicMainnetPool();
   } catch {
     throw new ApiError(
       "The public mainnet SaucerSwap WHBAR/USDC pair did not answer. No purchase transaction was built.",

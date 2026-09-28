@@ -2,6 +2,7 @@ import type { HardhatRuntimeEnvironment } from "hardhat/types";
 import type { DeployFunction } from "hardhat-deploy/types";
 
 import { getDeployGasPrice } from "../utils/getDeployGasPrice";
+import { deployLocalSaucer } from "../utils/localSaucer";
 import {
   LOCAL_MOCK_HBAR_USD,
   LOCAL_SUPRA_PAIR_ID,
@@ -87,6 +88,11 @@ const deployDmrv: DeployFunction = async function (hre: HardhatRuntimeEnvironmen
     gasPrice,
   });
 
+  const saucer =
+    config.saucerFactory && config.saucerRouter
+      ? { saucerFactory: config.saucerFactory, saucerRouter: config.saucerRouter }
+      : await deployLocalSaucer(hre, deployer);
+
   const market = await deploy("CreditMarket", {
     from: deployer,
     args: [
@@ -95,8 +101,8 @@ const deployDmrv: DeployFunction = async function (hre: HardhatRuntimeEnvironmen
       feed.address,
       config.nativeUnitsPerHbar,
       config.maxPriceAgeSeconds,
-      config.saucerFactory ?? deployer,
-      config.saucerRouter ?? deployer,
+      saucer.saucerFactory,
+      saucer.saucerRouter,
     ],
     log: true,
     autoMine: true,
