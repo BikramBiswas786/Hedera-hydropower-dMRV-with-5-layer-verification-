@@ -1,4 +1,5 @@
 import { base58Encode } from "./did";
+import { fetchIpfsJson } from "./hedera";
 import { CODEC_DAG_PB, CODEC_RAW, CidError, base58Decode, parseCid, rawCid, readVerifiedFile } from "./ipfs";
 import { createHash } from "crypto";
 import { describe, expect, it } from "vitest";
@@ -106,5 +107,33 @@ describe("readVerifiedFile", () => {
       CidError,
     );
     await expect(readVerifiedFile(rootCid, serve(blocks), 10)).rejects.toThrow(/larger than 10 bytes/);
+  });
+});
+
+describe("fetchIpfsJson over several gateways", () => {
+  it("gives up on a gateway that hangs and reads the block from the next one", async () => {
+    const doc = Buffer.from('{"ok":true}');
+    const cid = rawCid(doc);
+    const hosts: string[] = [];
+    const fetch = (async (url: string, init?: RequestInit) => {
+      const host = new URL(url).host;
+      hosts.push(host);
+      if (host === "slow.test") {
+        // A gateway with no provider: it answers nothing until the caller gives up.
+        return new Promise((_, reject) => init?.signal?.addEventListener("abort", () => reject(init.signal?.reason)));
+      }
+      return new Response(doc);
+    }) as unknown as typeof globalThis.fetch;
+    const sources = {
+      mirrorNodeUrl: "https://mirror.test",
+      ipfsGateway: "https://slow.test/ipfs/{cid},https://fast.test/ipfs/{cid}",
+      fetch,
+      ipfsTimeoutMs: 50,
+    };
+    expect(await fetchIpfsJson(sources, cid)).toEqual({ ok: true });
+    expect(hosts).toEqual(["slow.test", "fast.test"]);
+
+    const onlySlow = { ...sources, ipfsGateway: "https://slow.test/ipfs/{cid}" };
+    await expect(fetchIpfsJson(onlySlow, cid)).rejects.toThrow(/slow.test timed out/);
   });
 });

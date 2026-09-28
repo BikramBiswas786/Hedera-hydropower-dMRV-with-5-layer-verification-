@@ -1,4 +1,5 @@
 import { CompareForm } from "./_components/CompareForm";
+import { GuardianCheckout } from "./_components/GuardianCheckout";
 import { TraceForm } from "./_components/TraceForm";
 import type { NextPage } from "next";
 import { getMetadata } from "~~/utils/scaffold-hbar/getMetadata";
@@ -21,6 +22,19 @@ const CheckPage: NextPage = () => (
         </p>
       </header>
       <TraceForm />
+    </section>
+    <section className="flex flex-col gap-4">
+      <header className="flex flex-col gap-2">
+        <h2 className="text-2xl font-bold m-0">Buy a Guardian token, checked first</h2>
+        <p className="m-0 text-base-content/80">
+          <code>UsdCheckout</code> sells any HTS token at a USD price and pays the seller through SaucerSwap. Before it
+          builds a purchase, the server traces the listed token: a token that cites a Guardian record that does not
+          check out gets no transaction. Sign with your own wallet (MetaMask with an ECDSA testnet account), and
+          associate with the token first. Agents call <code>list_checkout_listings</code> and{" "}
+          <code>prepare_checkout_purchase</code>.
+        </p>
+      </header>
+      <GuardianCheckout />
     </section>
     <section className="flex flex-col gap-4">
       <header className="flex flex-col gap-2">

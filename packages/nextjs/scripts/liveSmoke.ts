@@ -240,6 +240,24 @@ async function main() {
     });
   }
 
+  await check("Guardian token in the checkout: traced, then quoted", async () => {
+    const { listings } = await call<{
+      listings: { id: number; available: string; token: { id: string }; guardian: { verdict: string } }[];
+    }>("/api/checkout/listings");
+    const backed = listings.find(l => l.guardian.verdict === "backed" && BigInt(l.available) > 0n);
+    assert(backed, "no open checkout listing of a backed Guardian token");
+    const prepared = await call<{ to: string; data: string; value: string; summary: string }>(
+      "/api/checkout/prepare-purchase",
+      {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ listingId: backed.id, amount: 1 }),
+      },
+    );
+    assert(prepared.data.startsWith("0x") && BigInt(prepared.value) > 0n, "no unsigned buy was built");
+    return prepared.summary;
+  });
+
   await check("Guardian mint trace: backed", async () => {
     const t = await call<{ verdict: string; checks: { id: string; ok: boolean | null; detail: string }[] }>(
       `/api/guardian/v1/trace?ref=${encodeURIComponent(GUARDIAN_MINT)}`,

@@ -111,7 +111,7 @@ template.json                            create-scaffold-hbar manifest
 ## What is deployed
 
 The app reads `DmrvRegistry` `0xaf9C76B48B317cee770ED6AE038D516b269E0129` and `CreditMarket`
-`0x5aeDe76fc6625cfA3227FFf70197D4D7ff3e5030` (router swap, 26 Sep 2026). Topic `0.0.10729650`.
+`0x26E77708717cE69EBBBF76e59D106B20e67e1D61` (current source, 28 Sep 2026; the first market `0x5aeDe76fc6625cfA3227FFf70197D4D7ff3e5030` is retired with `redeploy_market: retire-old`). Topic `0.0.10729650`.
 HYCC `0.0.10729677`, HYRET `0.0.10729678`. Admin is operator `0.0.10721162` until a 2-of-3 account is set.
 The Hashscan links are in the README.
 
@@ -154,7 +154,7 @@ Admin changes after the handover go through the threshold account:
 The on-chain guard compares the pair stored on `CreditMarket` with the oracle and reverts beyond 3%.
 `setPoolGuardEnabled(false)` reverts. The admin can repoint the pool only.
 
-The live market `0x5aeDe76fc6625cfA3227FFf70197D4D7ff3e5030` has this rule. It swaps through router `0.0.19264` and the pair is `0xF98D0dF4eC60d57f24Ce7BD24eAcAdF045219869`.
+The live market `0x26E77708717cE69EBBBF76e59D106B20e67e1D61` has this rule. It swaps through router `0.0.19264` and the pair is `0xF98D0dF4eC60d57f24Ce7BD24eAcAdF045219869`.
 
 The public testnet V1 WHBAR/USDC pair (`0x87664e55d9606657f049139FF654390A72657667`, factory `0.0.9959`) priced HBAR at $2.28 on 26 Sep 2026. The oracle was about $0.094. Pointing the guard at that pair would reject every sale, because testnet USDC is not a dollar. The exhibit uses a pair seeded on the same factory at the Chainlink price. The purchase builder also refuses unless the public mainnet pair `0.0.1462797` is within 3% of mainnet Chainlink. On 27 Sep 2026 that was 15 bps ($0.09490 against $0.09504). A mainnet deploy uses that pair on-chain. Nothing is deployed on mainnet.
 

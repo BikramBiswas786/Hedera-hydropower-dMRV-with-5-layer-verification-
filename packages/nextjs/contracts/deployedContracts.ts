@@ -7,7 +7,7 @@ import type { GenericContractsDeclaration } from "~~/utils/scaffold-hbar/contrac
 const deployedContracts = {
   296: {
     CreditMarket: {
-      address: "0x5aeDe76fc6625cfA3227FFf70197D4D7ff3e5030",
+      address: "0x26E77708717cE69EBBBF76e59D106B20e67e1D61",
       abi: [
         {
           inputs: [
@@ -352,25 +352,6 @@ const deployedContracts = {
             },
           ],
           name: "PoolGuardSet",
-          type: "event",
-        },
-        {
-          anonymous: false,
-          inputs: [
-            {
-              indexed: true,
-              internalType: "address",
-              name: "seller",
-              type: "address",
-            },
-            {
-              indexed: false,
-              internalType: "uint256",
-              name: "amount",
-              type: "uint256",
-            },
-          ],
-          name: "ProceedsWithdrawn",
           type: "event",
         },
         {
@@ -999,25 +980,6 @@ const deployedContracts = {
         {
           inputs: [
             {
-              internalType: "address",
-              name: "seller",
-              type: "address",
-            },
-          ],
-          name: "proceedsOf",
-          outputs: [
-            {
-              internalType: "uint256",
-              name: "native",
-              type: "uint256",
-            },
-          ],
-          stateMutability: "view",
-          type: "function",
-        },
-        {
-          inputs: [
-            {
               internalType: "uint256",
               name: "listingId",
               type: "uint256",
@@ -1200,19 +1162,6 @@ const deployedContracts = {
           type: "function",
         },
         {
-          inputs: [],
-          name: "totalProceedsOwed",
-          outputs: [
-            {
-              internalType: "uint256",
-              name: "",
-              type: "uint256",
-            },
-          ],
-          stateMutability: "view",
-          type: "function",
-        },
-        {
           inputs: [
             {
               internalType: "uint64",
@@ -1236,24 +1185,33 @@ const deployedContracts = {
           stateMutability: "view",
           type: "function",
         },
-        {
-          inputs: [],
-          name: "withdrawProceeds",
-          outputs: [],
-          stateMutability: "nonpayable",
-          type: "function",
-        },
       ],
       inheritedFunctions: {
-        DEFAULT_ADMIN_ROLE: "@openzeppelin/contracts/access/AccessControl.sol",
-        getRoleAdmin: "@openzeppelin/contracts/access/AccessControl.sol",
-        grantRole: "@openzeppelin/contracts/access/AccessControl.sol",
-        hasRole: "@openzeppelin/contracts/access/AccessControl.sol",
-        renounceRole: "@openzeppelin/contracts/access/AccessControl.sol",
-        revokeRole: "@openzeppelin/contracts/access/AccessControl.sol",
-        supportsInterface: "@openzeppelin/contracts/access/AccessControl.sol",
+        DEFAULT_ADMIN_ROLE: "contracts/settlement/UsdSettlement.sol",
+        HBAR_USD_FEED: "contracts/settlement/UsdSettlement.sol",
+        MAX_BPS: "contracts/settlement/UsdSettlement.sol",
+        MAX_POOL_DEVIATION_BPS: "contracts/settlement/UsdSettlement.sol",
+        MAX_PRICE_AGE: "contracts/settlement/UsdSettlement.sol",
+        NATIVE_UNITS_PER_HBAR: "contracts/settlement/UsdSettlement.sol",
+        ROUTER: "contracts/settlement/UsdSettlement.sol",
+        SAUCER_FACTORY: "contracts/settlement/UsdSettlement.sol",
+        SWAP_SLIPPAGE_BPS: "contracts/settlement/UsdSettlement.sol",
+        getRoleAdmin: "contracts/settlement/UsdSettlement.sol",
+        grantRole: "contracts/settlement/UsdSettlement.sol",
+        hasRole: "contracts/settlement/UsdSettlement.sol",
+        maxPriceAge: "contracts/settlement/UsdSettlement.sol",
+        poolGuard: "contracts/settlement/UsdSettlement.sol",
+        poolHbarUsd: "contracts/settlement/UsdSettlement.sol",
+        renounceRole: "contracts/settlement/UsdSettlement.sol",
+        revokeRole: "contracts/settlement/UsdSettlement.sol",
+        setMaxPriceAge: "contracts/settlement/UsdSettlement.sol",
+        setPoolGuard: "contracts/settlement/UsdSettlement.sol",
+        setPoolGuardEnabled: "contracts/settlement/UsdSettlement.sol",
+        settlementPrice: "contracts/settlement/UsdSettlement.sol",
+        supportsInterface: "contracts/settlement/UsdSettlement.sol",
+        sweepHbar: "contracts/settlement/UsdSettlement.sol",
       },
-      deployedOnBlock: 41009828,
+      deployedOnBlock: 41102857,
     },
     DmrvRegistry: {
       address: "0xaf9C76B48B317cee770ED6AE038D516b269E0129",

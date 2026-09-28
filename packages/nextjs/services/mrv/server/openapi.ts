@@ -4,6 +4,7 @@ import { gridEmissionFactorRequestSchema, projectDesignSchema } from "../methodo
 import { HYDRO_CHAIN_ID } from "../network";
 import { SCENARIO_NAMES } from "../scenarios";
 import { attestRequestSchema, verifyRequestSchema } from "../schema";
+import { prepareCheckoutPurchaseSchema } from "./checkout";
 import { portfolioQuerySchema } from "./insights";
 import { preparePurchaseSchema } from "./market";
 import { z } from "zod";
@@ -238,6 +239,19 @@ export function buildOpenApi(origin: string) {
         summary: "Unsigned buy / buyAndRetire transaction for your own wallet",
         requestBody: body(preparePurchaseSchema),
         responses: ok("{ chainId, to, data, value (weibar, 1% refundable buffer), summary }"),
+      }),
+      "/api/checkout/listings": get({
+        operationId: "list_checkout_listings",
+        tags: ["market"],
+        summary: "Open UsdCheckout listings of any HTS token, each with its Guardian trace verdict",
+        responses: ok("{ checkout, listings[] } with guardian.verdict backed | none | not-backed | incomplete"),
+      }),
+      "/api/checkout/prepare-purchase": post({
+        operationId: "prepare_checkout_purchase",
+        tags: ["market"],
+        summary: "Unsigned UsdCheckout.buy; refused (409) when the token cites a Guardian record that is not backed",
+        requestBody: body(prepareCheckoutPurchaseSchema),
+        responses: ok("{ chainId, to, data, value (weibar, 1% refundable buffer), summary, listing }"),
       }),
       "/api/registry/retirements": get({
         operationId: "get_portfolio",

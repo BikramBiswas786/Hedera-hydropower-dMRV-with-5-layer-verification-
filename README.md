@@ -6,7 +6,7 @@
 
 - **Issuance a contract enforces.** `DmrvRegistry` holds the HTS supply key and mints only with two EIP-712 signatures (the plant's meter over the raw totals, a VVB over that statement, who may only lower figures), and only the integer its methodology module recomputes: `ER = BE − PE − LE`. Readings and reports go to HCS, so anyone can re-derive a mint.
 - **Dollar-priced settlement anyone can reuse.** `UsdSettlement` prices in USD from Chainlink with a Supra fallback and pays the seller through SaucerSwap, only while the pool sits within 3% of the oracle. `CreditMarket` uses it for credits (with retirement NFTs); `UsdCheckout` uses it for **any** HTS fungible token.
-- **A buyer's check on any Guardian token.** `trace_guardian_mint` follows a Guardian mint to the signed VP behind it, from the public mirror node and IPFS (every block hashed against its CID): signatures, the MintToken VC's token and amount, and whether the signer is the token's treasury. `backed`, `not-backed` or `incomplete`, with no Guardian login.
+- **A buyer's check on any Guardian token, in the purchase path.** `trace_guardian_mint` follows a Guardian mint to the signed VP behind it, from the public mirror node and IPFS (every block hashed against its CID): signatures, the MintToken VC's token and amount, and whether the signer is the token's treasury. `backed`, `not-backed` or `incomplete`, with no Guardian login. `UsdCheckout` sells any HTS token, and `prepare_checkout_purchase` builds no transaction for a token whose Guardian record does not check out. A real Managed Guardian mint, [12.5 t of `0.0.10760359`](https://hashscan.io/testnet/token/0.0.10760359), traces `backed` and was [sold this way](https://hashscan.io/testnet/transaction/0x0188645163e1bf1aa3cfac7ca72a0c31b9c4cc655938c9edde6746be9cbc0bfe) through SaucerSwap.
 - **Agents as buyers and auditors.** An MCP server with a REST twin for every tool: reproduce a mint from HCS, then buy and retire with your own wallet.
 
 Hydropower under Verra VMR0017 v1.0 with ACM0002 v22.0 is the worked example, not the limit: another methodology is another stateless `IMethodology` module. The second one ships: `RenewableVmr0017Module` credits solar, wind and ocean power through the same registry, signatures, market and certificates, with no change to any of them.
@@ -45,7 +45,7 @@ The deploy installs local stand-ins for HTS, Chainlink, Supra and SaucerSwap, re
 Then:
 
 - `/verify` runs the five-stage engine: `healthy` passes, `inflated` and `tampered` do not.
-- `yarn test` runs 174 contract tests and 302 app tests, including the Solidity and TypeScript quantification agreeing on the same integers.
+- `yarn test` runs 191 contract tests and 342 app tests, including the Solidity and TypeScript quantification agreeing on the same integers.
 
 ## Deploy to Hedera testnet
 
@@ -83,7 +83,7 @@ flowchart LR
   C -- custody, retire --> R
 ```
 
-Hedera services in play: **HTS** (a credit token and an NFT collection whose treasury, admin and supply keys are the registry contract), **HCS** (raw readings and reports, re-derived from the mirror node), **smart contracts** on the Hedera EVM with the HTS system contract at `0x167`, and the **Schedule Service** (admin calls from a 2-of-3 threshold account as `ScheduleCreate` / `ScheduleSign`, `yarn admin:exec`).
+Hedera services in play: **HTS** (a credit token and an NFT collection whose treasury, admin and supply keys are the registry contract), **HCS** (raw readings and reports, re-derived from the mirror node), **smart contracts** on the Hedera EVM with the HTS system contract at `0x167`, and the **Schedule Service** (admin calls from a 2-of-3 threshold account as `ScheduleCreate` / `ScheduleSign`, `yarn admin:exec`; on testnet, [schedule 0.0.10763814](https://hashscan.io/testnet/schedule/0.0.10763814) ran a checkout admin call).
 
 ```
 packages/hardhat/
@@ -115,14 +115,14 @@ packages/nextjs/
 
 ## Live on testnet
 
-App: [hydro-dmrv.vercel.app](https://hydro-dmrv.vercel.app). Market [`0x5aeDe76f…`](https://hashscan.io/testnet/contract/0x5aeDe76fc6625cfA3227FFf70197D4D7ff3e5030), a [meter + VVB signed mint](https://hashscan.io/testnet/transaction/0x321b6d20db7b24eaee672160fcb9643d6fafd357c204934e892446ac6db11b6e), a [`buyAndRetire` through SaucerSwap](https://hashscan.io/testnet/transaction/0x4735808481bde453a2354b4ed395a00ba72112fdcbb0b96c9a1196e4c5753fab), and a [`UsdCheckout` sale](https://hashscan.io/testnet/transaction/0x51c9b0062bd36e119fbefe8b6e58e18717be1a5ea10fc2d54116a1d768ae379d). All five testnet contracts are Sourcify-verified (exact match), so HashScan shows their source. Every address and what each transaction proves is in [docs/evidence.md](docs/evidence.md).
+App: [hydro-dmrv.vercel.app](https://hydro-dmrv.vercel.app). Market [`0x26E77708…`](https://hashscan.io/testnet/contract/0x26E77708717cE69EBBBF76e59D106B20e67e1D61), a [meter + VVB signed mint](https://hashscan.io/testnet/transaction/0x321b6d20db7b24eaee672160fcb9643d6fafd357c204934e892446ac6db11b6e), a [`buyAndRetire` through SaucerSwap](https://hashscan.io/testnet/transaction/0xbbeb258c78ae6f1d9c2bfcbea37d754a151102b25528f63074f5e7f4c2b065f0), and a [`UsdCheckout` sale](https://hashscan.io/testnet/transaction/0x51c9b0062bd36e119fbefe8b6e58e18717be1a5ea10fc2d54116a1d768ae379d). All five testnet contracts are Sourcify-verified (exact match), so HashScan shows their source. Every address and what each transaction proves is in [docs/evidence.md](docs/evidence.md).
 
 Four workflows keep this true:
 
 - [Live smoke](https://github.com/BikramBiswas786/Hedera-hydropower-dMRV-with-5-layer-verification-/actions/workflows/live-smoke.yml) (every 6 h and after each production deploy) clicks through the deployed app with no wallet: the pairs against their oracles, an open listing, an unsigned purchase, every mint re-derived from HCS, a real Guardian mint traced, the scenarios, the MCP tools.
 - [Guardian trace](https://github.com/BikramBiswas786/Hedera-hydropower-dMRV-with-5-layer-verification-/actions/workflows/guardian-trace.yml) (daily) traces a real Managed Guardian mint on testnet (token `0.0.10760359`, 12.5 t) and requires `backed`: record, order, payer, every signature, the MintToken VC's token and amount, and the treasury's DID.
 - [Mainnet fork](https://github.com/BikramBiswas786/Hedera-hydropower-dMRV-with-5-layer-verification-/actions/workflows/mainnet-fork.yml) (every push) runs the settlement against SaucerSwap's real factory, the public WHBAR/USDC pair and mainnet Chainlink.
-- [Testnet pair keeper](https://github.com/BikramBiswas786/Hedera-hydropower-dMRV-with-5-layer-verification-/actions/workflows/testnet-pair-keeper.yml) (scheduled hourly, which GitHub runs best-effort; Live smoke also rebalances before each check) holds the seeded testnet pair at the oracle price, which it must: the pair does not follow HBAR, the oracle does. It also keeps a listing open. [`/api/market/dex`](https://hydro-dmrv.vercel.app/api/market/dex) shows whether a sale would settle right now.
+- [Testnet pair keeper](https://github.com/BikramBiswas786/Hedera-hydropower-dMRV-with-5-layer-verification-/actions/workflows/testnet-pair-keeper.yml) (scheduled three times an hour, which GitHub runs best-effort; Live smoke also rebalances before each check) holds the seeded testnet pair at the oracle price, which it must: the pair does not follow HBAR, the oracle does. It also keeps a listing open. [`/api/market/dex`](https://hydro-dmrv.vercel.app/api/market/dex) shows whether a sale would settle right now.
 - [Checkout testnet demo](https://github.com/BikramBiswas786/Hedera-hydropower-dMRV-with-5-layer-verification-/actions/workflows/checkout-testnet-demo.yml) (on demand) deploys `UsdCheckout` next to the live contracts and makes one sale.
 
 ## Use it without carbon
@@ -166,7 +166,7 @@ Hedera Harness spec and validators are in [`.harness/`](.harness/); `yarn harnes
 
 ## Limits, stated plainly
 
-- The testnet SaucerSwap pair was seeded with 20 HBAR against a test token this project minted, so testnet sellers are paid in that token, and a small trade can push the pair out of band (the keeper pulls it back). On mainnet the same code uses the public WHBAR/USDC pair.
+- The testnet SaucerSwap pair holds a test token this project minted, so testnet sellers are paid in that token. It [holds 871 HBAR](https://hashscan.io/testnet/transaction/0x255d91818419e1cb853dfc58480cf399307be9812e97879d9ac48cd650b78734) (from 20 on 28 Sep), so a purchase of a few dollars moves it a fraction of a percent; a large one can still push it out of band until the keeper pulls it back. On mainnet the same code uses the public WHBAR/USDC pair.
 - The VVB and meter keys on testnet are labelled test keys, not an accredited verifier or data-logger hardware.
 - The testnet contracts predate some hardening changes in the source, including the VCS v5 renewal rule; [docs/evidence.md](docs/evidence.md) lists them.
 - The engine implements VMR0017 v1.0 / ACM0002 v22.0 equations. A VVB and a registry still decide issuance; these credits are not a Verra issuance.

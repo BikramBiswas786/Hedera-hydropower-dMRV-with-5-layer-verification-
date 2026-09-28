@@ -10,6 +10,37 @@ on:
         description: "Reuse an already deployed UsdCheckout (leave empty to deploy a new one)"
         required: false
         default: ""
+      token_id:
+        description: "List this HTS token (e.g. 0.0.10760359) instead of the registry's credit token"
+        required: false
+        default: ""
+      trace_ref:
+        description: "Refuse to list unless trace_guardian_mint returns backed for this ref (e.g. a Guardian mint tx id)"
+        required: false
+        default: ""
+      list_units:
+        description: "Base units to list"
+        required: false
+        default: "50"
+      buy_units:
+        description: "Base units to buy back"
+        required: false
+        default: "10"
+      scheduled_admin_call:
+        description: "Instead of a sale, send setPoolGuardEnabled(true) to checkout_address as a Hedera scheduled transaction (yarn admin:exec schedule)"
+        type: boolean
+        required: false
+        default: false
+      redeploy_market:
+        description: "Instead of a sale, replace the testnet CreditMarket (scripts/redeployTestnetMarket.ts): 'deploy', or 'retire-old' with market_address"
+        type: choice
+        options: ["", "deploy", "retire-old"]
+        required: false
+        default: ""
+      market_address:
+        description: "The new CreditMarket, for redeploy_market=retire-old"
+        required: false
+        default: ""
 
 jobs:
   demo:
@@ -25,10 +56,51 @@ jobs:
 
       - run: yarn install --immutable
 
-      - name: Deploy, list and buy on testnet
+      # A buyer's check before a Guardian token is sold: the sale does not happen unless the mint is backed.
+      - name: Guardian trace gate
+        if: ${{ inputs.trace_ref != '' }}
+        env:
+          TRACE_REF: ${{ inputs.trace_ref }}
+        run: yarn guardian:trace "$TRACE_REF" --expect backed
+
+      # The admin path the README describes, on a live contract: ScheduleCreate wrapping a ContractExecute, paid by the
+      # checkout's admin account. The call is idempotent (the guard is already on).
+      - name: Scheduled admin call
+        if: ${{ inputs.scheduled_admin_call }}
         env:
           KEY: ${{ secrets.TESTNET_REBALANCER_KEY }}
           CHECKOUT_ADDRESS: ${{ inputs.checkout_address }}
+        run: |
+          if [ -z "$KEY" ] || [ -z "$CHECKOUT_ADDRESS" ]; then echo "::error::Needs TESTNET_REBALANCER_KEY and checkout_address"; exit 1; fi
+          KEY="${KEY#0x}"
+          ACCOUNT=$(curl -s "https://testnet.mirrornode.hedera.com/api/v1/accounts/$(cd packages/hardhat && node -e "const {Wallet}=require('ethers');console.log(new Wallet('0x$KEY').address)")" | node -e "let s='';process.stdin.on('data',d=>s+=d).on('end',()=>console.log(JSON.parse(s).account))")
+          echo "Admin account $ACCOUNT"
+          export HEDERA_OPERATOR_ID="$ACCOUNT" HEDERA_OPERATOR_KEY="$KEY" ADMIN_ACCOUNT_ID="$ACCOUNT" ADMIN_SIGNER_KEY="$KEY" HEDERA_NETWORK=testnet
+          yarn admin:exec schedule "$CHECKOUT_ADDRESS" "setPoolGuardEnabled(bool)" true
+
+      # The registry predates the one-market rule, so the replacement gets MARKET_ROLE and the old market loses it only
+      # once the app points at the new one (retire-old).
+      - name: Replace the testnet CreditMarket
+        if: ${{ inputs.redeploy_market != '' }}
+        env:
+          KEY: ${{ secrets.TESTNET_REBALANCER_KEY }}
+          MODE: ${{ inputs.redeploy_market }}
+          MARKET_ADDRESS: ${{ inputs.market_address }}
+        run: |
+          if [ -z "$KEY" ]; then echo "::error::Set the TESTNET_REBALANCER_KEY secret"; exit 1; fi
+          KEY="${KEY#0x}"
+          export __RUNTIME_DEPLOYER_PRIVATE_KEY="0x${KEY}"
+          if [ "$MODE" = "retire-old" ]; then export RETIRE_OLD=1; fi
+          yarn workspace @sh/hardhat hardhat run scripts/redeployTestnetMarket.ts --network hederaTestnet
+
+      - name: Deploy, list and buy on testnet
+        if: ${{ !inputs.scheduled_admin_call && inputs.redeploy_market == '' }}
+        env:
+          KEY: ${{ secrets.TESTNET_REBALANCER_KEY }}
+          CHECKOUT_ADDRESS: ${{ inputs.checkout_address }}
+          TOKEN_ID: ${{ inputs.token_id }}
+          LIST_UNITS: ${{ inputs.list_units }}
+          BUY_UNITS: ${{ inputs.buy_units }}
         run: |
           if [ -z "$KEY" ]; then echo "::error::Set the TESTNET_REBALANCER_KEY secret"; exit 1; fi
           KEY="${KEY#0x}"
