@@ -19,7 +19,7 @@ The legacy testnet registry (`0x9cdB5782a10c41a103B722d1B8fa9CfaF84107a5`, 24,55
 `contracts/legacy/`) stays readable. It predates the crediting-span rule and the capacity-addition leakage bound.
 The app does not read it. The issuer since 26 Sep 2026 is `DmrvRegistry`
 `0xaf9C76B48B317cee770ED6AE038D516b269E0129` and `CreditMarket`
-`0x5aeDe76fc6625cfA3227FFf70197D4D7ff3e5030`, which swaps through SaucerSwap router `0.0.19264`.
+`0x26E77708717cE69EBBBF76e59D106B20e67e1D61` (redeployed from the current source on 28 Sep 2026), which swaps through SaucerSwap router `0.0.19264`.
 Earlier phase-1 deploys (`0xc427610cFfBC919dC0B2c3f71644a4fDcB7ef84a`, `0xe34BeFc4081a8e751271C3549B861e03Fac512b9`)
 are unused.
 
@@ -160,7 +160,7 @@ Pools the deploy script writes. Testnet is the pair the live market already swap
 
 | Network | Pool | WHBAR | State |
 | --- | --- | --- | --- |
-| Testnet | V1 pair `0xF98D0dF4eC60d57f24Ce7BD24eAcAdF045219869` on factory 0.0.9959. The live market `0x5aeDe76f…` swaps through router 0.0.19264 | `0x0000000000000000000000000000000000003aD2` (0.0.15058) | Enforced. Seeded at the Chainlink price on 26 Sep 2026 |
+| Testnet | V1 pair `0xF98D0dF4eC60d57f24Ce7BD24eAcAdF045219869` on factory 0.0.9959. The live market `0x26E77708…` swaps through router 0.0.19264 | `0x0000000000000000000000000000000000003aD2` (0.0.15058) | Enforced. Seeded at the Chainlink price on 26 Sep 2026 |
 | Mainnet | V1 WHBAR/USDC `0xdB34c1Ef944883f0e5A2fC18B6C1978B088bD31d` (0.0.1462797, factory 0.0.1062784, router 0.0.3045981) | `0x0000000000000000000000000000000000163B5a` (0.0.1456986) | Next mainnet deploy. Spot was 24 bps from Chainlink on 26 Sep 2026. Nothing is deployed on mainnet |
 
 A spot price can be moved inside one block. Someone who pushes the pool out of band can block sales (a denial of

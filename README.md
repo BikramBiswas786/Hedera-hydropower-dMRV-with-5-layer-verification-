@@ -115,7 +115,7 @@ packages/nextjs/
 
 ## Live on testnet
 
-App: [hydro-dmrv.vercel.app](https://hydro-dmrv.vercel.app). Market [`0x5aeDe76f…`](https://hashscan.io/testnet/contract/0x5aeDe76fc6625cfA3227FFf70197D4D7ff3e5030), a [meter + VVB signed mint](https://hashscan.io/testnet/transaction/0x321b6d20db7b24eaee672160fcb9643d6fafd357c204934e892446ac6db11b6e), a [`buyAndRetire` through SaucerSwap](https://hashscan.io/testnet/transaction/0x4735808481bde453a2354b4ed395a00ba72112fdcbb0b96c9a1196e4c5753fab), and a [`UsdCheckout` sale](https://hashscan.io/testnet/transaction/0x51c9b0062bd36e119fbefe8b6e58e18717be1a5ea10fc2d54116a1d768ae379d). All five testnet contracts are Sourcify-verified (exact match), so HashScan shows their source. Every address and what each transaction proves is in [docs/evidence.md](docs/evidence.md).
+App: [hydro-dmrv.vercel.app](https://hydro-dmrv.vercel.app). Market [`0x26E77708…`](https://hashscan.io/testnet/contract/0x26E77708717cE69EBBBF76e59D106B20e67e1D61), a [meter + VVB signed mint](https://hashscan.io/testnet/transaction/0x321b6d20db7b24eaee672160fcb9643d6fafd357c204934e892446ac6db11b6e), a [`buyAndRetire` through SaucerSwap](https://hashscan.io/testnet/transaction/0xbbeb258c78ae6f1d9c2bfcbea37d754a151102b25528f63074f5e7f4c2b065f0), and a [`UsdCheckout` sale](https://hashscan.io/testnet/transaction/0x51c9b0062bd36e119fbefe8b6e58e18717be1a5ea10fc2d54116a1d768ae379d). All five testnet contracts are Sourcify-verified (exact match), so HashScan shows their source. Every address and what each transaction proves is in [docs/evidence.md](docs/evidence.md).
 
 Four workflows keep this true:
 
