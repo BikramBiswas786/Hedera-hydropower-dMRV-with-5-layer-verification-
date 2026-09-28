@@ -6,6 +6,7 @@ Phase 1 splits the phase-0 `HydroCreditRegistry` into four contracts:
 | --- | --- | --- |
 | `DmrvRegistry.sol` | Projects, meters, verifiers, module approval, two-signature attestation, anchoring, custody, retirement, certificates, and every HTS call (only here) | 20,984 B |
 | `modules/HydroVmr0017Module.sol` | Stateless `IMethodology`: VMR0017 / ACM0002 / AMS-I.D registration rules and integer quantification | 7,028 B |
+| `modules/RenewableVmr0017Module.sol` | Second `IMethodology`: greenfield solar, wind and ocean power under the same methodologies | 5,987 B |
 | `CreditMarket.sol` | Listings, oracle quote, SaucerSwap router swap, pool guard | 9,047 B |
 | `ResilientHbarUsdFeed.sol` | Chainlink HBAR/USD with a Supra fallback | 2,534 B |
 
@@ -90,6 +91,23 @@ two cannot drift.
 
 It recomputes EG_PJ, BE, PE_HP, PE_FF, LE and ER exactly as `services/mrv/methodology/quantify.ts` does, with the
 same shared vectors. The two live testnet mints reproduce through it to the gram: 4,791,542 g and 73,386,435 g.
+
+`RenewableVmr0017Module` is the second methodology on the same registry, for greenfield grid-connected solar PV,
+floating solar, onshore and offshore wind, wave and tidal power (`methodologyId` = keccak256
+`"renewable/acm0002+vmr0017"`). It shares the hydro module's measurement encoding, ledger word and breakdown layout,
+so meters, VVBs, the registry, HCS reproduction, the market and the UI need no change. It enforces:
+
+- VMR0017 §4 Table 1, which supersedes the VCS default eligibility: wind and solar at any capacity, but only in
+  low-, lower-middle- and upper-middle-income host countries (`NotApplicableInHighIncomeCountry`); wave and tidal
+  everywhere. The CDM variant (ACM0002 / AMS-I.D) has no such restriction;
+- the same crediting-span, renewal, calibration and per-period metering rules as the hydro module.
+
+It computes BE = EG_facility × EF_grid,CM (rounded down), PE = PE_FF from TOOL03 (rounded up; these technologies
+have no PE_HP or PE_GP), and under VMR0017 LE = EG_facility × EF_embodied × 10⁻³ (§8.3 eq. 19, rounded up, never on
+net import) with EF_embodied 43 g/kWh for solar PV, 13 for wind and 8 for ocean energy (§9.1, NREL 2021). Geothermal,
+BESS, retrofits and capacity additions are out of scope. `services/mrv/methodology/renewable.ts` is its TypeScript
+twin, and `test/fixtures/renewableVectors.ts` pins both to the same integers. `deploy/04_*.ts` deploys and approves
+it (`yarn deploy --tags RenewableModule`).
 
 ## DmrvRegistry functions
 
