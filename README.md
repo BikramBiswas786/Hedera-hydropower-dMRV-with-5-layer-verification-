@@ -1,16 +1,27 @@
 # Hydro dMRV
 
-A Scaffold-HBAR template for the part of digital MRV a policy engine leaves off-chain. `DmrvRegistry` mints only when two keys agree: the plant's meter signs an EIP-712 statement of the raw totals, and an accredited VVB signs an approval over that statement's digest. The VVB can only lower the figures. A pluggable methodology module (`HydroVmr0017Module`) recomputes `ER = BE − PE − LE` from the registered design, and the registry will not mint a different integer. Issuance is anchored on HCS. `CreditMarket` sells only by sending the oracle HBAR amount through the SaucerSwap router. If the router or the pinned pair fails the 3% band, nothing is sold.
+**Guardian decides what a credit is. This template makes the token prove it on-chain.**
+
+[Hedera Guardian](https://github.com/hashgraph/guardian) already runs carbon methodology policies, with roles, verifiable credentials and a trust chain. Its library ships CDM ACM0002 and AMS-I.D, the hydro methodologies, and Managed Guardian runs them with no code. Use it for that. Two things it leaves off-chain. First, a Guardian mint is the amount a policy's `mintDocumentBlock` rule computes, minted by the Guardian service with the registry's token keys, and nothing on-chain checks that number. Second, once minted, the credit has no price, no market and no contract another dApp can call. This Scaffold-HBAR template is that on-chain half, for EVM developers building on Hedera credits: a marketplace, a tokenized-asset protocol or an AI agent that buys and retires.
+
+- **Issuance a contract enforces.** `DmrvRegistry` holds the HTS supply key. It mints only with two EIP-712 signatures: the plant's meter over the raw totals, and a VVB over that statement's digest, who may only lower the figures. It mints only the integer its methodology module recomputes, `ER = BE − PE − LE`. Raw readings and reports are on HCS, so anyone can re-derive every mint.
+- **A market other contracts can use.** `CreditMarket` prices in USD from Chainlink with a Supra fallback, sells only by swapping through a SaucerSwap pair that sits within 3% of that price, and retires with an HTS NFT certificate.
+- **Agents as buyers and auditors.** An MCP server with a REST twin for every tool: an agent can reproduce a mint from HCS, then buy and retire with its own wallet.
+
+Hydropower under **Verra VMR0017 v1.0** with **ACM0002 v22.0** is the worked example. That is an implementation of the equations, not a certification and not a Verra issuance. Another methodology is another stateless `IMethodology` module; the registry, market and agent tools do not change.
+
+| | Guardian / Managed Guardian | This template |
+| --- | --- | --- |
+| Methodology policies, roles, VC/DID documents, trust chain | Yes: ACM0002, AMS-I.D and many more | No. Use Guardian |
+| Who decides the minted amount | A policy rule, run by the Guardian service | The contract recomputes it and needs the meter and VVB signatures |
+| Price, sale, DEX settlement, a contract to compose with | No | Chainlink + Supra, SaucerSwap, `CreditMarket` |
+| Retirement | Retire and wipe contracts | `retire` with an HTS NFT certificate |
+| How you start | Docker services and MongoDB, or MGS | `npm create scaffold-hbar` (Next.js + Hardhat) |
+| Guardian evidence | Issues it | Checks it and binds its hash once per mint (`evidenceHash`) |
+
+A policy's Http Request Block can send its Monitoring Report VC to `/api/guardian/v1/cross-check` and get back a result VC signed by this app's own `did:hedera` DID, and `verify_guardian_evidence` checks a Guardian trust chain from the mirror node before our registry relies on it. No Guardian policy calls it yet: Managed Guardian refuses outbound HTTP calls, and without the four bridge variables the route answers 503. The patch guide, including a self-hosted setup that allows the call, is [docs/GUARDIAN.md](docs/GUARDIAN.md).
 
 The live market the app reads is [`0x5aeDe76f…5030`](https://hashscan.io/testnet/contract/0x5aeDe76fc6625cfA3227FFf70197D4D7ff3e5030), the same address as `packages/nextjs/contracts/deployedContracts.ts`. [This transaction](https://hashscan.io/testnet/transaction/0x4735808481bde453a2354b4ed395a00ba72112fdcbb0b96c9a1196e4c5753fab) is `buyAndRetire` of 0.020 t through SaucerSwap V1 router `0.0.19264`. Settlement is Chainlink (Supra fallback) plus that pair. There is no second market on the site.
-
-This sits next to [Hedera Guardian](https://github.com/hashgraph/guardian), it does not replace it. Guardian runs roles, verifiable credentials and the methodology library (including ACM0002, AMS-I.D, Tool 03 and Tool 07). A policy's Http Request Block can send its Monitoring Report VC to `/api/guardian/v1/cross-check` and get back a result VC signed by this app's own `did:hedera` DID, and `verify_guardian_evidence` checks a Guardian trust chain from the mirror node before our registry relies on it. No Guardian policy calls it yet: Managed Guardian refuses outbound HTTP calls, and without the four bridge variables the route answers 503. The patch guide, including a self-hosted setup that allows the call, is [docs/GUARDIAN.md](docs/GUARDIAN.md). The worked example is hydropower under **Verra VMR0017 v1.0** with **ACM0002 v22.0**. That is an implementation of the equations, not a certification and not a Verra issuance.
-
-| | Guardian | This template |
-| --- | --- | --- |
-| Roles, VC/DID, methodology library | Yes | No |
-| Contract recomputes the tonne, meter + VVB signatures, HCS re-derivation, two-oracle HTS sale | No | Yes |
-| Guardian VC as attestation evidence | Issues it | Binds its hash once (`evidenceHash`, `evidenceUsed`) |
 
 ## Quick start
 
@@ -58,8 +69,6 @@ Live app: [hydro-dmrv.vercel.app](https://hydro-dmrv.vercel.app). MCP: `https://
 | An agent | `claude mcp add --transport http hydro-dmrv https://hydro-dmrv.vercel.app/api/mcp` then `get_dex_price` → `list_open_listings` → `prepare_purchase` → sign with your own key. `reproduce_attestation` re-derives any issuance from HCS. |
 
 The [Live smoke](https://github.com/BikramBiswas786/Hedera-hydropower-dMRV-with-5-layer-verification-/actions/workflows/live-smoke.yml) workflow does the first three rows every six hours with no wallet (`yarn live:smoke`): registry and market addresses, both pairs against their oracles, an open listing, an unsigned `buyAndRetire`, every issuance re-derived from HCS, the three scenarios and the MCP tool list. Its job summary is the table.
-
-`/water` is illustrative VMR0015. It does not mint the hydro token.
 
 ## What is on testnet
 
@@ -139,7 +148,7 @@ The seller must be able to receive the pair's USD token: associate it before lis
 claude mcp add --transport http hydro-dmrv https://hydro-dmrv.vercel.app/api/mcp
 ```
 
-Public tools need no key. `approve_attestation` returns the EIP-712 typed data a VVB signs; the server never holds a VVB key. `submit_attestation` and `publish_document` are absent unless the request carries `Authorization: Bearer $MRV_API_KEY`. Writes stay disabled when that variable is unset. The tool list, the REST twins and the OpenAPI document are in [docs/agents.md](docs/agents.md). Conventions for editing the repo are in [AGENTS.md](AGENTS.md).
+Public tools need no key. `approve_attestation` returns the EIP-712 typed data a VVB signs; the server never holds a VVB key. `submit_attestation` is absent unless the request carries `Authorization: Bearer $MRV_API_KEY`. Writes stay disabled when that variable is unset. The tool list, the REST twins and the OpenAPI document are in [docs/agents.md](docs/agents.md). Conventions for editing the repo are in [AGENTS.md](AGENTS.md).
 
 An agent buyer:
 
