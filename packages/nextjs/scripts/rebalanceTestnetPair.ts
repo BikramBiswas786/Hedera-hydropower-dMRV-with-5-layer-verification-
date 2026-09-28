@@ -4,6 +4,9 @@
  *   yarn pair:rebalance             read the market's pair and oracle and print the swap it would make
  *   yarn pair:rebalance --execute   make that swap with REBALANCER_PRIVATE_KEY (an ECDSA testnet account that holds
  *                                   HBAR and the pair's USD token)
+ *   yarn pair:rebalance --execute --deepen 700
+ *                                   then add 700 HBAR and the matching USD token to the pair at its own (now
+ *                                   oracle) ratio, so a small purchase moves it a fraction of a percent
  *
  * The public testnet WHBAR/USDC pair prices HBAR near $2 because testnet USDC is not a dollar, so the market swaps
  * through a small pair seeded at the Chainlink price. Trades drift it; `CreditMarket.settlementPrice` then refuses
@@ -72,6 +75,7 @@ const ERC20_ABI = parseAbi([
 const ROUTER_ABI = parseAbi([
   "function swapExactETHForTokens(uint256 amountOutMin, address[] path, address to, uint256 deadline) payable returns (uint256[])",
   "function swapExactTokensForETH(uint256 amountIn, uint256 amountOutMin, address[] path, address to, uint256 deadline) returns (uint256[])",
+  "function addLiquidityETH(address token, uint256 amountTokenDesired, uint256 amountTokenMin, uint256 amountETHMin, address to, uint256 deadline) payable returns (uint256, uint256, uint256)",
 ]);
 
 const client = createPublicClient({ chain: hederaTestnet, transport: http(RPC) });
@@ -102,10 +106,75 @@ async function readState(market: Address) {
   };
 }
 
+function walletFor() {
+  const key = process.env.REBALANCER_PRIVATE_KEY?.trim();
+  if (!key) throw new Error("Set REBALANCER_PRIVATE_KEY to trade");
+  const account = privateKeyToAccount(`0x${key.replace(/^0x/, "")}` as Hex);
+  return { account, wallet: createWalletClient({ account, chain: hederaTestnet, transport: http(RPC) }) };
+}
+
+/** Adds `hbar` whole HBAR and the matching USD token at the pair's current ratio, which leaves its price unchanged. */
+async function deepen(market: Address, hbar: bigint) {
+  const s = await readState(market);
+  const { account, wallet } = walletFor();
+  const gasPrice = await client.getGasPrice();
+  const hbarTinybar = hbar * 10n ** 8n;
+  const usdAmount = (hbarTinybar * s.reserveUsd) / s.reserveWhbar;
+  const balance = await client.readContract({
+    address: s.usd,
+    abi: ERC20_ABI,
+    functionName: "balanceOf",
+    args: [account.address],
+  });
+  if (balance < (usdAmount * 101n) / 100n)
+    throw new Error(`${account.address} holds ${balance} USD token, needs ${usdAmount}`);
+  const send = async (hash: Hex, label: string) => {
+    const receipt = await client.waitForTransactionReceipt({ hash });
+    if (receipt.status !== "success") throw new Error(`${label} reverted: ${hash}`);
+    console.log(`${label}: https://hashscan.io/testnet/transaction/${hash}`);
+  };
+  await send(
+    await wallet.writeContract({
+      address: s.usd,
+      abi: ERC20_ABI,
+      functionName: "approve",
+      args: [s.router, (usdAmount * 101n) / 100n],
+      gas: 1_000_000n,
+      gasPrice,
+    }),
+    "Approve router for liquidity",
+  );
+  await send(
+    await wallet.writeContract({
+      address: s.router,
+      abi: ROUTER_ABI,
+      functionName: "addLiquidityETH",
+      args: [
+        s.usd,
+        (usdAmount * 101n) / 100n,
+        (usdAmount * 99n) / 100n,
+        (hbarTinybar * 99n) / 100n,
+        account.address,
+        BigInt(Math.floor(Date.now() / 1_000) + 600),
+      ],
+      value: hbarTinybar * WEIBAR_PER_TINYBAR,
+      gas: 3_000_000n,
+      gasPrice,
+    }),
+    `Add ${hbar} HBAR and ${Number(usdAmount) / 1e6} USD token of liquidity`,
+  );
+  const after = await readState(market);
+  console.log(
+    `Pair now ${Number(after.reserveWhbar) / 1e8} HBAR / ${Number(after.reserveUsd) / 1e6} USD token, ${usd8(hbarUsd8FromReserves(after.reserveUsd, after.reserveWhbar))}/HBAR`,
+  );
+}
+
 const usd8 = (price8: bigint) => `$${(Number(price8) / 1e8).toFixed(5)}`;
 
 async function main() {
   const execute = process.argv.includes("--execute");
+  const deepenAt = process.argv.indexOf("--deepen");
+  const deepenHbar = deepenAt === -1 ? 0n : BigInt(process.argv[deepenAt + 1] ?? "0");
   const market = getDeployment("CreditMarket", 296)?.address;
   if (!market) throw new Error("CreditMarket is not in deployedContracts.ts for Hedera testnet (296)");
   const s = await readState(market);
@@ -115,7 +184,8 @@ async function main() {
 
   const trade = rebalanceTrade(s.reserveUsd, s.reserveWhbar, s.oracle8, TRIGGER_BPS);
   if (trade.side === "none") {
-    console.log(`Within ${TRIGGER_BPS} bps; nothing to do.`);
+    console.log(`Within ${TRIGGER_BPS} bps; no swap needed.`);
+    if (execute && deepenHbar > 0n) await deepen(market, deepenHbar);
     return;
   }
   const hbarIn = trade.side === "hbarIn";
@@ -198,6 +268,7 @@ async function main() {
       "Swap USD token → HBAR",
     );
   }
+  if (deepenHbar > 0n) await deepen(market, deepenHbar);
 
   const after = await readState(market);
   const afterBps = deviationBps(after.oracle8, hbarUsd8FromReserves(after.reserveUsd, after.reserveWhbar));
