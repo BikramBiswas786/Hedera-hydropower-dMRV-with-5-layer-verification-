@@ -1,0 +1,31 @@
+name: Guardian trace
+
+# Traces a real Guardian mint on Hedera testnet from public data only (yarn guardian:trace): NFT metadata → VP on
+# HCS → IPFS raw blocks hashed against the CID → Ed25519 proofs with DIDs from HCS → MintToken VC and treasury DID.
+# If Guardian changes its mint memo, metadata or VP format, this turns red before a buyer's check silently degrades.
+on:
+  schedule:
+    - cron: "37 5 * * *"
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - packages/nextjs/services/mrv/guardian/**
+      - packages/nextjs/scripts/traceGuardianMint.ts
+      - .github/workflows/guardian-trace.yml
+
+jobs:
+  trace:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20.18.3
+          cache: yarn
+
+      - run: yarn install --immutable
+
+      - name: Guardian iRec NFT 0.0.10753268 #10
+        run: yarn guardian:trace nft:0.0.10753268:10 --expect backed

@@ -110,6 +110,7 @@ packages/nextjs/
 | `yarn mrv:attest` · `yarn mrv:approve` · `yarn mrv:submit` | Two-signature attestation from the CLI |
 | `yarn admin:threshold` · `yarn admin:exec` | 2-of-3 admin account and scheduled admin calls |
 | `yarn live:smoke` · `yarn pair:rebalance` · `yarn market:keep-listing` | Check the live app; keep the testnet pair and a listing healthy |
+| `yarn guardian:trace <ref>` | Is a Guardian-minted token backed? Mirror node + CID-checked IPFS, no Guardian login |
 | `yarn hardhat:verify:testnet <address> [args]` | Verify a deployment on Sourcify (HashScan shows the source) |
 
 ## Live on testnet
@@ -118,7 +119,8 @@ App: [hydro-dmrv.vercel.app](https://hydro-dmrv.vercel.app). Market [`0x5aeDe76f
 
 Four workflows keep this true:
 
-- [Live smoke](https://github.com/BikramBiswas786/Hedera-hydropower-dMRV-with-5-layer-verification-/actions/workflows/live-smoke.yml) (every 6 h) clicks through the deployed app with no wallet: the pairs against their oracles, an open listing, an unsigned purchase, every mint re-derived from HCS, the scenarios, the MCP tools.
+- [Live smoke](https://github.com/BikramBiswas786/Hedera-hydropower-dMRV-with-5-layer-verification-/actions/workflows/live-smoke.yml) (every 6 h and after each production deploy) clicks through the deployed app with no wallet: the pairs against their oracles, an open listing, an unsigned purchase, every mint re-derived from HCS, a real Guardian mint traced, the scenarios, the MCP tools.
+- [Guardian trace](https://github.com/BikramBiswas786/Hedera-hydropower-dMRV-with-5-layer-verification-/actions/workflows/guardian-trace.yml) (daily) traces a real Guardian iRec mint on testnet to its signed VP and the treasury's DID.
 - [Mainnet fork](https://github.com/BikramBiswas786/Hedera-hydropower-dMRV-with-5-layer-verification-/actions/workflows/mainnet-fork.yml) (every push) runs the settlement against SaucerSwap's real factory, the public WHBAR/USDC pair and mainnet Chainlink.
 - [Testnet pair keeper](https://github.com/BikramBiswas786/Hedera-hydropower-dMRV-with-5-layer-verification-/actions/workflows/testnet-pair-keeper.yml) (hourly) holds the seeded testnet pair at the oracle price, which it must: the pair does not follow HBAR, the oracle does and keeps a listing open.
 - [Checkout testnet demo](https://github.com/BikramBiswas786/Hedera-hydropower-dMRV-with-5-layer-verification-/actions/workflows/checkout-testnet-demo.yml) (on demand) deploys `UsdCheckout` next to the live contracts and makes one sale.

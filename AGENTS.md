@@ -40,7 +40,8 @@ yarn hardhat:size                 # contract-size gate (fails above 24,064 B); C
 yarn admin:threshold              # 2-of-3 threshold admin account (dry run unless --execute)
 yarn admin:exec plan <contract> "<fn(types)>" [args]   # admin calls as scheduled transactions
 yarn hardhat:test:fork            # contract tests against Hedera's HTS emulation
-yarn live:smoke                   # click through the deployed app (Live smoke workflow, every 6 h)
+yarn live:smoke                   # click through the deployed app (Live smoke workflow, every 6 h and after each deploy)
+yarn guardian:trace <ref>         # is a Guardian-minted token backed? nft:<token>:<serial> | ft:<token>:<account> | tx id
 yarn pair:rebalance [--execute]   # hold the testnet SaucerSwap pair at the oracle (Testnet pair keeper)
 yarn market:keep-listing [--execute]  # keep a listing open on the testnet market
 ```
