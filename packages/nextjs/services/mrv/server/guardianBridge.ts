@@ -61,13 +61,14 @@ export function readResultSchema(policyId: string | null): ResultSchemaRef {
       'Guardian bridge result schema is not configured: set GUARDIAN_BRIDGE_RESULT_SCHEMA to {"type":"<uuid>&<version>","contextUrl":"ipfs://…"} from the imported "DMRV Cross-Check Result" schema (docs/GUARDIAN.md)',
     );
   }
-  let parsed: any;
+  type Entry = { type?: unknown; contextUrl?: unknown; context?: ResultSchemaRef["context"] };
+  let parsed: Entry & Record<string, Entry | undefined>;
   try {
-    parsed = JSON.parse(raw);
+    parsed = JSON.parse(raw) ?? {};
   } catch {
     throw new BridgeUnavailableError("GUARDIAN_BRIDGE_RESULT_SCHEMA is not JSON");
   }
-  const entry = typeof parsed?.type === "string" ? parsed : (policyId && parsed?.[policyId]) || parsed?.default;
+  const entry = typeof parsed.type === "string" ? parsed : (policyId && parsed[policyId]) || parsed.default;
   if (!entry || typeof entry.type !== "string" || typeof entry.contextUrl !== "string") {
     throw new BridgeUnavailableError(`No result schema configured for policy ${policyId ?? "(none)"} and no default`);
   }

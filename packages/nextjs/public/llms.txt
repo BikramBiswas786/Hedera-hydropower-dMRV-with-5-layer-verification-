@@ -68,6 +68,8 @@ Full list with proofs: https://github.com/BikramBiswas786/Hedera-hydropower-dMRV
   seeded pair or the mainnet pair 0.0.1462797.
 - Verify a SaucerSwap pool with the factory's `getPair`, not the pool's own `factory()`.
 - HCS: at most 1,024 bytes per chunk and 20 chunks per message; read messages from the mirror node.
+- A scheduled transaction executes once its payer's key is satisfied: at `ScheduleCreate` for a single key, on the
+  second `ScheduleSign` for a 2-of-3 `KeyList`. A `KeyList` account calls contracts from its long-zero address.
 
 ## Sell any HTS token at a USD price
 

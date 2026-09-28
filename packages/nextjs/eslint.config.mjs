@@ -31,4 +31,10 @@ export default defineConfig([
       ],
     },
   },
+  // Project code keeps `any` out (AGENTS.md style); the Scaffold-HBAR hooks and utils are upstream and exempt.
+  {
+    files: ["app/**/*.{ts,tsx}", "services/**/*.ts", "scripts/**/*.ts", "components/**/*.{ts,tsx}"],
+    ignores: ["**/*.test.ts", "components/scaffold-hbar/**"],
+    rules: { "@typescript-eslint/no-explicit-any": "error" },
+  },
 ]);

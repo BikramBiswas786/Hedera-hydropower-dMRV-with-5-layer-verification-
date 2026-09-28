@@ -10,6 +10,8 @@ const nextConfig: NextConfig = {
   },
   eslint: {
     ignoreDuringBuilds: process.env.NEXT_PUBLIC_IGNORE_BUILD_ERROR === "true",
+    // `next lint` checks app/ and components/ by default; the engine, server code and scripts need it too.
+    dirs: ["app", "components", "hooks", "services", "scripts", "utils", "types"],
   },
   async headers() {
     return [

@@ -54,6 +54,7 @@
     "mrv:submit": "yarn workspace @sh/nextjs mrv:submit",
     "admin:threshold": "yarn workspace @sh/nextjs admin:threshold",
     "admin:exec": "yarn workspace @sh/nextjs admin:exec",
+    "admin:demo": "yarn workspace @sh/nextjs admin:demo",
     "next:build": "yarn workspace @sh/nextjs build",
     "next:check-types": "yarn workspace @sh/nextjs check-types",
     "next:dev": "yarn workspace @sh/nextjs dev",
@@ -76,5 +77,22 @@
   },
   "engines": {
     "node": ">=20.18.3"
+  },
+  "resolutions": {
+    "postcss": "^8.5.28",
+    "adm-zip@^0.4.16": "^0.6.1",
+    "axios@^0.21.1": "^0.33.0",
+    "cookie@^0.4.1": "^0.7.2",
+    "tmp@0.0.33": "^0.2.6",
+    "serialize-javascript@^6.0.2": "^7.0.5",
+    "elliptic@6.5.4": "6.6.1",
+    "ws@7.4.6": "^7.5.11",
+    "ws@8.17.1": "^8.21.0",
+    "ws@8.18.0": "^8.21.0",
+    "ws@8.18.3": "^8.21.0",
+    "ws@~8.18.3": "^8.21.0",
+    "bn.js@4.11.6": "^4.12.3",
+    "bn.js@5.1.1": "^5.2.3",
+    "undici@^5.14.0": "^6.28.0"
   }
 }

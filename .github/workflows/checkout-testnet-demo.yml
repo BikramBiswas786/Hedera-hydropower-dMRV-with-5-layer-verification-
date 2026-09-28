@@ -31,6 +31,11 @@ on:
         type: boolean
         required: false
         default: false
+      threshold_admin_demo:
+        description: "Instead of a sale, run the 2-of-3 admin path on checkout_address with throwaway keys (yarn admin:demo)"
+        type: boolean
+        required: false
+        default: false
       redeploy_market:
         description: "Instead of a sale, replace the testnet CreditMarket (scripts/redeployTestnetMarket.ts): 'deploy', or 'retire-old' with market_address"
         type: choice
@@ -78,6 +83,18 @@ jobs:
           export HEDERA_OPERATOR_ID="$ACCOUNT" HEDERA_OPERATOR_KEY="$KEY" ADMIN_ACCOUNT_ID="$ACCOUNT" ADMIN_SIGNER_KEY="$KEY" HEDERA_NETWORK=testnet
           yarn admin:exec schedule "$CHECKOUT_ADDRESS" "setPoolGuardEnabled(bool)" true
 
+      # A 2-of-3 KeyList account made admin of the checkout: one holder schedules, a second signs, the network executes.
+      - name: 2-of-3 threshold admin
+        if: ${{ inputs.threshold_admin_demo }}
+        env:
+          KEY: ${{ secrets.TESTNET_REBALANCER_KEY }}
+          CONTRACT_ADDRESS: ${{ inputs.checkout_address }}
+        run: |
+          if [ -z "$KEY" ] || [ -z "$CONTRACT_ADDRESS" ]; then echo "::error::Needs TESTNET_REBALANCER_KEY and checkout_address"; exit 1; fi
+          KEY="${KEY#0x}"
+          ACCOUNT=$(curl -s "https://testnet.mirrornode.hedera.com/api/v1/accounts/$(cd packages/hardhat && node -e "const {Wallet}=require('ethers');console.log(new Wallet('0x$KEY').address)")" | node -e "let s='';process.stdin.on('data',d=>s+=d).on('end',()=>console.log(JSON.parse(s).account))")
+          HEDERA_OPERATOR_ID="$ACCOUNT" HEDERA_OPERATOR_KEY="$KEY" HEDERA_NETWORK=testnet yarn admin:demo
+
       # The registry predates the one-market rule, so the replacement gets MARKET_ROLE and the old market loses it only
       # once the app points at the new one (retire-old).
       - name: Replace the testnet CreditMarket
@@ -94,7 +111,7 @@ jobs:
           yarn workspace @sh/hardhat hardhat run scripts/redeployTestnetMarket.ts --network hederaTestnet
 
       - name: Deploy, list and buy on testnet
-        if: ${{ !inputs.scheduled_admin_call && inputs.redeploy_market == '' }}
+        if: ${{ !inputs.scheduled_admin_call && !inputs.threshold_admin_demo && inputs.redeploy_market == '' }}
         env:
           KEY: ${{ secrets.TESTNET_REBALANCER_KEY }}
           CHECKOUT_ADDRESS: ${{ inputs.checkout_address }}

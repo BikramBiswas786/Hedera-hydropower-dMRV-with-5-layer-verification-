@@ -39,6 +39,7 @@ yarn hardhat:meter-keys           # per-plant meter keys for a live deploy (.sec
 yarn hardhat:size                 # contract-size gate (fails above 24,064 B); CI runs it
 yarn admin:threshold              # 2-of-3 threshold admin account (dry run unless --execute)
 yarn admin:exec plan <contract> "<fn(types)>" [args]   # admin calls as scheduled transactions
+yarn admin:demo                   # the 2-of-3 path on testnet with throwaway keys (CONTRACT_ADDRESS, an admin operator)
 yarn hardhat:test:fork            # contract tests against Hedera's HTS emulation
 yarn live:smoke                   # click through the deployed app (Live smoke workflow, every 6 h and after each deploy)
 yarn guardian:trace <ref>         # is a Guardian-minted token backed? nft:<token>:<serial> | ft:<token>:<account> | tx id
