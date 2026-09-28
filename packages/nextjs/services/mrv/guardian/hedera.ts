@@ -13,7 +13,14 @@ export type GuardianSources = {
   /** Template with `{cid}` (Guardian's IPFS_PUBLIC_GATEWAY convention), or several separated by commas. */
   ipfsGateway: string;
   fetch: typeof fetch;
+  /**
+   * Per-gateway wait for one block. A document nobody provides makes public gateways hang for about 40 s before a
+   * 504; past this the next gateway is tried, and the read ends as unreadable (a trace reads `incomplete`).
+   */
+  ipfsTimeoutMs?: number;
 };
+
+const IPFS_TIMEOUT_MS = 12_000;
 
 export class SourceError extends Error {}
 
@@ -136,6 +143,7 @@ async function fetchBlock(sources: GuardianSources, cid: string): Promise<Uint8A
       const response = await sources.fetch(`${url}${url.includes("?") ? "&" : "?"}format=raw`, {
         headers: { accept: "application/vnd.ipld.raw" },
         redirect: "follow",
+        signal: AbortSignal.timeout(sources.ipfsTimeoutMs ?? IPFS_TIMEOUT_MS),
       });
       if (!response.ok) {
         failures.push(`${new URL(url).host} ${response.status}`);
@@ -146,7 +154,8 @@ async function fetchBlock(sources: GuardianSources, cid: string): Promise<Uint8A
       return buffer;
     } catch (error) {
       if (error instanceof SourceError) throw error;
-      failures.push(`${template.split("/")[2] ?? template} unreachable`);
+      const host = template.split("/")[2] ?? template;
+      failures.push((error as Error)?.name === "TimeoutError" ? `${host} timed out` : `${host} unreachable`);
     }
   }
   throw new SourceError(`IPFS gateways could not serve ${cid} (${failures.join(", ")})`);

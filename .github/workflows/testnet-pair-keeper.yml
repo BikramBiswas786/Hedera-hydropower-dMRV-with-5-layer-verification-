@@ -6,8 +6,9 @@ name: Testnet pair keeper
 # from that account's registry custody when less than 0.1 t is for sale (scripts/keepListingOpen.ts), so /market
 # always has something to buy. TESTNET_LISTING_KEY overrides the account that lists.
 on:
+  # GitHub runs schedules best-effort and dropped most hourly runs on 28 Sep; three slots an hour make a run likely.
   schedule:
-    - cron: "41 * * * *"
+    - cron: "11,31,51 * * * *"
   workflow_dispatch:
     inputs:
       deepen_hbar:
