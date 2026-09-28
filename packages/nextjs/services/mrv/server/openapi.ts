@@ -1,4 +1,3 @@
-import { prepareDocumentSchema, publishDocumentSchema, waterRequestSchema } from "../documents/schema";
 import { ENGINE_VERSION } from "../engine";
 import { compareReportSchema } from "../guardian/compare";
 import { gridEmissionFactorRequestSchema, projectDesignSchema } from "../methodology/schema";
@@ -76,10 +75,6 @@ export function buildOpenApi(origin: string) {
       { name: "registry", description: `On-chain state on chain ${HYDRO_CHAIN_ID}` },
       { name: "evidence", description: "Audit and reproduction from HCS through the public mirror node" },
       { name: "market", description: "Listings, unsigned purchases, retirements and certificates" },
-      {
-        name: "documents",
-        description: "Signed VCS-shaped documents and the safe-water equation. Not a second credit mint.",
-      },
       {
         name: "guardian",
         description: "Hedera Guardian bridge: signed cross-check VCs and evidence verification (docs/GUARDIAN.md)",
@@ -267,58 +262,6 @@ export function buildOpenApi(origin: string) {
         summary: "Retirement record and its HTS NFT certificate",
         parameters: [path("id", "Retirement id", { type: "integer", minimum: 0 })],
         responses: ok("Retirement and certificate"),
-      }),
-      "/api/documents": {
-        ...get({
-          operationId: "list_documents",
-          tags: ["documents"],
-          summary: "Sealed demo documents, optionally for one subject",
-          parameters: [query("subjectId", "Plant or water project id")],
-          responses: ok("Documents"),
-        }),
-        ...post({
-          operationId: "publish_document",
-          tags: ["documents"],
-          summary: "Store a wallet-signed document",
-          requestBody: body(publishDocumentSchema),
-          responses: ok("Stored"),
-          security: [{ mrvApiKey: [] }],
-        }),
-      },
-      "/api/documents/{subjectId}": get({
-        operationId: "get_trust_chain",
-        tags: ["documents"],
-        summary: "Trust chain for one subject",
-        parameters: [path("subjectId", "Plant or water project id")],
-        responses: ok("Chain status"),
-      }),
-      "/api/documents/check": post({
-        operationId: "check_document",
-        tags: ["documents"],
-        summary: "Confirm a wallet signature; stores nothing",
-        requestBody: body(publishDocumentSchema),
-        responses: ok("Intact, not stored"),
-      }),
-      "/api/documents/prepare": post({
-        operationId: "prepare_document",
-        tags: ["documents"],
-        summary: "Hash to sign; writes nothing",
-        requestBody: body(prepareDocumentSchema),
-        responses: ok("Hash and message"),
-      }),
-      "/api/work": get({
-        operationId: "run_public_work",
-        tags: ["documents"],
-        summary: "Public describe-to-verify playbook",
-        parameters: [query("subjectId", "Defaults to HYDRO-DEMO-01")],
-        responses: ok("Steps and chain"),
-      }),
-      "/api/water/quantify": post({
-        operationId: "quantify_safe_water",
-        tags: ["documents"],
-        summary: "Illustrative VMR0015 quantification",
-        requestBody: body(waterRequestSchema),
-        responses: ok("Tonnes, not hydro credits"),
       }),
       "/api/guardian/v1/cross-check": post({
         operationId: "guardian_cross_check",

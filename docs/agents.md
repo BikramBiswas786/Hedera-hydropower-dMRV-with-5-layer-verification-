@@ -25,11 +25,7 @@ claude mcp add --transport http hydro-dmrv https://hydro-dmrv.vercel.app/api/mcp
 | `get_retirement_certificate` · `get_portfolio` | public | Retirement record and its NFT certificate · everything an account or a beneficiary retired, with totals |
 | `compare_guardian_report` | public | Recomputes a Guardian VMR0017 monitoring report's BE, PE, LE and ER in tonnes: MATCH, MISMATCH or NOT_COMPARABLE |
 | `approve_attestation` | public, read-only | For a VVB: re-derives the exact EIP-712 `VerifierApproval` the registry will check from the readings and the step-1 anchor. Holds no key, writes nothing |
-| `list_documents` · `get_trust_chain` · `run_public_work` | public | Sealed VCS-shaped documents for a demo plant, each citing the previous hash · where the chain stands · the describe → verify playbook. Documents do not mint |
-| `prepare_document` · `check_document` | public, read-only | The exact message a wallet signs for a document · checks a signed document's hash and signature. Stores nothing |
-| `quantify_safe_water` | public | Illustrative VMR0015 (AMS-III.AV) safe-water figures. Not a hydro credit |
 | `submit_attestation` | bearer `MRV_API_KEY` | Step 1 (`publishForApproval`): verify → meter signature → HCS → returns the VVB's EIP-712 typed data. Step 2: with `anchor` and `verifierSignature`, relays `submitAttestation`. Only listed for authenticated requests |
-| `publish_document` | bearer `MRV_API_KEY` | Checks a signed document and keeps it for this server process. Only listed for authenticated requests |
 
 An autonomous buyer needs no special permissions:
 

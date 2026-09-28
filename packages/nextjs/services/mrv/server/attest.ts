@@ -1,6 +1,5 @@
 import { type ApprovalInput, approvalTypedDataJson, recoverApprover, signApproval } from "../approval";
 import { DEMO_PLANT, demoMeterKey } from "../demo";
-import { monitoringDocumentDraft } from "../documents/server";
 import type { VerificationReport } from "../engine";
 import type { RegisteredDesign } from "../methodology/project";
 import { HYDRO_CHAIN_ID, hashscan, isLiveHederaChain } from "../network";
@@ -52,8 +51,6 @@ export type AttestOutcome =
       hcs: HcsLinks;
       /** `url` is a Hashscan link on Hedera networks and `null` on a local chain. */
       transaction: { hash: string; url: string | null };
-      /** Unsigned monitoring report for the caller to sign. Not a second mint. */
-      monitoringDocument: ReturnType<typeof monitoringDocumentDraft>;
     } & Anchors);
 
 /** Gas for `submitAttestation`: module call, two `ecrecover`s, attestation storage and the HTS mint. */
@@ -401,12 +398,6 @@ export async function attestReadings(request: AttestRequest): Promise<AttestOutc
     verifier: { address: approver, demo: !step2 },
     hcs,
     transaction: { hash, url: isLiveHederaChain() ? hashscan.transaction(hash) : null },
-    monitoringDocument: monitoringDocumentDraft(
-      profile.plantId,
-      `Minted ${unitsMinted} kg. Report hash ${final.reportHash}. VVB ${approver}${step2 ? "" : " (labelled demo VVB key)"}.`,
-      null,
-      account.address as Hex,
-    ),
   };
 }
 

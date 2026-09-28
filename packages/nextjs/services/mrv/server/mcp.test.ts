@@ -32,12 +32,6 @@ const PUBLIC = [
   "prepare_purchase",
   "get_retirement_certificate",
   "get_portfolio",
-  "list_documents",
-  "get_trust_chain",
-  "prepare_document",
-  "quantify_safe_water",
-  "check_document",
-  "run_public_work",
   "approve_attestation",
 ];
 
@@ -47,7 +41,6 @@ describe("agent tool list", () => {
     expect(Object.keys(listed).sort()).toEqual([...PUBLIC].sort());
     expect(listed.prepare_purchase).toBeDefined();
     expect(listed.submit_attestation).toBeUndefined();
-    expect(listed.publish_document).toBeUndefined();
   });
 
   it("marks every public tool read-only", () => {
@@ -56,11 +49,10 @@ describe("agent tool list", () => {
     }
   });
 
-  it("adds the two authenticated write tools only when the bearer was accepted", () => {
+  it("adds the authenticated write tool only when the bearer was accepted", () => {
     const listed = tools(true);
-    expect(Object.keys(listed).sort()).toEqual([...PUBLIC, "publish_document", "submit_attestation"].sort());
+    expect(Object.keys(listed).sort()).toEqual([...PUBLIC, "submit_attestation"].sort());
     expect(listed.submit_attestation.annotations?.readOnlyHint).toBe(false);
-    expect(listed.publish_document.annotations?.readOnlyHint).toBe(false);
   });
 });
 

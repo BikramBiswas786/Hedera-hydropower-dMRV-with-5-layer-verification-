@@ -12,8 +12,10 @@
 > certificate.
 
 Registry methodology is on-chain; demo plants are VMR0017.
-A short note for people is at `/blog`. Do not treat it as a plant design or as a second copy of the equations.
-Document tools (no key, except `publish_document`): `list_documents`, `get_trust_chain`, `prepare_document`, `check_document`, `run_public_work`, `quantify_safe_water`. `POST /api/documents/check` confirms a signature and stores nothing. Safe water is VMR0015 and does not mint HYCC.
+This is the on-chain half of a Hedera Guardian workflow, not a replacement for it. Guardian runs the roles, documents
+and methodology policies; a Guardian mint is an amount a policy rule computes and the Guardian service signs. Here the
+contract holds the supply key, recomputes the tonnes and needs the meter and VVB signatures, and the credit can be
+priced, bought and retired on-chain. `compare_guardian_report` and `verify_guardian_evidence` check a Guardian figure.
 
 Everything below is relative to this site's origin. Read-only access needs no credentials. The server never holds a
 buyer's key: purchases are returned as unsigned transactions. The REST API is described in OpenAPI 3.1 at
@@ -38,10 +40,8 @@ buyer's key: purchases are returned as unsigned transactions. The REST API is de
   MATCH, MISMATCH or NOT_COMPARABLE)
 - VVB: `approve_attestation` (read-only: the exact EIP-712 VerifierApproval the registry will check for a step-1
   anchor; sign it with your own key and pass it to `submit_attestation` as `verifierSignature`)
-- Documents (do not mint): `list_documents`, `get_trust_chain`, `run_public_work`, `prepare_document`,
-  `check_document`; illustrative VMR0015 `quantify_safe_water` (not a hydro credit)
-- Write tools `submit_attestation` (two steps: publish for approval, then relay with the VVB signature) and
-  `publish_document` are listed only when the request carries `Authorization: Bearer <MRV_API_KEY>`
+- Write tool `submit_attestation` (two steps: publish for approval, then relay with the VVB signature) is listed only
+  when the request carries `Authorization: Bearer <MRV_API_KEY>`
 - Resource: `hydro-dmrv://methodology` (equations, QA/QC rules, IPCC bounds, what is not implemented)
 
 Buying as an agent: `get_dex_price` → `list_open_listings` → `prepare_purchase { listingId, amountKg, beneficiary }` → sign and send `{ to, data, value }` with your wallet on `chainId` → `get_retirement_certificate`. `prepare_purchase` returns nothing if the SaucerSwap WHBAR/USDC spot is more than 3% from the settlement price. The server never holds your key.
@@ -73,10 +73,6 @@ Buying as an agent: `get_dex_price` → `list_open_listings` → `prepare_purcha
   <MRV_API_KEY>`
 - `POST /api/mrv/approve` — body = the attest body + `anchor` → the VerifierApproval typed data a VVB signs; no key
 - `POST /api/methodology/compare` — a Guardian monitoring report's figures → MATCH / MISMATCH / NOT_COMPARABLE
-- `GET  /api/documents?subjectId=…`, `GET /api/documents/{subjectId}`, `POST /api/documents/prepare`,
-  `POST /api/documents/check`, `GET /api/work?subjectId=…` — sealed documents, trust chain and playbook (no minting);
-  `POST /api/documents` stores one and requires the bearer key
-- `POST /api/water/quantify` — illustrative VMR0015 safe-water figures
 - `POST /api/guardian/v1/cross-check?policyId=…` — for a Guardian policy's httpRequestBlock: body = the Monitoring
   Report VC → a "DMRV Cross-Check Result" VC signed by the bridge did:hedera (Ed25519Signature2018); requires
   `Authorization: Bearer <GUARDIAN_BRIDGE_API_KEY>`; 503 until the bridge key and DID are configured (docs/GUARDIAN.md)
