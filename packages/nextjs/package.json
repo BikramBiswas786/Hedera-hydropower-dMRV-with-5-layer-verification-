@@ -19,6 +19,7 @@
     "mrv:submit": "tsx scripts/mrv.ts submit",
     "admin:threshold": "tsx scripts/createThresholdAdmin.ts",
     "admin:exec": "tsx scripts/adminExec.ts",
+    "admin:demo": "tsx scripts/thresholdAdminDemo.ts",
     "guardian:publish-did": "tsx scripts/publish-bridge-did.ts",
     "guardian:schema": "tsx scripts/guardian-schema.ts",
     "guardian:trace": "tsx scripts/traceGuardianMint.ts",
