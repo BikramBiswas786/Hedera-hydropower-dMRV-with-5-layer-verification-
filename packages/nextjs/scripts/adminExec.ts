@@ -81,9 +81,14 @@ async function main() {
         .setScheduleMemo(`dMRV admin: ${signature}`)
         .freezeWith(c)
         .sign(signer);
-      const receipt = await (await tx.execute(c)).getReceipt(c);
+      const response = await tx.execute(c);
+      const receipt = await response.getReceipt(c);
+      const scheduleId = receipt.scheduleId?.toString();
+      console.log(`ScheduleCreate ${response.transactionId.toString()}: schedule ${scheduleId}`);
+      // A single-key admin account (a testnet deployer) meets its threshold with this one signature, so the network
+      // runs the call at once; the 2-of-3 account waits for a second holder.
       console.log(
-        `Scheduled ${receipt.scheduleId?.toString()} (1 of 2 signatures). Second holder: yarn admin:exec sign ${receipt.scheduleId?.toString()}`,
+        `Scheduled call ${receipt.scheduledTransactionId?.toString() ?? "(pending)"}. If the account needs more signatures: yarn admin:exec sign ${scheduleId}`,
       );
     } finally {
       c.close();

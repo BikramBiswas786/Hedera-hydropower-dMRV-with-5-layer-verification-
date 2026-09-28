@@ -26,6 +26,11 @@ on:
         description: "Base units to buy back"
         required: false
         default: "10"
+      scheduled_admin_call:
+        description: "Instead of a sale, send setPoolGuardEnabled(true) to checkout_address as a Hedera scheduled transaction (yarn admin:exec schedule)"
+        type: boolean
+        required: false
+        default: false
 
 jobs:
   demo:
@@ -48,7 +53,23 @@ jobs:
           TRACE_REF: ${{ inputs.trace_ref }}
         run: yarn guardian:trace "$TRACE_REF" --expect backed
 
+      # The admin path the README describes, on a live contract: ScheduleCreate wrapping a ContractExecute, paid by the
+      # checkout's admin account. The call is idempotent (the guard is already on).
+      - name: Scheduled admin call
+        if: ${{ inputs.scheduled_admin_call }}
+        env:
+          KEY: ${{ secrets.TESTNET_REBALANCER_KEY }}
+          CHECKOUT_ADDRESS: ${{ inputs.checkout_address }}
+        run: |
+          if [ -z "$KEY" ] || [ -z "$CHECKOUT_ADDRESS" ]; then echo "::error::Needs TESTNET_REBALANCER_KEY and checkout_address"; exit 1; fi
+          KEY="${KEY#0x}"
+          ACCOUNT=$(curl -s "https://testnet.mirrornode.hedera.com/api/v1/accounts/$(cd packages/hardhat && node -e "const {Wallet}=require('ethers');console.log(new Wallet('0x$KEY').address)")" | node -e "let s='';process.stdin.on('data',d=>s+=d).on('end',()=>console.log(JSON.parse(s).account))")
+          echo "Admin account $ACCOUNT"
+          export HEDERA_OPERATOR_ID="$ACCOUNT" HEDERA_OPERATOR_KEY="$KEY" ADMIN_ACCOUNT_ID="$ACCOUNT" ADMIN_SIGNER_KEY="$KEY" HEDERA_NETWORK=testnet
+          yarn admin:exec schedule "$CHECKOUT_ADDRESS" "setPoolGuardEnabled(bool)" true
+
       - name: Deploy, list and buy on testnet
+        if: ${{ !inputs.scheduled_admin_call }}
         env:
           KEY: ${{ secrets.TESTNET_REBALANCER_KEY }}
           CHECKOUT_ADDRESS: ${{ inputs.checkout_address }}
