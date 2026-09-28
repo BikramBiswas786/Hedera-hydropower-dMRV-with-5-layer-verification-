@@ -58,7 +58,12 @@ type Overview = {
   totalIssuedKg: number;
   totalRetiredKg: number;
   retirementCount: number;
-  oracle: { paused?: boolean } | null;
+  oracle: {
+    price: number | null;
+    pausedReason: string | null;
+    chainlink: { price: number | null; fresh: boolean };
+    supra: { price: number | null; fresh: boolean };
+  } | null;
 };
 type Dex = {
   pair: string;
@@ -109,9 +114,27 @@ async function mcp(method: string, params: unknown, session?: string) {
   return { result: message.result, session: response.headers.get("mcp-session-id") ?? session };
 }
 
+/** The HTTP status of a refused request, or null when it succeeded. */
+async function refusalStatus(path: string, body: unknown): Promise<number | null> {
+  const response = await fetch(`${BASE}${path}`, {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify(body),
+    signal: AbortSignal.timeout(60_000),
+  });
+  return response.ok ? null : response.status;
+}
+
 async function main() {
   if (!MARKET || !REGISTRY) throw new Error("deployedContracts.ts has no Hedera testnet (296) registry and market");
   let listings: Listing[] = [];
+  let oracle: Overview["oracle"] = null;
+  // ResilientHbarUsdFeed refuses to price while fresh Chainlink and Supra answers are more than 3% apart, and the
+  // market then refuses every sale. That is the safety rule working, so the market checks below verify the refusal
+  // instead of a sale. Any other pause (no fresh price at all) is an outage and fails.
+  const sourcesDisagree = () => oracle?.pausedReason === "oracle sources disagree";
+  const disagreement = () =>
+    `sales paused by design: Chainlink $${oracle?.chainlink.price?.toFixed(5)} vs Supra $${oracle?.supra.price?.toFixed(5)}`;
 
   await check("Registry overview", async () => {
     const o = await call<Overview>("/api/registry");
@@ -119,10 +142,18 @@ async function main() {
     assert(o.address.toLowerCase() === REGISTRY, `registry ${o.address} is not deployedContracts' ${REGISTRY}`);
     assert(o.market?.toLowerCase() === MARKET, `market ${o.market} is not deployedContracts' ${MARKET}`);
     assert(o.attestationCount > 0, "no attestations");
+    oracle = o.oracle;
+    assert(!oracle?.pausedReason || sourcesDisagree(), `oracle paused: ${oracle?.pausedReason}`);
     return `${o.attestationCount} attestations, ${o.totalIssuedKg / 1000} t issued, ${o.retirementCount} retirements`;
   });
 
   await check("SaucerSwap pair vs oracle", async () => {
+    if (sourcesDisagree()) {
+      // No settlement price exists; the keeper holds the pair at Chainlink so sales resume as soon as Supra agrees.
+      const status = await fetch(`${BASE}/api/market/dex`, { signal: AbortSignal.timeout(60_000) });
+      assert(status.status === 409, `/api/market/dex answered ${status.status} while the feed is paused`);
+      return disagreement();
+    }
     const d = await call<Dex>("/api/market/dex");
     const line = `pair $${d.price.toFixed(5)}, oracle $${d.oraclePrice.toFixed(5)}, ${d.deviationBps} bps (max ${d.maxDeviationBps})`;
     assert(d.accepted, `outside the band: ${line}`);
@@ -130,6 +161,7 @@ async function main() {
   });
 
   await check("Public mainnet WHBAR/USDC vs mainnet Chainlink", async () => {
+    if (sourcesDisagree()) return `not measured: /api/market/dex builds nothing while ${disagreement()}`;
     const m = (await call<Dex>("/api/market/dex")).publicMainnet;
     assert(m, "no publicMainnet reading");
     const line = `pair $${m.price.toFixed(5)}, Chainlink $${m.oraclePrice.toFixed(5)}, ${m.deviationBps} bps`;
@@ -139,6 +171,15 @@ async function main() {
 
   await check("Open listings with a live quote", async () => {
     listings = (await call<{ listings: Listing[] }>("/api/registry/listings")).listings;
+    if (sourcesDisagree()) {
+      const open = listings.filter(l => l.unitsAvailable > 0);
+      assert(open.length > 0, "no open listing");
+      assert(
+        open.every(l => l.quoteFullListingTinybar === null),
+        "a listing was quoted while the feed refuses to price",
+      );
+      return `${open.length} listing(s) open, none quoted: ${disagreement()}`;
+    }
     const buyable = listings.filter(l => l.unitsAvailable > 0 && l.quoteFullListingTinybar !== null);
     assert(buyable.length > 0, `${listings.length} open listings, none buyable now`);
     const kg = buyable.reduce((sum, l) => sum + l.unitsAvailable, 0);
@@ -148,6 +189,16 @@ async function main() {
   await check("prepare_purchase builds an unsigned buyAndRetire", async () => {
     const listing = listings.find(l => l.unitsAvailable > 0);
     assert(listing, "no open listing to prepare");
+    if (sourcesDisagree()) {
+      const status = await refusalStatus("/api/market/prepare-purchase", {
+        listingId: listing.id,
+        amountKg: Math.min(10, listing.unitsAvailable),
+        retire: true,
+        beneficiary: "live smoke check",
+      });
+      assert(status === 409, `prepare_purchase answered ${status ?? "200"} while the feed is paused`);
+      return `refused with 409: ${disagreement()}`;
+    }
     const p = await post<Prepared>("/api/market/prepare-purchase", {
       listingId: listing.id,
       amountKg: Math.min(10, listing.unitsAvailable),

@@ -30,8 +30,35 @@ const MARKET_ABI = parseAbi([
 ]);
 const FEED_ABI = parseAbi([
   "function latestRoundData() view returns (uint80, int256, uint256, uint256, uint80)",
+  "function readSources() view returns ((int256 answer, uint256 updatedAt, bool fresh) primary, (int256 answer, uint256 updatedAt, bool fresh) secondary)",
   "function decimals() view returns (uint8)",
 ]);
+
+/**
+ * The price to hold the pair at. Normally the feed's own answer. When Chainlink and Supra are both fresh but more
+ * than MAX_DEVIATION_BPS apart, the feed refuses to answer (and the market refuses every sale, by design); the pair
+ * is then held at the fresh primary (Chainlink) so it is already in band when the sources agree again.
+ */
+async function targetPrice(feed: Address): Promise<bigint> {
+  try {
+    const [, answer] = await client.readContract({ address: feed, abi: FEED_ABI, functionName: "latestRoundData" });
+    return answer;
+  } catch (error) {
+    const [primary, secondary] = await client.readContract({
+      address: feed,
+      abi: FEED_ABI,
+      functionName: "readSources",
+    });
+    const source = primary.fresh ? primary : secondary.fresh ? secondary : null;
+    if (!source) throw error;
+    console.warn(
+      `The feed refuses to answer (Chainlink ${primary.answer}, Supra ${secondary.answer}); holding the pair at ${
+        primary.fresh ? "Chainlink" : "Supra"
+      } until the sources agree. Sales stay paused until then.`,
+    );
+    return source.answer;
+  }
+}
 const PAIR_ABI = parseAbi([
   "function token0() view returns (address)",
   "function token1() view returns (address)",
@@ -56,8 +83,8 @@ async function readState(market: Address) {
     client.readContract({ address: market, abi: MARKET_ABI, functionName: "poolGuard" }),
   ]);
   const [pool, , whbarIsToken0] = guard;
-  const [[, answer], decimals, token0, token1, [r0, r1]] = await Promise.all([
-    client.readContract({ address: feed, abi: FEED_ABI, functionName: "latestRoundData" }),
+  const [answer, decimals, token0, token1, [r0, r1]] = await Promise.all([
+    targetPrice(feed),
     client.readContract({ address: feed, abi: FEED_ABI, functionName: "decimals" }),
     client.readContract({ address: pool, abi: PAIR_ABI, functionName: "token0" }),
     client.readContract({ address: pool, abi: PAIR_ABI, functionName: "token1" }),
