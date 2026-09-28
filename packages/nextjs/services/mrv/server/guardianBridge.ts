@@ -3,6 +3,7 @@ import { MappingError } from "../guardian/crossCheck";
 import { assertDidMatchesKey, bridgeKeyPair, parseBridgeKey } from "../guardian/did";
 import { type EvidenceResult, verifyGuardianEvidence } from "../guardian/evidence";
 import { type GuardianSources, SourceError } from "../guardian/hedera";
+import { type GuardianTrace, traceGuardianMint } from "../guardian/trace";
 import { MIRROR_NODE_URL } from "../network";
 import { ApiError } from "./errors";
 import { timingSafeEqual } from "crypto";
@@ -145,7 +146,10 @@ export async function handleCrossCheck(request: Request) {
 export function readGuardianSources(fetchImpl: typeof fetch = fetch): GuardianSources {
   return {
     mirrorNodeUrl: (process.env.GUARDIAN_MIRROR_NODE_URL || MIRROR_NODE_URL).replace(/\/$/, ""),
-    ipfsGateway: process.env.GUARDIAN_IPFS_GATEWAY || "https://ipfs.io/ipfs/{cid}",
+    // Managed Guardian's public gateway serves what MGS pins; the public gateways find the rest if anyone provides it.
+    ipfsGateway:
+      process.env.GUARDIAN_IPFS_GATEWAY ||
+      "https://ipfs.guardianservice.app/ipfs/{cid},https://ipfs.io/ipfs/{cid},https://dweb.link/ipfs/{cid}",
     fetch: fetchImpl,
   };
 }
@@ -165,6 +169,24 @@ export async function verifyEvidence(
     throw new ApiError("topicIds must be Hedera topic ids (0.0.x)", 400);
   try {
     return await verifyGuardianEvidence(readGuardianSources(fetchImpl), ref, { expectedTopicIds: expected });
+  } catch (error) {
+    if (error instanceof SourceError) throw new ApiError(error.message, 422);
+    throw error;
+  }
+}
+
+const TRACE_REF =
+  /^(nft:\d+\.\d+\.\d+:\d+|ft:\d+\.\d+\.\d+:\d+\.\d+\.\d+|\d+\.\d+\.\d+@\d+\.\d+|\d+\.\d+\.\d+-\d+-\d+)$/;
+
+/** The buyer's check on a Guardian-minted token (services/mrv/guardian/trace.ts). Public, read-only. */
+export async function traceMint(ref: string, fetchImpl: typeof fetch = fetch): Promise<GuardianTrace> {
+  const trimmed = ref.trim();
+  if (!TRACE_REF.test(trimmed)) {
+    throw new ApiError("ref must be nft:<tokenId>:<serial>, ft:<tokenId>:<account> or a transaction id", 400);
+  }
+  rateLimit("trace");
+  try {
+    return await traceGuardianMint(readGuardianSources(fetchImpl), trimmed);
   } catch (error) {
     if (error instanceof SourceError) throw new ApiError(error.message, 422);
     throw error;

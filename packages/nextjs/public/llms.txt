@@ -15,7 +15,8 @@ Registry methodology is on-chain; demo plants are VMR0017.
 This is the on-chain half of a Hedera Guardian workflow, not a replacement for it. Guardian runs the roles, documents
 and methodology policies; a Guardian mint is an amount a policy rule computes and the Guardian service signs. Here the
 contract holds the supply key, recomputes the tonnes and needs the meter and VVB signatures, and the credit can be
-priced, bought and retired on-chain. `compare_guardian_report` and `verify_guardian_evidence` check a Guardian figure.
+priced, bought and retired on-chain. `trace_guardian_mint` checks a Guardian token before you buy it;
+`compare_guardian_report` and `verify_guardian_evidence` check a Guardian figure.
 
 Everything below is relative to this site's origin. Read-only access needs no credentials. The server never holds a
 buyer's key: purchases are returned as unsigned transactions. The REST API is described in OpenAPI 3.1 at
@@ -32,6 +33,10 @@ buyer's key: purchases are returned as unsigned transactions. The REST API is de
   `list_attestations`, `get_plant` (design, ledger, lifetime totals and attestations of one plant)
 - Evidence: `audit_attestation` (report vs chain), `reproduce_attestation` (re-run the engine on the data published to
   HCS, check the registered design was used, compare every figure)
+- Guardian, before buying: `trace_guardian_mint { ref }` (ref = nft:<token>:<serial>, ft:<token>:<holder> or a mint
+  transaction id; follows the mint memo / NFT metadata to the VP on HCS, reads it from IPFS hash-checked against the
+  CID, verifies the signatures, and checks the MintToken VC names this token and amount and the signer's DID was
+  published by the token treasury → verdict backed / not-backed / incomplete)
 - Guardian: `verify_guardian_evidence { ref, topicIds? }` (verify a Guardian VP/VC chain from the mirror node and IPFS:
   topic, status, every Ed25519 signature; refuses chains with a MintToken VC or a Monitoring Report that does not match)
 - Market: `get_dex_price`, `list_open_listings`, `prepare_purchase` (unsigned buy / buyAndRetire for your own wallet),
@@ -98,6 +103,8 @@ seller.
 - `POST /api/guardian/v1/cross-check?policyId=…` — for a Guardian policy's httpRequestBlock: body = the Monitoring
   Report VC → a "DMRV Cross-Check Result" VC signed by the bridge did:hedera (Ed25519Signature2018); requires
   `Authorization: Bearer <GUARDIAN_BRIDGE_API_KEY>`; 503 until the bridge key and DID are configured (docs/GUARDIAN.md)
+- `GET  /api/guardian/v1/trace?ref=nft:token:serial|ft:token:account|0.0.x@s.n` — is a Guardian-minted token backed
+  (same as `trace_guardian_mint`)
 - `GET  /api/guardian/v1/evidence/{timestamp|0.0.x@s.n|nft:token:serial}?topicIds=0.0.a,0.0.b` — Guardian evidence
   check (same as `verify_guardian_evidence`)
 

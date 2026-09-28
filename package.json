@@ -44,6 +44,7 @@
     "lint-staged": "lint-staged",
     "mrv:attest": "yarn workspace @sh/nextjs mrv:attest",
     "mrv:create-topic": "yarn workspace @sh/nextjs mrv:create-topic",
+    "guardian:trace": "yarn workspace @sh/nextjs guardian:trace",
     "live:smoke": "yarn workspace @sh/nextjs live:smoke",
     "market:keep-listing": "yarn workspace @sh/nextjs market:keep-listing",
     "pair:rebalance": "yarn workspace @sh/nextjs pair:rebalance",

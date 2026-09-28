@@ -3,19 +3,20 @@ name: Live smoke
 # Clicks through https://hydro-dmrv.vercel.app with no wallet (packages/nextjs/scripts/liveSmoke.ts): registry and
 # market addresses, the SaucerSwap pair against the oracle, an open listing, an unsigned purchase, every issuance
 # re-derived from HCS, the verify scenarios and the MCP tool list. The table lands in the job summary.
+# It runs after Vercel reports a successful production deployment rather than on push, so it checks the code that
+# was just deployed (a push-triggered run could beat the deploy and test the previous build). Pull requests are not
+# checked here: the script tests production, which a PR has not changed yet.
 on:
   schedule:
     - cron: "23 */6 * * *"
   workflow_dispatch:
-  push:
-    branches: [main]
-  pull_request:
-    paths:
-      - packages/nextjs/scripts/liveSmoke.ts
-      - .github/workflows/live-smoke.yml
+  deployment_status:
 
 jobs:
   smoke:
+    if: >-
+      github.event_name != 'deployment_status' ||
+      (github.event.deployment_status.state == 'success' && github.event.deployment.environment == 'Production')
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
