@@ -17,6 +17,12 @@ Hydropower under Verra VMR0017 v1.0 with ACM0002 v22.0 is the worked example, no
 | Price, sale, DEX settlement, a contract to compose with | No | Chainlink + Supra, SaucerSwap, `CreditMarket`, `UsdCheckout` |
 | How you start | Docker services and MongoDB, or MGS | `npm create scaffold-hbar` |
 
+| Market: oracle price, SaucerSwap check, listing | Verify: the five-stage engine on a day of readings |
+| --- | --- |
+| ![Credit market](docs/images/market.png) | ![Verify and quantify](docs/images/verify.png) |
+
+> **Disclaimer.** Contracts, app and tooling are experimental and not audited. The engine implements published equations; it is not a certification body. Do not use it in production without a security review.
+
 ## Quick start: a working market in five minutes, no Hedera account
 
 Prerequisites: Node.js ≥ 20.18.3, Git, Yarn via Corepack (`corepack enable`).
@@ -74,10 +80,34 @@ flowchart LR
   C -- custody, retire --> R
 ```
 
-| Package | What is in it |
+Hedera services in play: **HTS** (a credit token and an NFT collection whose treasury, admin and supply keys are the registry contract), **HCS** (raw readings and reports, re-derived from the mirror node), **smart contracts** on the Hedera EVM with the HTS system contract at `0x167`, and the **Schedule Service** (admin calls from a 2-of-3 threshold account as `ScheduleCreate` / `ScheduleSign`, `yarn admin:exec`).
+
+```
+packages/hardhat/
+  contracts/            DmrvRegistry, CreditMarket, UsdCheckout, ResilientHbarUsdFeed
+    settlement/         UsdSettlement: oracle price, SaucerSwap pool guard, swap to seller
+    modules/            HydroVmr0017Module (IMethodology)
+    lib/                HederaTokenLib: every HTS call, response codes to reverts
+    legacy/             the phase-0 registry, kept so its testnet mints still reproduce
+  deploy/               00 contracts · 01 setup · 02 UsdCheckout · 03 local demo batch
+  test/                 174 tests, incl. MainnetFork.test.ts (CI forks mainnet)
+packages/nextjs/
+  app/                  /verify /plants /market /portfolio /audit /methodology, api/**, api/mcp
+  services/mrv/         the pure engine, methodology, HCS messages, audit; server/ holds keys and writes
+  scripts/              mrv:* attestation CLI, admin:*, pair keeper, live smoke
+```
+
+## Scripts
+
+| Command | What it does |
 | --- | --- |
-| `packages/hardhat` | `DmrvRegistry`, `HydroVmr0017Module`, `UsdSettlement`, `CreditMarket`, `UsdCheckout`, `ResilientHbarUsdFeed`, `HederaTokenLib`; deploy steps `00`–`03`; tests |
-| `packages/nextjs` | the app (`/verify`, `/plants`, `/market`, `/portfolio`, `/audit`, `/methodology`), REST API, MCP server; the pure engine in `services/mrv/` |
+| `yarn chain:offline` · `yarn deploy --network localhost` · `yarn start` | Local chain, contracts and demo batch, app |
+| `yarn test` · `yarn lint` · `yarn next:build` | Contract and app tests, lint, production build |
+| `yarn hardhat:size` | Contract-size gate (24,064 B) |
+| `yarn mrv:attest` · `yarn mrv:approve` · `yarn mrv:submit` | Two-signature attestation from the CLI |
+| `yarn admin:threshold` · `yarn admin:exec` | 2-of-3 admin account and scheduled admin calls |
+| `yarn live:smoke` · `yarn pair:rebalance` · `yarn market:keep-listing` | Check the live app; keep the testnet pair and a listing healthy |
+| `yarn hardhat:verify:testnet <address> [args]` | Verify a deployment on Sourcify (HashScan shows the source) |
 
 ## Live on testnet
 
