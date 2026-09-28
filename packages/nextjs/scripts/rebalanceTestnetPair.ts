@@ -13,7 +13,7 @@
 import { type Address, type Hex, createPublicClient, createWalletClient, http, parseAbi } from "viem";
 import { privateKeyToAccount } from "viem/accounts";
 import { hederaTestnet } from "viem/chains";
-import deployedContracts from "~~/contracts/deployedContracts";
+import { getDeployment } from "~~/services/mrv/network";
 import { amountOut, deviationBps, hbarUsd8FromReserves, rebalanceTrade } from "~~/services/mrv/saucerswap";
 
 const RPC = process.env.HEDERA_RPC_URL ?? "https://testnet.hashio.io/api";
@@ -79,7 +79,8 @@ const usd8 = (price8: bigint) => `$${(Number(price8) / 1e8).toFixed(5)}`;
 
 async function main() {
   const execute = process.argv.includes("--execute");
-  const market = deployedContracts[296].CreditMarket.address as Address;
+  const market = getDeployment("CreditMarket", 296)?.address;
+  if (!market) throw new Error("CreditMarket is not in deployedContracts.ts for Hedera testnet (296)");
   const s = await readState(market);
   const pool8 = hbarUsd8FromReserves(s.reserveUsd, s.reserveWhbar);
   console.log(`Market ${market} pair ${s.pool}`);

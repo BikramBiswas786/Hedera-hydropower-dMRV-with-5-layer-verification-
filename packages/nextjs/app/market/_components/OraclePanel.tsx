@@ -126,7 +126,13 @@ export const OraclePanel = () => {
           : `Fresh sources must agree within ${maxDeviation !== undefined ? Number(maxDeviation) / 100 : "…"}%; if one fails the other prices alone.`}{" "}
         Active source: {SOURCE_NAMES[source ?? 0]}.
       </p>
-      {dex?.pair && (
+      {dex?.pair && dex.publicMainnet === null && (
+        <p className="m-0 text-xs text-base-content/60">
+          Local chain: the market swaps through the stand-in SaucerSwap pair {dex.pair.slice(0, 10)}… that{" "}
+          <code>yarn deploy</code> priced at the mock oracle. Buy stays off while it is outside 3% of the oracle.
+        </p>
+      )}
+      {dex?.pair && dex.publicMainnet && (
         <p className="m-0 text-xs text-base-content/60">
           Live market{" "}
           <a

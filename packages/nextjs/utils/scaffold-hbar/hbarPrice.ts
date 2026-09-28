@@ -21,7 +21,8 @@ export async function fetchHbarPrice(): Promise<number> {
     cache = { price, timestamp: now };
     return price;
   } catch (error) {
-    console.error("Failed to fetch HBAR price:", error);
+    // The footer price is decorative, and offline local development is expected; settlement uses the oracle.
+    console.warn("HBAR price unavailable:", error);
     return cache?.price ?? 0;
   }
 }

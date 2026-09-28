@@ -12,7 +12,7 @@
 import { type Hex, createPublicClient, createWalletClient, http } from "viem";
 import { privateKeyToAccount } from "viem/accounts";
 import { hederaTestnet } from "viem/chains";
-import deployedContracts from "~~/contracts/deployedContracts";
+import { getDeployment } from "~~/services/mrv/network";
 
 const RPC = process.env.HEDERA_RPC_URL ?? "https://testnet.hashio.io/api";
 /** Relist when fewer than this many kg are for sale. */
@@ -22,8 +22,15 @@ const LISTING_KG = 1_000n;
 /** $15/t when there has never been a listing. */
 const DEFAULT_CENTS_PER_TONNE = 1_500n;
 
-const registry = deployedContracts[296].DmrvRegistry;
-const market = deployedContracts[296].CreditMarket;
+/** The live testnet contracts, from deployedContracts.ts (absent after a local-only `yarn deploy`). */
+function testnet<Name extends "DmrvRegistry" | "CreditMarket">(name: Name) {
+  const deployed = getDeployment(name, 296);
+  if (!deployed) throw new Error(`${name} is not in deployedContracts.ts for Hedera testnet (296)`);
+  return { address: deployed.address, abi: deployed.abi };
+}
+
+const registry = testnet("DmrvRegistry");
+const market = testnet("CreditMarket");
 const client = createPublicClient({ chain: hederaTestnet, transport: http(RPC) });
 
 async function main() {

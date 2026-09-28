@@ -10,11 +10,11 @@
  * writes the table to the job summary.
  */
 import { appendFileSync } from "node:fs";
-import deployedContracts from "~~/contracts/deployedContracts";
+import { getDeployment } from "~~/services/mrv/network";
 
 const BASE = (process.env.LIVE_URL ?? "https://hydro-dmrv.vercel.app").replace(/\/$/, "");
-const MARKET = deployedContracts[296].CreditMarket.address.toLowerCase();
-const REGISTRY = deployedContracts[296].DmrvRegistry.address.toLowerCase();
+const MARKET = getDeployment("CreditMarket", 296)?.address.toLowerCase();
+const REGISTRY = getDeployment("DmrvRegistry", 296)?.address.toLowerCase();
 
 type Row = { check: string; ok: boolean; detail: string };
 const rows: Row[] = [];
@@ -108,6 +108,7 @@ async function mcp(method: string, params: unknown, session?: string) {
 }
 
 async function main() {
+  if (!MARKET || !REGISTRY) throw new Error("deployedContracts.ts has no Hedera testnet (296) registry and market");
   let listings: Listing[] = [];
 
   await check("Registry overview", async () => {
