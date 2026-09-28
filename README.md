@@ -83,7 +83,7 @@ flowchart LR
   C -- custody, retire --> R
 ```
 
-Hedera services in play: **HTS** (a credit token and an NFT collection whose treasury, admin and supply keys are the registry contract), **HCS** (raw readings and reports, re-derived from the mirror node), **smart contracts** on the Hedera EVM with the HTS system contract at `0x167`, and the **Schedule Service** (admin calls from a 2-of-3 threshold account as `ScheduleCreate` / `ScheduleSign`, `yarn admin:exec`).
+Hedera services in play: **HTS** (a credit token and an NFT collection whose treasury, admin and supply keys are the registry contract), **HCS** (raw readings and reports, re-derived from the mirror node), **smart contracts** on the Hedera EVM with the HTS system contract at `0x167`, and the **Schedule Service** (admin calls from a 2-of-3 threshold account as `ScheduleCreate` / `ScheduleSign`, `yarn admin:exec`; on testnet, [schedule 0.0.10763814](https://hashscan.io/testnet/schedule/0.0.10763814) ran a checkout admin call).
 
 ```
 packages/hardhat/
