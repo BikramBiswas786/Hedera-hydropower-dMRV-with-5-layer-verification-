@@ -55,7 +55,15 @@
       "packages/nextjs/app/portfolio/page.tsx",
       "packages/nextjs/app/guide/page.tsx",
       "packages/nextjs/services/mrv/provenance.ts",
-      "packages/nextjs/services/mrv/provenance.test.ts"
+      "packages/nextjs/services/mrv/provenance.test.ts",
+      "HEDERA_FACTS.md",
+      "docs/evidence.md",
+      "packages/hardhat/contracts/settlement/UsdSettlement.sol",
+      "packages/hardhat/contracts/UsdCheckout.sol",
+      "packages/hardhat/test/UsdCheckout.test.ts",
+      "packages/hardhat/test/LocalDemo.test.ts",
+      "packages/hardhat/deploy/03_seed_local_demo.ts",
+      "packages/hardhat/utils/localSaucer.ts"
     ],
     "forbidden": [
       ".env",
@@ -70,13 +78,16 @@
       "file": "README.md",
       "contains": [
         "yarn install",
+        "yarn deploy --network localhost",
         "yarn deploy --network hederaTestnet",
         "yarn mrv:attest",
         "/api/mcp",
         "reproduce_attestation",
         "Supra",
+        "SaucerSwap",
+        "UsdCheckout",
         "ER = BE − PE − LE",
-        "TOOL07"
+        "HEDERA_FACTS.md"
       ]
     },
     {
@@ -110,9 +121,9 @@
     {
       "file": "packages/hardhat/contracts/CreditMarket.sol",
       "contains": [
-        "AggregatorV3Interface",
-        "ISaucerSwapV2Pool",
-        "PoolPriceDeviation"
+        "UsdSettlement",
+        "buyAndRetire",
+        "REGISTRY.retireFor"
       ]
     },
     {
@@ -121,6 +132,30 @@
         "PriceSourcesDisagree",
         "NoFreshPrice",
         "ISupraSValueFeed"
+      ]
+    },
+    {
+      "file": "packages/hardhat/contracts/settlement/UsdSettlement.sol",
+      "contains": [
+        "AggregatorV3Interface",
+        "ISaucerFactory",
+        "PoolPriceDeviation",
+        "swapExactETHForTokens"
+      ]
+    },
+    {
+      "file": "packages/hardhat/contracts/UsdCheckout.sol",
+      "contains": [
+        "HederaTokenLib.associateSelf",
+        "HederaTokenLib.transferFrom",
+        "UsdSettlement"
+      ]
+    },
+    {
+      "file": "AGENTS.md",
+      "contains": [
+        "HEDERA_FACTS.md",
+        "Recipe: add a methodology"
       ]
     }
   ]

@@ -32,6 +32,7 @@ npm create scaffold-hbar@latest -- hydro-dmrv \
   --template BikramBiswas786/Hedera-hydropower-dMRV-with-5-layer-verification-
 cd hydro-dmrv
 
+# cloned this repo instead? run `yarn install` first
 yarn chain:offline                 # terminal 1: local chain
 yarn deploy --network localhost    # terminal 2: contracts, stand-ins, one minted batch, one listing
 yarn start                         # terminal 3: http://localhost:3000
@@ -117,7 +118,7 @@ Four workflows keep this true:
 
 - [Live smoke](https://github.com/BikramBiswas786/Hedera-hydropower-dMRV-with-5-layer-verification-/actions/workflows/live-smoke.yml) (every 6 h) clicks through the deployed app with no wallet: the pairs against their oracles, an open listing, an unsigned purchase, every mint re-derived from HCS, the scenarios, the MCP tools.
 - [Mainnet fork](https://github.com/BikramBiswas786/Hedera-hydropower-dMRV-with-5-layer-verification-/actions/workflows/mainnet-fork.yml) (every push) runs the settlement against SaucerSwap's real factory, the public WHBAR/USDC pair and mainnet Chainlink.
-- [Testnet pair keeper](https://github.com/BikramBiswas786/Hedera-hydropower-dMRV-with-5-layer-verification-/actions/workflows/testnet-pair-keeper.yml) (every 4 h) holds the seeded testnet pair at the oracle price and keeps a listing open.
+- [Testnet pair keeper](https://github.com/BikramBiswas786/Hedera-hydropower-dMRV-with-5-layer-verification-/actions/workflows/testnet-pair-keeper.yml) (hourly) holds the seeded testnet pair at the oracle price, which it must: the pair does not follow HBAR, the oracle does and keeps a listing open.
 - [Checkout testnet demo](https://github.com/BikramBiswas786/Hedera-hydropower-dMRV-with-5-layer-verification-/actions/workflows/checkout-testnet-demo.yml) (on demand) deploys `UsdCheckout` next to the live contracts and makes one sale.
 
 ## Use it without carbon

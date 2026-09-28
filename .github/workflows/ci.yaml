@@ -69,3 +69,20 @@ jobs:
         run: |
           test ! -f template.json
           test ! -f .env && test ! -f packages/nextjs/.env.local && test ! -f packages/hardhat/.env
+
+  # Runs the submitted Hedera Harness recipe (.harness/) the way a judge would: install, lint, tests, build, the
+  # static validators and the Playwright route smoke. Keeps the validators from drifting away from the code.
+  harness:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20.18.3
+          cache: yarn
+
+      - run: yarn install --immutable
+      - run: npx playwright install --with-deps chromium
+      - run: yarn harness:validate

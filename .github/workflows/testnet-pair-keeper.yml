@@ -7,7 +7,7 @@ name: Testnet pair keeper
 # always has something to buy. TESTNET_LISTING_KEY overrides the account that lists.
 on:
   schedule:
-    - cron: "41 */4 * * *"
+    - cron: "41 * * * *"
   workflow_dispatch:
   pull_request:
     paths:
