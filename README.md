@@ -45,7 +45,7 @@ The deploy installs local stand-ins for HTS, Chainlink, Supra and SaucerSwap, re
 Then:
 
 - `/verify` runs the five-stage engine: `healthy` passes, `inflated` and `tampered` do not.
-- `yarn test` runs 174 contract tests and 302 app tests, including the Solidity and TypeScript quantification agreeing on the same integers.
+- `yarn test` runs 191 contract tests and 342 app tests, including the Solidity and TypeScript quantification agreeing on the same integers.
 
 ## Deploy to Hedera testnet
 
