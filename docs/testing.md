@@ -47,6 +47,10 @@ What the tests pin down:
   23:59:59 UTC is still accepted), renewals 5→5 and 7→7 only, metering rules, and parity: all 13 frozen outputs of the
   legacy `HydroCreditRegistry.quantify` reproduce, and a full greenfield flow on the new registry reproduces the legacy
   registry's 4 791 542 g and 73 386 435 g.
+- **RenewableVmr0017Module**: VMR0017 Table 1 (wind and solar refused in high-income countries, tidal accepted, CDM
+  unrestricted), the 2027 five-year rule, renewals, VVB-only-lowers metering rules, the four shared vectors in
+  `fixtures/renewableVectors.ts` (also asserted by `renewable.test.ts`), and a two-signature solar mint through
+  `DmrvRegistry` with no registry change.
 - **CreditMarket**: escrow in registry custody, oracle-priced settlement, refunds, buy-and-retire, and the
   SaucerSwap guard: V1 `getReserves` read in feed decimals, settlement within 3%, blocked beyond 3% in either
   direction and on an illiquid pool, cannot be switched off, V2 pools and impostor pools refused, config validation.

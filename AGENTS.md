@@ -54,6 +54,7 @@ yarn market:keep-listing [--execute]  # keep a listing open on the testnet marke
 | --- | --- |
 | Core registry (attestation, custody, retirement, all HTS calls) | `packages/hardhat/contracts/DmrvRegistry.sol` |
 | Methodology module interface / hydro module (on-chain quantification) | `packages/hardhat/contracts/interfaces/IMethodology.sol`, `contracts/modules/HydroVmr0017Module.sol` |
+| Second module: greenfield solar, wind, ocean (VMR0017 / ACM0002 / AMS-I.D) and its TS twin | `contracts/modules/RenewableVmr0017Module.sol`, `services/mrv/methodology/renewable.ts`, vectors `test/fixtures/renewableVectors.ts`, deploy `deploy/04_*.ts` |
 | USD settlement shared by both sale contracts (oracle price, SaucerSwap pool guard, swap to seller) | `packages/hardhat/contracts/settlement/UsdSettlement.sol`, `contracts/interfaces/ISaucerSwap.sol` |
 | Market for registry credits (listings in registry custody, `buyAndRetire`) | `packages/hardhat/contracts/CreditMarket.sol` |
 | Checkout for any HTS fungible token (escrow, USD price per whole token) | `packages/hardhat/contracts/UsdCheckout.sol`, deploy `deploy/02_*.ts`, testnet demo `scripts/checkoutTestnetDemo.ts` |
@@ -87,7 +88,8 @@ yarn market:keep-listing [--execute]  # keep a listing open on the testnet marke
 - **One quantification, two implementations.** `services/mrv/methodology/quantify.ts` and
   `HydroVmr0017Module.quantify` must produce identical integers: BE rounds down (toward −∞), PE_HP and PE_FF round
   up, credits = ⌊(balance + ER) / 1000⌋ with the remainder or deficit carried. Change one, change the other, and
-  extend `test/fixtures/quantificationVectors.ts`, which both test suites assert. The live testnet mints
+  extend `test/fixtures/quantificationVectors.ts`, which both test suites assert. The same holds for
+  `RenewableVmr0017Module` and `methodology/renewable.ts` with `test/fixtures/renewableVectors.ts`. The live testnet mints
   (4,791,542 g and 73,386,435 g) must keep reproducing through the module (`test/fixtures/liveAttestations.ts`).
 - **The registry is methodology-agnostic.** Rules live in an approved `IMethodology` module (stateless, no HTS, no
   storage writes); a project keeps its module for life. HTS calls happen only in `DmrvRegistry`.

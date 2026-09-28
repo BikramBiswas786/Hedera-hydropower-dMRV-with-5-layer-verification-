@@ -9,7 +9,7 @@
 - **A buyer's check on any Guardian token.** `trace_guardian_mint` follows a Guardian mint to the signed VP behind it, from the public mirror node and IPFS (every block hashed against its CID): signatures, the MintToken VC's token and amount, and whether the signer is the token's treasury. `backed`, `not-backed` or `incomplete`, with no Guardian login.
 - **Agents as buyers and auditors.** An MCP server with a REST twin for every tool: reproduce a mint from HCS, then buy and retire with your own wallet.
 
-Hydropower under Verra VMR0017 v1.0 with ACM0002 v22.0 is the worked example, not the limit: another methodology is another stateless `IMethodology` module.
+Hydropower under Verra VMR0017 v1.0 with ACM0002 v22.0 is the worked example, not the limit: another methodology is another stateless `IMethodology` module. The second one ships: `RenewableVmr0017Module` credits solar, wind and ocean power through the same registry, signatures, market and certificates, with no change to any of them.
 
 | | Guardian / Managed Guardian | This template |
 | --- | --- | --- |
@@ -89,11 +89,11 @@ Hedera services in play: **HTS** (a credit token and an NFT collection whose tre
 packages/hardhat/
   contracts/            DmrvRegistry, CreditMarket, UsdCheckout, ResilientHbarUsdFeed
     settlement/         UsdSettlement: oracle price, SaucerSwap pool guard, swap to seller
-    modules/            HydroVmr0017Module (IMethodology)
+    modules/            HydroVmr0017Module, RenewableVmr0017Module (solar/wind/ocean), both IMethodology
     lib/                HederaTokenLib: every HTS call, response codes to reverts
     legacy/             the phase-0 registry, kept so its testnet mints still reproduce
-  deploy/               00 contracts · 01 setup · 02 UsdCheckout · 03 local demo batch
-  test/                 174 tests, incl. MainnetFork.test.ts (CI forks mainnet)
+  deploy/               00 contracts · 01 setup · 02 UsdCheckout · 03 local demo batch · 04 solar/wind module
+  test/                 189 tests, incl. MainnetFork.test.ts (CI forks mainnet)
 packages/nextjs/
   app/                  /verify /plants /market /portfolio /audit /methodology, api/**, api/mcp
   services/mrv/         the pure engine, methodology, HCS messages, audit; server/ holds keys and writes
