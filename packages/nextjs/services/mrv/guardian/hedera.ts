@@ -162,7 +162,7 @@ async function fetchBlock(sources: GuardianSources, cid: string): Promise<Uint8A
 }
 
 /** A JSON document from IPFS whose bytes were checked against its CID. */
-export async function fetchIpfsJson(sources: GuardianSources, cid: string): Promise<any> {
+export async function fetchIpfsJson(sources: GuardianSources, cid: string): Promise<unknown> {
   if (!isCid(cid)) throw new SourceError(`Not an IPFS CID: ${cid}`);
   let buffer: Buffer;
   try {
@@ -182,7 +182,7 @@ export async function fetchIpfsJson(sources: GuardianSources, cid: string): Prom
  * Port of Guardian's RemoteDidLoader (common/src/document-loader/remote-did-loader.ts at 3.7.0): read the DID's
  * topic, take the first `DID-Document` message whose `did` is the controller, fetch its `cid` from IPFS.
  */
-export function remoteDidResolver(sources: GuardianSources, cache = new Map<string, any>()): Resolver {
+export function remoteDidResolver(sources: GuardianSources, cache = new Map<string, unknown>()): Resolver {
   return async (iri: string) => {
     if (!iri.startsWith("did:hedera:")) return null;
     const parsed = parseHederaDid(iri);

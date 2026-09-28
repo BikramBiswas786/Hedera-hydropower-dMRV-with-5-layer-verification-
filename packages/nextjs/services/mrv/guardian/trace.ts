@@ -8,6 +8,7 @@ import {
   isConsensusTimestamp,
   remoteDidResolver,
 } from "./hedera";
+import { type JsonObject, asObject, parseObject, subjectsOf } from "./json";
 import { buildDocumentLoader, verifyGuardianPresentation, withoutSystemTypeDefinitions } from "./vc";
 
 /**
@@ -240,11 +241,6 @@ export function toBaseUnits(amount: string, decimals: number): bigint | null {
   return BigInt(match[1] + fraction.slice(0, decimals));
 }
 
-function subjectsOf(vc: any): any[] {
-  const s = vc?.credentialSubject;
-  return Array.isArray(s) ? s : s ? [s] : [];
-}
-
 export async function traceGuardianMint(sources: GuardianSources, ref: string): Promise<GuardianTrace> {
   const resolved = await resolveGuardianMint(sources, ref);
   const token = await mirror<MirrorToken>(sources, `/api/v1/tokens/${resolved.tokenId}`);
@@ -282,13 +278,8 @@ export async function traceGuardianMint(sources: GuardianSources, ref: string): 
 
   const message = await fetchMessageByTimestamp(sources, resolved.record);
   Object.assign(trace.record, { topicId: message.topicId, sequence: message.sequence, payer: message.payerAccountId });
-  let body: any = null;
-  try {
-    body = JSON.parse(message.text);
-  } catch {
-    // reported below
-  }
-  const isVp = body?.type === "VP-Document" && body?.status === "ISSUE" && typeof body?.cid === "string";
+  const body = parseObject(message.text);
+  const isVp = body.type === "VP-Document" && body.status === "ISSUE" && typeof body.cid === "string";
   check(
     "record",
     isVp,
@@ -297,7 +288,8 @@ export async function traceGuardianMint(sources: GuardianSources, ref: string): 
       : `HCS message ${resolved.record} is not an issued Guardian VP-Document`,
   );
   if (!isVp) return finish(trace);
-  trace.record.cid = body.cid;
+  const cid = body.cid as string;
+  trace.record.cid = cid;
 
   if (resolved.mint.consensusTimestamp) {
     const before = Number(resolved.record) < Number(resolved.mint.consensusTimestamp);
@@ -316,15 +308,16 @@ export async function traceGuardianMint(sources: GuardianSources, ref: string): 
 
   await walkSources(sources, trace, body.relationships);
 
-  let vp: any;
+  let vp: JsonObject;
   try {
-    vp = await fetchIpfsJson(sources, body.cid);
+    vp = asObject(await fetchIpfsJson(sources, cid));
   } catch (error) {
     if (!(error instanceof SourceError)) throw error;
-    check("signature", null, `IPFS document ${body.cid} could not be read: ${error.message}`);
+    check("signature", null, `IPFS document ${cid} could not be read: ${error.message}`);
     return finish(trace);
   }
-  const signer = typeof vp?.proof?.verificationMethod === "string" ? vp.proof.verificationMethod.split("#")[0] : null;
+  const method = asObject(vp.proof).verificationMethod;
+  const signer = typeof method === "string" ? method.split("#")[0] : null;
   trace.record.signer = signer;
   // The VC library turns loader errors into "not verified"; remember them so an unreachable source reads as
   // incomplete rather than as a bad signature.
@@ -374,8 +367,8 @@ export async function traceGuardianMint(sources: GuardianSources, ref: string): 
     }
   }
 
-  const vcs: any[] = Array.isArray(vp?.verifiableCredential) ? vp.verifiableCredential : [];
-  const mintSubject = vcs.flatMap(subjectsOf).find(s => typeof s?.type === "string" && MINT_TYPE.test(s.type));
+  const vcs: unknown[] = Array.isArray(vp.verifiableCredential) ? vp.verifiableCredential : [];
+  const mintSubject = vcs.flatMap(subjectsOf).find(s => typeof s.type === "string" && MINT_TYPE.test(s.type));
   if (mintSubject) {
     trace.mintVc = {
       tokenId: String(mintSubject.tokenId),
@@ -472,21 +465,19 @@ async function walkSources(sources: GuardianSources, trace: GuardianTrace, relat
     if (seen.has(ts)) continue;
     seen.add(ts);
     const message = await fetchMessageByTimestamp(sources, ts);
-    let body: any = null;
-    try {
-      body = JSON.parse(message.text);
-    } catch {
-      // a non-Guardian message is listed with nulls
-    }
+    // A non-Guardian message is listed with nulls.
+    const body = parseObject(message.text);
+    const status = asObject(body.option).status;
     trace.sources.push({
       timestamp: ts,
       depth,
-      type: typeof body?.type === "string" ? body.type : null,
-      status: typeof body?.option?.status === "string" ? body.option.status : (body?.documentStatus ?? null),
-      issuer: typeof body?.issuer === "string" ? body.issuer : null,
+      type: typeof body.type === "string" ? body.type : null,
+      status:
+        typeof status === "string" ? status : typeof body.documentStatus === "string" ? body.documentStatus : null,
+      issuer: typeof body.issuer === "string" ? body.issuer : null,
       payer: message.payerAccountId,
     });
-    if (depth < 2 && Array.isArray(body?.relationships)) {
+    if (depth < 2 && Array.isArray(body.relationships)) {
       for (const r of body.relationships)
         if (typeof r === "string" && isConsensusTimestamp(r)) queue.push({ ts: r, depth: depth + 1 });
     }

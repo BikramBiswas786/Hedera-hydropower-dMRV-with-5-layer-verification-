@@ -83,7 +83,7 @@ flowchart LR
   C -- custody, retire --> R
 ```
 
-Hedera services in play: **HTS** (a credit token and an NFT collection whose treasury, admin and supply keys are the registry contract), **HCS** (raw readings and reports, re-derived from the mirror node), **smart contracts** on the Hedera EVM with the HTS system contract at `0x167`, and the **Schedule Service** (admin calls from a 2-of-3 threshold account as `ScheduleCreate` / `ScheduleSign`, `yarn admin:exec`; on testnet, [schedule 0.0.10763814](https://hashscan.io/testnet/schedule/0.0.10763814) ran a checkout admin call).
+Hedera services in play: **HTS** (a credit token and an NFT collection whose treasury, admin and supply keys are the registry contract), **HCS** (raw readings and reports, re-derived from the mirror node), **smart contracts** on the Hedera EVM with the HTS system contract at `0x167`, and the **Schedule Service** (admin calls from a 2-of-3 threshold account as `ScheduleCreate` / `ScheduleSign`, `yarn admin:exec`; on testnet a 2-of-3 account's [schedule 0.0.10764799](https://hashscan.io/testnet/schedule/0.0.10764799) waited for a second holder before it ran a checkout admin call, `yarn admin:demo`).
 
 ```
 packages/hardhat/
@@ -93,7 +93,7 @@ packages/hardhat/
     lib/                HederaTokenLib: every HTS call, response codes to reverts
     legacy/             the phase-0 registry, kept so its testnet mints still reproduce
   deploy/               00 contracts · 01 setup · 02 UsdCheckout · 03 local demo batch · 04 solar/wind module
-  test/                 189 tests, incl. MainnetFork.test.ts (CI forks mainnet)
+  test/                 191 tests, incl. MainnetFork.test.ts (CI forks mainnet)
 packages/nextjs/
   app/                  /verify /plants /market /portfolio /audit /methodology, api/**, api/mcp
   services/mrv/         the pure engine, methodology, HCS messages, audit; server/ holds keys and writes
@@ -108,7 +108,7 @@ packages/nextjs/
 | `yarn test` · `yarn lint` · `yarn next:build` | Contract and app tests, lint, production build |
 | `yarn hardhat:size` | Contract-size gate (24,064 B) |
 | `yarn mrv:attest` · `yarn mrv:approve` · `yarn mrv:submit` | Two-signature attestation from the CLI |
-| `yarn admin:threshold` · `yarn admin:exec` | 2-of-3 admin account and scheduled admin calls |
+| `yarn admin:threshold` · `yarn admin:exec` · `yarn admin:demo` | 2-of-3 admin account, scheduled admin calls, and the whole path on testnet with throwaway keys |
 | `yarn live:smoke` · `yarn pair:rebalance` · `yarn market:keep-listing` | Check the live app; keep the testnet pair and a listing healthy |
 | `yarn guardian:trace <ref>` | Is a Guardian-minted token backed? Mirror node + CID-checked IPFS, no Guardian login |
 | `yarn hardhat:verify:testnet <address> [args]` | Verify a deployment on Sourcify (HashScan shows the source) |
@@ -117,7 +117,7 @@ packages/nextjs/
 
 App: [hydro-dmrv.vercel.app](https://hydro-dmrv.vercel.app). Market [`0x26E77708…`](https://hashscan.io/testnet/contract/0x26E77708717cE69EBBBF76e59D106B20e67e1D61), a [meter + VVB signed mint](https://hashscan.io/testnet/transaction/0x321b6d20db7b24eaee672160fcb9643d6fafd357c204934e892446ac6db11b6e), a [`buyAndRetire` through SaucerSwap](https://hashscan.io/testnet/transaction/0xbbeb258c78ae6f1d9c2bfcbea37d754a151102b25528f63074f5e7f4c2b065f0), and a [`UsdCheckout` sale](https://hashscan.io/testnet/transaction/0x51c9b0062bd36e119fbefe8b6e58e18717be1a5ea10fc2d54116a1d768ae379d). All five testnet contracts are Sourcify-verified (exact match), so HashScan shows their source. Every address and what each transaction proves is in [docs/evidence.md](docs/evidence.md).
 
-Four workflows keep this true:
+Five workflows keep this true:
 
 - [Live smoke](https://github.com/BikramBiswas786/Hedera-hydropower-dMRV-with-5-layer-verification-/actions/workflows/live-smoke.yml) (every 6 h and after each production deploy) clicks through the deployed app with no wallet: the pairs against their oracles, an open listing, an unsigned purchase, every mint re-derived from HCS, a real Guardian mint traced, the scenarios, the MCP tools.
 - [Guardian trace](https://github.com/BikramBiswas786/Hedera-hydropower-dMRV-with-5-layer-verification-/actions/workflows/guardian-trace.yml) (daily) traces a real Managed Guardian mint on testnet (token `0.0.10760359`, 12.5 t) and requires `backed`: record, order, payer, every signature, the MintToken VC's token and amount, and the treasury's DID.
@@ -147,7 +147,7 @@ claude mcp add --transport http hydro-dmrv https://hydro-dmrv.vercel.app/api/mcp
 
 `get_dex_price → list_open_listings → prepare_purchase → sign and send` buys with the agent's own key; `reproduce_attestation` re-derives any mint from HCS. Public tools need no key; `submit_attestation` appears only with `Authorization: Bearer $MRV_API_KEY`. Tools, REST twins and OpenAPI: [docs/agents.md](docs/agents.md).
 
-Writing Hedera code with an agent? [`HEDERA_FACTS.md`](HEDERA_FACTS.md) lists 20 Hedera behaviours that break code (tinybar vs weibar, HTS response codes, association, the testnet USDC pair, forking limits), each with the test or workflow that proves it. [`AGENTS.md`](AGENTS.md) has the repo's invariants and recipes for a new methodology or a new asset to sell.
+Writing Hedera code with an agent? [`HEDERA_FACTS.md`](HEDERA_FACTS.md) lists 24 Hedera behaviours that break code (tinybar vs weibar, HTS response codes, association, the testnet USDC pair, forking limits), each with the test or workflow that proves it. [`AGENTS.md`](AGENTS.md) has the repo's invariants and recipes for a new methodology or a new asset to sell.
 
 ## Docs
 
@@ -168,7 +168,7 @@ Hedera Harness spec and validators are in [`.harness/`](.harness/); `yarn harnes
 
 - The testnet SaucerSwap pair holds a test token this project minted, so testnet sellers are paid in that token. It [holds 871 HBAR](https://hashscan.io/testnet/transaction/0x255d91818419e1cb853dfc58480cf399307be9812e97879d9ac48cd650b78734) (from 20 on 28 Sep), so a purchase of a few dollars moves it a fraction of a percent; a large one can still push it out of band until the keeper pulls it back. On mainnet the same code uses the public WHBAR/USDC pair.
 - The VVB and meter keys on testnet are labelled test keys, not an accredited verifier or data-logger hardware.
-- The testnet contracts predate some hardening changes in the source, including the VCS v5 renewal rule; [docs/evidence.md](docs/evidence.md) lists them.
+- The testnet market and checkout are the current source. The registry and hydro module were deployed on 26 Sep, before the single `setMarket` and the VCS v5 renewal rule; [docs/evidence.md](docs/evidence.md) says what that changes.
 - The engine implements VMR0017 v1.0 / ACM0002 v22.0 equations. A VVB and a registry still decide issuance; these credits are not a Verra issuance.
 
 MIT, see [LICENCE](LICENCE). Built on [Scaffold-HBAR](https://github.com/hedera-dev/scaffold-hbar).

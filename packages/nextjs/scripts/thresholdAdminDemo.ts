@@ -124,7 +124,11 @@ async function main() {
 
     const exit = await schedule("renounceRole(bytes32,address)", [DEFAULT_ADMIN_ROLE, admin], holders[2]);
     const exitDone = await sign(exit.scheduleId, holders[0]);
-    if (await hasRole(admin)) throw new Error(`${admin} still holds DEFAULT_ADMIN_ROLE`);
+    // JSON-RPC reads come from the mirror node, a few seconds behind consensus.
+    for (let attempt = 0; (await hasRole(admin)) && attempt < 10; attempt++) {
+      await new Promise(resolve => setTimeout(resolve, 3_000));
+      if (attempt === 9) throw new Error(`${admin} still holds DEFAULT_ADMIN_ROLE`);
+    }
     console.log(
       `4. holder 3 scheduled renounceRole (${hashscan(`schedule/${exit.scheduleId}`)}), holder 1 signed ${txLink(exitDone.signed)}: ${admin} holds no admin role`,
     );

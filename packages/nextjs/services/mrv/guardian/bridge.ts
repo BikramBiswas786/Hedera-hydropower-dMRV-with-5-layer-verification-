@@ -46,10 +46,10 @@ export function canonicalJson(value: unknown): string {
 export const sourceVcHash = (vc: unknown) => keccak256(stringToBytes(canonicalJson(vc)));
 
 /** The httpRequestBlock posts the input document, or an array of documents when the block receives several. */
-export function extractSourceVc(body: unknown): { vc: Record<string, any>; subject: Record<string, unknown> } {
+export function extractSourceVc(body: unknown): { vc: Record<string, unknown>; subject: Record<string, unknown> } {
   const vc = Array.isArray(body) ? (body.length === 1 ? body[0] : null) : body;
   if (!vc || typeof vc !== "object") throw new NotAVcError("Body must be one Guardian VC document (JSON object)");
-  const record = vc as Record<string, any>;
+  const record = vc as Record<string, unknown>;
   const context = record["@context"];
   const types = Array.isArray(record.type) ? record.type : [record.type];
   if (

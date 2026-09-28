@@ -8,7 +8,7 @@ before your code does.
 Proof legend: **test** runs in `yarn test` (hermetic). **fork** runs on a Hedera mainnet fork in the
 [Mainnet fork](.github/workflows/mainnet-fork.yml) workflow. **live** runs against Hedera testnet or the deployed
 app in the [Live smoke](.github/workflows/live-smoke.yml) or [Testnet pair keeper](.github/workflows/testnet-pair-keeper.yml)
-workflows, or the [Guardian trace](.github/workflows/guardian-trace.yml) workflow.
+workflows, or the [Guardian trace](.github/workflows/guardian-trace.yml) workflow, or on demand in the [Checkout testnet demo](.github/workflows/checkout-testnet-demo.yml) workflow.
 
 ## Value and gas
 
@@ -150,6 +150,22 @@ strict check by `trace.ts` and `evidence.ts`.
 Proof: test, `trace.test.ts` "a real Managed Guardian mint" (strict fails, Guardian's form verifies, an edited amount
 or token fails); live, the [Guardian trace](.github/workflows/guardian-trace.yml) workflow
 (`yarn guardian:trace 0.0.10238177-1790602426-400520522 --expect backed`) and the Live smoke step "Guardian mint trace: backed".
+
+## Schedule Service
+
+**24. A scheduled transaction runs the moment its payer's key is satisfied, and not before.** A single-key admin that
+creates the schedule has already signed it, so `ScheduleCreate` executes the call at once. A 2-of-3 `KeyList` payer
+waits: the schedule stays pending with one holder's signature and the network executes it on the `ScheduleSign` that
+brings the second. A `KeyList` account has no EVM alias, so the contract sees its long-zero address as `msg.sender`;
+grant roles to that address. JSON-RPC reads trail consensus by a few seconds, so read the result after a short wait.
+On testnet: one key, [schedule 0.0.10763814](https://hashscan.io/testnet/schedule/0.0.10763814) ran at creation; 2-of-3,
+[0.0.10764799](https://hashscan.io/testnet/schedule/0.0.10764799) and [0.0.10764800](https://hashscan.io/testnet/schedule/0.0.10764800) each ran on
+the second holder's signature.
+Handled by: [`adminExec.ts`](packages/nextjs/scripts/adminExec.ts) (`schedule`, `sign`) and
+[`thresholdAdminDemo.ts`](packages/nextjs/scripts/thresholdAdminDemo.ts), which refuses to continue if a 2-of-3
+schedule runs on one signature.
+Proof: test, `admin.test.ts` (the 2-of-3 key list, the calldata); live, the
+[Checkout testnet demo](.github/workflows/checkout-testnet-demo.yml) workflow with `threshold_admin_demo`.
 
 ## Keeping this true
 

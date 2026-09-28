@@ -1,5 +1,6 @@
 import type { BridgeKeyPair } from "./did";
 import { ED25519_2018 } from "./did";
+import { type JsonObject, asObject } from "./json";
 import { contexts as credentialsContexts } from "@digitalbazaar/credentials-context";
 import { Ed25519Signature2018 } from "@digitalbazaar/ed25519-signature-2018";
 import { Ed25519VerificationKey2018 } from "@digitalbazaar/ed25519-verification-key-2018";
@@ -19,7 +20,7 @@ import didContexts from "did-context";
  */
 
 export type DocumentLoader = vcLib.DocumentLoader;
-export type LoadedDocument = { documentUrl: string; document: any };
+export type LoadedDocument = { documentUrl: string; document: unknown };
 export type Resolver = (iri: string) => Promise<LoadedDocument | null>;
 
 export const CREDENTIALS_V1 = "https://www.w3.org/2018/credentials/v1";
@@ -53,16 +54,16 @@ export function ed25519VerificationDocumentLoader(documentLoader: DocumentLoader
   return async (iri: string) => {
     if (iri === contextUrl) return { documentUrl: iri, document: context };
     const result = await documentLoader(iri);
-    const document = result?.document as any;
-    if (document && Array.isArray(document.verificationMethod)) {
+    const document = asObject(result?.document);
+    if (Array.isArray(document.verificationMethod)) {
       if (iri.indexOf("#") !== -1) {
-        const method = document.verificationMethod.find((item: any) => item?.id === iri);
+        const method = document.verificationMethod.map(asObject).find(item => item.id === iri);
         if (method && method.type === ED25519_2018) {
           return { documentUrl: iri, document: { "@context": contextUrl, ...method } };
         }
       } else if (Array.isArray(document.assertionMethod)) {
-        const assertionMethod = document.assertionMethod.map((reference: any) =>
-          typeof reference === "string" && reference.startsWith("#") ? document.id + reference : reference,
+        const assertionMethod = document.assertionMethod.map((reference: unknown) =>
+          typeof reference === "string" && reference.startsWith("#") ? String(document.id) + reference : reference,
         );
         return { documentUrl: iri, document: { ...document, assertionMethod } };
       }
@@ -84,7 +85,7 @@ export const GUARDIAN_SYSTEM_TYPE = /^Mint(NF)?Token&/;
 export function withoutSystemTypeDefinitions(documentLoader: DocumentLoader): DocumentLoader {
   return async (iri: string) => {
     const result = await documentLoader(iri);
-    const context = (result?.document as any)?.["@context"];
+    const context = asObject(result?.document)["@context"];
     if (!iri.startsWith("ipfs://") || !context || typeof context !== "object" || Array.isArray(context)) return result;
     const kept = Object.fromEntries(Object.entries(context).filter(([term]) => !GUARDIAN_SYSTEM_TYPE.test(term)));
     return { ...result, document: { ...(result.document as object), "@context": kept } };
@@ -99,10 +100,10 @@ function firstError(result: vcLib.VerificationResult): string {
 }
 
 /** Port of VCJS.verify for Ed25519Signature2018 (vcjs.ts:203–234 at 3.7.0). Throws with Guardian's message. */
-export async function verifyGuardianCredential(json: any, documentLoader: DocumentLoader): Promise<true> {
-  const proof = Array.isArray(json?.proof) ? json.proof[0] : json?.proof;
-  if (!proof || !proof.type) throw new Error("Verification error: document is missing a proof");
-  if (proof.type !== "Ed25519Signature2018") throw new Error(`Unsupported proof type ${proof.type}`);
+export async function verifyGuardianCredential(json: JsonObject, documentLoader: DocumentLoader): Promise<true> {
+  const proof = asObject(Array.isArray(json.proof) ? json.proof[0] : json.proof);
+  if (!proof.type) throw new Error("Verification error: document is missing a proof");
+  if (proof.type !== "Ed25519Signature2018") throw new Error(`Unsupported proof type ${String(proof.type)}`);
   const result = await vcLib.verifyCredential({
     credential: json,
     suite: [new Ed25519Signature2018()],
@@ -116,7 +117,7 @@ export async function verifyGuardianCredential(json: any, documentLoader: Docume
  * A Guardian VP: proof by the policy's Standard Registry with `proofPurpose: authentication` and the fixed
  * challenge "123" Guardian passes to signPresentation (VCJS.issuePresentation). Each embedded VC is verified too.
  */
-export async function verifyGuardianPresentation(json: any, documentLoader: DocumentLoader): Promise<true> {
+export async function verifyGuardianPresentation(json: JsonObject, documentLoader: DocumentLoader): Promise<true> {
   const result = await vcLib.verify({
     presentation: json,
     challenge: "123",

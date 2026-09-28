@@ -86,6 +86,7 @@ packages/
     ├── scripts/mrv.ts                   yarn mrv:create-topic · mrv:attest · mrv:approve · mrv:submit · mrv:meter-key · mrv:sign
     ├── scripts/createThresholdAdmin.ts  yarn admin:threshold (2-of-3 KeyList account)
     ├── scripts/adminExec.ts             yarn admin:exec (admin calls as scheduled transactions)
+    ├── scripts/thresholdAdminDemo.ts    yarn admin:demo (2-of-3 schedule, sign, renounce on testnet)
     └── public/llms.txt
 .harness/                                Hedera Harness spec, PRD, validators, acceptance contract
 template.json                            create-scaffold-hbar manifest

@@ -8,6 +8,7 @@ import {
   isConsensusTimestamp,
   remoteDidResolver,
 } from "./hedera";
+import { type JsonObject, asObject, subjectsOf } from "./json";
 import {
   buildDocumentLoader,
   verifyGuardianCredential,
@@ -112,14 +113,13 @@ export async function resolveEvidenceTimestamp(sources: GuardianSources, ref: st
   throw new SourceError("Expected a consensus timestamp, a transaction id, or nft:<tokenId>:<serial>");
 }
 
-function subjectsOf(vc: any): any[] {
-  const s = vc?.credentialSubject;
-  return Array.isArray(s) ? s : s ? [s] : [];
-}
-
-function issuerOf(doc: any): string | null {
-  const issuer = doc?.issuer ?? doc?.proof?.verificationMethod?.split("#")[0];
-  return typeof issuer === "string" ? issuer : typeof issuer?.id === "string" ? issuer.id : null;
+function issuerOf(doc: unknown): string | null {
+  const { issuer, proof } = asObject(doc);
+  const method = asObject(proof).verificationMethod;
+  const id = issuer ?? (typeof method === "string" ? method.split("#")[0] : undefined);
+  if (typeof id === "string") return id;
+  const nested = asObject(id).id;
+  return typeof nested === "string" ? nested : null;
 }
 
 export async function verifyGuardianEvidence(
@@ -145,8 +145,8 @@ export async function verifyGuardianEvidence(
     crossChecks: [],
   };
 
-  const didCache = new Map<string, any>();
-  const contextCache = new Map<string, any>();
+  const didCache = new Map<string, unknown>();
+  const contextCache = new Map<string, unknown>();
   const documentLoader = buildDocumentLoader(remoteDidResolver(sources, didCache), async iri => {
     // Published schema contexts live on IPFS; dry-run "schema:" contexts exist only inside one Guardian instance.
     const match = /^ipfs:\/\/([A-Za-z0-9]+)$/.exec(iri);
@@ -181,21 +181,21 @@ export async function verifyGuardianEvidence(
       continue;
     }
 
-    let body: any;
+    let body: JsonObject;
     try {
-      body = JSON.parse(message.text);
+      body = asObject(JSON.parse(message.text));
     } catch {
       result.refusals.push(`Message ${ts} is not a Guardian JSON message`);
       continue;
     }
-    entry.type = body.type;
-    entry.action = body.action;
+    if (typeof body.type === "string") entry.type = body.type;
+    if (typeof body.action === "string") entry.action = body.action;
     if (body.status !== "ISSUE") {
-      result.refusals.push(`Message ${ts} has status ${body.status}, not ISSUE (revoked or deleted)`);
+      result.refusals.push(`Message ${ts} has status ${String(body.status)}, not ISSUE (revoked or deleted)`);
       continue;
     }
     if (body.type !== "VP-Document" && body.type !== "VC-Document") {
-      if (depth === 0) result.refusals.push(`Message ${ts} is a ${body.type}, not a VC or VP document`);
+      if (depth === 0) result.refusals.push(`Message ${ts} is a ${String(body.type)}, not a VC or VP document`);
       continue;
     }
     if (typeof body.cid !== "string" || !isCid(body.cid)) {
@@ -208,8 +208,8 @@ export async function verifyGuardianEvidence(
       result.evidenceHash = evidenceHash(message.consensusTimestamp, body.cid);
     }
 
-    const document = await fetchIpfsJson(sources, body.cid);
-    const vcs: any[] =
+    const document = asObject(await fetchIpfsJson(sources, body.cid));
+    const vcs: unknown[] =
       body.type === "VP-Document"
         ? Array.isArray(document.verifiableCredential)
           ? document.verifiableCredential
@@ -246,19 +246,21 @@ export async function verifyGuardianEvidence(
           try {
             const outcome = crossCheckMonitoringReport(subject);
             result.crossChecks.push({
-              vcId: String(vc.id ?? ""),
+              vcId: String(asObject(vc).id ?? ""),
               decision: outcome.decision,
               deltaERg: String(outcome.deltaERg),
               notes: outcome.notes,
             });
             if (outcome.decision !== "MATCH") {
               result.refusals.push(
-                `Monitoring Report ${String(vc.id ?? "")} cross-check: ${outcome.decision} (ΔER ${outcome.deltaERg} g)`,
+                `Monitoring Report ${String(asObject(vc).id ?? "")} cross-check: ${outcome.decision} (ΔER ${outcome.deltaERg} g)`,
               );
             }
           } catch (error) {
             if (!(error instanceof MappingError)) throw error;
-            result.refusals.push(`Monitoring Report ${String(vc.id ?? "")} could not be mapped: ${error.message}`);
+            result.refusals.push(
+              `Monitoring Report ${String(asObject(vc).id ?? "")} could not be mapped: ${error.message}`,
+            );
           }
         }
       }
