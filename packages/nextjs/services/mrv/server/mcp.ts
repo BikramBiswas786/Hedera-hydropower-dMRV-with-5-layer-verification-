@@ -10,6 +10,7 @@ import { PREVIEW_METER_DOMAIN, SCENARIOS, SCENARIO_NAMES, generateScenario } fro
 import { attestRequestSchema, verifyRequestSchema } from "../schema";
 import { plantIdToBytes32 } from "../views";
 import { attestReadings, prepareApproval } from "./attest";
+import { listCheckoutListings, prepareCheckoutPurchase, prepareCheckoutPurchaseSchema } from "./checkout";
 import { readDexCheck } from "./dex";
 import { ApiError } from "./errors";
 import { traceMint, verifyEvidence } from "./guardianBridge";
@@ -341,6 +342,29 @@ export function buildMcpServer({ canWrite }: { canWrite: boolean }): McpServer {
       annotations: readOnly,
     },
     async request => run(() => preparePurchase(request)),
+  );
+
+  server.registerTool(
+    "list_checkout_listings",
+    {
+      title: "List checkout listings (any HTS token)",
+      description:
+        "Open UsdCheckout listings: any HTS fungible token at a USD price per whole token, settled like the credit market. Each listing carries its token's Guardian trace verdict: backed (a signed Guardian record backs it), none (the token makes no Guardian claim), not-backed or incomplete.",
+      annotations: readOnly,
+    },
+    async () => run(() => listCheckoutListings()),
+  );
+
+  server.registerTool(
+    "prepare_checkout_purchase",
+    {
+      title: "Prepare a checkout purchase",
+      description:
+        "Build an unsigned UsdCheckout.buy for amount base units of a listing. The listed token is traced first: if it cites a Guardian record that is not backed (a failed signature, token or amount, or an unreadable source), no transaction is built. Returns chainId, to, data and value (weibar, 1% buffer refunded). The buyer must be associated with the token. Sign with your own wallet.",
+      inputSchema: prepareCheckoutPurchaseSchema,
+      annotations: readOnly,
+    },
+    async request => run(() => prepareCheckoutPurchase(request)),
   );
 
   server.registerTool(

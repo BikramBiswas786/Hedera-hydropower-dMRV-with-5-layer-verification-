@@ -40,6 +40,9 @@ buyer's key: purchases are returned as unsigned transactions. The REST API is de
   traces as backed: ref `0.0.10238177-1790602426-400520522` (token 0.0.10760359, 12.5 t)
 - Guardian: `verify_guardian_evidence { ref, topicIds? }` (verify a Guardian VP/VC chain from the mirror node and IPFS:
   topic, status, every Ed25519 signature; refuses chains with a MintToken VC or a Monitoring Report that does not match)
+- Checkout (any HTS token, e.g. a Guardian-minted one): `list_checkout_listings` (each listing with its token's Guardian
+  verdict: backed, none, not-backed, incomplete) → `prepare_checkout_purchase { listingId, amount }` (unsigned
+  UsdCheckout.buy; refused when the token cites a Guardian record that is not backed). Associate with the token first.
 - Market: `get_dex_price`, `list_open_listings`, `prepare_purchase` (unsigned buy / buyAndRetire for your own wallet),
   `get_retirement_certificate`, `get_portfolio` (retirements by an account or on behalf of a beneficiary)
 - Guardian figures: `compare_guardian_report` (recompute a Guardian VMR0017 monitoring report's BE, PE, LE and ER:
@@ -94,6 +97,8 @@ seller.
 - `GET  /api/market/dex` — the SaucerSwap pair the market swaps through vs the settlement oracle, and the public
   mainnet WHBAR/USDC pair vs mainnet Chainlink
 - `POST /api/market/prepare-purchase` — body `{ listingId, amountKg, retire?: true, beneficiary?: "" }`
+- `GET  /api/checkout/listings` — UsdCheckout listings with each token's Guardian verdict
+- `POST /api/checkout/prepare-purchase` — body `{ listingId, amount }` (base units); 409 if the token's Guardian record is not backed
 - `GET  /api/registry/retirements/{id}` — retirement and NFT certificate
 - `GET  /api/registry/retirements?account=0x…&beneficiary=…&format=json|csv` — portfolio: retirements by the
   account or on behalf of the beneficiary, totals, certificates; CSV for ESG reporting

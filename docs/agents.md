@@ -21,6 +21,7 @@ claude mcp add --transport http hydro-dmrv https://hydro-dmrv.vercel.app/api/mcp
 | `audit_attestation` · `reproduce_attestation` | public | Report vs chain · full reproduction from HCS including the registered design |
 | `verify_guardian_evidence` | public | Guardian VP/VC chain from the mirror node and IPFS; refuses MintToken chains (double issuance) |
 | `get_dex_price` · `list_open_listings` · `prepare_purchase` | public | SaucerSwap spot vs the settlement price · listings with HBAR quotes · unsigned `buy` / `buyAndRetire`. Refuses above a 3% gap |
+| `list_checkout_listings` · `prepare_checkout_purchase` | public | `UsdCheckout` listings of any HTS token, each with its token's Guardian trace verdict · unsigned `buy`, refused (409) when the token cites a Guardian record that is not backed |
 | `get_plant` | public | One plant: design, power density, ledger, lifetime EG / BE / PE / ER / credits, coverage, credits per MWh, attestations with HCS links |
 | `get_retirement_certificate` · `get_portfolio` | public | Retirement record and its NFT certificate · everything an account or a beneficiary retired, with totals |
 | `compare_guardian_report` | public | Recomputes a Guardian VMR0017 monitoring report's BE, PE, LE and ER in tonnes: MATCH, MISMATCH or NOT_COMPARABLE |

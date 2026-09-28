@@ -77,6 +77,7 @@ yarn market:keep-listing [--execute]  # keep a listing open on the testnet marke
 | Server-only code (keys, HCS, writes, unsigned purchases) | `packages/nextjs/services/mrv/server/` |
 | REST routes / MCP route | `packages/nextjs/app/api/**/route.ts` |
 | Pages | `packages/nextjs/app/{methodology,verify,plants,market,portfolio,audit,certificate/[id]}/` with components in `_components/` |
+| Checkout listings and purchases for any HTS token, gated on the token's Guardian trace (server) | `packages/nextjs/services/mrv/server/checkout.ts`, REST `app/api/checkout/`, UI `app/check/_components/GuardianCheckout.tsx` |
 | Plant detail, portfolios, CSV export (server) | `packages/nextjs/services/mrv/server/insights.ts` |
 | Generated ABIs + addresses | `packages/nextjs/contracts/deployedContracts.ts` (never edit by hand) |
 

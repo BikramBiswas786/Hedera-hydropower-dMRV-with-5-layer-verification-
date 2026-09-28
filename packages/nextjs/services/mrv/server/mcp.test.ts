@@ -31,6 +31,8 @@ const PUBLIC = [
   "list_open_listings",
   "get_dex_price",
   "prepare_purchase",
+  "list_checkout_listings",
+  "prepare_checkout_purchase",
   "get_retirement_certificate",
   "get_portfolio",
   "approve_attestation",
