@@ -146,7 +146,10 @@ export async function handleCrossCheck(request: Request) {
 export function readGuardianSources(fetchImpl: typeof fetch = fetch): GuardianSources {
   return {
     mirrorNodeUrl: (process.env.GUARDIAN_MIRROR_NODE_URL || MIRROR_NODE_URL).replace(/\/$/, ""),
-    ipfsGateway: process.env.GUARDIAN_IPFS_GATEWAY || "https://ipfs.io/ipfs/{cid},https://dweb.link/ipfs/{cid}",
+    // Managed Guardian's public gateway serves what MGS pins; the public gateways find the rest if anyone provides it.
+    ipfsGateway:
+      process.env.GUARDIAN_IPFS_GATEWAY ||
+      "https://ipfs.guardianservice.app/ipfs/{cid},https://ipfs.io/ipfs/{cid},https://dweb.link/ipfs/{cid}",
     fetch: fetchImpl,
   };
 }

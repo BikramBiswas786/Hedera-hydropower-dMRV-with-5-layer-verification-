@@ -213,7 +213,7 @@ The response includes `evidenceHash = keccak256("guardian:" ‖ consensusTimesta
 | `amount` | fungible: the minted base units equal the VC amount × 10^decimals (a transfer may not exceed it); NFT: the serials whose metadata cites this VP equal the VC amount |
 | `registry` | the signer's `DID-Document` message on its topic was paid for by the token treasury |
 
-`verdict` is `backed` when every check passes, `not-backed` when one fails, and `incomplete` when a source could not be read (an unreachable gateway is never reported as a bad signature). `sources` lists the documents the VP rests on (type, approval status, payer), two relationship levels deep, from HCS metadata. The page `/check` runs it on two real testnet iRec mints.
+`verdict` is `backed` when every check passes, `not-backed` when one fails, and `incomplete` when a source could not be read (an unreachable gateway is never reported as a bad signature). `sources` lists the documents the VP rests on (type, approval status, payer), two relationship levels deep, from HCS metadata. The page `/check` runs it on two real testnet iRec mints; their IPFS documents have no public provider, so they trace as `incomplete` (record, order and payer pass; signatures cannot be read). IPFS is read through `GUARDIAN_IPFS_GATEWAY`, by default Managed Guardian's `ipfs.guardianservice.app` (which serves what MGS pins), then ipfs.io and dweb.link; every block is hashed against its CID, so the order is about availability, not trust.
 
 What it does not establish: that the policy itself is sound, or that Guardian's figure is right (that is `compare_guardian_report`), or, for fungible tokens, that no other mint cites the same VP (the mirror node has no per-token mint index; NFTs are counted).
 

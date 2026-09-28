@@ -127,15 +127,18 @@ carries it as metadata. The VP's `MintToken` VC states `tokenId` and `amount` as
 (`"12.500"` at 3 decimals), and the Standard Registry's account pays for the VP message, its DID document and is the
 token treasury. On testnet, NFT `0.0.10753268` #10 has metadata `1790566925.960768416`, a VP-Document on topic
 `0.0.10753275` paid by the treasury `0.0.10753028`, which also published the signing DID.
-**22. Guardian's global indexer API answers 401 without an account; the mirror node and IPFS are public.** A buyer
-can check a Guardian token from those two alone, and an IPFS CID is a sha2-256 hash, so ask a gateway for the raw
-block (`?format=raw`) and hash it rather than trusting the gateway.
+**22. Guardian's global indexer API answers 401 without an account; the mirror node and IPFS are public, but a
+Guardian document is only as public as its pin.** Managed Guardian serves what it pins through a trustless gateway,
+`ipfs.guardianservice.app` (`?format=raw` returns the block). Other instances may pin to a node nobody can reach:
+the iRec VP above has "no providers found" on every gateway, so its signatures cannot be checked from public data.
+A CID is a sha2-256 hash, so ask for the raw block and hash it rather than trusting any gateway.
 Handled by: [`trace.ts`](packages/nextjs/services/mrv/guardian/trace.ts) and [`ipfs.ts`](packages/nextjs/services/mrv/guardian/ipfs.ts),
 behind `trace_guardian_mint` and `GET /api/guardian/v1/trace`.
 Proof: test, `trace.test.ts` (backed, over-minted, wrong token, foreign signer, edited VP, lying gateway, NFT serial
 count) and `ipfs.test.ts` (the real `ipfs add` CID of "hello\n"); live, the [Guardian trace](.github/workflows/guardian-trace.yml)
-workflow (`yarn guardian:trace nft:0.0.10753268:10 --expect backed`, daily and on every change to the tracer) and
-the Live smoke step "Guardian mint trace".
+workflow (`yarn guardian:trace nft:0.0.10753268:10 --require record,order,record-payer`, daily and on every change
+to the tracer) and the Live smoke step "Guardian mint trace"; `ipfs.test.ts` also unpacks a real block served by
+`ipfs.guardianservice.app`.
 
 ## Keeping this true
 

@@ -27,5 +27,8 @@ jobs:
 
       - run: yarn install --immutable
 
+      # Minted by a Guardian instance whose IPFS documents have no public provider (every gateway, including
+      # Managed Guardian's, answers "no providers found"), so the signature check is unverifiable from public data.
+      # What public data can prove must pass, and nothing may fail.
       - name: Guardian iRec NFT 0.0.10753268 #10
-        run: yarn guardian:trace nft:0.0.10753268:10 --expect backed
+        run: yarn guardian:trace nft:0.0.10753268:10 --require record,order,record-payer

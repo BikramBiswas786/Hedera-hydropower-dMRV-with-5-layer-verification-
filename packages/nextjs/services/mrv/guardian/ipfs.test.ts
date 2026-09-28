@@ -10,6 +10,31 @@ const text = (value: Uint8Array) => Buffer.from(value).toString("utf8");
 const HELLO_BLOCK = bytes(0x0a, 0x0c, 0x08, 0x02, 0x12, 0x06, ...Buffer.from("hello\n"), 0x18, 0x06);
 const HELLO_CID = "QmZULkCELmmk5XNfCgTnCyFgAVxBRBXyDHGGMVoLFLiXEN";
 
+/**
+ * A real block from Managed Guardian's gateway (ipfs.guardianservice.app, `?format=raw`): the DID document of a
+ * Standard Registry on testnet, as Guardian's IPFS client pinned it (CIDv0, dag-pb + UnixFS).
+ */
+const MGS_DID_CID = "QmfEm4V2pXK6rpyzu1mgdbBDrLuuCVJ5Z83SURDnLBzbw4";
+const MGS_DID_BLOCK = Buffer.from(
+  [
+    "Ct8HCAIS1wd7ImlkIjoiZGlkOmhlZGVyYTp0ZXN0bmV0OkFUWnNGVFl5THI4YnFUQmZYMlN0U2hMS2tQVHlncTRVcVUyZGpKUXk4",
+    "a1lMXzAuMC4xMDIzODE3OSIsIkBjb250ZXh0IjoiaHR0cHM6Ly93d3cudzMub3JnL25zL2RpZC92MSIsInZlcmlmaWNhdGlvbk1l",
+    "dGhvZCI6W3siaWQiOiJkaWQ6aGVkZXJhOnRlc3RuZXQ6QVRac0ZUWXlMcjhicVRCZlgyU3RTaExLa1BUeWdxNFVxVTJkakpReThr",
+    "WUxfMC4wLjEwMjM4MTc5I2RpZC1yb290LWtleSIsInR5cGUiOiJFZDI1NTE5VmVyaWZpY2F0aW9uS2V5MjAxOCIsImNvbnRyb2xs",
+    "ZXIiOiJkaWQ6aGVkZXJhOnRlc3RuZXQ6QVRac0ZUWXlMcjhicVRCZlgyU3RTaExLa1BUeWdxNFVxVTJkakpReThrWUxfMC4wLjEw",
+    "MjM4MTc5IiwicHVibGljS2V5QmFzZTU4IjoiQTdianBCdUJUQVN6MjhIY0dZcEY1WTRrcDRhWlpSd3VUN3h4d2h4Ym1KTWcifSx7",
+    "ImlkIjoiZGlkOmhlZGVyYTp0ZXN0bmV0OkFUWnNGVFl5THI4YnFUQmZYMlN0U2hMS2tQVHlncTRVcVUyZGpKUXk4a1lMXzAuMC4x",
+    "MDIzODE3OSNkaWQtcm9vdC1rZXktYmJzIiwidHlwZSI6IkJsczEyMzgxRzJLZXkyMDIwIiwiY29udHJvbGxlciI6ImRpZDpoZWRl",
+    "cmE6dGVzdG5ldDpBVFpzRlRZeUxyOGJxVEJmWDJTdFNoTEtrUFR5Z3E0VXFVMmRqSlF5OGtZTF8wLjAuMTAyMzgxNzkiLCJwdWJs",
+    "aWNLZXlCYXNlNTgiOiJ4VzZ3UzhCVGFGWTZVeU0yaHJDa2NYTnNnNFZ2TlFIOWdBS1A4TnRLUGQ2d3c1M3BWU3NBQVkzcG5kNFV3",
+    "YmpjUXFFYjV1eVZvN3hvakZmcFNHdFFFZXNUUnc5aWVDV0hEZ2hkUGdxNHRRZldOaG1OVWFDeTJRTlE4U3l3NHZaV1hxWCJ9XSwi",
+    "YXV0aGVudGljYXRpb24iOlsiZGlkOmhlZGVyYTp0ZXN0bmV0OkFUWnNGVFl5THI4YnFUQmZYMlN0U2hMS2tQVHlncTRVcVUyZGpK",
+    "UXk4a1lMXzAuMC4xMDIzODE3OSNkaWQtcm9vdC1rZXkiXSwiYXNzZXJ0aW9uTWV0aG9kIjpbIiNkaWQtcm9vdC1rZXkiLCIjZGlk",
+    "LXJvb3Qta2V5LWJicyJdfRjXBw==",
+  ].join(""),
+  "base64",
+);
+
 const serve = (blocks: Record<string, Uint8Array>) => async (cid: string) => {
   if (!blocks[cid]) throw new Error(`no block ${cid}`);
   return blocks[cid];
@@ -43,6 +68,13 @@ describe("readVerifiedFile", () => {
   it("unpacks the real `ipfs add` block for hello", async () => {
     const file = await readVerifiedFile(HELLO_CID, serve({ [HELLO_CID]: HELLO_BLOCK }), 1024);
     expect(text(file)).toBe("hello\n");
+  });
+
+  it("unpacks a real Guardian document pinned by Managed Guardian", async () => {
+    const file = await readVerifiedFile(MGS_DID_CID, serve({ [MGS_DID_CID]: MGS_DID_BLOCK }), 64 * 1024);
+    const did = JSON.parse(text(file));
+    expect(did.id).toBe("did:hedera:testnet:ATZsFTYyLr8bqTBfX2StShLKkPTygq4UqU2djJQy8kYL_0.0.10238179");
+    expect(did.verificationMethod[0].type).toBe("Ed25519VerificationKey2018");
   });
 
   it("returns raw leaves as they are", async () => {
