@@ -31,6 +31,16 @@ on:
         type: boolean
         required: false
         default: false
+      redeploy_market:
+        description: "Instead of a sale, replace the testnet CreditMarket (scripts/redeployTestnetMarket.ts): 'deploy', or 'retire-old' with market_address"
+        type: choice
+        options: ["", "deploy", "retire-old"]
+        required: false
+        default: ""
+      market_address:
+        description: "The new CreditMarket, for redeploy_market=retire-old"
+        required: false
+        default: ""
 
 jobs:
   demo:
@@ -68,8 +78,23 @@ jobs:
           export HEDERA_OPERATOR_ID="$ACCOUNT" HEDERA_OPERATOR_KEY="$KEY" ADMIN_ACCOUNT_ID="$ACCOUNT" ADMIN_SIGNER_KEY="$KEY" HEDERA_NETWORK=testnet
           yarn admin:exec schedule "$CHECKOUT_ADDRESS" "setPoolGuardEnabled(bool)" true
 
+      # The registry predates the one-market rule, so the replacement gets MARKET_ROLE and the old market loses it only
+      # once the app points at the new one (retire-old).
+      - name: Replace the testnet CreditMarket
+        if: ${{ inputs.redeploy_market != '' }}
+        env:
+          KEY: ${{ secrets.TESTNET_REBALANCER_KEY }}
+          MODE: ${{ inputs.redeploy_market }}
+          MARKET_ADDRESS: ${{ inputs.market_address }}
+        run: |
+          if [ -z "$KEY" ]; then echo "::error::Set the TESTNET_REBALANCER_KEY secret"; exit 1; fi
+          KEY="${KEY#0x}"
+          export __RUNTIME_DEPLOYER_PRIVATE_KEY="0x${KEY}"
+          if [ "$MODE" = "retire-old" ]; then export RETIRE_OLD=1; fi
+          yarn workspace @sh/hardhat hardhat run scripts/redeployTestnetMarket.ts --network hederaTestnet
+
       - name: Deploy, list and buy on testnet
-        if: ${{ !inputs.scheduled_admin_call }}
+        if: ${{ !inputs.scheduled_admin_call && inputs.redeploy_market == '' }}
         env:
           KEY: ${{ secrets.TESTNET_REBALANCER_KEY }}
           CHECKOUT_ADDRESS: ${{ inputs.checkout_address }}
