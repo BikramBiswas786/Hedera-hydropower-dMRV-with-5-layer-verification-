@@ -34,8 +34,14 @@ buyer's key: purchases are returned as unsigned transactions. The REST API is de
   topic, status, every Ed25519 signature; refuses chains with a MintToken VC or a Monitoring Report that does not match)
 - Market: `get_dex_price`, `list_open_listings`, `prepare_purchase` (unsigned buy / buyAndRetire for your own wallet),
   `get_retirement_certificate`, `get_portfolio` (retirements by an account or on behalf of a beneficiary)
+- Guardian figures: `compare_guardian_report` (recompute a Guardian VMR0017 monitoring report's BE, PE, LE and ER:
+  MATCH, MISMATCH or NOT_COMPARABLE)
+- VVB: `approve_attestation` (read-only: the exact EIP-712 VerifierApproval the registry will check for a step-1
+  anchor; sign it with your own key and pass it to `submit_attestation` as `verifierSignature`)
+- Documents (do not mint): `list_documents`, `get_trust_chain`, `run_public_work`, `prepare_document`,
+  `check_document`; illustrative VMR0015 `quantify_safe_water` (not a hydro credit)
 - Write tools `submit_attestation` (two steps: publish for approval, then relay with the VVB signature) and
-  `approve_attestation` are listed only when the request carries `Authorization: Bearer <MRV_API_KEY>`
+  `publish_document` are listed only when the request carries `Authorization: Bearer <MRV_API_KEY>`
 - Resource: `hydro-dmrv://methodology` (equations, QA/QC rules, IPCC bounds, what is not implemented)
 
 Buying as an agent: `get_dex_price` → `list_open_listings` → `prepare_purchase { listingId, amountKg, beneficiary }` → sign and send `{ to, data, value }` with your wallet on `chainId` → `get_retirement_certificate`. `prepare_purchase` returns nothing if the SaucerSwap WHBAR/USDC spot is more than 3% from the settlement price. The server never holds your key.
@@ -57,12 +63,20 @@ Buying as an agent: `get_dex_price` → `list_open_listings` → `prepare_purcha
 - `GET  /api/registry/attestations/{id}/audit` — report vs on-chain record
 - `GET  /api/registry/attestations/{id}/reproduce` — full reproduction from HCS data
 - `GET  /api/registry/listings` — open listings with HBAR quotes (tinybar)
+- `GET  /api/market/dex` — the SaucerSwap pair the market swaps through vs the settlement oracle, and the public
+  mainnet WHBAR/USDC pair vs mainnet Chainlink
 - `POST /api/market/prepare-purchase` — body `{ listingId, amountKg, retire?: true, beneficiary?: "" }`
 - `GET  /api/registry/retirements/{id}` — retirement and NFT certificate
 - `GET  /api/registry/retirements?account=0x…&beneficiary=…&format=json|csv` — portfolio: retirements by the
   account or on behalf of the beneficiary, totals, certificates; CSV for ESG reporting
 - `POST /api/mrv/attest` — verify → HCS (readings, report) → submitAttestation; requires `Authorization: Bearer
   <MRV_API_KEY>`
+- `POST /api/mrv/approve` — body = the attest body + `anchor` → the VerifierApproval typed data a VVB signs; no key
+- `POST /api/methodology/compare` — a Guardian monitoring report's figures → MATCH / MISMATCH / NOT_COMPARABLE
+- `GET  /api/documents?subjectId=…`, `GET /api/documents/{subjectId}`, `POST /api/documents/prepare`,
+  `POST /api/documents/check`, `GET /api/work?subjectId=…` — sealed documents, trust chain and playbook (no minting);
+  `POST /api/documents` stores one and requires the bearer key
+- `POST /api/water/quantify` — illustrative VMR0015 safe-water figures
 - `POST /api/guardian/v1/cross-check?policyId=…` — for a Guardian policy's httpRequestBlock: body = the Monitoring
   Report VC → a "DMRV Cross-Check Result" VC signed by the bridge did:hedera (Ed25519Signature2018); requires
   `Authorization: Bearer <GUARDIAN_BRIDGE_API_KEY>`; 503 until the bridge key and DID are configured (docs/GUARDIAN.md)

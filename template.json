@@ -64,6 +64,10 @@
               "command": "{run:hardhat:account:import}"
             },
             {
+              "label": "Generate a meter key per plant (.secrets/, gitignored); a Hedera deploy refuses the public demo keys",
+              "command": "{run:hardhat:meter-keys} --network hederaTestnet"
+            },
+            {
               "label": "Deploy (creates the HTS token and NFT collection, prints Hashscan links)",
               "command": "{run:deploy} --network hederaTestnet"
             },
@@ -72,8 +76,16 @@
               "command": "{run:mrv:create-topic}"
             },
             {
-              "label": "Verify a day of monitoring data, publish readings and report to HCS, mint credits",
+              "label": "Step 1: verify a day of monitoring data and publish readings and report to HCS (writes attest-<plant>-<seq>.json)",
               "command": "{run:mrv:attest}"
+            },
+            {
+              "label": "The VVB signs the EIP-712 approval on its own machine (VVB_PRIVATE_KEY=… yarn mrv:approve attest-<plant>-<seq>.json)",
+              "command": "{run:mrv:approve}"
+            },
+            {
+              "label": "Step 2: relay the meter and VVB signatures; DmrvRegistry recomputes the tonnes and mints HTS credits",
+              "command": "{run:mrv:submit}"
             }
           ]
         }
