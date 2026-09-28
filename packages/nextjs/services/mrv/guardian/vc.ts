@@ -71,6 +71,26 @@ export function ed25519VerificationDocumentLoader(documentLoader: DocumentLoader
   };
 }
 
+/** Guardian's own token-operation VC types, defined in the system-schema context every policy shares. */
+export const GUARDIAN_SYSTEM_TYPE = /^Mint(NF)?Token&/;
+
+/**
+ * Guardian signs its MintToken VC against a context that does not define `MintToken&1.0.0`, so the subject's
+ * terms resolve through the context's `@vocab`. A real Managed Guardian mint (vectors/mgs-mint-2026-09-28.json)
+ * verifies with every cut of the published context except the ones that keep that entry. The values (token,
+ * amount, date) are still signed; only their property IRIs differ. This loader serves the same CID-checked
+ * `ipfs://` contexts with the system type definitions removed, for a second verification attempt.
+ */
+export function withoutSystemTypeDefinitions(documentLoader: DocumentLoader): DocumentLoader {
+  return async (iri: string) => {
+    const result = await documentLoader(iri);
+    const context = (result?.document as any)?.["@context"];
+    if (!iri.startsWith("ipfs://") || !context || typeof context !== "object" || Array.isArray(context)) return result;
+    const kept = Object.fromEntries(Object.entries(context).filter(([term]) => !GUARDIAN_SYSTEM_TYPE.test(term)));
+    return { ...result, document: { ...(result.document as object), "@context": kept } };
+  };
+}
+
 function firstError(result: vcLib.VerificationResult): string {
   for (const element of result.results ?? []) {
     if (!element.verified && element.error?.message) return element.error.message;

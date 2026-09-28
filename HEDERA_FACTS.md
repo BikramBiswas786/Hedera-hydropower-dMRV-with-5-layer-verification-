@@ -140,6 +140,17 @@ workflow (`yarn guardian:trace nft:0.0.10753268:10 --require record,order,record
 to the tracer) and the Live smoke step "Guardian mint trace"; `ipfs.test.ts` also unpacks a real block served by
 `ipfs.guardianservice.app`.
 
+**23. Guardian signs its MintToken VC without the MintToken term of the context it cites.** The VC's subject names
+`ipfs://QmRVK4hN…`, the system-schema context that defines `MintToken&1.0.0` with typed `date`, `amount` and
+`tokenId`. The signature only verifies with that entry removed, so the terms resolve through the context's `@vocab`.
+The values are signed either way. On testnet: token `0.0.10760359`, mint `0.0.10238177-1790602426-400520522`, VP
+`QmVoqJLAvPzEQPzkbekWgBiYxWuMCSumheX5oS3bRvwMbv` on topic `0.0.10760360`, minted by Managed Guardian on 28 Sep 2026.
+Handled by: `withoutSystemTypeDefinitions` in [`vc.ts`](packages/nextjs/services/mrv/guardian/vc.ts), tried after the
+strict check by `trace.ts` and `evidence.ts`.
+Proof: test, `trace.test.ts` "a real Managed Guardian mint" (strict fails, Guardian's form verifies, an edited amount
+or token fails); live, the [Guardian trace](.github/workflows/guardian-trace.yml) workflow
+(`yarn guardian:trace 0.0.10238177-1790602426-400520522 --expect backed`) and the Live smoke step "Guardian mint trace: backed".
+
 ## Keeping this true
 
 Add a fact when a Hedera behaviour costs you time, and add the test or workflow that proves it in the same PR. A fact

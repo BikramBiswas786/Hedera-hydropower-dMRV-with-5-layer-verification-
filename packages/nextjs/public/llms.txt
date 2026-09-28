@@ -36,7 +36,8 @@ buyer's key: purchases are returned as unsigned transactions. The REST API is de
 - Guardian, before buying: `trace_guardian_mint { ref }` (ref = nft:<token>:<serial>, ft:<token>:<holder> or a mint
   transaction id; follows the mint memo / NFT metadata to the VP on HCS, reads it from IPFS hash-checked against the
   CID, verifies the signatures, and checks the MintToken VC names this token and amount and the signer's DID was
-  published by the token treasury → verdict backed / not-backed / incomplete)
+  published by the token treasury → verdict backed / not-backed / incomplete). A real Managed Guardian mint that
+  traces as backed: ref `0.0.10238177-1790602426-400520522` (token 0.0.10760359, 12.5 t)
 - Guardian: `verify_guardian_evidence { ref, topicIds? }` (verify a Guardian VP/VC chain from the mirror node and IPFS:
   topic, status, every Ed25519 signature; refuses chains with a MintToken VC or a Monitoring Report that does not match)
 - Market: `get_dex_price`, `list_open_listings`, `prepare_purchase` (unsigned buy / buyAndRetire for your own wallet),

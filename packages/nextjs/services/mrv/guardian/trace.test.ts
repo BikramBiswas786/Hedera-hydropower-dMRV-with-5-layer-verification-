@@ -1,7 +1,14 @@
 import { FakeLedger, guardianStyleContext, keyFrom, presentAsGuardian, signAsGuardian, signerFor } from "./fixtures";
-import { fetchIpfsJson, remoteDidResolver } from "./hedera";
+import { fetchIpfsJson, localDidResolver, remoteDidResolver } from "./hedera";
 import { toBaseUnits, traceGuardianMint } from "./trace";
-import { CREDENTIALS_V1, buildDocumentLoader } from "./vc";
+import {
+  CREDENTIALS_V1,
+  GUARDIAN_SYSTEM_TYPE,
+  buildDocumentLoader,
+  verifyGuardianPresentation,
+  withoutSystemTypeDefinitions,
+} from "./vc";
+import realMint from "./vectors/mgs-mint-2026-09-28.json";
 import { describe, expect, it } from "vitest";
 
 const TREASURY = "0.0.900";
@@ -204,5 +211,36 @@ describe("traceGuardianMint", () => {
   it("rejects references it cannot read", async () => {
     const { ledger } = await registry();
     await expect(traceGuardianMint(ledger.sources, "hello")).rejects.toThrow(/Expected nft:/);
+  });
+});
+
+describe("a real Managed Guardian mint (vectors/mgs-mint-2026-09-28.json)", () => {
+  // Token 0.0.10760359, VP QmVoqJLAvPzEQPzkbekWgBiYxWuMCSumheX5oS3bRvwMbv on topic 0.0.10760360, with the documents it
+  // cites: the Standard Registry's DID document and the two schema contexts, as read from HCS and IPFS.
+  const loaderFor = (documents: Record<string, unknown>) =>
+    buildDocumentLoader(localDidResolver(documents), async iri =>
+      iri in documents ? { documentUrl: iri, document: documents[iri] } : null,
+    );
+
+  it("fails the strict check and verifies in Guardian's signed form, which still binds token and amount", async () => {
+    const { vp, documents } = structuredClone(realMint);
+    const loader = loaderFor(documents);
+    await expect(verifyGuardianPresentation(vp, loader)).rejects.toThrow(/Invalid signature/);
+    await expect(verifyGuardianPresentation(vp, withoutSystemTypeDefinitions(loader))).resolves.toBe(true);
+
+    for (const edit of [{ amount: "125.000" }, { tokenId: "0.0.10760320" }]) {
+      const forged = structuredClone(realMint.vp);
+      Object.assign(forged.verifiableCredential[1].credentialSubject[0], edit);
+      await expect(verifyGuardianPresentation(forged, withoutSystemTypeDefinitions(loader))).rejects.toThrow();
+    }
+  });
+
+  it("leaves the policy's own schema terms alone", async () => {
+    const loader = withoutSystemTypeDefinitions(loaderFor(realMint.documents));
+    const issuanceContext = (await loader("ipfs://QmTfoaJ1nQrDdwgZWswcbUvWp8HhicWrxz1LMYwYoET3rM")).document as any;
+    expect(Object.keys(issuanceContext["@context"]).some(term => term.includes("&"))).toBe(true);
+    const mintContext = (await loader("ipfs://QmRVK4hNarbwohZBFehUpvYBt3WsmmV6P1nGrnVszPMvPM")).document as any;
+    expect(Object.keys(mintContext["@context"]).some(term => GUARDIAN_SYSTEM_TYPE.test(term))).toBe(false);
+    expect(mintContext["@context"]["Policy&1.0.0"]).toBeDefined();
   });
 });

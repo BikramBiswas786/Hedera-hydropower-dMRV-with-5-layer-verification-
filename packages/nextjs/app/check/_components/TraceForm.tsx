@@ -3,8 +3,12 @@
 import { useState } from "react";
 import type { GuardianTrace } from "~~/services/mrv/guardian/trace";
 
-/** Real Guardian mints on Hedera testnet (iRec policy runs), so the page has something to trace. */
+/**
+ * Real Guardian mints on Hedera testnet. The first is backed end to end; the iRec runs were pinned where no public
+ * gateway can read them, so their signature check is incomplete.
+ */
 const EXAMPLES = [
+  { label: "Managed Guardian mint 0.0.10760359 (12.5 t)", ref: "0.0.10238177-1790602426-400520522" },
   { label: "iRec NFT 0.0.10753268 #10", ref: "nft:0.0.10753268:10" },
   { label: "iRec NFT 0.0.10738782 #1", ref: "nft:0.0.10738782:1" },
 ];

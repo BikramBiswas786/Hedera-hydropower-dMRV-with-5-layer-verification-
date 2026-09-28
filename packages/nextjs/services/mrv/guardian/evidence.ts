@@ -8,7 +8,12 @@ import {
   isConsensusTimestamp,
   remoteDidResolver,
 } from "./hedera";
-import { buildDocumentLoader, verifyGuardianCredential, verifyGuardianPresentation } from "./vc";
+import {
+  buildDocumentLoader,
+  verifyGuardianCredential,
+  verifyGuardianPresentation,
+  withoutSystemTypeDefinitions,
+} from "./vc";
 import { encodePacked, keccak256 } from "viem";
 
 /**
@@ -211,9 +216,15 @@ export async function verifyGuardianEvidence(
           : [document.verifiableCredential].filter(Boolean)
         : [document];
     entry.issuers = [...new Set([issuerOf(document), ...vcs.map(issuerOf)].filter((x): x is string => !!x))];
+    const verify = (loader: typeof documentLoader) =>
+      body.type === "VP-Document"
+        ? verifyGuardianPresentation(document, loader)
+        : verifyGuardianCredential(document, loader);
     try {
-      if (body.type === "VP-Document") await verifyGuardianPresentation(document, documentLoader);
-      else await verifyGuardianCredential(document, documentLoader);
+      // Guardian's MintToken VCs verify only in its signed form (see withoutSystemTypeDefinitions).
+      await verify(documentLoader).catch(error =>
+        verify(withoutSystemTypeDefinitions(documentLoader)).catch(() => Promise.reject(error)),
+      );
       entry.signature = "verified";
     } catch (error) {
       entry.signature = "invalid";

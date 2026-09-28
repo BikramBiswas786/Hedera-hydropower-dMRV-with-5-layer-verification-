@@ -1,0 +1,436 @@
+{
+  "vp": {
+    "id": "urn:uuid:fd5e957a-919e-4e99-9617-4a468984336e",
+    "type": ["VerifiablePresentation"],
+    "@context": ["https://www.w3.org/2018/credentials/v1"],
+    "verifiableCredential": [
+      {
+        "id": "urn:uuid:128d00fd-eab2-4825-ba47-2ba9bbe32065",
+        "type": ["VerifiableCredential"],
+        "issuer": "did:hedera:testnet:ATZsFTYyLr8bqTBfX2StShLKkPTygq4UqU2djJQy8kYL_0.0.10238179",
+        "issuanceDate": "2026-09-28T13:33:42.647Z",
+        "@context": ["https://www.w3.org/2018/credentials/v1", "ipfs://QmTfoaJ1nQrDdwgZWswcbUvWp8HhicWrxz1LMYwYoET3rM"],
+        "credentialSubject": [
+          {
+            "project": "Demo run-of-river plant (HYDRO-DEMO-01)",
+            "period": "2026-09-01/2026-09-27",
+            "amount": 12.5,
+            "policyId": "6aba6c8872c7fd6f74f2e95c",
+            "guardianVersion": "3.7.1-rc",
+            "@context": ["ipfs://QmTfoaJ1nQrDdwgZWswcbUvWp8HhicWrxz1LMYwYoET3rM"],
+            "id": "urn:uuid:87e71e87-3c89-4187-99ae-2ec984b008fb",
+            "type": "365c37bf-2f4c-40f7-b0b6-4d2a6481ea01&1.0.0"
+          }
+        ],
+        "proof": {
+          "type": "Ed25519Signature2018",
+          "created": "2026-09-28T13:33:42Z",
+          "verificationMethod": "did:hedera:testnet:ATZsFTYyLr8bqTBfX2StShLKkPTygq4UqU2djJQy8kYL_0.0.10238179#did-root-key",
+          "proofPurpose": "assertionMethod",
+          "jws": "eyJhbGciOiJFZERTQSIsImI2NCI6ZmFsc2UsImNyaXQiOlsiYjY0Il19..k3zD2bkoRZbupTdByvMTdlvrHS4M_MzfQoMnP-ywSVSURqtNjUy1hXUF3souQhyBODUbgxTK4DUwfqC0f29iAQ"
+        }
+      },
+      {
+        "id": "urn:uuid:799c0d13-74a6-4a2c-b76b-161ee1db8c5c",
+        "type": ["VerifiableCredential"],
+        "issuer": "did:hedera:testnet:ATZsFTYyLr8bqTBfX2StShLKkPTygq4UqU2djJQy8kYL_0.0.10238179",
+        "issuanceDate": "2026-09-28T13:33:44.824Z",
+        "@context": ["https://www.w3.org/2018/credentials/v1", "ipfs://QmRVK4hNarbwohZBFehUpvYBt3WsmmV6P1nGrnVszPMvPM"],
+        "credentialSubject": [
+          {
+            "date": "2026-09-28T13:33:44.816Z",
+            "tokenId": "0.0.10760359",
+            "amount": "12.500",
+            "@context": ["ipfs://QmRVK4hNarbwohZBFehUpvYBt3WsmmV6P1nGrnVszPMvPM"],
+            "type": "MintToken&1.0.0"
+          }
+        ],
+        "proof": {
+          "type": "Ed25519Signature2018",
+          "created": "2026-09-28T13:33:44Z",
+          "verificationMethod": "did:hedera:testnet:ATZsFTYyLr8bqTBfX2StShLKkPTygq4UqU2djJQy8kYL_0.0.10238179#did-root-key",
+          "proofPurpose": "assertionMethod",
+          "jws": "eyJhbGciOiJFZERTQSIsImI2NCI6ZmFsc2UsImNyaXQiOlsiYjY0Il19..xFxPF3-WmASCNd2cprfEK3x-8riDA8kI17pDIVVWnvEWDVdE7iRXCuokhJkhLi_xziG01oWrqChm7E1NEIkgCQ"
+        }
+      }
+    ],
+    "proof": {
+      "type": "Ed25519Signature2018",
+      "created": "2026-09-28T13:33:44Z",
+      "verificationMethod": "did:hedera:testnet:ATZsFTYyLr8bqTBfX2StShLKkPTygq4UqU2djJQy8kYL_0.0.10238179#did-root-key",
+      "proofPurpose": "authentication",
+      "challenge": "123",
+      "jws": "eyJhbGciOiJFZERTQSIsImI2NCI6ZmFsc2UsImNyaXQiOlsiYjY0Il19..m1KBprRbDwt1Zc2AyZTCSJTusHymHpMQdltQfw5ISvkdKFxbOy-MEvBFFkItfd6REUacisOnhZOPCx3EIqmuBQ"
+    }
+  },
+  "documents": {
+    "did:hedera:testnet:ATZsFTYyLr8bqTBfX2StShLKkPTygq4UqU2djJQy8kYL_0.0.10238179": {
+      "id": "did:hedera:testnet:ATZsFTYyLr8bqTBfX2StShLKkPTygq4UqU2djJQy8kYL_0.0.10238179",
+      "@context": "https://www.w3.org/ns/did/v1",
+      "verificationMethod": [
+        {
+          "id": "did:hedera:testnet:ATZsFTYyLr8bqTBfX2StShLKkPTygq4UqU2djJQy8kYL_0.0.10238179#did-root-key",
+          "type": "Ed25519VerificationKey2018",
+          "controller": "did:hedera:testnet:ATZsFTYyLr8bqTBfX2StShLKkPTygq4UqU2djJQy8kYL_0.0.10238179",
+          "publicKeyBase58": "A7bjpBuBTASz28HcGYpF5Y4kp4aZZRwuT7xxwhxbmJMg"
+        },
+        {
+          "id": "did:hedera:testnet:ATZsFTYyLr8bqTBfX2StShLKkPTygq4UqU2djJQy8kYL_0.0.10238179#did-root-key-bbs",
+          "type": "Bls12381G2Key2020",
+          "controller": "did:hedera:testnet:ATZsFTYyLr8bqTBfX2StShLKkPTygq4UqU2djJQy8kYL_0.0.10238179",
+          "publicKeyBase58": "xW6wS8BTaFY6UyM2hrCkcXNsg4VvNQH9gAKP8NtKPd6ww53pVSsAAY3pnd4UwbjcQqEb5uyVo7xojFfpSGtQEesTRw9ieCWHDghdPgq4tQfWNhmNUaCy2QNQ8Syw4vZWXqX"
+        }
+      ],
+      "authentication": ["did:hedera:testnet:ATZsFTYyLr8bqTBfX2StShLKkPTygq4UqU2djJQy8kYL_0.0.10238179#did-root-key"],
+      "assertionMethod": ["#did-root-key", "#did-root-key-bbs"]
+    },
+    "ipfs://QmTfoaJ1nQrDdwgZWswcbUvWp8HhicWrxz1LMYwYoET3rM": {
+      "@context": {
+        "@version": 1.1,
+        "@vocab": "https://w3id.org/traceability/#undefinedTerm",
+        "id": "@id",
+        "type": "@type",
+        "365c37bf-2f4c-40f7-b0b6-4d2a6481ea01&1.0.0": {
+          "@id": "#365c37bf-2f4c-40f7-b0b6-4d2a6481ea01&1.0.0",
+          "@context": {
+            "policyId": {
+              "@type": "https://www.schema.org/text"
+            },
+            "ref": {
+              "@type": "https://www.schema.org/text"
+            },
+            "guardianVersion": {
+              "@type": "https://www.schema.org/text"
+            },
+            "project": {
+              "@type": "https://www.schema.org/text"
+            },
+            "period": {
+              "@type": "https://www.schema.org/text"
+            },
+            "amount": {
+              "@type": "https://www.schema.org/text"
+            }
+          }
+        }
+      }
+    },
+    "ipfs://QmRVK4hNarbwohZBFehUpvYBt3WsmmV6P1nGrnVszPMvPM": {
+      "@context": {
+        "@version": 1.1,
+        "@vocab": "https://w3id.org/traceability/#undefinedTerm",
+        "id": "@id",
+        "type": "@type",
+        "Policy&1.0.0": {
+          "@id": "#Policy&1.0.0",
+          "@context": {
+            "name": {
+              "@type": "https://www.schema.org/text"
+            },
+            "description": {
+              "@type": "https://www.schema.org/text"
+            },
+            "topicDescription": {
+              "@type": "https://www.schema.org/text"
+            },
+            "version": {
+              "@type": "https://www.schema.org/text"
+            },
+            "policyTag": {
+              "@type": "https://www.schema.org/text"
+            },
+            "owner": {
+              "@type": "https://www.schema.org/text"
+            },
+            "cid": {
+              "@type": "https://www.schema.org/text"
+            },
+            "url": {
+              "@type": "https://www.schema.org/text"
+            },
+            "uuid": {
+              "@type": "https://www.schema.org/text"
+            },
+            "operation": {
+              "@type": "https://www.schema.org/text"
+            }
+          }
+        },
+        "MintToken&1.0.0": {
+          "@id": "#MintToken&1.0.0",
+          "@context": {
+            "date": {
+              "@type": "https://www.schema.org/text"
+            },
+            "amount": {
+              "@type": "https://www.schema.org/text"
+            },
+            "tokenId": {
+              "@type": "https://www.schema.org/text"
+            }
+          }
+        },
+        "IntegrationDataV2&1.0.0": {
+          "@id": "#IntegrationDataV2&1.0.0",
+          "@context": {
+            "date": {
+              "@type": "https://www.schema.org/text"
+            },
+            "data": {
+              "@type": "https://www.schema.org/text"
+            },
+            "userId": {
+              "@type": "https://www.schema.org/text"
+            },
+            "dataType": {
+              "@type": "https://www.schema.org/text"
+            },
+            "parsedData": {
+              "@type": "https://www.schema.org/text"
+            },
+            "requestParams": {
+              "@type": "https://www.schema.org/text"
+            }
+          }
+        },
+        "MintNFToken&1.0.0": {
+          "@id": "#MintNFToken&1.0.0",
+          "@context": {
+            "date": {
+              "@type": "https://www.schema.org/text"
+            },
+            "serials": {
+              "@type": "https://www.schema.org/text"
+            },
+            "tokenId": {
+              "@type": "https://www.schema.org/text"
+            }
+          }
+        },
+        "WipeToken&1.0.0": {
+          "@id": "#WipeToken&1.0.0",
+          "@context": {
+            "date": {
+              "@type": "https://www.schema.org/text"
+            },
+            "amount": {
+              "@type": "https://www.schema.org/text"
+            },
+            "tokenId": {
+              "@type": "https://www.schema.org/text"
+            },
+            "serialNumbers": {
+              "@type": "https://www.schema.org/text"
+            }
+          }
+        },
+        "PolicyIssuer&1.0.0": {
+          "@id": "#PolicyIssuer&1.0.0",
+          "@context": {
+            "issuer": {
+              "@id": "#Issuer"
+            }
+          }
+        },
+        "Issuer": {
+          "@id": "#Issuer",
+          "@context": {
+            "id": {
+              "@id": "@id"
+            },
+            "group": {
+              "@id": "@id"
+            }
+          }
+        },
+        "UserRole&1.0.0": {
+          "@id": "#UserRole&1.0.0",
+          "@context": {
+            "role": {
+              "@type": "https://www.schema.org/text"
+            },
+            "userId": {
+              "@type": "https://www.schema.org/text"
+            },
+            "policyId": {
+              "@type": "https://www.schema.org/text"
+            },
+            "groupId": {
+              "@type": "https://www.schema.org/text"
+            },
+            "groupName": {
+              "@type": "https://www.schema.org/text"
+            },
+            "groupOwner": {
+              "@type": "https://www.schema.org/text"
+            },
+            "groupLabel": {
+              "@type": "https://www.schema.org/text"
+            }
+          }
+        },
+        "Chunk&1.0.0": {
+          "@id": "#Chunk&1.0.0",
+          "@context": {
+            "SourceDocument": {
+              "@id": "#SourceDocument"
+            }
+          }
+        },
+        "SourceDocument": {
+          "@id": "#SourceDocument",
+          "@context": {
+            "topicDescription": {
+              "@id": "https://www.schema.org/Number"
+            }
+          }
+        },
+        "ActivityImpact&1.0.0": {
+          "@id": "#ActivityImpact&1.0.0",
+          "@context": {
+            "impactType": {
+              "@type": "https://www.schema.org/text"
+            },
+            "date": {
+              "@type": "https://www.schema.org/text"
+            },
+            "amount": {
+              "@type": "https://www.schema.org/text"
+            },
+            "unit": {
+              "@type": "https://www.schema.org/text"
+            },
+            "label": {
+              "@type": "https://www.schema.org/text"
+            },
+            "description": {
+              "@type": "https://www.schema.org/text"
+            }
+          }
+        },
+        "TokenDataSource&1.0.0": {
+          "@id": "#TokenDataSource&1.0.0",
+          "@context": {}
+        },
+        "PolicyComment&1.0.0": {
+          "@id": "#PolicyComment&1.0.0",
+          "@context": {
+            "policy": {
+              "@type": "https://www.schema.org/text"
+            },
+            "document": {
+              "@type": "https://www.schema.org/text"
+            },
+            "discussion": {
+              "@type": "https://www.schema.org/text"
+            },
+            "text": {
+              "@type": "https://www.schema.org/text"
+            },
+            "files": {
+              "@type": "https://www.schema.org/text"
+            },
+            "users": {
+              "@type": "https://www.schema.org/text"
+            },
+            "fields": {
+              "@type": "https://www.schema.org/text"
+            },
+            "sender": {
+              "@type": "https://www.schema.org/text"
+            },
+            "senderRole": {
+              "@type": "https://www.schema.org/text"
+            },
+            "senderName": {
+              "@type": "https://www.schema.org/text"
+            }
+          }
+        },
+        "File": {
+          "@id": "#File",
+          "@context": {
+            "name": {
+              "@type": "https://www.schema.org/text"
+            },
+            "fileType": {
+              "@type": "https://www.schema.org/text"
+            },
+            "size": {
+              "@type": "https://www.schema.org/text"
+            },
+            "link": {
+              "@type": "https://www.schema.org/text"
+            },
+            "cid": {
+              "@type": "https://www.schema.org/text"
+            }
+          }
+        },
+        "PolicyDiscussionV2&1.0.0": {
+          "@id": "#PolicyDiscussionV2&1.0.0",
+          "@context": {
+            "policy": {
+              "@type": "https://www.schema.org/text"
+            },
+            "document": {
+              "@type": "https://www.schema.org/text"
+            },
+            "name": {
+              "@type": "https://www.schema.org/text"
+            },
+            "parent": {
+              "@type": "https://www.schema.org/text"
+            },
+            "field": {
+              "@type": "https://www.schema.org/text"
+            },
+            "fieldName": {
+              "@type": "https://www.schema.org/text"
+            },
+            "relationships": {
+              "@type": "https://www.schema.org/text"
+            },
+            "privacy": {
+              "@type": "https://www.schema.org/text"
+            },
+            "roles": {
+              "@type": "https://www.schema.org/text"
+            },
+            "users": {
+              "@type": "https://www.schema.org/text"
+            }
+          }
+        },
+        "PolicyExportProof&1.0.0": {
+          "@id": "#PolicyExportProof&1.0.0",
+          "@context": {
+            "name": {
+              "@type": "https://www.schema.org/text"
+            },
+            "description": {
+              "@type": "https://www.schema.org/text"
+            },
+            "version": {
+              "@type": "https://www.schema.org/text"
+            },
+            "hash": {
+              "@type": "https://www.schema.org/text"
+            }
+          }
+        },
+        "EvidenceAttachments&1.0.0": {
+          "@id": "#EvidenceAttachments&1.0.0",
+          "@context": {
+            "dataType": {
+              "@type": "https://www.schema.org/text"
+            },
+            "data": {
+              "@type": "https://www.schema.org/text"
+            }
+          }
+        }
+      }
+    }
+  }
+}
