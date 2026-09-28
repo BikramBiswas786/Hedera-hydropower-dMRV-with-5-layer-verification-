@@ -13,11 +13,11 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - ref: 06a6278c
+          - ref: 06a6278cd49a14c7536e0cafd4ce85fa878ec8cf
             targets: DmrvRegistry@0xaf9C76B48B317cee770ED6AE038D516b269E0129 HydroVmr0017Module@0x8D57432792aD39Ef2d2e104904e31b157846261d ResilientHbarUsdFeed@0x9529A0189654834949cf78f9ce25336be59F8AbB
-          - ref: 61aba8a4
+          - ref: 61aba8a47db4752ee3d2db4f45f4d9ce09964919
             targets: CreditMarket@0x5aeDe76fc6625cfA3227FFf70197D4D7ff3e5030
-          - ref: fc43362a
+          - ref: fc43362a9e0feaa8f06542bf49acc4a828d59d0f
             targets: UsdCheckout@0x455eFbF07B2b5d5137AEc3601c43549593741898
     steps:
       - uses: actions/checkout@v4
