@@ -268,6 +268,16 @@ export function verifyReadings(
       add("integrity", "info", `Data gap of ${fmt(minutes, 0)} min before this interval: credited as zero`, i);
     }
   }
+  // AMS-I.D v18 §6.1 (EG_PJ,facility,y): continuous monitoring, hourly measurement. ACM0002 and VMR0017 §9.2 only
+  // ask for continuous monitoring aggregated at least monthly, so coarser intervals are a finding for AMS-I.D alone.
+  const coarse = readings.filter(r => r.intervalMinutes > 60).length;
+  if (coarse && plant.methodology === "AMS-I.D") {
+    add(
+      "integrity",
+      "review",
+      `AMS-I.D §6.1 requires hourly measurement, but ${coarse} interval(s) are longer than 60 min`,
+    );
+  }
   const periodStartMs = Math.min(...spans.map(s => s.startMs));
   const periodEndMs = Math.max(...spans.map(s => s.endMs));
   const periodStart = Math.floor(periodStartMs / 1_000);

@@ -78,7 +78,7 @@ EG_facility = export − import at the grid meter, after QA/QC;  TEG = gross gen
 | Reservoir power density `PD = (Cap_PJ − Cap_BL) / (A_PJ − A_BL)` | PD ≤ 4 W/m² not eligible; 4 < PD ≤ 10 → PE_HP; PD > 10 or no new area → 0 | engine **and contract** |
 | Project type | greenfield has no baseline; retrofits need Cap_BL, EG_historical + σ and DATE_BaselineRetrofit; additions must add capacity | engine **and contract** |
 | Leakage | VMR0017: embodied emissions computed by the contract; AMS-I.D with transferred equipment needs a leakage assessment: refused | engine **and contract** |
-| Crediting period | exactly 5, 7 or 10 × 365-day years. VMR0017 from 1 Jan 2027 is 5 years, renewable at most twice; a 10-year period is fixed. Periods stay inside it and inside one crediting year | engine **and contract** |
+| Crediting period | exactly 5, 7 or 10 × 365-day years. VMR0017 from 1 Jan 2027 is 5 years, renewable at most twice; a 10-year period is fixed. A CDM renewal keeps its span; a VMR0017 renewal requested from 1 Jan 2027 is 5 years, also for a plant first registered for 7 (VCS v5.0, V5#101). Periods stay inside it and inside one crediting year | engine **and contract** |
 
 ### Grid emission factor (TOOL07 and VT0011, ex-ante)
 
@@ -102,6 +102,10 @@ EF_grid,CM = w_OM × EF_grid,OM + w_BM × EF_grid,BM
   ¶90 would raise the factor.
 - **IPCC defaults**: the **lower** 95% bound for the baseline (TOOL07) and the **upper** bound for project emissions
   (TOOL03), so neither side can inflate credits. A combined margin published by a DNA can be registered instead.
+  A CDM standardized baseline carries TOOL07's weights, so on the VMR0017 path give its OM and BM as well: the engine
+  recombines them with VT0011's and keeps the lower CM. ASB0054 (Uganda, OM 0.2740, BM 0.00001) publishes CM 0.1370
+  t/MWh for hydro; VT0011's 0.4 / 0.6 gives 0.1096, so the published figure would credit 25% too much. On the CDM
+  path the published CM is checked against TOOL07's weighting of the same OM and BM.
 
 The demo plants sit on an **illustrative** 13-unit grid (coal, gas, oil, hydro, wind, solar, one CDM unit). Under
 VT0011: simple OM 0.769 t/MWh, BM 0.443 t/MWh, so CM 0.573 t/MWh in a first crediting period and 0.524 t/MWh after
@@ -263,7 +267,7 @@ quantities are already conservative, so findings decide whether a human must loo
 | Stage | Checks |
 | --- | --- |
 | 1. Applicability & crediting period | power density rule, crediting period, one crediting year, registered fuel |
-| 2. Monitoring data QA/QC | replays and overlaps, gaps and coverage, main/check meter reconciliation, delayed calibration |
+| 2. Monitoring data QA/QC | replays and overlaps, gaps and coverage, intervals over an hour for AMS-I.D (§6.1 hourly measurement), main/check meter reconciliation, delayed calibration |
 | 3. Physical cross-checks | nameplate, ρ·g·Q·H·η_max, export ≤ generation, flow and head envelope, efficiency outliers |
 | 4. Emission reductions | EG_facility, TEG, FC → EG_PJ, BE, PE_HP, PE_FF, LE, ER, credits (`methodology/quantify.ts`) |
 | 5. Environmental safeguards | water quality for review; never changes the quantity |

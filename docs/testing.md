@@ -40,11 +40,11 @@ What the tests pin down:
   export and raise fuel/leakage but never the reverse; any decision other than approval reverts; signatures for another
   registry, reused signature pairs, reused periods and reused `evidenceHash` (`evidenceUsed`) revert; completeness is
   computed from the meter-signed interval count; periods after calibration lapses, outside the crediting window, in the
-  future or without an audit-topic anchor revert; renewal keeps the span; Article 6 metadata is recorded; custody,
+  future or without an audit-topic anchor revert; a CDM renewal keeps the span; Article 6 metadata is recorded; custody,
   retirement and certificates. The EIP-712 digests match `services/mrv/fixtures/eip712.json`, which the TypeScript
   suite also asserts.
 - **HydroVmr0017Module**: 5-year VMR0017 periods for requests from 1 Jan 2027 (a 7-year request at 31 Dec 2026
-  23:59:59 UTC is still accepted), renewals 5→5 and 7→7 only, metering rules, and parity: all 13 frozen outputs of the
+  23:59:59 UTC is still accepted), CDM renewals 5→5 and 7→7 only, VMR0017 renewals from 2027 5 years only (V5#101), metering rules, and parity: all 13 frozen outputs of the
   legacy `HydroCreditRegistry.quantify` reproduce, and a full greenfield flow on the new registry reproduces the legacy
   registry's 4 791 542 g and 73 386 435 g.
 - **RenewableVmr0017Module**: VMR0017 Table 1 (wind and solar refused in high-income countries, tidal accepted, CDM

@@ -20,7 +20,7 @@ The app reads one registry. Older ones stay on chain so their mints still reprod
 | `buyAndRetire` 0.020 t on router `0.0.19264`. HYRET serial 2 | [0x47358084…](https://hashscan.io/testnet/transaction/0x4735808481bde453a2354b4ed395a00ba72112fdcbb0b96c9a1196e4c5753fab) |
 | `UsdCheckout` (any HTS token): list 50 units, buy 10 through SaucerSwap | [0x455eFbF0…](https://hashscan.io/testnet/contract/0x455eFbF07B2b5d5137AEc3601c43549593741898) · [buy 0x51c9b006…](https://hashscan.io/testnet/transaction/0x51c9b0062bd36e119fbefe8b6e58e18717be1a5ea10fc2d54116a1d768ae379d) |
 
-All five contracts above are verified on Sourcify with an **exact match** (source, compiler settings and metadata hash), so HashScan shows their source. The [Sourcify verify](../.github/workflows/sourcify-verify.yml) workflow compiles each commit they were deployed from (`06a6278c` for the registry, module and feed, `61aba8a4` for the market, `fc43362a` for the checkout) and submits the standard-JSON input; its first full run on 28 Sep 2026 returned `exact_match` for all five.
+All five contracts above are verified on Sourcify with an **exact match** (source, compiler settings and metadata hash), so HashScan shows their source. The [Sourcify verify](../.github/workflows/sourcify-verify.yml) workflow compiles each commit they were deployed from (`06a6278c` for the registry, module and feed, `61aba8a4` for the market, `fc43362a` for the checkout) and submits the standard-JSON input; its first full run on 28 Sep 2026 returned `exact_match` for all five. The source has moved on since: the testnet `HydroVmr0017Module` renews a VMR0017 plant for its original span, while the source moves renewals requested from 1 January 2027 to 5 years (VCS v5.0, V5#101). The first testnet crediting period ends in 2033, so no testnet renewal is affected before a redeploy.
 
 The public testnet WHBAR/USDC pair priced HBAR at $2.28 that day. The oracle was $0.094, so the contract would refuse every sale against it. The pair above was created on SaucerSwap factory `0.0.9959` at the Chainlink price. The seller was paid that pair's token, not USDC. Testnet USDC is not a dollar, so that public pair cannot be the price check.
 
@@ -38,7 +38,7 @@ Phase 1 enforces the following on-chain; the legacy registry does not:
 
 - a crediting span of exactly 5, 7 or 10 × 365 days;
 - `registrationRequestedAt` with the VCS five-year rule from 2027;
-- a renewal that keeps the renewed span;
+- a renewal that keeps the renewed span, or 5 years for a VMR0017 renewal from 2027 (VCS v5.0, V5#101);
 - calibration valid through the period end;
 - completeness computed from the meter-signed interval count;
 - the VVB's decision;

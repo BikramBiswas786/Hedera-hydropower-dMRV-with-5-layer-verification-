@@ -454,7 +454,7 @@ describe("HydroVmr0017Module", function () {
       expect(await run(1_000_000)).to.equal(0n); // 12 W/m²
     });
 
-    it("renews 5→5 and 7→7 but never 5→7, 5→10, 7→5 or 7→10", async function () {
+    it("renews a CDM plant 5→5 and 7→7 but never 5→7, 5→10, 7→5 or 7→10", async function () {
       const module = await ethers.deployContract("HydroVmr0017Module");
       for (const [from, to, ok] of [
         [5n, 5n, true],
@@ -464,7 +464,7 @@ describe("HydroVmr0017Module", function () {
         [7n, 5n, false],
         [7n, 10n, false],
       ] as [bigint, bigint, boolean][]) {
-        const d = await plantDesign({ methodology: 1 });
+        const d = await plantDesign({ methodology: 0 });
         const first = { ...d, creditingEnd: d.creditingStart + from * YEAR };
         const next = { ...d, creditingStart: first.creditingEnd, creditingEnd: first.creditingEnd + to * YEAR };
         const call = module.validateRenewal(
@@ -476,6 +476,29 @@ describe("HydroVmr0017Module", function () {
         );
         if (ok) await call;
         else await expect(call, `${from}→${to}`).to.be.revertedWithCustomError(module, "RenewalSpan");
+      }
+    });
+
+    it("moves a VMR0017 renewal from 1 Jan 2027 to 5 years, while the CDM keeps the original span", async function () {
+      const module = await ethers.deployContract("HydroVmr0017Module");
+      if (BigInt(await time.latest()) < FIVE_YEAR_FROM) await time.increaseTo(FIVE_YEAR_FROM);
+      for (const [methodology, to, ok] of [
+        [1, 5n, true],
+        [1, 7n, false],
+        [0, 7n, true],
+        [0, 5n, false],
+      ] as [number, bigint, boolean][]) {
+        const d = await plantDesign({ methodology }, 7 * 365);
+        const next = { ...d, creditingStart: d.creditingEnd, creditingEnd: d.creditingEnd + to * YEAR };
+        const call = module.validateRenewal(
+          paramsFromDesign(d, d.creditingStart),
+          paramsFromDesign(next, d.creditingStart),
+          d.creditingStart,
+          d.creditingEnd,
+          1,
+        );
+        if (ok) await call;
+        else await expect(call, `${methodology}: 7→${to}`).to.be.revertedWithCustomError(module, "RenewalSpan");
       }
     });
 
@@ -521,7 +544,8 @@ describe("HydroVmr0017Module", function () {
       const module = await ethers.deployContract("HydroVmr0017Module");
       const design = await plantDesign({ methodology: 1 });
       const params = paramsFromDesign(design, design.creditingStart);
-      const next = { ...design, creditingStart: design.creditingEnd, creditingEnd: design.creditingEnd + 7n * YEAR };
+      // Renewed after 1 Jan 2027, so VCS v5 sets the new period to 5 years.
+      const next = { ...design, creditingStart: design.creditingEnd, creditingEnd: design.creditingEnd + 5n * YEAR };
       const ok = paramsFromDesign({ ...next, efGridGPerMwh: 600_000 }, design.creditingStart);
       await time.increaseTo(design.creditingEnd);
       const terms = await module.validateRenewal(params, ok, design.creditingStart, design.creditingEnd, 1);
@@ -532,7 +556,7 @@ describe("HydroVmr0017Module", function () {
         module.validateRenewal(params, bigger, design.creditingStart, design.creditingEnd, 1),
       ).to.be.revertedWithCustomError(module, "ParamsChanged");
       const overlap = paramsFromDesign(
-        { ...next, creditingStart: design.creditingEnd - 1n, creditingEnd: design.creditingEnd - 1n + 7n * YEAR },
+        { ...next, creditingStart: design.creditingEnd - 1n, creditingEnd: design.creditingEnd - 1n + 5n * YEAR },
         design.creditingStart,
       );
       await expect(

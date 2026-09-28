@@ -114,8 +114,10 @@ contract RenewableVmr0017Module is IMethodology {
         });
     }
 
-    /// @notice A renewal repeats the previous span, never follows a 10-year period, and may update only the grid
-    /// factor, crediting dates and calibration (VCS Standard: baseline reassessed at renewal).
+    /// @notice A renewal never follows a 10-year period and may update only the grid factor, crediting dates and
+    /// calibration (VCS Standard: baseline reassessed at renewal). It repeats the previous span, except that a VMR0017
+    /// renewal from 1 Jan 2027 is 5 years (VCS Standard v5.0, V5#101). The block time stands in for the request date:
+    /// a renewal is registered after it is requested, so the proxy can only shorten a period.
     function validateRenewal(
         bytes calldata oldParams,
         bytes calldata newParams,
@@ -128,7 +130,8 @@ contract RenewableVmr0017Module is IMethodology {
         uint256 prevSpan = uint256(prevEnd) - prevStart;
         if (prevSpan == 10 * CREDITING_YEAR || periods >= 3) revert NotRenewable();
         if (newP.creditingStart < prevEnd) revert RenewalOverlap();
-        if (uint256(newP.creditingEnd) - newP.creditingStart != prevSpan) revert RenewalSpan();
+        uint256 span = newP.methodology == VMR && block.timestamp >= VCS_FIVE_YEAR_FROM ? 5 * CREDITING_YEAR : prevSpan;
+        if (uint256(newP.creditingEnd) - newP.creditingStart != span) revert RenewalSpan();
         if (
             newP.registrationRequestedAt != oldP.registrationRequestedAt ||
             newP.methodology != oldP.methodology ||

@@ -184,7 +184,8 @@ A spot price can be moved in one block, so the guard can block sales. It cannot 
   registry (Verra, Gold Standard).
 - **Grid factor scope.** VT0011 and TOOL07 are implemented ex-ante with option A per-unit data and the simple,
   simple adjusted or average OM; the dispatch-data OM, option B, ex-post vintages and the annual BM update (VT0011
-  ¶72 option 2) are not. Register a published combined margin (`grid.source: "published"`) for those.
+  ¶72 option 2) are not. Register a published combined margin (`grid.source: "published"`) for those; on the VMR0017
+  path include its OM and BM, which the engine recombines with VT0011's weights.
   VMR0017's battery, pumped-storage and fire-suppression emission terms are not implemented (plain hydro does not
   need them). Credits here are not issued by a standard; avoid double claiming with RECs or any
   other instrument for the same generation.
