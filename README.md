@@ -166,7 +166,7 @@ Hedera Harness spec and validators are in [`.harness/`](.harness/); `yarn harnes
 
 ## Limits, stated plainly
 
-- The testnet SaucerSwap pair was seeded with 20 HBAR against a test token this project minted, so testnet sellers are paid in that token, and a small trade can push the pair out of band (the keeper pulls it back). On mainnet the same code uses the public WHBAR/USDC pair.
+- The testnet SaucerSwap pair holds a test token this project minted, so testnet sellers are paid in that token. It [holds 871 HBAR](https://hashscan.io/testnet/transaction/0x255d91818419e1cb853dfc58480cf399307be9812e97879d9ac48cd650b78734) (from 20 on 28 Sep), so a purchase of a few dollars moves it a fraction of a percent; a large one can still push it out of band until the keeper pulls it back. On mainnet the same code uses the public WHBAR/USDC pair.
 - The VVB and meter keys on testnet are labelled test keys, not an accredited verifier or data-logger hardware.
 - The testnet contracts predate some hardening changes in the source, including the VCS v5 renewal rule; [docs/evidence.md](docs/evidence.md) lists them.
 - The engine implements VMR0017 v1.0 / ACM0002 v22.0 equations. A VVB and a registry still decide issuance; these credits are not a Verra issuance.
