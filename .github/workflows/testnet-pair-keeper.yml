@@ -2,7 +2,9 @@ name: Testnet pair keeper
 
 # Holds the seeded testnet SaucerSwap pair at the oracle price, so the live market can settle
 # (packages/nextjs/scripts/rebalanceTestnetPair.ts). Without the TESTNET_REBALANCER_KEY secret it only reads and
-# reports; with it, it makes the one swap that brings the pair back when it has drifted past 1%.
+# reports; with it, it makes the one swap that brings the pair back when it has drifted past 1%, then reopens a listing
+# from that account's registry custody when less than 0.1 t is for sale (scripts/keepListingOpen.ts), so /market
+# always has something to buy. TESTNET_LISTING_KEY overrides the account that lists.
 on:
   schedule:
     - cron: "41 */4 * * *"
@@ -11,6 +13,7 @@ on:
     paths:
       - packages/nextjs/scripts/rebalanceTestnetPair.ts
       - packages/nextjs/services/mrv/saucerswap.ts
+      - packages/nextjs/scripts/keepListingOpen.ts
       - .github/workflows/testnet-pair-keeper.yml
 
 jobs:
@@ -36,4 +39,14 @@ jobs:
           else
             echo "::notice::Reading only (no TESTNET_REBALANCER_KEY, or a pull request)"
             yarn workspace @sh/nextjs pair:rebalance
+          fi
+
+      - name: Keep a listing open
+        env:
+          KEEPER_PRIVATE_KEY: ${{ secrets.TESTNET_LISTING_KEY || secrets.TESTNET_REBALANCER_KEY }}
+        run: |
+          if [ "${{ github.event_name }}" != "pull_request" ] && [ -n "$KEEPER_PRIVATE_KEY" ]; then
+            yarn workspace @sh/nextjs market:keep-listing --execute
+          else
+            yarn workspace @sh/nextjs market:keep-listing
           fi

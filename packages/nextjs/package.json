@@ -22,6 +22,7 @@
     "guardian:publish-did": "tsx scripts/publish-bridge-did.ts",
     "guardian:schema": "tsx scripts/guardian-schema.ts",
     "live:smoke": "tsx scripts/liveSmoke.ts",
+    "market:keep-listing": "tsx scripts/keepListingOpen.ts",
     "pair:rebalance": "tsx scripts/rebalanceTestnetPair.ts"
   },
   "dependencies": {
