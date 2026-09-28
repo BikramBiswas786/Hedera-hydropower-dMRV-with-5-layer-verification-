@@ -1,5 +1,6 @@
 import { DEMO_PLANTS, HYDRO_PARAMS_TUPLE, hydroParamsOf } from "../utils/demoPlants";
 import { getHydroNetworkConfig, hashscanTx } from "../utils/hydroNetworkConfig";
+import { localPoolGuard } from "../utils/localSaucer";
 import { LIVE_NETWORKS, resolveMeterAddresses } from "../utils/meterKeys";
 import type { DeployFunction } from "hardhat-deploy/types";
 import type { HardhatRuntimeEnvironment } from "hardhat/types";
@@ -147,7 +148,7 @@ const setupDmrv: DeployFunction = async function (hre: HardhatRuntimeEnvironment
     console.log(`Registered ${plant.plantId} (operator ${operator}, meter ${meter}): ${hashscanTx(config, tx.hash)}`);
   }
 
-  const guard = config.poolGuard;
+  const guard = config.poolGuard ?? (await localPoolGuard(hre));
   if (guard) {
     const current = await market.poolGuard();
     if (current.pool.toLowerCase() !== guard.pool.toLowerCase() || current.enabled !== guard.enabled) {
@@ -182,7 +183,7 @@ const setupDmrv: DeployFunction = async function (hre: HardhatRuntimeEnvironment
       console.log(`Granted VERIFIER_ROLE to the VVB key ${verifier}: ${hashscanTx(config, tx.hash)}`);
     }
   } else if (!live) {
-    console.log("Local chain: no VERIFIER_ADDRESS, so nothing can be attested until a VVB key is granted.");
+    console.log("Local chain: no VERIFIER_ADDRESS; 03_seed_local_demo grants a public local VVB key.");
   }
   if (process.env.ADMIN_ADDRESS) {
     const admin = evmAddress(process.env.ADMIN_ADDRESS);

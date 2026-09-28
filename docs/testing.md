@@ -4,7 +4,7 @@
 
 ```bash
 yarn test              # contracts + frontend unit tests
-yarn hardhat:test      # 173 contract tests, hermetic (HTS mock at 0x167, oracle and SaucerSwap mocks)
+yarn hardhat:test      # 174 contract tests, hermetic (HTS mock at 0x167, oracle and SaucerSwap mocks)
 yarn hardhat:test:fork # same suite against Hedera's HTS emulation (HEDERA_FORKING, needs internet)
 HEDERA_FORK_NETWORK=mainnet HEDERA_RPC_URL=https://mainnet.hashio.io/api \
   yarn workspace @sh/hardhat hardhat test test/MainnetFork.test.ts  # real SaucerSwap + Chainlink on a mainnet fork
@@ -54,6 +54,7 @@ What the tests pin down:
   second listing of the same token), prices per whole token rounded up, the seller's USD minimum, stale and
   out-of-band refusals, refunds, sell-out, a buyer not associated (HTS 184) and a failed swap each revert the whole
   purchase, and the invariant *checkout balance = active listings*.
+- **Local demo deploy** (`LocalDemo.test.ts`): the real deploy scripts install the stand-ins, mint one signed hour, list it, and a buyer can buy and retire.
 - **Contract size**: every deployable contract outside `mocks/` and `legacy/` is covered by the 24,064 B guard.
 - **Legacy HydroCreditRegistry** (kept for evidence): registration rules (PD, baselines, EF range, crediting period, renewal), on-chain ER with
   fuel and leakage, remainders and deficits, crediting-year and stale-ledger guards, nameplate and net ≤ gross,

@@ -17,7 +17,7 @@ export type DexGate = {
   deviationBps: number;
   maxDeviationBps: number;
   pair?: string;
-  publicMainnet?: { accepted: boolean; deviationBps: number; maxDeviationBps: number };
+  publicMainnet?: { accepted: boolean; deviationBps: number; maxDeviationBps: number } | null;
 };
 
 type Prepared = {
@@ -48,7 +48,8 @@ export const ListingCard = ({ listing, isOwn, nativeUnitsPerHbar, dex }: Props) 
   const { writeContractAsync, isMining } = useScaffoldWriteContract({ contractName: "CreditMarket" });
   const writeTx = useTransactor();
 
-  const poolOk = dex?.accepted === true && dex.publicMainnet?.accepted === true;
+  // A local chain reports no public mainnet pair (null); on Hedera it must agree too.
+  const poolOk = dex?.accepted === true && (dex.publicMainnet === null || dex.publicMainnet?.accepted === true);
   const canBuy = units !== null && !tooMuch && quote !== undefined && !isMining && !sending && poolOk;
 
   const buy = async (retire: boolean) => {

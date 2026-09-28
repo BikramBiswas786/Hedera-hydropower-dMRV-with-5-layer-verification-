@@ -51,7 +51,7 @@ export const OraclePanel = () => {
     deviationBps: number;
     pair?: string;
     venue?: string;
-    publicMainnet?: { price: number; accepted: boolean; deviationBps: number };
+    publicMainnet?: { price: number; accepted: boolean; deviationBps: number } | null;
   } | null>(null);
 
   useEffect(() => {
@@ -101,7 +101,13 @@ export const OraclePanel = () => {
             <td className="font-medium">
               SaucerSwap mainnet <span className="badge badge-ghost badge-xs">0.0.1462797</span>
             </td>
-            <td className="text-right">{dex?.publicMainnet ? `$${dex.publicMainnet.price.toFixed(5)}` : "…"}</td>
+            <td className="text-right">
+              {dex?.publicMainnet
+                ? `$${dex.publicMainnet.price.toFixed(5)}`
+                : dex?.publicMainnet === null
+                  ? "local chain"
+                  : "…"}
+            </td>
             <td className="text-right">
               {dex?.publicMainnet ? (
                 <span className={dex.publicMainnet.accepted ? undefined : "text-error"}>

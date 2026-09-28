@@ -23,6 +23,7 @@ Nothing is required to browse the app or use the engine. Copy the `.env.example`
 | `NEXT_PUBLIC_HEDERA_TESTNET_RPC_URL` / `…MAINNET…` | optional | JSON-RPC relay; defaults to Hashio. |
 | `NEXT_PUBLIC_MIRROR_NODE_URL` | optional | Defaults to the public mirror node of the first target network. |
 | `NEXT_PUBLIC_WALLET_CONNECT_PROJECT_ID` | optional | Your WalletConnect project id for production. |
+| `NEXT_PUBLIC_TARGET_NETWORK` | optional | `local` or `testnet`. Unset: `yarn start` targets the local chain once `yarn deploy --network localhost` has written it to `deployedContracts.ts`, and Hedera testnet otherwise. Production builds keep Hedera first. |
 
 `packages/hardhat/.env`
 
@@ -105,7 +106,7 @@ template.json                            create-scaffold-hbar manifest
   with hand-checked tests; mirror anything that changes issued quantities in the contract and the shared vectors.
 - **Another methodology.** Implement `IMethodology` as a new module and approve it; the registry does not change.
 - **Another oracle.** Implement `AggregatorV3Interface`, or change the providers behind `ResilientHbarUsdFeed`.
-- **Mainnet.** Put `chains.hedera` first in `scaffold.config.ts` and deploy with `--network hederaMainnet`.
+- **Mainnet.** Put `chains.hedera` first in `hederaFirst` in `scaffold.config.ts` and deploy with `--network hederaMainnet`.
 
 ## What is deployed
 

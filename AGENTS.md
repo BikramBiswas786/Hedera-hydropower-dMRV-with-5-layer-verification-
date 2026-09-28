@@ -60,7 +60,7 @@ yarn market:keep-listing [--execute]  # keep a listing open on the testnet marke
 | Oracle aggregator | `packages/hardhat/contracts/ResilientHbarUsdFeed.sol` |
 | HTS calls (always go through this) | `packages/hardhat/contracts/lib/HederaTokenLib.sol` |
 | Local test doubles | `packages/hardhat/contracts/mocks/` (HTS mock at `0x167` incl. NFTs, Chainlink and Supra mocks) |
-| Deploy + idempotent setup | `packages/hardhat/deploy/00_*.ts`, `01_*.ts`; demo plant integers in `utils/demoPlants.ts` |
+| Deploy + idempotent setup | `packages/hardhat/deploy/00_*.ts`, `01_*.ts`, `02_*.ts` (checkout), `03_*.ts` (local chains only: public local VVB key, one signed mint, one listing); SaucerSwap stand-ins in `utils/localSaucer.ts`; EIP-712 signing in `utils/attestation.ts`; demo plant integers in `utils/demoPlants.ts` |
 | Per-network feeds, units, staleness | `packages/hardhat/utils/hydroNetworkConfig.ts` |
 | Methodology (pure): VMR0017 / CDM rules, TOOL07 and VT0011, TOOL03, LDC list, VT0008 checks, design assessment, integer quantification | `packages/nextjs/services/mrv/methodology/` |
 | Verification engine (pure): 5 stages, QA/QC, report | `packages/nextjs/services/mrv/engine.ts`, `schema.ts` |
@@ -209,7 +209,7 @@ const verifierSignature = await vvbWallet.signTypedData(step1.approval);
 const minted = await post("/api/mrv/attest", { ...batch, anchor: step1.anchor, verifierSignature });
 ```
 
-Contract types are generated for the **first** network in `scaffold.config.ts` `targetNetworks`. Until the registry is
+Contract types are generated for the **first** network in `scaffold.config.ts` `hederaFirst`. At runtime the app puts the local chain first in development once a local deploy exists (`NEXT_PUBLIC_TARGET_NETWORK` overrides). Until the registry is
 deployed there, hook results are loosely typed; annotate arrays with the `Raw*` types from `services/mrv/views.ts`
 (as `AuditTrail.tsx` does) so code compiles in both states. Convert raw structs with the `to*View` helpers rather
 than reading struct fields ad hoc.

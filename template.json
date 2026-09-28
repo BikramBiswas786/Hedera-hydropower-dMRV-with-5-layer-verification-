@@ -39,11 +39,11 @@
               "command": "{run:chain:offline}"
             },
             {
-              "label": "Deploy mocks for HTS, Chainlink and Supra, then DmrvRegistry, the VMR0017 module, CreditMarket and the demo plants",
+              "label": "Deploy stand-ins for HTS, Chainlink, Supra and SaucerSwap, the contracts and demo plants, then mint and list one batch",
               "command": "{run:deploy} --network localhost"
             },
             {
-              "label": "Put hederaLocalFork first in packages/nextjs/scaffold.config.ts, then start the app",
+              "label": "Start the app (it targets the local chain after a local deploy); fund the burner wallet from the footer and buy on /market",
               "command": "{run:start}"
             },
             {

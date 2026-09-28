@@ -1,8 +1,33 @@
-import { TypedDataEncoder, type Wallet } from "ethers";
+import type { Wallet } from "ethers";
 import { artifacts, ethers, network } from "hardhat";
 import { time } from "@nomicfoundation/hardhat-network-helpers";
 import type { CreditMarket, DmrvRegistry, HydroVmr0017Module, MockSaucerRouter } from "../../typechain-types";
+import {
+  type Energy,
+  ENERGY_TYPES,
+  METER_STATEMENT_TYPES,
+  type Submission,
+  type SubmissionInput,
+  VERIFIER_APPROVAL_TYPES,
+  approvalOf,
+  encodeEnergy,
+  meterStatementOf,
+  registryDomain,
+  signAttestation,
+} from "../../utils/attestation";
 import { ensureHts } from "./hts";
+
+export {
+  ENERGY_TYPES,
+  METER_STATEMENT_TYPES,
+  VERIFIER_APPROVAL_TYPES,
+  approvalOf,
+  encodeEnergy,
+  meterStatementOf,
+  type Energy,
+  type Submission,
+  type SubmissionInput,
+};
 
 export const DAY = 86_400;
 export const HOUR = 3_600;
@@ -25,7 +50,6 @@ export const OTHER_VVB = new ethers.Wallet(ethers.id("dmrv test vvb 2"));
 
 export const HYDRO_PARAMS_TYPE =
   "tuple(uint8 projectType,uint8 methodology,uint32 capacityKw,uint32 baselineCapacityKw,uint64 reservoirAreaM2,uint64 baselineReservoirAreaM2,uint32 efGridGPerMwh,uint32 fuelCoefGPerTonne,uint64 baselineWh,uint64 baselineEndsAt,uint64 creditingStart,uint64 creditingEnd,uint64 registrationRequestedAt,uint64 calibrationValidUntil,bytes32 meteringHash,bytes32 designHash)";
-export const ENERGY_TYPES = ["int64", "uint64", "uint64", "uint64"];
 
 export type HydroParams = {
   projectType: number;
@@ -45,8 +69,6 @@ export type HydroParams = {
   meteringHash: string;
   designHash: string;
 };
-
-export type Energy = { netWh: bigint; grossWh: bigint; fuelG: bigint; leakageG: bigint };
 
 const coder = ethers.AbiCoder.defaultAbiCoder();
 
@@ -74,10 +96,6 @@ export function encodeParams(p: HydroParams): string {
       ],
     ],
   );
-}
-
-export function encodeEnergy(e: Energy): string {
-  return coder.encode(ENERGY_TYPES, [e.netWh, e.grossWh, e.fuelG, e.leakageG]);
 }
 
 /**
@@ -108,74 +126,9 @@ export async function hydroParams(overrides: Partial<HydroParams> = {}, startedD
   };
 }
 
-export type SubmissionInput = {
-  projectId: string;
-  sequence: number;
-  intervals: number;
-  intervalSeconds: number;
-  readingsDigest: string;
-  reportHash: string;
-  hcsTopicNum: bigint;
-  hcsSequence: bigint;
-  evidenceHash: string;
-  measurement: { periodStart: bigint; periodEnd: bigint; metered: string; verified: string };
-};
-
-export type Submission = SubmissionInput & { meterSignature: string; verifierSignature: string };
-
-export const METER_STATEMENT_TYPES = {
-  MeterStatement: [
-    { name: "projectId", type: "bytes32" },
-    { name: "sequence", type: "uint32" },
-    { name: "periodStart", type: "uint64" },
-    { name: "periodEnd", type: "uint64" },
-    { name: "intervals", type: "uint32" },
-    { name: "intervalSeconds", type: "uint32" },
-    { name: "meteredHash", type: "bytes32" },
-    { name: "readingsDigest", type: "bytes32" },
-  ],
-};
-
-export const VERIFIER_APPROVAL_TYPES = {
-  VerifierApproval: [
-    { name: "meterStatement", type: "bytes32" },
-    { name: "verifiedHash", type: "bytes32" },
-    { name: "reportHash", type: "bytes32" },
-    { name: "hcsTopicNum", type: "uint64" },
-    { name: "hcsSequence", type: "uint64" },
-    { name: "evidenceHash", type: "bytes32" },
-    { name: "decision", type: "uint8" },
-  ],
-};
-
 export async function domainOf(registry: DmrvRegistry) {
   const { chainId } = await ethers.provider.getNetwork();
-  return { name: "DmrvRegistry", version: "1", chainId, verifyingContract: await registry.getAddress() };
-}
-
-export function meterStatementOf(s: SubmissionInput) {
-  return {
-    projectId: s.projectId,
-    sequence: s.sequence,
-    periodStart: s.measurement.periodStart,
-    periodEnd: s.measurement.periodEnd,
-    intervals: s.intervals,
-    intervalSeconds: s.intervalSeconds,
-    meteredHash: ethers.keccak256(s.measurement.metered),
-    readingsDigest: s.readingsDigest,
-  };
-}
-
-export function approvalOf(meterDigest: string, s: SubmissionInput, decision = 1) {
-  return {
-    meterStatement: meterDigest,
-    verifiedHash: ethers.keccak256(s.measurement.verified),
-    reportHash: s.reportHash,
-    hcsTopicNum: s.hcsTopicNum,
-    hcsSequence: s.hcsSequence,
-    evidenceHash: s.evidenceHash,
-    decision,
-  };
+  return registryDomain(chainId, await registry.getAddress());
 }
 
 /** Signs a submission with the meter key (raw totals) and the VVB key (approval over the meter digest). */
@@ -186,16 +139,7 @@ export async function signSubmission(
   vvb: Wallet = VVB,
   decision = 1,
 ): Promise<Submission> {
-  const domain = await domainOf(registry);
-  const statement = meterStatementOf(input);
-  const meterSignature = await meter.signTypedData(domain, METER_STATEMENT_TYPES, statement);
-  const meterDigest = TypedDataEncoder.hash(domain, METER_STATEMENT_TYPES, statement);
-  const verifierSignature = await vvb.signTypedData(
-    domain,
-    VERIFIER_APPROVAL_TYPES,
-    approvalOf(meterDigest, input, decision),
-  );
-  return { ...input, meterSignature, verifierSignature };
+  return signAttestation(await domainOf(registry), input, meter, vvb, decision);
 }
 
 export type PeriodOptions = {

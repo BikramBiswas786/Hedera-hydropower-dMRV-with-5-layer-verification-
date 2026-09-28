@@ -1,4 +1,5 @@
 import * as chains from "viem/chains";
+import deployedContracts from "~~/contracts/deployedContracts";
 
 export type ScaffoldConfig = {
   targetNetworks: readonly [chains.Chain, ...chains.Chain[]];
@@ -21,12 +22,23 @@ const hederaLocalFork = {
   },
 } as const satisfies chains.Chain;
 
-// The first network is the default wallet network, the one server routes and MCP tools read the registry from,
-// and the one contract types are generated for. For local development put `hederaLocalFork` first.
-const targetNetworks = [chains.hederaTestnet, chains.hedera, hederaLocalFork] as const satisfies readonly [
+// The first network is the default wallet network and the one server routes and MCP tools read the registry from.
+const hederaFirst = [chains.hederaTestnet, chains.hedera, hederaLocalFork] as const satisfies readonly [
   chains.Chain,
   ...chains.Chain[],
 ];
+
+// `yarn deploy --network localhost` adds the local chain to deployedContracts.ts, and `yarn start` then targets it with
+// no edit here. NEXT_PUBLIC_TARGET_NETWORK=local|testnet overrides that; production builds keep Hedera first.
+const requested = process.env.NEXT_PUBLIC_TARGET_NETWORK;
+const localFirst = requested
+  ? requested === "local"
+  : process.env.NODE_ENV !== "production" && hederaLocalFork.id in deployedContracts;
+
+// Contract types are keyed on the Hedera-first order, so the local order keeps that type.
+const targetNetworks = (
+  localFirst ? [hederaLocalFork, chains.hederaTestnet, chains.hedera] : hederaFirst
+) as typeof hederaFirst;
 
 const scaffoldConfig = {
   targetNetworks,
