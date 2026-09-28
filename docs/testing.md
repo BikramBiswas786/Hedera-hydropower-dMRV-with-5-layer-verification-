@@ -4,7 +4,7 @@
 
 ```bash
 yarn test              # contracts + frontend unit tests
-yarn hardhat:test      # 157 contract tests, hermetic (HTS mock at 0x167, oracle and SaucerSwap mocks)
+yarn hardhat:test      # 173 contract tests, hermetic (HTS mock at 0x167, oracle and SaucerSwap mocks)
 yarn hardhat:test:fork # same suite against Hedera's HTS emulation (HEDERA_FORKING, needs internet)
 HEDERA_FORK_NETWORK=mainnet HEDERA_RPC_URL=https://mainnet.hashio.io/api \
   yarn workspace @sh/hardhat hardhat test test/MainnetFork.test.ts  # real SaucerSwap + Chainlink on a mainnet fork
@@ -48,8 +48,12 @@ What the tests pin down:
   legacy `HydroCreditRegistry.quantify` reproduce, and a full greenfield flow on the new registry reproduces the legacy
   registry's 4 791 542 g and 73 386 435 g.
 - **CreditMarket**: escrow in registry custody, oracle-priced settlement, refunds, buy-and-retire, and the
-  SaucerSwap guard: V1 `getReserves` and V2 `slot0` (WHBAR as token0 and token1) read in feed decimals, settlement
-  within 3%, blocked beyond 3% in either direction and on an illiquid pool, cannot be switched off, config validation.
+  SaucerSwap guard: V1 `getReserves` read in feed decimals, settlement within 3%, blocked beyond 3% in either
+  direction and on an illiquid pool, cannot be switched off, V2 pools and impostor pools refused, config validation.
+- **UsdCheckout**: escrow of any HTS fungible token (HIP-719 association, `transferFrom` against an allowance, a
+  second listing of the same token), prices per whole token rounded up, the seller's USD minimum, stale and
+  out-of-band refusals, refunds, sell-out, a buyer not associated (HTS 184) and a failed swap each revert the whole
+  purchase, and the invariant *checkout balance = active listings*.
 - **Contract size**: every deployable contract outside `mocks/` and `legacy/` is covered by the 24,064 B guard.
 - **Legacy HydroCreditRegistry** (kept for evidence): registration rules (PD, baselines, EF range, crediting period, renewal), on-chain ER with
   fuel and leakage, remainders and deficits, crediting-year and stale-ledger guards, nameplate and net ≤ gross,

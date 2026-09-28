@@ -5,7 +5,7 @@
 [Hedera Guardian](https://github.com/hashgraph/guardian) already runs carbon methodology policies, with roles, verifiable credentials and a trust chain. Its library ships CDM ACM0002 and AMS-I.D, the hydro methodologies, and Managed Guardian runs them with no code. Use it for that. Two things it leaves off-chain. First, a Guardian mint is the amount a policy's `mintDocumentBlock` rule computes, minted by the Guardian service with the registry's token keys, and nothing on-chain checks that number. Second, once minted, the credit has no price, no market and no contract another dApp can call. This Scaffold-HBAR template is that on-chain half, for EVM developers building on Hedera credits: a marketplace, a tokenized-asset protocol or an AI agent that buys and retires.
 
 - **Issuance a contract enforces.** `DmrvRegistry` holds the HTS supply key. It mints only with two EIP-712 signatures: the plant's meter over the raw totals, and a VVB over that statement's digest, who may only lower the figures. It mints only the integer its methodology module recomputes, `ER = BE − PE − LE`. Raw readings and reports are on HCS, so anyone can re-derive every mint.
-- **A market other contracts can use.** `CreditMarket` prices in USD from Chainlink with a Supra fallback, sells only by swapping through a SaucerSwap pair that sits within 3% of that price, and retires with an HTS NFT certificate.
+- **A market other contracts can use.** `CreditMarket` prices in USD from Chainlink with a Supra fallback, sells only by swapping through a SaucerSwap pair that sits within 3% of that price, and retires with an HTS NFT certificate. The same settlement ships on its own as `UsdCheckout`, which sells **any** HTS fungible token at a USD price ([below](#use-it-without-carbon)).
 - **Agents as buyers and auditors.** An MCP server with a REST twin for every tool: an agent can reproduce a mint from HCS, then buy and retire with its own wallet.
 
 Hydropower under **Verra VMR0017 v1.0** with **ACM0002 v22.0** is the worked example. That is an implementation of the equations, not a certification and not a Verra issuance. Another methodology is another stateless `IMethodology` module; the registry, market and agent tools do not change.
@@ -94,7 +94,7 @@ The testnet contracts were deployed on 26 Sep, before three source changes: the 
 
 Older deploys, not read by the app, are in [docs/operations.md](docs/operations.md). The legacy registry [`0x9cdB5782…`](https://hashscan.io/testnet/contract/0x9cdB5782a10c41a103B722d1B8fa9CfaF84107a5) still reproduces the same two greenfield amounts.
 
-The legacy `HydroCreditRegistry` compiles to 24,551 B, 25 under Hedera's 24,576-byte limit, so it could not take another feature. After the split, `yarn hardhat:size` (a CI gate at 24,064 B) reports: `DmrvRegistry` 20,984 B, `CreditMarket` 9,047 B, `HydroVmr0017Module` 7,028 B, `ResilientHbarUsdFeed` 2,534 B. Since the redeploy the live issuer is `DmrvRegistry`.
+The legacy `HydroCreditRegistry` compiles to 24,551 B, 25 under Hedera's 24,576-byte limit, so it could not take another feature. After the split, `yarn hardhat:size` (a CI gate at 24,064 B) reports: `DmrvRegistry` 20,984 B, `CreditMarket` 9,044 B, `UsdCheckout` 8,595 B, `HydroVmr0017Module` 7,028 B, `ResilientHbarUsdFeed` 2,534 B. Since the redeploy the live issuer is `DmrvRegistry`.
 
 Phase 1 enforces the following on-chain; the legacy registry does not:
 
@@ -142,6 +142,22 @@ The same contract is checked against Hedera mainnet on every push, with no key a
 
 The seller must be able to receive the pair's USD token: associate it before listing (or keep a free auto-association slot). Otherwise Hedera refuses the swap's transfer and the purchase reverts, so `prepare_purchase` checks the seller on the mirror node first and builds no transaction for a listing it would fail on.
 
+## Use it without carbon
+
+Most Hedera apps that sell something want a dollar price and HBAR payment. The settlement under `CreditMarket` is a separate contract, [`UsdSettlement`](packages/hardhat/contracts/settlement/UsdSettlement.sol), and [`UsdCheckout`](packages/hardhat/contracts/UsdCheckout.sol) puts it in front of any HTS fungible token: tickets, real-world-asset shares, in-game items.
+
+```solidity
+// seller: token.approve(checkout, amount) on the HTS token's ERC-20 facade, then
+checkout.createListing(token, amount, 1_250);        // $12.50 per whole token, escrowed in the checkout
+// buyer: token.associate() once (HIP-719), then
+uint256 tinybar = checkout.quote(listingId, amount); // Chainlink (Supra fallback), after SaucerSwap agrees within 3%
+checkout.buy{ value: tinybar }(listingId, amount);   // HBAR is swapped to the pair's USD token for the seller
+```
+
+The buyer pays what the oracle says the dollars are worth, rounded up. The seller receives the settlement pair's USD token through SaucerSwap, at least the listing's dollars less 3%. A pool more than 3% from the oracle, a stale feed, or a pool the SaucerSwap factory did not create blocks the sale rather than making it cheaper. The contract holds the listed tokens, and no admin function can move them. [`UsdCheckout.test.ts`](packages/hardhat/test/UsdCheckout.test.ts) covers each of these, and `yarn deploy --tags UsdCheckout` deploys it next to the feed. The [Checkout testnet demo](https://github.com/BikramBiswas786/Hedera-hydropower-dMRV-with-5-layer-verification-/actions/workflows/checkout-testnet-demo.yml) workflow deploys it on testnet beside the live contracts and runs one listing and one sale.
+
+Writing Hedera code with an AI agent? Point it at [`HEDERA_FACTS.md`](HEDERA_FACTS.md): the 20 Hedera behaviours this repo had to get right, each with the test or workflow that proves it.
+
 ## For AI agents
 
 ```bash
@@ -160,6 +176,7 @@ get_dex_price → list_open_listings → prepare_purchase { listingId, amountKg,
 
 | | |
 | --- | --- |
+| Hedera behaviours that break code, each with its proof | [HEDERA_FACTS.md](HEDERA_FACTS.md) |
 | Equations, five stages, scenarios, HCS reproduction | [docs/methodology.md](docs/methodology.md) |
 | Guardian bridge: cross-check VC, bridge DID, schema, policy patch, evidence | [docs/GUARDIAN.md](docs/GUARDIAN.md) |
 | Registry, module and market functions, EIP-712 types, roles, pool guard | [docs/contract.md](docs/contract.md) |

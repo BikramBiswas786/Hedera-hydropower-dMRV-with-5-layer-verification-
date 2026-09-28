@@ -1,0 +1,36 @@
+name: Checkout testnet demo
+
+# One real sale through UsdCheckout on Hedera testnet (packages/hardhat/scripts/checkoutTestnetDemo.ts): deploys it
+# next to the live feed and SaucerSwap pair, lists a little of the keeper account's HTS credit token at a USD price
+# and buys some back at the oracle price. Run by hand; it needs the TESTNET_REBALANCER_KEY secret.
+on:
+  workflow_dispatch:
+    inputs:
+      checkout_address:
+        description: "Reuse an already deployed UsdCheckout (leave empty to deploy a new one)"
+        required: false
+        default: ""
+
+jobs:
+  demo:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20.18.3
+          cache: yarn
+
+      - run: yarn install --immutable
+
+      - name: Deploy, list and buy on testnet
+        env:
+          KEY: ${{ secrets.TESTNET_REBALANCER_KEY }}
+          CHECKOUT_ADDRESS: ${{ inputs.checkout_address }}
+        run: |
+          if [ -z "$KEY" ]; then echo "::error::Set the TESTNET_REBALANCER_KEY secret"; exit 1; fi
+          KEY="${KEY#0x}"
+          export __RUNTIME_DEPLOYER_PRIVATE_KEY="0x${KEY}"
+          yarn workspace @sh/hardhat hardhat run scripts/checkoutTestnetDemo.ts --network hederaTestnet
