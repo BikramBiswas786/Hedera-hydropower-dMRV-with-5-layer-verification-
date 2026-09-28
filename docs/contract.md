@@ -7,7 +7,7 @@ Phase 1 splits the phase-0 `HydroCreditRegistry` into four contracts:
 | `DmrvRegistry.sol` | Projects, meters, verifiers, module approval, two-signature attestation, anchoring, custody, retirement, certificates, and every HTS call (only here) | 20,984 B |
 | `modules/HydroVmr0017Module.sol` | Stateless `IMethodology`: VMR0017 / ACM0002 / AMS-I.D registration rules and integer quantification | 7,086 B |
 | `modules/RenewableVmr0017Module.sol` | Second `IMethodology`: greenfield solar, wind and ocean power under the same methodologies | 6,038 B |
-| `CreditMarket.sol` | Listings, oracle quote, SaucerSwap router swap, pool guard | 9,047 B |
+| `CreditMarket.sol` | Listings, oracle quote, SaucerSwap router swap, pool guard | 9,044 B |
 | `ResilientHbarUsdFeed.sol` | Chainlink HBAR/USD with a Supra fallback | 2,534 B |
 
 CI fails any contract above 24,064 B (512 B under EIP-170), and `ContractSize.test.ts` keeps `DmrvRegistry` ≤ 21,504 B.
@@ -22,6 +22,24 @@ The app does not read it. The issuer since 26 Sep 2026 is `DmrvRegistry`
 `0x26E77708717cE69EBBBF76e59D106B20e67e1D61` (redeployed from the current source on 28 Sep 2026), which swaps through SaucerSwap router `0.0.19264`.
 Earlier phase-1 deploys (`0xc427610cFfBC919dC0B2c3f71644a4fDcB7ef84a`, `0xe34BeFc4081a8e751271C3549B861e03Fac512b9`)
 are unused.
+
+## Architecture
+
+```mermaid
+flowchart LR
+  M[Meter key] -- signs raw totals --> R
+  V[VVB key] -- signs approval --> R
+  E[Engine: 5 stages, VMR0017] -- readings + report --> H[(HCS)]
+  R[DmrvRegistry] -- quantify --> Q[IMethodology module]
+  R -- mint / burn --> T[(HTS credit + NFT)]
+  C[CreditMarket] --> S[UsdSettlement]
+  K[UsdCheckout] --> S
+  S -- price --> O[Chainlink + Supra]
+  S -- swap to seller --> D[SaucerSwap V1]
+  C -- custody, retire --> R
+```
+
+Hedera services in play: **HTS** (a credit token and an NFT collection whose treasury, admin and supply keys are the registry contract), **HCS** (raw readings and reports, re-derived from the mirror node), **smart contracts** on the Hedera EVM with the HTS system contract at `0x167`, and the **Schedule Service** (admin calls from a 2-of-3 threshold account as `ScheduleCreate` / `ScheduleSign`, `yarn admin:exec`; on testnet a 2-of-3 account's [schedule 0.0.10764799](https://hashscan.io/testnet/schedule/0.0.10764799) waited for a second holder before it ran a checkout admin call, `yarn admin:demo`).
 
 ## Roles
 

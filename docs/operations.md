@@ -53,6 +53,19 @@ Nothing is required to browse the app or use the engine. Copy the `.env.example`
 | **Certificate** `/certificate/{id}` | A printable retirement certificate in t CO₂e backed by on-chain data, with its NFT serial and Hashscan link. If the NFT could not be delivered at retirement, associate and claim it here. |
 | **Debug** `/debug` | Scaffold-HBAR's contract console for every function, including `preview` to quantify a period. `buy` / `buyAndRetire` are hidden: purchases go through `prepare_purchase`. |
 
+## Scripts
+
+| Command | What it does |
+| --- | --- |
+| `yarn chain:offline` · `yarn deploy --network localhost` · `yarn start` | Local chain, contracts and demo batch, app |
+| `yarn test` · `yarn lint` · `yarn next:build` | Contract and app tests, lint, production build |
+| `yarn hardhat:size` | Contract-size gate (24,064 B) |
+| `yarn mrv:attest` · `yarn mrv:approve` · `yarn mrv:submit` | Two-signature attestation from the CLI |
+| `yarn admin:threshold` · `yarn admin:exec` · `yarn admin:demo` | 2-of-3 admin account, scheduled admin calls, and the whole path on testnet with throwaway keys |
+| `yarn live:smoke` · `yarn pair:rebalance` · `yarn market:keep-listing` | Check the live app; keep the testnet pair and a listing healthy |
+| `yarn guardian:trace <ref>` | Is a Guardian-minted token backed? Mirror node + CID-checked IPFS, no Guardian login |
+| `yarn hardhat:verify:testnet <address> [args]` | Verify a deployment on Sourcify (HashScan shows the source) |
+
 ## Project structure
 
 ```
