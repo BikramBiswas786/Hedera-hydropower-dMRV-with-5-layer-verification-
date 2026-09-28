@@ -1,0 +1,32 @@
+name: Live smoke
+
+# Clicks through https://hydro-dmrv.vercel.app with no wallet (packages/nextjs/scripts/liveSmoke.ts): registry and
+# market addresses, the SaucerSwap pair against the oracle, an open listing, an unsigned purchase, every issuance
+# re-derived from HCS, the verify scenarios and the MCP tool list. The table lands in the job summary.
+on:
+  schedule:
+    - cron: "23 */6 * * *"
+  workflow_dispatch:
+  push:
+    branches: [main]
+  pull_request:
+    paths:
+      - packages/nextjs/scripts/liveSmoke.ts
+      - .github/workflows/live-smoke.yml
+
+jobs:
+  smoke:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20.18.3
+          cache: yarn
+
+      - run: yarn install --immutable
+
+      - name: Check the live deployment
+        run: yarn live:smoke
