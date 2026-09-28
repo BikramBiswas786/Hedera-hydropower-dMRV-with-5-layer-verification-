@@ -6,7 +6,8 @@
  * 1. Deploys `UsdCheckout` on the live `ResilientHbarUsdFeed` and SaucerSwap V1 (skipped when CHECKOUT_ADDRESS is set)
  *    and pins the same pool guard as the market.
  * 2. The signer, which must hold `DmrvRegistry` custody, associates with the HTS credit token and withdraws a little
- *    to its wallet. Any HTS fungible token works; HYCC is the one this account already holds.
+ *    to its wallet. Any HTS fungible token works: set TOKEN_ID (e.g. the Guardian-minted 0.0.10760359) to list a
+ *    token the signer already holds instead. LIST_UNITS, BUY_UNITS and PRICE_USD_CENTS override the amounts.
  * 3. Approves the checkout, lists the tokens at a USD price per whole token and buys a slice back at the oracle
  *    price. The HBAR goes through SaucerSwap, so the seller is paid the pair's USD token.
  *
@@ -19,9 +20,12 @@ import { getHydroNetworkConfig, hashscanContract, hashscanTx } from "../utils/hy
 /** The live testnet contracts, as in packages/nextjs/contracts/deployedContracts.ts (chain 296). */
 const LIVE_REGISTRY = process.env.REGISTRY_ADDRESS ?? "0xaf9C76B48B317cee770ED6AE038D516b269E0129";
 const LIVE_MARKET = process.env.MARKET_ADDRESS ?? "0x5aeDe76fc6625cfA3227FFf70197D4D7ff3e5030";
-const LIST_UNITS = 50n; // 0.050 t of a 3-decimal token
-const BUY_UNITS = 10n;
-const PRICE_USD_CENTS_PER_TOKEN = 1_500n; // $15 per whole token
+const LIST_UNITS = BigInt(process.env.LIST_UNITS || 50); // 0.050 t of a 3-decimal token
+const BUY_UNITS = BigInt(process.env.BUY_UNITS || 10);
+const PRICE_USD_CENTS_PER_TOKEN = BigInt(process.env.PRICE_USD_CENTS || 1_500); // $15 per whole token
+/** A Hedera token id such as 0.0.10760359, listed as is. Unset: the registry's credit token. */
+const TOKEN_ID = process.env.TOKEN_ID;
+const evmAddressOf = (id: string) => `0x${BigInt(id.split(".")[2]).toString(16).padStart(40, "0")}`;
 /** On Hedera's JSON-RPC relay, transaction value is in weibar: 1 tinybar = 1e10. */
 const WEIBAR_PER_TINYBAR = 10_000_000_000n;
 const TOKEN_ABI = [
@@ -80,9 +84,12 @@ async function main() {
     );
   }
 
-  const tokenAddress = await registry.creditToken();
+  const tokenAddress = TOKEN_ID ? evmAddressOf(TOKEN_ID) : await registry.creditToken();
   const token = new hre.ethers.Contract(tokenAddress, TOKEN_ABI, signer);
-  if ((await token.balanceOf(signer.address)) < LIST_UNITS) {
+  if (TOKEN_ID) {
+    const balance = await token.balanceOf(signer.address);
+    if (balance < LIST_UNITS) throw new Error(`${signer.address} holds ${balance} units of ${TOKEN_ID}`);
+  } else if ((await token.balanceOf(signer.address)) < LIST_UNITS) {
     // HIP-719: an EOA associates by calling the token. A second call returns 194 and changes nothing.
     await send("Associate with the credit token", token.associate({ gasLimit: 1_000_000, gasPrice }));
     const custody = await registry.custodyBalanceOf(signer.address);
