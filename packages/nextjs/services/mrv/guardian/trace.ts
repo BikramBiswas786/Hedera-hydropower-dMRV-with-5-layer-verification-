@@ -8,7 +8,7 @@ import {
   isConsensusTimestamp,
   remoteDidResolver,
 } from "./hedera";
-import { buildDocumentLoader, verifyGuardianPresentation } from "./vc";
+import { buildDocumentLoader, verifyGuardianPresentation, withoutSystemTypeDefinitions } from "./vc";
 
 /**
  * The buyer's question about a Guardian token: is this mint backed by a signed Guardian record, and was it signed by
@@ -351,7 +351,22 @@ export async function traceGuardianMint(sources: GuardianSources, ref: string): 
     trace.record.signature = "verified";
     check("signature", true, `VP and every VC in it verify (Ed25519Signature2018, signer ${signer})`);
   } catch (error) {
-    if (unreadable) {
+    // Guardian signs its MintToken VC as if the shared system-schema context did not define MintToken (see
+    // withoutSystemTypeDefinitions). Retry once against the same CID-checked contexts without those entries.
+    const guardianForm =
+      !unreadable &&
+      (await verifyGuardianPresentation(vp, withoutSystemTypeDefinitions(documentLoader)).then(
+        () => true,
+        () => false,
+      ));
+    if (guardianForm) {
+      trace.record.signature = "verified";
+      check(
+        "signature",
+        true,
+        `VP and every VC in it verify (Ed25519Signature2018, signer ${signer}); the MintToken VC in Guardian's signed form, without its system-schema term`,
+      );
+    } else if (unreadable) {
       check("signature", null, `A DID document or schema context could not be read: ${unreadable}`);
     } else {
       trace.record.signature = "invalid";

@@ -27,6 +27,11 @@ jobs:
 
       - run: yarn install --immutable
 
+      # 12.5 t minted by a Managed Guardian policy on 28 Sep 2026 (token 0.0.10760359, VP on topic 0.0.10760360).
+      # Every check must pass, the signatures included.
+      - name: Managed Guardian mint of 0.0.10760359
+        run: yarn guardian:trace 0.0.10238177-1790602426-400520522 --expect backed
+
       # Minted by a Guardian instance whose IPFS documents have no public provider (every gateway, including
       # Managed Guardian's, answers "no providers found"), so the signature check is unverifiable from public data.
       # What public data can prove must pass, and nothing may fail.

@@ -5,8 +5,8 @@ Phase 1 splits the phase-0 `HydroCreditRegistry` into four contracts:
 | Contract | Role | Size (`yarn hardhat:size`) |
 | --- | --- | --- |
 | `DmrvRegistry.sol` | Projects, meters, verifiers, module approval, two-signature attestation, anchoring, custody, retirement, certificates, and every HTS call (only here) | 20,984 B |
-| `modules/HydroVmr0017Module.sol` | Stateless `IMethodology`: VMR0017 / ACM0002 / AMS-I.D registration rules and integer quantification | 7,028 B |
-| `modules/RenewableVmr0017Module.sol` | Second `IMethodology`: greenfield solar, wind and ocean power under the same methodologies | 5,987 B |
+| `modules/HydroVmr0017Module.sol` | Stateless `IMethodology`: VMR0017 / ACM0002 / AMS-I.D registration rules and integer quantification | 7,086 B |
+| `modules/RenewableVmr0017Module.sol` | Second `IMethodology`: greenfield solar, wind and ocean power under the same methodologies | 6,038 B |
 | `CreditMarket.sol` | Listings, oracle quote, SaucerSwap router swap, pool guard | 9,047 B |
 | `ResilientHbarUsdFeed.sol` | Chainlink HBAR/USD with a Supra fallback | 2,534 B |
 
@@ -84,8 +84,10 @@ two cannot drift.
 - VMR0017's 15 MW limit;
 - a crediting span of exactly 5, 7 or 10 × 365 days, with `registrationRequestedAt` required and not in the future.
   VMR0017 requests on or after 1 January 2027 must be 5 years (VCS Standard v5.0 Table 8);
-- renewals: at most two, no renewal of a 10-year period, the same span (`RenewalSpan`), and no overlap or other param
-  changes except the grid factor and the window (`ParamsChanged`);
+- renewals: at most two, no renewal of a 10-year period, the same span, except that a VMR0017 renewal registered from
+  1 January 2027 is 5 years (VCS Standard v5.0, V5#101; `RenewalSpan`), and no overlap or other param changes except
+  the grid factor and the window (`ParamsChanged`). The block time stands in for the renewal request, which can only
+  shorten a period;
 - a calibration valid past the crediting start;
 - per period: one crediting year, gross ≤ nameplate, net ≤ gross, fuel only with a registered COEF.
 

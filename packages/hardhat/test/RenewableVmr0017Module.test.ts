@@ -195,6 +195,27 @@ describe("RenewableVmr0017Module", function () {
         module.validateRenewal(encode(old), encode(next), old.creditingStart, old.creditingEnd, 3),
       ).to.be.revertedWithCustomError(module, "NotRenewable");
     });
+
+    it("renews a VMR0017 project for 5 years from 1 Jan 2027 (VCS v5), a CDM project for its original span", async function () {
+      const module = await loadFixture(moduleOnly);
+      if (BigInt(await time.latest()) < FIVE_YEAR_FROM) await time.increaseTo(FIVE_YEAR_FROM);
+      for (const [methodology, to, ok] of [
+        [1, 5n, true],
+        [1, 7n, false],
+        [0, 7n, true],
+      ] as [number, bigint, boolean][]) {
+        const old = await renewableParams({ methodology }, 7 * 365);
+        const next = {
+          ...old,
+          creditingStart: old.creditingEnd,
+          creditingEnd: old.creditingEnd + to * YEAR,
+          calibrationValidUntil: old.creditingEnd + to * YEAR,
+        };
+        const call = module.validateRenewal(encode(old), encode(next), old.creditingStart, old.creditingEnd, 1);
+        if (ok) await call;
+        else await expect(call).to.be.revertedWithCustomError(module, "RenewalSpan");
+      }
+    });
   });
 
   describe("quantify", function () {

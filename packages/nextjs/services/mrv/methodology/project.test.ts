@@ -214,6 +214,8 @@ describe("VMR0017 v1.0 (with ACM0002 v22.0)", () => {
         grid: {
           source: "published",
           efTPerMwh: 0.6,
+          omTPerMwh: 0.6,
+          bmTPerMwh: 0.6,
           reference: "illustrative factor",
           validFrom: "2020-01-01T00:00:00Z",
           validTo: "2035-01-01T00:00:00Z",
@@ -389,6 +391,34 @@ describe("VMR0017 v1.0 (with ACM0002 v22.0)", () => {
     expect(expired.failures.join()).toMatch(/validity window/);
   });
 
+  it("recombines a published CDM standardized baseline (ASB0054, Uganda) with VT0011 weights", () => {
+    // ASB0054-2022 Table 1: OM 0.2740, BM 0.00001, CM 0.1370 (TOOL07 0.5/0.5) for hydro in the first period.
+    const asb0054 = {
+      source: "published" as const,
+      efTPerMwh: 0.137,
+      omTPerMwh: 0.274,
+      bmTPerMwh: 0.00001,
+      reference: "ASB0054-2022",
+      validFrom: "2022-08-10T00:00:00Z",
+      validTo: "2025-08-10T00:00:00Z",
+    };
+    const start = { start: "2024-01-01T00:00:00Z", years: 7 as const, period: 1 as const };
+    // VT0011 ¶86: 0.4 × 0.2740 + 0.6 × 0.00001 = 0.109606 t/MWh, 20% below the TOOL07 figure.
+    const a = vmr({ grid: asb0054, crediting: start, registrationRequest: "2024-01-01T00:00:00Z" });
+    expect(a.failures).toEqual([]);
+    expect(a.grid.efGPerMwh).toBe(109_606);
+    expect(a.grid.reference).toMatch(/VT0011 ¶86 weights 0.4\/0.6/);
+    // The CDM path keeps the published CM, and checks it against TOOL07's weighting of the same margins.
+    const cdm = assessProject(design({ grid: asb0054, crediting: start }));
+    expect(cdm.grid.efGPerMwh).toBe(137_000);
+    expect(cdm.failures).toEqual([]);
+    const typo = assessProject(design({ grid: { ...asb0054, efTPerMwh: 0.2055 }, crediting: start }));
+    expect(typo.failures.join()).toMatch(/not TOOL07's 0.5\/0.5 weighting/);
+    // Without OM and BM the VMR0017 path cannot apply VT0011.
+    const cmOnly = { ...asb0054, omTPerMwh: undefined, bmTPerMwh: undefined };
+    expect(vmr({ grid: cmOnly, crediting: start }).failures.join()).toMatch(/omTPerMwh, bmTPerMwh/);
+  });
+
   it("requires the VT0008 sensitivity table, geographic area, capacity band and assessor", () => {
     const thin = {
       ...evidence,
@@ -443,6 +473,22 @@ describe("VMR0017 v1.0 (with ACM0002 v22.0)", () => {
       renewal: { ...renewal, previousYears: 7 },
     });
     expect(same.failures).toEqual([]);
+  });
+
+  it("moves a VMR0017 renewal requested from 1 January 2027 to 5 years (VCS v5.0 V5#101), not a CDM one", () => {
+    const renewal = {
+      baselineValidity: "TOOL11 reassessment",
+      regulatorySurplus: "no new law",
+      previousYears: 7 as const,
+    };
+    const renewed = (years: 5 | 7) => ({ start: "2027-03-01T00:00:00Z", years, period: 2 as const });
+    expect(vmr({ crediting: renewed(7), renewal }).failures.join()).toMatch(/V5#101/);
+    expect(vmr({ crediting: renewed(5), renewal }).failures).toEqual([]);
+    // The request date decides, not the start: filed in 2026, the renewal keeps its 7 years.
+    const early = { ...renewal, requestedAt: "2026-11-01T00:00:00Z" };
+    expect(vmr({ crediting: renewed(7), renewal: early }).failures).toEqual([]);
+    const cdm = assessProject(design({ crediting: renewed(7), renewal }));
+    expect(cdm.failures.join()).not.toMatch(/V5#101|RenewalSpan/);
   });
 
   it("requires a baseline-validity reference when the crediting period is renewed", () => {

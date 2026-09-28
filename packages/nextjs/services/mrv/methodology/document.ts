@@ -68,7 +68,7 @@ so a verifier cannot mint more than the equations allow. 1 credit = 1 t CO2e; 1 
 - A second or third crediting period needs a baseline-validity reference (TOOL11) and a fresh regulatory-surplus check.
 - When a batch reports captive supply, more than half of export + captive must go to the grid. Otherwise ACM0002,
   AMS-I.D and VMR0017 do not apply.
-- Crediting period: exactly 5, 7 or 10 × 365-day years. A VMR0017 registration request on or after 1 January 2027 uses 5 years, renewable at most twice. A 10-year period is fixed. A monitoring period must stay
+- Crediting period: exactly 5, 7 or 10 × 365-day years. A VMR0017 registration request on or after 1 January 2027 uses 5 years, renewable at most twice. A 10-year period is fixed. A CDM renewal keeps its span; a VMR0017 renewal requested from 1 January 2027 is 5 years (VCS v5.0, V5#101). A monitoring period must stay
   inside the crediting period and inside one crediting year (contract checks both).
 
 ## Grid emission factor (TOOL07 and VT0011, ex-ante)
@@ -91,7 +91,9 @@ so a verifier cannot mint more than the equations allow. 1 credit = 1 t CO2e; 1 
   the factor where the MWh are known.
 - IPCC 2006 defaults use the **lower** 95% bound for the baseline (TOOL07) and the **upper** bound for project
   emissions (TOOL03), so both sides err toward fewer credits.
-- A combined margin published by a DNA can be registered instead, with its reference.
+- A combined margin published by a DNA can be registered instead, with its reference. It carries TOOL07's weights, so
+  a VMR0017 plant also gives its OM and BM: they are recombined with VT0011's weights and the lower CM is kept
+  (ASB0054, Uganda: 0.1370 published, 0.1096 under VT0011).
 
 ## Monitoring and QA/QC
 
@@ -99,6 +101,7 @@ so a verifier cannot mint more than the equations allow. 1 credit = 1 t CO2e; 1 
 | --- | --- |
 | Source | metering record names a meter key → the batch must carry its EIP-191 signed meter statement (raw totals, readings digest, registry); missing, wrong key or edited after signing → REJECTED. The contract checks the same signature against the plant's registered meter and accepts only figures at least as conservative (net ≤, fuel ≥, gross = metered capped at nameplate) |
 | Timestamps | duplicates, out-of-order and overlapping intervals → REJECTED (double counting) |
+| Interval length | AMS-I.D §6.1 asks for hourly measurement: intervals over 60 min → FLAGGED under AMS-I.D |
 | Gaps | credited as zero; coverage < ${DECISION_RULES.minCompletenessBps / 100}% → FLAGGED; the contract enforces the same floor |
 | Main vs check meter | disagreement beyond combined accuracy → lower reading used, FLAGGED |
 | Calibration expired | export × (1 − MPE), import × (1 + MPE) |

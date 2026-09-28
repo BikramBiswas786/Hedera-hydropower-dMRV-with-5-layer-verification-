@@ -140,6 +140,19 @@ describe("verifyReadings — monitoring data QA/QC", () => {
     expect(report.periodEnd - report.periodStart).toBe(24 * 3_600);
   });
 
+  it("sends AMS-I.D batches with intervals over an hour to review (AMS-I.D §6.1 hourly measurement)", () => {
+    const { request } = run("healthy");
+    // Two-hour intervals: every second reading, stretched to cover the one it replaces.
+    const coarse = request.readings
+      .filter((_, i) => i % 2 === 1)
+      .map(r => ({ ...r, intervalMinutes: 120, exportKwh: r.exportKwh * 2, generationKwh: r.generationKwh * 2 }));
+    const hourly = /AMS-I\.D §6\.1/;
+    const amsId = verifyReadings(coarse, { ...request.plant, methodology: "AMS-I.D" }, request.metering);
+    expect(amsId.issues.some(i => i.severity === "review" && hourly.test(i.message))).toBe(true);
+    const vmr = verifyReadings(coarse, request.plant, request.metering);
+    expect(vmr.issues.some(i => hourly.test(i.message))).toBe(false);
+  });
+
   it("rejects replayed timestamps however good the numbers look", () => {
     const { report } = run("replay");
     expect(stage(report, "integrity")).toBe("FAIL");

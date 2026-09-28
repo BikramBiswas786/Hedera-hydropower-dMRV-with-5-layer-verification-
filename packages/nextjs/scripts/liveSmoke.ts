@@ -17,6 +17,8 @@ const MARKET = getDeployment("CreditMarket", 296)?.address.toLowerCase();
 const REGISTRY = getDeployment("DmrvRegistry", 296)?.address.toLowerCase();
 /** A Guardian iRec NFT minted on testnet by a Guardian policy run (HEDERA_FACTS.md fact 21). */
 const GUARDIAN_NFT = "nft:0.0.10753268:10";
+/** 12.5 t minted by a Managed Guardian policy on 28 Sep 2026: token 0.0.10760359, VP on topic 0.0.10760360. */
+const GUARDIAN_MINT = "0.0.10238177-1790602426-400520522";
 
 type Row = { check: string; ok: boolean; detail: string };
 const rows: Row[] = [];
@@ -237,6 +239,15 @@ async function main() {
       return report.decision;
     });
   }
+
+  await check("Guardian mint trace: backed", async () => {
+    const t = await call<{ verdict: string; checks: { id: string; ok: boolean | null; detail: string }[] }>(
+      `/api/guardian/v1/trace?ref=${encodeURIComponent(GUARDIAN_MINT)}`,
+    );
+    const open = t.checks.filter(c => c.ok !== true).map(c => `${c.id}: ${c.detail}`);
+    assert(t.verdict === "backed", `${t.verdict}: ${open.join("; ")}`);
+    return `${GUARDIAN_MINT}: backed, ${t.checks.length} checks`;
+  });
 
   await check("Guardian mint trace", async () => {
     // A real Guardian iRec mint on testnet: metadata → VP on HCS paid by the treasury. Its IPFS documents have no

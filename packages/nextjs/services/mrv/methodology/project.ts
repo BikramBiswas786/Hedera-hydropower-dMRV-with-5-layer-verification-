@@ -1,7 +1,7 @@
 import { MethodologyError } from "./errors";
 import { isLeastDevelopedCountry } from "./ldc";
 import { type FuelCoefficient, type OnSiteFuel, fuelCoefficient } from "./tool03";
-import { type Tool07Input, type Tool07Result, calculateGridEmissionFactor } from "./tool07";
+import { type Tool07Input, type Tool07Result, calculateGridEmissionFactor, combinedMarginWeights } from "./tool07";
 
 /**
  * Project-level (ex-ante) part of the methodology for hydropower: applicability, the reservoir power-density rule,
@@ -75,8 +75,20 @@ export const PROJECT_TYPE_CODE: Record<ProjectType, number> = { greenfield: 0, r
 
 export type GridEmissionFactorSource =
   | { source: "tool07"; input: Omit<Tool07Input, "projectKind" | "creditingPeriod"> }
-  /** A combined margin published by a Designated National Authority or the UNFCCC, cited by reference. */
-  | { source: "published"; efTPerMwh: number; reference: string; validFrom?: string; validTo?: string };
+  /**
+   * A combined margin published by a Designated National Authority or the UNFCCC (a CDM standardized baseline such
+   * as ASB0054), cited by reference. Such a CM carries TOOL07's weights. VMR0017 §9.3 requires VT0011, whose ¶86
+   * weights differ, so on that path give the published OM and BM too.
+   */
+  | {
+      source: "published";
+      efTPerMwh: number;
+      omTPerMwh?: number;
+      bmTPerMwh?: number;
+      reference: string;
+      validFrom?: string;
+      validTo?: string;
+    };
 
 export type Hydraulics = {
   /** Design (turbine) flow and gross head: sensor readings above them are implausible. */
@@ -130,8 +142,8 @@ export type AdditionalityEvidence = {
     /** Applicable geographic area the counts were taken from (VT0008 Step 4). */
     geographicArea: string;
     /**
-     * Similar projects are those inside this ± capacity band. At least 50, the default in the CDM common-practice
-     * guidance, unless a published study uses a wider net.
+     * Similar projects are those inside this ± capacity band. VT0008 §5.5.2(1) sets ±50% of the design capacity; a
+     * wider band only adds similar projects (a stricter test), so it is accepted and a narrower one is not.
      */
     capacityBandPct: number;
   };
@@ -197,8 +209,13 @@ export type ProjectDesign = {
   renewal?: {
     baselineValidity: string;
     regulatorySurplus: string;
-    /** Length of the period being renewed. A renewal keeps the same length (`HydroVmr0017Module.RenewalSpan`). */
+    /**
+     * Length of the period being renewed. A CDM renewal keeps it; a VMR0017 renewal requested from 1 January 2027
+     * is 5 years (VCS Standard v5.0, V5#101). Anything else is `HydroVmr0017Module.RenewalSpan`.
+     */
     previousYears?: 5 | 7 | 10;
+    /** When the renewal was requested. Defaults to the renewed period's start. */
+    requestedAt?: string;
   };
   /**
    * When the registration request is filed; VCS Table 8 keys off this date. Required for VMR0017 (the module
@@ -398,7 +415,7 @@ function additionalityOf(
     failures.push("VT0008 Step 4: the applicable geographic area is required");
   }
   if (evidence.commonPractice.capacityBandPct < 50) {
-    failures.push("VT0008 Step 4: the capacity band used to select similar projects must be at least ±50%");
+    failures.push("VT0008 §5.5.2(1): the capacity band used to select similar projects must be at least ±50%");
   }
   if (!evidence.assessedBy?.trim()) {
     failures.push("VT0008: name the independent assessor who checked the additionality evidence");
@@ -431,7 +448,34 @@ function gridFactor(
   failures: string[],
 ): ProjectAssessment["grid"] {
   if (design.grid.source === "published") {
-    const { efTPerMwh, reference, validFrom, validTo } = design.grid;
+    const { reference, validFrom, validTo, omTPerMwh, bmTPerMwh } = design.grid;
+    let { efTPerMwh } = design.grid;
+    const period = design.crediting.period;
+    const margins = omTPerMwh !== undefined && bmTPerMwh !== undefined;
+    if (margins) {
+      const tool07 = combinedMarginWeights("hydro", period, "TOOL07");
+      const published = tool07.operatingMargin * omTPerMwh + tool07.buildMargin * bmTPerMwh;
+      // Published factors are given to four decimals (ASB0054: 0.5 × 0.2740 + 0.5 × 0.00001 = 0.1370).
+      if (!vmr0017 && Math.abs(published - efTPerMwh) > 0.0001) {
+        failures.push(
+          `The published CM (${efTPerMwh} t/MWh) is not TOOL07's ${tool07.operatingMargin}/${tool07.buildMargin} weighting of its OM and BM (${published.toFixed(4)})`,
+        );
+      }
+    }
+    let basis = "";
+    if (vmr0017) {
+      if (!margins) {
+        failures.push(
+          "VMR0017 §9.3 determines EF_grid,CM with VT0011. A published combined margin uses TOOL07's weights, so give its operating and build margins (omTPerMwh, bmTPerMwh)",
+        );
+      } else {
+        // VT0011 ¶86 Case 1 weights; the lower of the two combinations, so the published CM can never credit more.
+        const w = combinedMarginWeights("hydro", period, "VT0011");
+        const vt0011 = w.operatingMargin * omTPerMwh + w.buildMargin * bmTPerMwh;
+        basis = `, recombined with VT0011 ¶86 weights ${w.operatingMargin}/${w.buildMargin}`;
+        efTPerMwh = Math.min(efTPerMwh, vt0011);
+      }
+    }
     if (vmr0017 && (!validFrom || !validTo)) {
       failures.push(
         "A published grid factor on the VMR0017 path needs validFrom and validTo. VT0011 replaces a CDM standardized baseline such as ASB0054",
@@ -447,7 +491,7 @@ function gridFactor(
       source: "published",
       efTPerMwh,
       efGPerMwh: Math.floor(Number((efTPerMwh * 1e6).toFixed(6))),
-      reference,
+      reference: reference + basis,
     };
   }
   const vt0011 = design.methodology === "VMR0017";
@@ -588,7 +632,14 @@ export function assessProject(design: ProjectDesign): ProjectAssessment {
         "A renewed crediting period needs a baseline-validity reference (TOOL11) and a fresh regulatory-surplus check",
       );
     }
-    if (renewal?.previousYears !== undefined && renewal.previousYears !== years) {
+    const renewalAt = toUnix(renewal?.requestedAt ?? design.crediting.start);
+    if (vmr0017 && renewalAt >= VCS_FIVE_YEAR_FROM) {
+      if (years !== 5) {
+        failures.push(
+          "VCS Standard v5.0 (V5#101): an E&I renewal requested on or after 1 January 2027 moves to a 5-year crediting period; the registry rejects any other length with RenewalSpan",
+        );
+      }
+    } else if (renewal?.previousYears !== undefined && renewal.previousYears !== years) {
       failures.push(
         `A renewed crediting period keeps the length of the one it renews (${renewal.previousYears} years, not ${years}); the registry rejects it with RenewalSpan`,
       );

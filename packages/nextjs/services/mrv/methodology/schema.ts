@@ -145,6 +145,8 @@ export const projectDesignSchema = z.object({
     .object({
       baselineValidity: z.string().min(1).max(300),
       regulatorySurplus: z.string().min(1).max(300),
+      previousYears: z.union([z.literal(5), z.literal(7), z.literal(10)]).optional(),
+      requestedAt: z.iso.datetime({ offset: true }).optional(),
     })
     .optional(),
   /** When the registration request is filed. VCS Table 8 keys the 5-year rule off this date. */
@@ -154,6 +156,8 @@ export const projectDesignSchema = z.object({
     z.object({
       source: z.literal("published"),
       efTPerMwh: z.number().positive().max(2),
+      omTPerMwh: z.number().nonnegative().max(2).optional(),
+      bmTPerMwh: z.number().nonnegative().max(2).optional(),
       reference: z.string().min(1).max(200),
       validFrom: z.iso.datetime({ offset: true }).optional(),
       validTo: z.iso.datetime({ offset: true }).optional(),

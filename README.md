@@ -120,9 +120,9 @@ App: [hydro-dmrv.vercel.app](https://hydro-dmrv.vercel.app). Market [`0x5aeDe76f
 Four workflows keep this true:
 
 - [Live smoke](https://github.com/BikramBiswas786/Hedera-hydropower-dMRV-with-5-layer-verification-/actions/workflows/live-smoke.yml) (every 6 h and after each production deploy) clicks through the deployed app with no wallet: the pairs against their oracles, an open listing, an unsigned purchase, every mint re-derived from HCS, a real Guardian mint traced, the scenarios, the MCP tools.
-- [Guardian trace](https://github.com/BikramBiswas786/Hedera-hydropower-dMRV-with-5-layer-verification-/actions/workflows/guardian-trace.yml) (daily) traces a real Guardian iRec mint on testnet to its signed VP and the treasury's DID.
+- [Guardian trace](https://github.com/BikramBiswas786/Hedera-hydropower-dMRV-with-5-layer-verification-/actions/workflows/guardian-trace.yml) (daily) traces a real Managed Guardian mint on testnet (token `0.0.10760359`, 12.5 t) and requires `backed`: record, order, payer, every signature, the MintToken VC's token and amount, and the treasury's DID.
 - [Mainnet fork](https://github.com/BikramBiswas786/Hedera-hydropower-dMRV-with-5-layer-verification-/actions/workflows/mainnet-fork.yml) (every push) runs the settlement against SaucerSwap's real factory, the public WHBAR/USDC pair and mainnet Chainlink.
-- [Testnet pair keeper](https://github.com/BikramBiswas786/Hedera-hydropower-dMRV-with-5-layer-verification-/actions/workflows/testnet-pair-keeper.yml) (hourly) holds the seeded testnet pair at the oracle price, which it must: the pair does not follow HBAR, the oracle does and keeps a listing open.
+- [Testnet pair keeper](https://github.com/BikramBiswas786/Hedera-hydropower-dMRV-with-5-layer-verification-/actions/workflows/testnet-pair-keeper.yml) (scheduled hourly, which GitHub runs best-effort; Live smoke also rebalances before each check) holds the seeded testnet pair at the oracle price, which it must: the pair does not follow HBAR, the oracle does. It also keeps a listing open. [`/api/market/dex`](https://hydro-dmrv.vercel.app/api/market/dex) shows whether a sale would settle right now.
 - [Checkout testnet demo](https://github.com/BikramBiswas786/Hedera-hydropower-dMRV-with-5-layer-verification-/actions/workflows/checkout-testnet-demo.yml) (on demand) deploys `UsdCheckout` next to the live contracts and makes one sale.
 
 ## Use it without carbon
@@ -156,6 +156,7 @@ Writing Hedera code with an agent? [`HEDERA_FACTS.md`](HEDERA_FACTS.md) lists 20
 | Testnet addresses and transactions, how buying works, keys, limits | [docs/evidence.md](docs/evidence.md) |
 | Registry, module, market and checkout functions, EIP-712 types, roles, pool guard | [docs/contract.md](docs/contract.md) |
 | Equations, five stages, scenarios, HCS reproduction | [docs/methodology.md](docs/methodology.md) |
+| Which clause of VMR0017, ACM0002, AMS-I.D, VT0008–VT0011 and VCS v5 is implemented where | [docs/standards.md](docs/standards.md) |
 | Environment variables, pages, layout, security limits | [docs/operations.md](docs/operations.md) |
 | What the tests pin | [docs/testing.md](docs/testing.md) |
 | Guardian: buyer's mint trace, cross-check VC, evidence check, policy patch | [docs/GUARDIAN.md](docs/GUARDIAN.md) |
@@ -167,7 +168,7 @@ Hedera Harness spec and validators are in [`.harness/`](.harness/); `yarn harnes
 
 - The testnet SaucerSwap pair was seeded with 20 HBAR against a test token this project minted, so testnet sellers are paid in that token, and a small trade can push the pair out of band (the keeper pulls it back). On mainnet the same code uses the public WHBAR/USDC pair.
 - The VVB and meter keys on testnet are labelled test keys, not an accredited verifier or data-logger hardware.
-- The testnet contracts predate three hardening changes in the source; [docs/evidence.md](docs/evidence.md) lists them.
+- The testnet contracts predate some hardening changes in the source, including the VCS v5 renewal rule; [docs/evidence.md](docs/evidence.md) lists them.
 - The engine implements VMR0017 v1.0 / ACM0002 v22.0 equations. A VVB and a registry still decide issuance; these credits are not a Verra issuance.
 
 MIT, see [LICENCE](LICENCE). Built on [Scaffold-HBAR](https://github.com/hedera-dev/scaffold-hbar).

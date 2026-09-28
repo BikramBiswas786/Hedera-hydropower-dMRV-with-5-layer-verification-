@@ -121,7 +121,9 @@ contract HydroVmr0017Module is IMethodology {
         uint256 prevSpan = uint256(prevEnd) - prevStart;
         if (prevSpan == 10 * CREDITING_YEAR || periods >= 3) revert NotRenewable();
         if (newP.creditingStart < prevEnd) revert RenewalOverlap();
-        if (uint256(newP.creditingEnd) - newP.creditingStart != prevSpan) revert RenewalSpan();
+        if (uint256(newP.creditingEnd) - newP.creditingStart != _renewalSpan(newP.methodology, prevSpan)) {
+            revert RenewalSpan();
+        }
         if (
             newP.registrationRequestedAt != oldP.registrationRequestedAt ||
             newP.projectType != oldP.projectType ||
@@ -269,6 +271,14 @@ contract HydroVmr0017Module is IMethodology {
         if ((!five && !seven && !ten) || (methodology == VMR && requestedAt >= VCS_FIVE_YEAR_FROM && !five)) {
             revert InvalidCreditingPeriod(start, end);
         }
+    }
+
+    /// @dev VCS Standard v5.0 (V5#101): an E&I renewal requested on or after 1 Jan 2027 moves to 5-year periods;
+    /// the CDM keeps the original length. A renewal is registered after it is requested, so the block time is a
+    /// proxy that can only shorten a period, never lengthen one.
+    function _renewalSpan(uint8 methodology, uint256 prevSpan) private view returns (uint256) {
+        if (methodology == VMR && block.timestamp >= VCS_FIVE_YEAR_FROM) return 5 * CREDITING_YEAR;
+        return prevSpan;
     }
 
     function _rates(HydroParams memory p) private pure returns (uint32 reservoir, uint32 embodied) {
