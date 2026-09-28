@@ -1,5 +1,6 @@
 import { POST as crossCheck } from "../../../app/api/guardian/v1/cross-check/route";
 import { GET as evidence } from "../../../app/api/guardian/v1/evidence/[timestamp]/route";
+import { GET as trace } from "../../../app/api/guardian/v1/trace/route";
 import {
   FakeLedger,
   guardianStyleContext,
@@ -191,5 +192,43 @@ describe("GET /api/guardian/v1/evidence/{timestamp}", () => {
     expect(result.accepted).toBe(false);
     expect(result.chain[0].signature).toBe("verified");
     expect(result.refusals.join(" ")).toContain("double issuance");
+  });
+});
+
+describe("GET /api/guardian/v1/trace", () => {
+  const get = (ref: string) =>
+    trace(new Request(`http://localhost/api/guardian/v1/trace?ref=${encodeURIComponent(ref)}`));
+
+  it("refuses references it cannot trace before touching the network", async () => {
+    vi.stubGlobal("fetch", ledger.fetch);
+    const before = ledger.requests.length;
+    expect((await get("")).status).toBe(400);
+    expect((await get("../../etc")).status).toBe(400);
+    expect(ledger.requests.length).toBe(before);
+  });
+
+  it("answers 422 when the mint is not on the mirror node", async () => {
+    vi.stubEnv("GUARDIAN_MIRROR_NODE_URL", ledger.mirrorNodeUrl);
+    vi.stubGlobal("fetch", ledger.fetch);
+    const response = await get("0.0.1-1758000000-000000001");
+    expect(response.status).toBe(422);
+  });
+
+  it("traces a Guardian NFT to its VP", async () => {
+    vi.stubEnv("GUARDIAN_MIRROR_NODE_URL", ledger.mirrorNodeUrl);
+    vi.stubEnv("GUARDIAN_IPFS_GATEWAY", ledger.ipfsGateway);
+    vi.stubGlobal("fetch", ledger.fetch);
+    const record = ledger.submit(
+      "0.0.6201",
+      { type: "VP-Document", status: "ISSUE", cid: "QmNotPinnedNotPinnedNotPinnedNotPinnedNotPinned" },
+      "0.0.77",
+    );
+    ledger.addToken("0.0.8001", { type: "NON_FUNGIBLE_UNIQUE", treasury: "0.0.77" });
+    ledger.addNft("0.0.8001", 1, record);
+    const response = await get("nft:0.0.8001:1");
+    expect(response.status).toBe(200);
+    const body = await response.json();
+    expect(body.record).toMatchObject({ timestamp: record, topicId: "0.0.6201", payer: "0.0.77" });
+    expect(body.verdict).toBe("incomplete");
   });
 });

@@ -121,6 +121,20 @@ service with the registry's keys.** Nothing on-chain recomputes it. In a VMR0015
 A self-hosted Guardian can allow it.
 Handled by: [`docs/GUARDIAN.md`](docs/GUARDIAN.md), which cites the Guardian source for both.
 
+**21. Every Guardian mint points at its signed record: the consensus timestamp of the mint's VP-Document message.**
+Fungible mints carry it as the transaction memo (the treasury → owner transfer repeats it); every NFT of the mint
+carries it as metadata. The VP's `MintToken` VC states `tokenId` and `amount` as a fixed-point string in whole tokens
+(`"12.500"` at 3 decimals), and the Standard Registry's account pays for the VP message, its DID document and is the
+token treasury. On testnet, NFT `0.0.10753268` #10 has metadata `1790566925.960768416`, a VP-Document on topic
+`0.0.10753275` paid by the treasury `0.0.10753028`, which also published the signing DID.
+**22. Guardian's global indexer API answers 401 without an account; the mirror node and IPFS are public.** A buyer
+can check a Guardian token from those two alone, and an IPFS CID is a sha2-256 hash, so ask a gateway for the raw
+block (`?format=raw`) and hash it rather than trusting the gateway.
+Handled by: [`trace.ts`](packages/nextjs/services/mrv/guardian/trace.ts) and [`ipfs.ts`](packages/nextjs/services/mrv/guardian/ipfs.ts),
+behind `trace_guardian_mint` and `GET /api/guardian/v1/trace`.
+Proof: test, `trace.test.ts` (backed, over-minted, wrong token, foreign signer, edited VP, lying gateway, NFT serial
+count) and `ipfs.test.ts` (the real `ipfs add` CID of "hello\n"); live, the Live smoke step "Guardian mint trace".
+
 ## Keeping this true
 
 Add a fact when a Hedera behaviour costs you time, and add the test or workflow that proves it in the same PR. A fact

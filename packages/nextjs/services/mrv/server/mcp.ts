@@ -12,7 +12,7 @@ import { plantIdToBytes32 } from "../views";
 import { attestReadings, prepareApproval } from "./attest";
 import { readDexCheck } from "./dex";
 import { ApiError } from "./errors";
-import { verifyEvidence } from "./guardianBridge";
+import { traceMint, verifyEvidence } from "./guardianBridge";
 import { getPlantDetail, getPortfolio, portfolioQuerySchema } from "./insights";
 import { getRetirementCertificate, preparePurchase, preparePurchaseSchema } from "./market";
 import { assessDesign, getProject, gridEmissionFactor } from "./methodology";
@@ -276,6 +276,18 @@ export function buildMcpServer({ canWrite }: { canWrite: boolean }): McpServer {
       annotations: readOnly,
     },
     async ({ ref, topicIds }) => run(() => verifyEvidence(ref, topicIds ?? null)),
+  );
+
+  server.registerTool(
+    "trace_guardian_mint",
+    {
+      title: "Trace a Guardian mint",
+      description:
+        "Before buying a token Hedera Guardian minted: is it backed? Pass nft:<tokenId>:<serial>, ft:<tokenId>:<holder account> or a mint transaction id. Follows the memo or NFT metadata to the VP on HCS, reads it from IPFS with every block checked against its CID, verifies the Ed25519 proofs, and checks that the MintToken VC names this token and amount and that the signer's DID was published by the token treasury. verdict: backed, not-backed or incomplete (a source could not be read). Uses only the public mirror node and IPFS.",
+      inputSchema: z.object({ ref: z.string().min(1).max(120) }),
+      annotations: readOnly,
+    },
+    async ({ ref }) => run(() => traceMint(ref)),
   );
 
   server.registerTool(

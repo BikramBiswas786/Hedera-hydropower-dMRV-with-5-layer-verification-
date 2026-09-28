@@ -70,6 +70,7 @@ yarn market:keep-listing [--execute]  # keep a listing open on the testnet marke
 | Shared quantification test vectors (contract + TS) | `packages/hardhat/test/fixtures/quantificationVectors.ts` |
 | HCS data + report messages | `packages/nextjs/services/mrv/report.ts`, built together by `pipeline.ts` |
 | Mirror-node reads, audit, reproduction | `packages/nextjs/services/mrv/mirror.ts`, `audit.ts` |
+| Guardian (pure): VC/DID verification ported from Guardian 3.7, evidence check, buyer's mint trace, CID-checked IPFS reads | `packages/nextjs/services/mrv/guardian/` (`trace.ts`, `ipfs.ts`, `evidence.ts`, `vc.ts`); server side `services/mrv/server/guardianBridge.ts` |
 | Unit conversions (t ↔ kg units, cents, tinybar/weibar) | `packages/nextjs/services/mrv/pricing.ts` |
 | Server-only code (keys, HCS, writes, unsigned purchases) | `packages/nextjs/services/mrv/server/` |
 | REST routes / MCP route | `packages/nextjs/app/api/**/route.ts` |
@@ -150,6 +151,9 @@ yarn market:keep-listing [--execute]  # keep a listing open on the testnet marke
 - **Writes are authenticated; purchases are not the server's.** Server-signed writes (attestation) must check
   `isAuthorized` and stay disabled when `MRV_API_KEY` is unset. Anything a user or agent pays for is returned unsigned
   (`prepare_purchase`) for their own wallet. Read-only MCP tools need `readOnlyHint: true`.
+- **Never trust an IPFS gateway.** Guardian documents are read as raw blocks and hashed against their CID
+  (`guardian/ipfs.ts`); a source that cannot be read makes a trace `incomplete`, never `backed` and never a bad
+  signature.
 - **Errors callers may see** are `ApiError(message, httpStatus)` from `services/mrv/server/errors.ts`; route handlers
   map them with `toErrorResponse`, MCP tools with `run()`.
 

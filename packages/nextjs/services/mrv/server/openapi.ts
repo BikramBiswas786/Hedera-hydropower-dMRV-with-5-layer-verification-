@@ -280,6 +280,20 @@ export function buildOpenApi(origin: string) {
           "429": { $ref: "#/components/responses/Error" },
         },
       }),
+      "/api/guardian/v1/trace": get({
+        operationId: "trace_guardian_mint",
+        tags: ["guardian"],
+        summary: "Is this Guardian-minted token backed? (buyer's check)",
+        description:
+          "Follows a Guardian mint to its signed record using only the public mirror node and IPFS: the mint memo or NFT metadata names the VP's consensus timestamp; the VP is read from IPFS with every block checked against its CID; its Ed25519 proofs are verified with DIDs resolved from HCS; the MintToken VC must name this token and amount (NFTs: the serials citing the VP must equal it); the signer's DID-Document message must have been paid for by the token treasury. verdict is backed, not-backed or incomplete.",
+        parameters: [query("ref", "nft:<tokenId>:<serial>, ft:<tokenId>:<holder account>, or a mint transaction id")],
+        responses: {
+          ...ok("{ verdict, token, mint, record, mintVc, registry, sources, checks }"),
+          "400": { $ref: "#/components/responses/Error" },
+          "422": { $ref: "#/components/responses/Error" },
+          "429": { $ref: "#/components/responses/Error" },
+        },
+      }),
       "/api/guardian/v1/evidence/{timestamp}": get({
         operationId: "verify_guardian_evidence",
         tags: ["guardian"],

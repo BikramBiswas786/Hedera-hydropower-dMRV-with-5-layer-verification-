@@ -1,5 +1,6 @@
 import type { BridgeSigner } from "./bridge";
 import { bridgeKeyPair, buildDid, buildDidDocument, buildDidMessage } from "./did";
+import { rawCid } from "./ipfs";
 import { CREDENTIALS_V1, type DocumentLoader, ed25519VerificationDocumentLoader, issueCredential } from "./vc";
 import { Ed25519Signature2018 } from "@digitalbazaar/ed25519-signature-2018";
 import { Ed25519VerificationKey2018 } from "@digitalbazaar/ed25519-verification-key-2018";
@@ -76,55 +77,95 @@ export function guardianStyleContext(uuid: string, terms: string[]) {
   };
 }
 
-/** A fake CID that passes the base32 CIDv1 check; `tag` makes it unique. */
-export const fakeCid = (tag: string) =>
-  `bafkrei${tag
-    .toLowerCase()
-    .replace(/[^a-z2-7]/g, "a")
-    .padEnd(52, "q")
-    .slice(0, 52)}`;
+type Stored = { topicId: string; sequence: number; text: string; payer: string };
 
-type Stored = { topicId: string; sequence: number; text: string };
+export type FakeTransfer = { token_id: string; account: string; amount: number };
 
-/** In-memory mirror node and IPFS gateway, served through a `fetch` stand-in. Records every URL it was asked for. */
+/**
+ * In-memory mirror node and IPFS gateway, served through a `fetch` stand-in. Records every URL it was asked for.
+ * Documents are pinned under their real CIDv1 (raw, sha2-256) and served as raw blocks, so reads are hash-checked.
+ */
 export class FakeLedger {
   readonly mirrorNodeUrl = "https://mirror.test";
   readonly ipfsGateway = "https://ipfs.test/ipfs/{cid}";
   readonly requests: string[] = [];
   private messages = new Map<string, Stored>();
-  private ipfs = new Map<string, unknown>();
-  private transactions = new Map<string, unknown>();
-  private nfts = new Map<string, unknown>();
+  private ipfs = new Map<string, Uint8Array>();
+  private transactions = new Map<string, Record<string, unknown>>();
+  private nfts = new Map<string, { metadata: string; mintTx: string; mintTs: string }>();
+  private tokens = new Map<string, unknown>();
   private clock = 1_758_000_000;
 
-  pin(tag: string, document: unknown): string {
-    const cid = fakeCid(tag);
-    this.ipfs.set(cid, document);
+  /** Pins a JSON document; `tag` is kept for call sites that name what they pin. */
+  pin(_tag: string, document: unknown): string {
+    const bytes = Buffer.from(JSON.stringify(document));
+    const cid = rawCid(bytes);
+    this.ipfs.set(cid, bytes);
     return cid;
   }
 
-  submit(topicId: string, body: unknown): string {
-    const timestamp = `${this.clock++}.000000001`;
+  /** Stores bytes under a CID the caller chose, for gateways that return the wrong bytes. */
+  pinBytes(cid: string, bytes: Uint8Array) {
+    this.ipfs.set(cid, bytes);
+  }
+
+  private tick() {
+    return `${this.clock++}.000000001`;
+  }
+
+  submit(topicId: string, body: unknown, payer = "0.0.2"): string {
+    const timestamp = this.tick();
     const sequence = [...this.messages.values()].filter(m => m.topicId === topicId).length + 1;
-    this.messages.set(timestamp, { topicId, sequence, text: typeof body === "string" ? body : JSON.stringify(body) });
+    this.messages.set(timestamp, {
+      topicId,
+      sequence,
+      text: typeof body === "string" ? body : JSON.stringify(body),
+      payer,
+    });
     return timestamp;
   }
 
-  addMint(txId: string, memo: string, name = "TOKENMINT") {
-    this.transactions.set(txId, {
-      transactions: [{ name, result: "SUCCESS", memo_base64: Buffer.from(memo).toString("base64") }],
+  addToken(tokenId: string, fields: { type?: string; decimals?: number; treasury: string; totalSupply?: string }) {
+    this.tokens.set(tokenId, {
+      token_id: tokenId,
+      name: `Token ${tokenId}`,
+      symbol: "GT",
+      type: fields.type ?? "FUNGIBLE_COMMON",
+      decimals: String(fields.decimals ?? 0),
+      treasury_account_id: fields.treasury,
+      total_supply: fields.totalSupply ?? "0",
     });
   }
 
-  addNft(tokenId: string, serial: number, metadata: string) {
-    this.nfts.set(`${tokenId}/${serial}`, { metadata: Buffer.from(metadata).toString("base64") });
+  addMint(
+    txId: string,
+    memo: string,
+    name = "TOKENMINT",
+    extra: { entity_id?: string; token_transfers?: FakeTransfer[]; nft_transfers?: unknown[] } = {},
+  ) {
+    this.transactions.set(txId, {
+      transaction_id: txId,
+      consensus_timestamp: this.tick(),
+      name,
+      result: "SUCCESS",
+      memo_base64: Buffer.from(memo).toString("base64"),
+      ...extra,
+    });
   }
 
-  /** Publishes a DID the way scripts/publish-bridge-did.ts does. */
-  publishDid(key: PrivateKey, topicId: string): string {
+  addNft(tokenId: string, serial: number, metadata: string, mintTx = `0.0.2-${this.clock}-000000001`) {
+    this.nfts.set(`${tokenId}/${serial}`, {
+      metadata: Buffer.from(metadata).toString("base64"),
+      mintTx,
+      mintTs: this.tick(),
+    });
+  }
+
+  /** Publishes a DID the way scripts/publish-bridge-did.ts does, paid for by `payer` (Guardian's user account). */
+  publishDid(key: PrivateKey, topicId: string, payer = "0.0.2"): string {
     const did = buildDid(key, "testnet", topicId);
     const cid = this.pin(`did${topicId.replace(/\./g, "")}`, buildDidDocument(did, key));
-    this.submit(topicId, buildDidMessage("00000000-0000-4000-8000-000000000001", did, cid));
+    this.submit(topicId, buildDidMessage("00000000-0000-4000-8000-000000000001", did, cid), payer);
     return did;
   }
 
@@ -137,8 +178,9 @@ export class FakeLedger {
     this.requests.push(url);
     const json = (body: unknown, status = 200) => new Response(JSON.stringify(body), { status });
     let m;
-    if ((m = /^https:\/\/ipfs\.test\/ipfs\/(\w+)$/.exec(url))) {
-      return this.ipfs.has(m[1]) ? json(this.ipfs.get(m[1])) : json({ error: "not found" }, 404);
+    if ((m = /^https:\/\/ipfs\.test\/ipfs\/(\w+)\?format=raw$/.exec(url))) {
+      const bytes = this.ipfs.get(m[1]);
+      return bytes ? new Response(Buffer.from(bytes)) : json({ error: "not found" }, 404);
     }
     if ((m = /\/api\/v1\/topics\/messages\/([\d.]+)$/.exec(url))) {
       const stored = this.messages.get(m[1]);
@@ -147,6 +189,7 @@ export class FakeLedger {
         consensus_timestamp: m[1],
         topic_id: stored.topicId,
         sequence_number: stored.sequence,
+        payer_account_id: stored.payer,
         message: Buffer.from(stored.text).toString("base64"),
         chunk_info: null,
       });
@@ -158,16 +201,46 @@ export class FakeLedger {
           consensus_timestamp: ts,
           topic_id: s.topicId,
           sequence_number: s.sequence,
+          payer_account_id: s.payer,
           message: Buffer.from(s.text).toString("base64"),
         }));
       return json({ messages, links: { next: null } });
     }
     if ((m = /\/api\/v1\/transactions\/([\d.-]+)$/.exec(url))) {
-      return this.transactions.has(m[1]) ? json(this.transactions.get(m[1])) : json({}, 404);
+      const tx = this.transactions.get(m[1]);
+      return tx ? json({ transactions: [tx] }) : json({}, 404);
+    }
+    if ((m = /\/api\/v1\/transactions\?account\.id=([\d.]+)&transactiontype=CRYPTOTRANSFER/.exec(url))) {
+      const account = m[1];
+      const transactions = [...this.transactions.values()]
+        .filter(
+          tx =>
+            tx.name === "CRYPTOTRANSFER" &&
+            ((tx.token_transfers as FakeTransfer[] | undefined) ?? []).some(t => t.account === account),
+        )
+        .reverse();
+      return json({ transactions, links: { next: null } });
+    }
+    if ((m = /\/api\/v1\/tokens\/([\d.]+)\/nfts\/(\d+)\/transactions/.exec(url))) {
+      const nft = this.nfts.get(`${m[1]}/${m[2]}`);
+      if (!nft) return json({}, 404);
+      return json({
+        transactions: [{ type: "TOKENMINT", transaction_id: nft.mintTx, consensus_timestamp: nft.mintTs }],
+        links: { next: null },
+      });
     }
     if ((m = /\/api\/v1\/tokens\/([\d.]+)\/nfts\/(\d+)$/.exec(url))) {
-      const key = `${m[1]}/${m[2]}`;
-      return this.nfts.has(key) ? json(this.nfts.get(key)) : json({}, 404);
+      const nft = this.nfts.get(`${m[1]}/${m[2]}`);
+      return nft ? json({ metadata: nft.metadata }) : json({}, 404);
+    }
+    if ((m = /\/api\/v1\/tokens\/([\d.]+)\/nfts\?/.exec(url))) {
+      const nfts = [...this.nfts.entries()]
+        .filter(([key]) => key.startsWith(`${m![1]}/`))
+        .map(([key, nft]) => ({ serial_number: Number(key.split("/")[1]), metadata: nft.metadata }));
+      return json({ nfts, links: { next: null } });
+    }
+    if ((m = /\/api\/v1\/tokens\/([\d.]+)$/.exec(url))) {
+      return this.tokens.has(m[1]) ? json(this.tokens.get(m[1])) : json({}, 404);
     }
     return json({ error: `unexpected ${url}` }, 500);
   }) as typeof fetch;

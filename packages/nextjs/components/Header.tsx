@@ -40,7 +40,7 @@ export const menuLinks: HeaderMenuLink[] = [
     icon: <AcademicCapIcon className="h-4 w-4" />,
   },
   {
-    label: "Compare",
+    label: "Guardian check",
     href: "/check",
     icon: <ScaleIcon className="h-4 w-4" />,
   },

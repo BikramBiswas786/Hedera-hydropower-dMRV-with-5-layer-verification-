@@ -15,6 +15,8 @@ import { getDeployment } from "~~/services/mrv/network";
 const BASE = (process.env.LIVE_URL ?? "https://hydro-dmrv.vercel.app").replace(/\/$/, "");
 const MARKET = getDeployment("CreditMarket", 296)?.address.toLowerCase();
 const REGISTRY = getDeployment("DmrvRegistry", 296)?.address.toLowerCase();
+/** A Guardian iRec NFT minted on testnet by a Guardian policy run (HEDERA_FACTS.md fact 21). */
+const GUARDIAN_NFT = "nft:0.0.10753268:10";
 
 type Row = { check: string; ok: boolean; detail: string };
 const rows: Row[] = [];
@@ -185,6 +187,16 @@ async function main() {
     });
   }
 
+  await check("Guardian mint trace", async () => {
+    // A real Guardian iRec mint on testnet: metadata → VP on HCS → IPFS (hash-checked) → signatures → treasury DID.
+    const t = await call<{ verdict: string; checks: { id: string; ok: boolean | null; detail: string }[] }>(
+      `/api/guardian/v1/trace?ref=${encodeURIComponent(GUARDIAN_NFT)}`,
+    );
+    const failed = t.checks.filter(c => c.ok !== true).map(c => `${c.id}: ${c.detail}`);
+    assert(t.verdict === "backed", `${t.verdict}; ${failed.join("; ")}`);
+    return `${GUARDIAN_NFT} backed (${t.checks.length} checks)`;
+  });
+
   await check("MCP server lists its tools", async () => {
     const init = await mcp("initialize", {
       protocolVersion: "2025-06-18",
@@ -193,7 +205,13 @@ async function main() {
     });
     const { result } = await mcp("tools/list", {}, init.session ?? undefined);
     const names = ((result as { tools?: { name: string }[] }).tools ?? []).map(t => t.name);
-    for (const tool of ["get_dex_price", "list_open_listings", "prepare_purchase", "reproduce_attestation"]) {
+    for (const tool of [
+      "get_dex_price",
+      "list_open_listings",
+      "prepare_purchase",
+      "reproduce_attestation",
+      "trace_guardian_mint",
+    ]) {
       assert(names.includes(tool), `missing ${tool}`);
     }
     assert(!names.includes("submit_attestation"), "submit_attestation is listed without a key");

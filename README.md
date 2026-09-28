@@ -6,6 +6,7 @@
 
 - **Issuance a contract enforces.** `DmrvRegistry` holds the HTS supply key and mints only with two EIP-712 signatures (the plant's meter over the raw totals, a VVB over that statement, who may only lower figures), and only the integer its methodology module recomputes: `ER = BE − PE − LE`. Readings and reports go to HCS, so anyone can re-derive a mint.
 - **Dollar-priced settlement anyone can reuse.** `UsdSettlement` prices in USD from Chainlink with a Supra fallback and pays the seller through SaucerSwap, only while the pool sits within 3% of the oracle. `CreditMarket` uses it for credits (with retirement NFTs); `UsdCheckout` uses it for **any** HTS fungible token.
+- **A buyer's check on any Guardian token.** `trace_guardian_mint` follows a Guardian mint to the signed VP behind it, from the public mirror node and IPFS (every block hashed against its CID): signatures, the MintToken VC's token and amount, and whether the signer is the token's treasury. `backed`, `not-backed` or `incomplete`, with no Guardian login.
 - **Agents as buyers and auditors.** An MCP server with a REST twin for every tool: reproduce a mint from HCS, then buy and retire with your own wallet.
 
 Hydropower under Verra VMR0017 v1.0 with ACM0002 v22.0 is the worked example, not the limit: another methodology is another stateless `IMethodology` module.
@@ -15,6 +16,7 @@ Hydropower under Verra VMR0017 v1.0 with ACM0002 v22.0 is the worked example, no
 | Methodology policies, roles, VC/DID documents, trust chain | Yes | No, use Guardian |
 | Who decides the minted amount | A policy rule, run by the Guardian service | The contract, with meter and VVB signatures |
 | Price, sale, DEX settlement, a contract to compose with | No | Chainlink + Supra, SaucerSwap, `CreditMarket`, `UsdCheckout` |
+| A buyer or agent checking a minted token | Trust chain in the Guardian UI; the indexer API needs an account | `trace_guardian_mint` / `GET /api/guardian/v1/trace`, public data only |
 | How you start | Docker services and MongoDB, or MGS | `npm create scaffold-hbar` |
 
 | Market: oracle price, SaucerSwap check, listing | Verify: the five-stage engine on a day of readings |
@@ -154,7 +156,7 @@ Writing Hedera code with an agent? [`HEDERA_FACTS.md`](HEDERA_FACTS.md) lists 20
 | Equations, five stages, scenarios, HCS reproduction | [docs/methodology.md](docs/methodology.md) |
 | Environment variables, pages, layout, security limits | [docs/operations.md](docs/operations.md) |
 | What the tests pin | [docs/testing.md](docs/testing.md) |
-| Guardian bridge: cross-check VC, evidence check, policy patch | [docs/GUARDIAN.md](docs/GUARDIAN.md) |
+| Guardian: buyer's mint trace, cross-check VC, evidence check, policy patch | [docs/GUARDIAN.md](docs/GUARDIAN.md) |
 | MCP tools and REST twins | [docs/agents.md](docs/agents.md) |
 
 Hedera Harness spec and validators are in [`.harness/`](.harness/); `yarn harness:validate` runs Tiers 0–2 with no credentials.

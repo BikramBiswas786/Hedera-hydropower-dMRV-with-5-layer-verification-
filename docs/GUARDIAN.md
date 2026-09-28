@@ -199,11 +199,29 @@ Run in **dry run** with the draft schema (`"contextUrl":"schema:<uuid>"` in `GUA
 
 The response includes `evidenceHash = keccak256("guardian:" ‖ consensusTimestamp ‖ ":" ‖ cid)`, the value a VVB signs.
 
+## 9. Before you buy a Guardian token: `trace_guardian_mint`
+
+`GET /api/guardian/v1/trace?ref=…` (MCP tool `trace_guardian_mint`) answers the buyer's question, the opposite of §8: is this token backed by a signed Guardian record, signed by whoever controls the token? `ref` is `nft:<tokenId>:<serial>`, `ft:<tokenId>:<holder account>` (the latest Guardian transfer of that token to that account) or a mint transaction id. It uses the public mirror node and IPFS only; Guardian's indexer API needs an account.
+
+| Check | Passes when |
+| --- | --- |
+| `record` | the mint memo or NFT metadata names an HCS message that is an issued `VP-Document` with a CID |
+| `order` | that message reached consensus before the mint |
+| `record-payer` | the VP message was paid for by the token treasury (the Standard Registry's account) |
+| `signature` | the VP, read from IPFS with every block hashed against its CID, and each VC in it verify (Ed25519Signature2018, DIDs from HCS) |
+| `mint-vc` | the VP holds a `MintToken` / `MintNFToken` VC naming this token |
+| `amount` | fungible: the minted base units equal the VC amount × 10^decimals (a transfer may not exceed it); NFT: the serials whose metadata cites this VP equal the VC amount |
+| `registry` | the signer's `DID-Document` message on its topic was paid for by the token treasury |
+
+`verdict` is `backed` when every check passes, `not-backed` when one fails, and `incomplete` when a source could not be read (an unreachable gateway is never reported as a bad signature). `sources` lists the documents the VP rests on (type, approval status, payer), two relationship levels deep, from HCS metadata. The page `/check` runs it on two real testnet iRec mints.
+
+What it does not establish: that the policy itself is sound, or that Guardian's figure is right (that is `compare_guardian_report`), or, for fungible tokens, that no other mint cites the same VP (the mirror node has no per-token mint index; NFTs are counted).
+
 ## What is verified here and what needs a live Guardian
 
 Covered by tests in this repo: the VC round-trip through a line-for-line port of Guardian's `VCJS.verify`, with the DID resolved from (mocked) HCS and IPFS exactly as `RemoteDidLoader` does; tampering and wrong-key failures; verification under a Guardian-style schema context; the field mapping; evidence refusals; the 503/401/413/400/422 paths.
 
-Needs a live Guardian dry run: `verifySchema` against the imported schema; DID resolution through the instance's IPFS gateway; the `valueSource` coercion in `documentValidatorBlock`; `equalText` in the switch; webhook availability on Managed Guardian Service; the real mint memo and NFT metadata format; the Excel import itself.
+Needs a live Guardian dry run: `verifySchema` against the imported schema; DID resolution through the instance's IPFS gateway; the `valueSource` coercion in `documentValidatorBlock`; `equalText` in the switch; webhook availability on Managed Guardian Service; the Excel import itself. The mint memo and NFT metadata format were confirmed on testnet (HEDERA_FACTS.md fact 21).
 
 ## Plain JSON calls without the bridge
 
