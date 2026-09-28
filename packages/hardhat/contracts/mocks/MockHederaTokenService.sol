@@ -17,6 +17,7 @@ contract MockHtsToken {
 
     mapping(address account => uint256) public balanceOf;
     mapping(address account => bool) public isAssociated;
+    mapping(address owner => mapping(address spender => uint256)) public allowance;
 
     constructor(string memory name_, string memory symbol_, uint8 decimals_, address treasury, address keyHolder) {
         HTS = msg.sender;
@@ -33,9 +34,21 @@ contract MockHtsToken {
         _;
     }
 
+    /// @dev Returns TOKEN_ALREADY_ASSOCIATED_TO_ACCOUNT (194) on a second call, as HTS does.
     function associate() external returns (uint256 responseCode) {
+        if (isAssociated[msg.sender]) return 194;
         isAssociated[msg.sender] = true;
         return 22;
+    }
+
+    /// @notice ERC-20 facade approval, as an HTS token accepts from its holder's EOA.
+    function approve(address spender, uint256 amount) external returns (bool) {
+        allowance[msg.sender][spender] = amount;
+        return true;
+    }
+
+    function spend(address owner, address spender, uint256 amount) external onlyHts {
+        allowance[owner][spender] -= amount;
     }
 
     function mintToTreasury(uint256 amount) external onlyHts {
@@ -116,6 +129,7 @@ contract MockHederaTokenService {
     int64 internal constant TOKEN_NOT_ASSOCIATED_TO_ACCOUNT = 184;
     int64 internal constant SENDER_DOES_NOT_OWN_NFT_SERIAL_NO = 237;
     int64 internal constant METADATA_TOO_LONG = 199;
+    int64 internal constant SPENDER_DOES_NOT_HAVE_ALLOWANCE = 292;
 
     mapping(address token => bool) public isNft;
 
@@ -217,6 +231,18 @@ contract MockHederaTokenService {
         if (t.balanceOf(sender) < uint64(amount)) return INSUFFICIENT_TOKEN_BALANCE;
 
         t.move(sender, recipient, uint64(amount));
+        return SUCCESS;
+    }
+
+    function transferFrom(address token, address from, address to, uint256 amount) external returns (int64) {
+        if (forcedResponseCode != 0) return forcedResponseCode;
+        MockHtsToken t = MockHtsToken(token);
+        if (t.allowance(from, msg.sender) < amount) return SPENDER_DOES_NOT_HAVE_ALLOWANCE;
+        if (!t.isAssociated(to)) return TOKEN_NOT_ASSOCIATED_TO_ACCOUNT;
+        if (t.balanceOf(from) < amount) return INSUFFICIENT_TOKEN_BALANCE;
+
+        t.spend(from, msg.sender, amount);
+        t.move(from, to, amount);
         return SUCCESS;
     }
 }

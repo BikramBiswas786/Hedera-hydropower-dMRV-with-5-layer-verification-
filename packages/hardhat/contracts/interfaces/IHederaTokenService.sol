@@ -70,4 +70,18 @@ interface IHederaTokenService {
         address recipient,
         int64 amount
     ) external returns (int64 responseCode);
+
+    /// @notice Moves `amount` of `token` from `from` to `to` against the allowance `from` gave the caller.
+    function transferFrom(
+        address token,
+        address from,
+        address to,
+        uint256 amount
+    ) external returns (int64 responseCode);
+}
+
+/// @notice HIP-719 facade every HTS token exposes at its EVM address. A contract calling `associate()` associates
+/// itself with the token.
+interface IHRC719 {
+    function associate() external returns (uint256 responseCode);
 }

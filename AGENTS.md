@@ -11,6 +11,10 @@ carbon credits through `DmrvRegistry`. The registry mints only with two EIP-712 
 accredited VVB. Its methodology module (`HydroVmr0017Module`) recomputes ER = BE − PE − LE on-chain from the plant's
 registered design. `CreditMarket` sells credits at the `ResilientHbarUsdFeed` price (Chainlink with a Supra fallback),
 and every sale is swapped through a SaucerSwap pool that must sit within 3% of that price. Every retirement mints an HTS NFT certificate. Raw readings are on HCS too, so anyone can reproduce every figure.
+The same settlement (`UsdSettlement`) also backs `UsdCheckout`, which sells any HTS fungible token at a USD price.
+
+Read [`HEDERA_FACTS.md`](HEDERA_FACTS.md) before writing Hedera code: tinybar versus weibar, HTS response codes,
+association, the testnet USDC pair, forking limits. Each fact links the test or workflow that proves it.
 
 ## Commands
 
@@ -36,6 +40,9 @@ yarn hardhat:size                 # contract-size gate (fails above 24,064 B); C
 yarn admin:threshold              # 2-of-3 threshold admin account (dry run unless --execute)
 yarn admin:exec plan <contract> "<fn(types)>" [args]   # admin calls as scheduled transactions
 yarn hardhat:test:fork            # contract tests against Hedera's HTS emulation
+yarn live:smoke                   # click through the deployed app (Live smoke workflow, every 6 h)
+yarn pair:rebalance [--execute]   # hold the testnet SaucerSwap pair at the oracle (Testnet pair keeper)
+yarn market:keep-listing [--execute]  # keep a listing open on the testnet market
 ```
 
 `yarn deploy` without `--network` targets the in-process `hardhat` network, not a running node.
@@ -46,7 +53,9 @@ yarn hardhat:test:fork            # contract tests against Hedera's HTS emulatio
 | --- | --- |
 | Core registry (attestation, custody, retirement, all HTS calls) | `packages/hardhat/contracts/DmrvRegistry.sol` |
 | Methodology module interface / hydro module (on-chain quantification) | `packages/hardhat/contracts/interfaces/IMethodology.sol`, `contracts/modules/HydroVmr0017Module.sol` |
-| Market (listings, settlement, SaucerSwap pool guard) | `packages/hardhat/contracts/CreditMarket.sol`, `contracts/interfaces/ISaucerSwap.sol` |
+| USD settlement shared by both sale contracts (oracle price, SaucerSwap pool guard, swap to seller) | `packages/hardhat/contracts/settlement/UsdSettlement.sol`, `contracts/interfaces/ISaucerSwap.sol` |
+| Market for registry credits (listings in registry custody, `buyAndRetire`) | `packages/hardhat/contracts/CreditMarket.sol` |
+| Checkout for any HTS fungible token (escrow, USD price per whole token) | `packages/hardhat/contracts/UsdCheckout.sol`, deploy `deploy/02_*.ts`, testnet demo `scripts/checkoutTestnetDemo.ts` |
 | Phase-0 registry (read-only on testnet, kept for evidence) | `packages/hardhat/contracts/legacy/HydroCreditRegistry.sol`, ABI in `packages/nextjs/contracts/legacy/` |
 | Oracle aggregator | `packages/hardhat/contracts/ResilientHbarUsdFeed.sol` |
 | HTS calls (always go through this) | `packages/hardhat/contracts/lib/HederaTokenLib.sol` |
@@ -97,8 +106,11 @@ yarn hardhat:test:fork            # contract tests against Hedera's HTS emulatio
   beyond `MAX_DEVIATION_BPS`, and uses whichever is fresh when only one is. Keep `readSources()` non-reverting; the UI,
   REST overview and MCP read it to explain paused markets.
 - **Treasury accounting.** `creditToken.balanceOf(registry) == Σ custodyBalanceOf` (listed units sit in the market's
-  custody account). There is
-  a test for it; extend it when you add a flow that moves units.
+  custody account). There is a test for it; extend it when you add a flow that moves units. `UsdCheckout` holds
+  its listed tokens itself: `token.balanceOf(checkout) == Σ available` over its active listings of that token
+  (`expectEscrowMatchesListings` in `UsdCheckout.test.ts`). No admin function moves escrowed tokens.
+- **One settlement.** Pricing, the pool guard and the swap to the seller live only in `UsdSettlement`. A change
+  there changes both `CreditMarket` and `UsdCheckout`; run both test files.
 - **The engine is pure and deterministic.** No I/O, no `Date.now()`, no randomness in `engine.ts` or
   `methodology/`. It runs in the browser, API, MCP and tests. Scenario generation takes an explicit `end` date in
   tests.
@@ -218,8 +230,41 @@ explicitly for historic evidence.
 - **A contract function**: custom errors over strings, events for every state change, `nonReentrant` on anything
   that moves value, and tests for the happy path and each revert. Run `yarn deploy` to regenerate ABIs and
   `yarn hardhat:size` to check the 24,064 B gate (`DmrvRegistry` is at 20,984 B).
-- **A methodology**: implement `IMethodology` as a new stateless module, with its own params encoding and tests, and
-  approve it with `setModuleApproved`. Do not add methodology rules to `DmrvRegistry`.
+- **A methodology**: see the recipe below. Do not add methodology rules to `DmrvRegistry`.
+- **A new thing to sell** (tickets, RWA shares, any HTS fungible token): no new contract. Deploy `UsdCheckout`
+  (`yarn deploy --tags UsdCheckout`, or `scripts/checkoutTestnetDemo.ts` next to a live feed), have the seller
+  `approve` it on the token and call `createListing(token, amount, usdCentsPerWholeToken)`. Buyers associate with the
+  token, call `quote`, and send at least that as `buy`'s value (in tinybar; weibar over JSON-RPC, see
+  `quoteToTxValue`). The seller is paid the settlement pair's USD token, so the seller must be associated with it.
+
+### Recipe: add a methodology in about 30 minutes
+
+The registry is methodology-agnostic; a methodology is one stateless contract plus its TypeScript twin.
+
+1. **Contract.** Copy `contracts/modules/HydroVmr0017Module.sol` to `contracts/modules/<Name>Module.sol` and
+   implement `IMethodology`:
+   - `methodologyId()`: `keccak256("<standard>/<code>")`; `version()`; `schemaHash()`: keccak256 of your params
+     and measurement ABI strings. Bump `version` whenever they change.
+   - `validateProject(params)`: decode your params struct, revert on anything the methodology forbids, and return
+     `ProjectTerms`: crediting start and end, the most the device can measure per second (the registry refuses a
+     metered rate above it), calibration expiry and the registration request time.
+   - `quantify(params, state, m)`: decode `m.metered` (what the device signed) and `m.verified` (what the VVB
+     accepted). Revert `NotMetered` if `verified` is more generous than `metered` in any direction that credits
+     more. Return `reductionG` (signed, grams CO2e), the next `state` (carry rounding remainders here) and a
+     `breakdown` you want on-chain. Round the baseline down and project emissions up.
+   - `validateRenewal` and `describe` as in the hydro module. No storage writes and no HTS calls: the registry
+     calls the module with STATICCALL.
+2. **TypeScript twin.** Put the same integer arithmetic in `packages/nextjs/services/mrv/methodology/<name>.ts`,
+   pure and deterministic, and add shared vectors to `packages/hardhat/test/fixtures/quantificationVectors.ts` (or a
+   sibling fixture) so the Hardhat and vitest suites assert the same integers.
+3. **Tests.** `test/<Name>Module.test.ts`: one case per revert in `validateProject` and `quantify`, the vectors,
+   and one end-to-end `submitAttestation` through `DmrvRegistry` using `test/helpers/dmrv.ts` (`signSubmission`
+   builds both EIP-712 signatures).
+4. **Wire it.** Deploy the module, call `DmrvRegistry.setModuleApproved(module, true)` (admin), then
+   `registerProject(id, name, module, operator, meter, designHash, params)`. Projects keep their module for life;
+   a new version is a new module.
+5. **Check.** `yarn test`, `yarn hardhat:size`, `yarn lint`. The market, checkout, HCS reproduction and MCP tools
+   work unchanged, because they read the registry, not the methodology.
 - **An API route or MCP tool**: validate input with zod (`schema.ts`, or a schema next to the server function),
   throw `ApiError` for caller mistakes, give every MCP tool a REST twin, and list both in `public/llms.txt` and the
   README.

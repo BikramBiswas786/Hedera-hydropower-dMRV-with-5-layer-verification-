@@ -129,11 +129,11 @@ configured, and `PoolPriceDeviation(poolPrice, oraclePrice, bps)` when the pool 
 `setPoolGuardEnabled(false)` reverts. The admin can repoint the pool, not remove the check. It reverts `PoolIlliquid` below
 `minLiquidity`.
 
-- **V1 pairs** (Uniswap V2 fork): `getReserves()`. The interface is SaucerSwap's `IUniswapV2Pair`
-  ([saucerswaplabs core](https://github.com/saucerswaplabs/saucerswaplabs-core)).
-- **V2 pools** (Uniswap V3 fork): `slot0().sqrtPriceX96` and `liquidity()`, as in `IUniswapV3PoolState`
-  ([saucerswaplabs v2 core](https://github.com/saucerswaplabs/saucerswaplabs-v2-core)). Price =
-  (sqrtPriceX96 / 2⁹⁶)² in token1 per token0 base units, scaled by the decimals.
+- **V1 pairs only** (Uniswap V2 fork): `getReserves()`. The interface is SaucerSwap's `IUniswapV2Pair`
+  ([saucerswaplabs core](https://github.com/saucerswaplabs/saucerswaplabs-core)). `setPoolGuard` refuses a V2
+  (concentrated-liquidity) pool, because the V1 router a purchase swaps through does not trade it.
+- **Factory check.** `setPoolGuard` asks the SaucerSwap factory's `getPair(token0, token1)` for the pool, since any
+  contract can return SaucerSwap's address from its own `factory()`.
 - **Token order** is read from `token0()` / `token1()` when the guard is set, so either order works.
 
 Pools the deploy script writes. Testnet is the pair the live market already swaps. Mainnet is the V1 WHBAR/USDC pair `getPair` returns; it is not deployed.
@@ -155,6 +155,23 @@ weibar with `quoteToTxValue` (`services/mrv/pricing.ts`).
 **HTS response codes.** HTS returns a response code instead of reverting. `contracts/lib/HederaTokenLib.sol` turns
 every non-`SUCCESS` (22) code into `HtsCallFailed(selector, code)`, except the certificate delivery, which is
 deliberately best-effort.
+
+## UsdSettlement and UsdCheckout
+
+The oracle price, the pool guard above and the swap to the seller live in one abstract contract,
+`contracts/settlement/UsdSettlement.sol`. `CreditMarket` sells registry credits through it; `UsdCheckout` sells any
+HTS fungible token through it.
+
+| `UsdCheckout` function | Who | What it enforces |
+| --- | --- | --- |
+| `createListing(token, amount, usdCentsPerWholeToken)` | holder | Associates the checkout with the token (HIP-719, once), pulls `amount` with HTS `transferFrom` against the holder's ERC-20 `approve`, and reads the token's decimals |
+| `cancelListing(id)` | seller | Returns the remainder |
+| `quote(listingId, amount)` · `minUsdOut(listingId, amount)` | view | Native cost at the settlement price, rounded up · the least USD-token units the seller must receive (listing dollars less `SWAP_SLIPPAGE_BPS`) |
+| `buy(listingId, amount)` (payable) | anyone associated with the token | Swaps the cost to the pair's USD token for the seller, sends the tokens, refunds the excess |
+| `setMaxPriceAge` · `setPoolGuard(...)` · `setPoolGuardEnabled(bool)` · `sweepHbar(to)` | admin | As on `CreditMarket`. No admin function moves escrowed tokens |
+
+The checkout's token balance always equals what its active listings offer. A buyer who is not associated with the
+token makes HTS return 184, and the whole purchase reverts, swap included.
 
 ## Oracle integration: Chainlink with a Supra fallback
 

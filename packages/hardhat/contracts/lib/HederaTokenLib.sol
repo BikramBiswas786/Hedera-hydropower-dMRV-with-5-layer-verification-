@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.28;
 
-import { IHederaTokenService } from "../interfaces/IHederaTokenService.sol";
+import { IHRC719, IHederaTokenService } from "../interfaces/IHederaTokenService.sol";
 
 /// @notice Thin wrapper over the HTS system contract that turns non-SUCCESS response codes into reverts.
 /// @dev HTS does not revert on failure; it returns a response code. Ignoring it silently loses tokens.
@@ -9,6 +9,7 @@ library HederaTokenLib {
     IHederaTokenService internal constant HTS = IHederaTokenService(address(0x167));
 
     int64 internal constant SUCCESS = 22;
+    int64 internal constant TOKEN_ALREADY_ASSOCIATED_TO_ACCOUNT = 194;
 
     /// @dev Key type bit flags from HIP-206: ADMIN=1, KYC=2, FREEZE=4, WIPE=8, SUPPLY=16, FEE=32, PAUSE=64.
     uint256 internal constant ADMIN_KEY = 1;
@@ -87,6 +88,20 @@ library HederaTokenLib {
     function transferFromSelf(address token, address to, uint256 amount) internal {
         int64 code = HTS.transferToken(token, address(this), to, _toInt64(amount));
         _check(IHederaTokenService.transferToken.selector, code);
+    }
+
+    /// @notice Moves `amount` units from `from` to `to` against the HTS allowance `from` gave this contract
+    /// (the token's ERC-20 `approve`). The recipient must be associated with the token.
+    function transferFrom(address token, address from, address to, uint256 amount) internal {
+        int64 code = HTS.transferFrom(token, from, to, amount);
+        _check(IHederaTokenService.transferFrom.selector, code);
+    }
+
+    /// @notice Associates this contract with `token` through its HIP-719 facade, so it can hold the token.
+    /// An existing association is not an error.
+    function associateSelf(address token) internal {
+        int64 code = int64(int256(IHRC719(token).associate()));
+        if (code != TOKEN_ALREADY_ASSOCIATED_TO_ACCOUNT) _check(IHRC719.associate.selector, code);
     }
 
     function _contractOwnedDefinition(

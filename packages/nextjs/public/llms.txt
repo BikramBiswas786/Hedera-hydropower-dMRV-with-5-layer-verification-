@@ -46,6 +46,28 @@ buyer's key: purchases are returned as unsigned transactions. The REST API is de
 
 Buying as an agent: `get_dex_price` → `list_open_listings` → `prepare_purchase { listingId, amountKg, beneficiary }` → sign and send `{ to, data, value }` with your wallet on `chainId` → `get_retirement_certificate`. `prepare_purchase` returns nothing if the SaucerSwap WHBAR/USDC spot is more than 3% from the settlement price. The server never holds your key.
 
+## Hedera facts (each proven by a test or workflow in the repo)
+
+Full list with proofs: https://github.com/BikramBiswas786/Hedera-hydropower-dMRV-with-5-layer-verification-/blob/main/HEDERA_FACTS.md
+
+- `msg.value` inside a contract is tinybar (1e8 per HBAR); a JSON-RPC transaction `value` is weibar (1e18). Scale by 1e10.
+- HTS calls return a response code (22 = SUCCESS) instead of reverting; check it. 184 = recipient not associated,
+  194 = already associated, 292 = no allowance.
+- Associate before receiving a token: call `associate()` on the token address (HIP-719), or use auto-association.
+- The Hashio relay wants legacy `gasPrice` transactions at `eth_gasPrice`.
+- The public testnet WHBAR/USDC pair prices HBAR near $2 (testnet USDC is not a dollar); check oracles against a
+  seeded pair or the mainnet pair 0.0.1462797.
+- Verify a SaucerSwap pool with the factory's `getPair`, not the pool's own `factory()`.
+- HCS: at most 1,024 bytes per chunk and 20 chunks per message; read messages from the mirror node.
+
+## Sell any HTS token at a USD price
+
+`UsdCheckout` (repo `packages/hardhat/contracts/UsdCheckout.sol`) uses the same settlement as `CreditMarket`: the seller
+approves the checkout on the token and calls `createListing(token, amount, usdCentsPerWholeToken)`; a buyer associated
+with the token calls `quote(listingId, amount)` and sends that much with `buy(listingId, amount)`. The HBAR is priced
+by Chainlink (Supra fallback), checked against a SaucerSwap pair within 3%, and swapped to the pair's USD token for the
+seller.
+
 ## REST
 
 - `POST /api/methodology/assess` — body ProjectDesign → assessment, designHash, registration integers
