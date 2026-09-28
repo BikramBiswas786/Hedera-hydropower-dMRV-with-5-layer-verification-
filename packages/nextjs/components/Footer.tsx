@@ -1,7 +1,8 @@
 import React from "react";
 import { HederaPortalFaucet } from "@scaffold-hbar-ui/components";
-import { hedera } from "viem/chains";
+import { hardhat, hederaTestnet } from "viem/chains";
 import { CurrencyDollarIcon } from "@heroicons/react/24/outline";
+import { LocalFaucet } from "~~/components/LocalFaucet";
 import { SwitchTheme } from "~~/components/SwitchTheme";
 import { useFetchHbarPrice } from "~~/hooks/scaffold-hbar";
 import { useTargetNetwork } from "~~/hooks/scaffold-hbar/useTargetNetwork";
@@ -11,7 +12,8 @@ import { useTargetNetwork } from "~~/hooks/scaffold-hbar/useTargetNetwork";
  */
 export const Footer = () => {
   const { targetNetwork } = useTargetNetwork();
-  const isTestnet = targetNetwork.id !== hedera.id;
+  const isTestnet = targetNetwork.id === hederaTestnet.id;
+  const isLocal = targetNetwork.id === hardhat.id;
   const { price: nativeCurrencyPrice } = useFetchHbarPrice();
 
   return (
@@ -28,6 +30,7 @@ export const Footer = () => {
               </div>
             )}
             {isTestnet && <HederaPortalFaucet showIcon />}
+            {isLocal && <LocalFaucet />}
           </div>
           <SwitchTheme className="pointer-events-auto" />
         </div>
