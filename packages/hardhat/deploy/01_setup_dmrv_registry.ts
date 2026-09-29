@@ -1,7 +1,10 @@
+import { Wallet } from "ethers";
+import { registryDomain, signValidation } from "../utils/attestation";
 import { DEMO_PLANTS, HYDRO_PARAMS_TUPLE, hydroParamsOf } from "../utils/demoPlants";
 import { getHydroNetworkConfig, hashscanTx } from "../utils/hydroNetworkConfig";
 import { localPoolGuard } from "../utils/localSaucer";
 import { LIVE_NETWORKS, resolveMeterAddresses } from "../utils/meterKeys";
+import { LOCAL_VVB, demoValidationReport, validationReportHashOf } from "../utils/validation";
 import type { DeployFunction } from "hardhat-deploy/types";
 import type { HardhatRuntimeEnvironment } from "hardhat/types";
 
@@ -23,8 +26,10 @@ function evmAddress(value: string): string {
  *   1. HTS credit token and NFT certificate collection (created by the registry, which is their treasury).
  *   2. Approve `HydroVmr0017Module`; name `CreditMarket` as the registry's market (once, for good).
  *   3. Audit topic from HCS_TOPIC_ID.
- *   4. Demo projects, each with its own meter address. On Hedera networks the meters come from METER_ADDRESSES or
- *      `.secrets/meters.<network>.json`; the public demo derivation is refused (the deploy throws).
+ *   4. Demo projects, each with its own meter address and a VVB's `ValidationApproval` (VCS: validation precedes
+ *      registration). On Hedera networks the meters come from METER_ADDRESSES or `.secrets/meters.<network>.json`
+ *      (the public demo derivation is refused) and the validating key from VALIDATOR_PRIVATE_KEY, a labelled demo
+ *      VVB key; without it the plants are left for `yarn mrv:validate`. Local chains use the public LOCAL_VVB.
  *   5. SaucerSwap pool guard on the market (always enforced; `setPoolGuardEnabled(false)` reverts).
  *   6. Key split: VERIFIER_ADDRESS (the VVB's ECDSA signing key) gets VERIFIER_ROLE. ADMIN_ADDRESS (a 2-of-3
  *      Hedera threshold account, 0.0.<num>) gets DEFAULT_ADMIN_ROLE on both contracts and the deployer renounces.
@@ -74,10 +79,11 @@ const setupDmrv: DeployFunction = async function (hre: HardhatRuntimeEnvironment
 
   if ((await registry.creditToken()) === hre.ethers.ZeroAddress) {
     const fee = hre.ethers.parseEther(process.env.CREDIT_TOKEN_CREATE_FEE_HBAR ?? "20");
+    // HTS memos are at most 100 bytes. The name says what a unit is: a verified reduction, not a Verra VCU.
     const tx = await registry.createCreditToken(
-      "dMRV Carbon Credit",
-      "HYCC",
-      "dMRV registry credit: 1 unit = 1 kg CO2e, minted only against meter + VVB signed attestations",
+      "dMRV Verified Emission Reduction",
+      "DVER",
+      "1 unit = 1 kg CO2e, issued after VVB verification. Not a Verra VCU.",
       { value: fee, gasLimit: 1_000_000 },
     );
     await tx.wait();
@@ -89,7 +95,7 @@ const setupDmrv: DeployFunction = async function (hre: HardhatRuntimeEnvironment
     const fee = hre.ethers.parseEther(process.env.CERTIFICATE_TOKEN_CREATE_FEE_HBAR ?? "20");
     const tx = await registry.createCertificateToken(
       "dMRV Retirement Certificate",
-      "HYRET",
+      "DRET",
       "dMRV retirement certificate; metadata dmrv:retirement:<id>",
       { value: fee, gasLimit: 1_000_000 },
     );
@@ -129,23 +135,53 @@ const setupDmrv: DeployFunction = async function (hre: HardhatRuntimeEnvironment
   const registered = new Set(await registry.getProjectIds());
   const operator = process.env.PLANT_OPERATOR_ADDRESS ?? deployer;
   const coder = hre.ethers.AbiCoder.defaultAbiCoder();
-  for (const plant of registerDemo ? DEMO_PLANTS : []) {
-    const projectId = hre.ethers.encodeBytes32String(plant.plantId);
-    if (registered.has(projectId)) continue;
-    const params = coder.encode([HYDRO_PARAMS_TUPLE], [hydroParamsOf(plant)]);
-    const meter = meters[plant.plantId];
-    const tx = await registry.registerProject(
-      projectId,
-      plant.name,
-      moduleAddress,
-      operator,
-      meter,
-      plant.design.designHash,
-      params,
-      { gasLimit: 800_000 },
+  const validatorKey = live ? process.env.VALIDATOR_PRIVATE_KEY?.trim() : LOCAL_VVB.privateKey;
+  const validator = validatorKey
+    ? new Wallet(validatorKey.startsWith("0x") ? validatorKey : `0x${validatorKey}`)
+    : null;
+  const pending = registerDemo
+    ? DEMO_PLANTS.filter(p => !registered.has(hre.ethers.encodeBytes32String(p.plantId)))
+    : [];
+  if (pending.length && !validator) {
+    console.warn(
+      `No VALIDATOR_PRIVATE_KEY: ${pending.map(p => p.plantId).join(", ")} need a VVB's ValidationApproval (yarn mrv:validate).`,
     );
-    await tx.wait();
-    console.log(`Registered ${plant.plantId} (operator ${operator}, meter ${meter}): ${hashscanTx(config, tx.hash)}`);
+  }
+  if (pending.length && validator) {
+    const verifierRole = await registry.VERIFIER_ROLE();
+    if (!(await registry.hasRole(verifierRole, validator.address))) {
+      const tx = await registry.grantRole(verifierRole, validator.address, { gasLimit: 200_000 });
+      await tx.wait();
+      console.log(`Granted VERIFIER_ROLE to the ${live ? "demo" : "local"} VVB ${validator.address}`);
+    }
+    const { chainId } = await hre.ethers.provider.getNetwork();
+    const domain = registryDomain(chainId, await registry.getAddress());
+    for (const plant of pending) {
+      const projectId = hre.ethers.encodeBytes32String(plant.plantId);
+      const params = coder.encode([HYDRO_PARAMS_TUPLE], [hydroParamsOf(plant)]);
+      const meter = meters[plant.plantId];
+      const validationReportHash = validationReportHashOf(demoValidationReport(plant, network));
+      const registration = {
+        projectId,
+        module: moduleAddress,
+        operator,
+        meter,
+        designHash: plant.design.designHash,
+        validationReportHash,
+        externalId: hre.ethers.ZeroHash,
+        params,
+      };
+      const signature = await signValidation(
+        domain,
+        { ...registration, reportHash: validationReportHash, creditingPeriod: 1 },
+        validator,
+      );
+      const tx = await registry.registerProject(registration, signature, { gasLimit: 900_000 });
+      await tx.wait();
+      console.log(
+        `Registered ${plant.plantId} (operator ${operator}, meter ${meter}, validated by ${validator.address}): ${hashscanTx(config, tx.hash)}`,
+      );
+    }
   }
 
   const guard = config.poolGuard ?? (await localPoolGuard(hre));

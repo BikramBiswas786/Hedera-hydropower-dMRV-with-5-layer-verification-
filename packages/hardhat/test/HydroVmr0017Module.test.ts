@@ -2,13 +2,18 @@ import { expect } from "chai";
 import { ethers } from "hardhat";
 import { loadFixture, time } from "@nomicfoundation/hardhat-network-helpers";
 import { isolateClock } from "./helpers/clock";
-import { HOUR, METER, attestationInput, plantDesign } from "./helpers/registry";
-import { ensureHts } from "./helpers/hts";
-import { FIVE_YEAR_FROM, YEAR, type HydroParams, encodeEnergy, encodeParams } from "./helpers/dmrv";
+import {
+  FIVE_YEAR_FROM,
+  UGANDA,
+  YEAR,
+  type HydroParams,
+  encodeEnergy,
+  encodeParams,
+  hydroParams,
+} from "./helpers/dmrv";
 import { QUANTIFICATION_VECTORS } from "./fixtures/quantificationVectors";
 import { LIVE_ATTESTATIONS } from "./fixtures/liveAttestations";
 
-const PLANT_ID = ethers.encodeBytes32String("PLANT-DEMO-01");
 const BREAKDOWN = ["uint32", "int256", "int256", "uint256", "uint256", "uint256", "int256", "uint256", "int256"];
 
 function paramsFromDesign(
@@ -21,6 +26,18 @@ function paramsFromDesign(
     calibrationValidUntil: design.creditingEnd,
     meteringHash: ethers.ZeroHash,
   });
+}
+
+type Design = Omit<HydroParams, "registrationRequestedAt" | "calibrationValidUntil" | "meteringHash">;
+
+/** A CDM run-of-river plant in Uganda whose 7-year period started `startedDaysAgo` days ago (EF 1 t/MWh). */
+async function plantDesign(overrides: Partial<Design> = {}, startedDaysAgo = 30): Promise<Design> {
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  const { registrationRequestedAt, calibrationValidUntil, meteringHash, ...design } = await hydroParams(
+    {},
+    startedDaysAgo,
+  );
+  return { ...design, ...overrides };
 }
 
 function energy(netWh: bigint, grossWh: bigint, fuelG: bigint, leakageG: bigint) {
@@ -36,51 +53,32 @@ function decodeBreakdown(breakdown: string) {
 describe("HydroVmr0017Module", function () {
   isolateClock();
   async function fixture() {
-    await ensureHts();
-    const [admin, operator] = await ethers.getSigners();
-    const feed = await ethers.deployContract("MockV3Aggregator", [8, 25_000_000n]);
-    const registry = await ethers.deployContract("HydroCreditRegistry", [
-      admin.address,
-      await feed.getAddress(),
-      10n ** 18n,
-      9_000,
-      3_600,
-    ]);
     const module = await ethers.deployContract("HydroVmr0017Module");
     const design = await plantDesign();
-    await registry.createCreditToken("Hydro dMRV Carbon Credit", "HYCC", { value: ethers.parseEther("20") });
-    await registry.registerPlant(PLANT_ID, "Demo", operator.address, METER.address, design);
-    await registry.setAuditTopic(4_242_424);
-    return { registry, module, design, admin };
+    return { module, design };
   }
 
-  it("recomputes the registry's ER, including the carried ledger", async function () {
-    const { registry, module, design } = await loadFixture(fixture);
-    const first = await attestationInput(registry, PLANT_ID);
+  it("carries its ledger word from one period to the next", async function () {
+    const { module, design } = await loadFixture(fixture);
     const params = paramsFromDesign(design, design.creditingStart);
-    const energy1 = energy(first.netEnergyWh, first.grossEnergyWh, first.fuelG, first.leakageG);
-    const preview = await module.quantify(params, ethers.ZeroHash, {
-      periodStart: first.periodStart,
-      periodEnd: first.periodEnd,
-      metered: energy1,
-      verified: energy1,
+    const e = energy(1_500n, 1_600n, 0n, 0n);
+    const start = design.creditingStart + 86_400n;
+    const first = await module.quantify(params, ethers.ZeroHash, {
+      periodStart: start,
+      periodEnd: start + 3_600n,
+      metered: e,
+      verified: e,
     });
-    const onChain = await registry.quantify(PLANT_ID, first);
-    expect(preview.reductionG).to.equal(onChain.reductionG);
-
-    await registry.submitAttestation(first);
-    await time.increase(HOUR);
-    const second = await attestationInput(registry, PLANT_ID, { plantSequence: 1 });
-    const energy2 = energy(second.netEnergyWh, second.grossEnergyWh, second.fuelG, second.leakageG);
-    const again = await module.quantify(params, preview.newState, {
-      periodStart: second.periodStart,
-      periodEnd: second.periodEnd,
-      metered: energy2,
-      verified: energy2,
+    expect(first.reductionG).to.equal(1_500n);
+    expect(decodeBreakdown(first.breakdown).balanceG).to.equal(500n);
+    const second = await module.quantify(params, first.newState, {
+      periodStart: start + 3_600n,
+      periodEnd: start + 7_200n,
+      metered: e,
+      verified: e,
     });
-    const onChain2 = await registry.quantify(PLANT_ID, second);
-    expect(again.reductionG).to.equal(onChain2.reductionG);
-    expect(again.breakdown).to.not.equal("0x");
+    expect(decodeBreakdown(second.breakdown).units).to.equal(2n);
+    expect(decodeBreakdown(second.breakdown).balanceG).to.equal(0n);
   });
 
   it("requires a 5-year VMR0017 period when the request is on or after 1 Jan 2027", async function () {
@@ -121,7 +119,7 @@ describe("HydroVmr0017Module", function () {
     ).to.be.revertedWithCustomError(module, "NotRenewable");
   });
 
-  describe("greenfield parity with the legacy registry", function () {
+  describe("greenfield parity with the phase-0 testnet mints", function () {
     for (const live of LIVE_ATTESTATIONS) {
       it(`reproduces live attestation #${live.id} (${live.plantId}): ${live.expected.reductionG} g`, async function () {
         const module = await ethers.deployContract("HydroVmr0017Module");
@@ -188,8 +186,8 @@ describe("HydroVmr0017Module", function () {
   });
 
   describe("frozen parity with HydroCreditRegistry.quantify (spec D-4)", function () {
-    // The 13 outputs of audits/proto-phase1/parity.ts (26 Sep 2026), where the legacy contract and the module
-    // agreed. Frozen here so the check survives deleting the legacy contract; the legacy call runs while it exists.
+    // The 13 outputs of audits/proto-phase1/parity.ts (26 Sep 2026), where the phase-0 contract and the module
+    // agreed. Frozen here, since the phase-0 contract has been removed from the repository.
     const START = 1_767_225_600;
     const DESIGNS = [
       {
@@ -250,17 +248,7 @@ describe("HydroVmr0017Module", function () {
       [-693_000n, -20_652_099n, 0n, null],
     ];
 
-    it("reproduces all 13 frozen outputs, and the legacy contract agrees", async function () {
-      await ensureHts();
-      const [admin] = await ethers.getSigners();
-      const feed = await ethers.deployContract("MockV3Aggregator", [8, 10_000_000n]);
-      const legacy = await ethers.deployContract("HydroCreditRegistry", [
-        admin.address,
-        await feed.getAddress(),
-        10n ** 18n,
-        0,
-        3_600,
-      ]);
+    it("reproduces all 13 frozen outputs", async function () {
       const module = await ethers.deployContract("HydroVmr0017Module");
       const periodStart = BigInt(START + 30 * 86_400);
       const periodEnd = periodStart + 30n * 86_400n;
@@ -273,8 +261,6 @@ describe("HydroVmr0017Module", function () {
           creditingEnd: BigInt(START) + 7n * YEAR,
           designHash: ethers.id(`d${i}`),
         };
-        const id = ethers.encodeBytes32String(`P${i}`);
-        await legacy.registerPlant(id, `p${i}`, admin.address, ethers.Wallet.createRandom().address, design);
         const params = paramsFromDesign(design, BigInt(START - 100));
         for (const [j, [gross, net, fuel, leak]] of INPUTS.entries()) {
           const expected = FROZEN[i][j];
@@ -290,28 +276,6 @@ describe("HydroVmr0017Module", function () {
           }
           const q = await module.quantify(params, ethers.ZeroHash, m);
           expect(q.reductionG, `design ${i} input ${j}`).to.equal(expected);
-          const old = await legacy.quantify(id, {
-            plantId: id,
-            plantSequence: 0,
-            periodStart,
-            periodEnd,
-            netEnergyWh: net,
-            grossEnergyWh: gross,
-            fuelG: f,
-            leakageG: leak,
-            completenessBps: 10_000,
-            reportHash: ethers.id("r"),
-            hcsTopicNum: 1,
-            hcsSequence: 1,
-            meter: {
-              grossEnergyWh: gross,
-              netEnergyWh: net,
-              fuelG: f,
-              readingsDigest: ethers.id("x"),
-              signature: "0x",
-            },
-          });
-          expect(old.reductionG, `legacy design ${i} input ${j}`).to.equal(expected);
           checked++;
         }
       }
@@ -422,6 +386,33 @@ describe("HydroVmr0017Module", function () {
         module,
         "InvalidCreditingPeriod",
       );
+    });
+
+    it("applies VMR0017 Table 1 to hydro: UN LDCs only, 15 MW by the higher of rated and authorized capacity", async function () {
+      const module = await ethers.deployContract("HydroVmr0017Module");
+      const check = async (o: Partial<Design>, requestedAt?: bigint) => {
+        const d = await plantDesign({ methodology: 1, ...o });
+        return module.validateProject(paramsFromDesign(d, requestedAt ?? d.creditingStart));
+      };
+      await check({ hostCountry: UGANDA });
+      await expect(check({ hostCountry: "0x494e" })) // India: not an LDC
+        .to.be.revertedWithCustomError(module, "NotLeastDevelopedCountry");
+      await expect(check({ hostCountry: "0x0000" })).to.be.revertedWithCustomError(module, "InvalidHostCountry");
+      await check({ methodology: 0, hostCountry: "0x494e" }); // the CDM path has no LDC condition
+      await expect(check({ capacityKw: 10_000, authorizedCapacityKw: 15_001 }))
+        .to.be.revertedWithCustomError(module, "MethodologyNotApplicable")
+        .withArgs(15_001);
+      await check({ capacityKw: 15_000, authorizedCapacityKw: 12_000 });
+    });
+
+    it("follows the UN LDC list, graduations included", async function () {
+      const module = await ethers.deployContract("HydroVmr0017Module");
+      const bangladesh = "0x4244"; // graduates on 24 November 2026
+      expect(await module.isLeastDevelopedCountry(bangladesh, 1_795_478_399n)).to.equal(true);
+      expect(await module.isLeastDevelopedCountry(bangladesh, 1_795_478_400n)).to.equal(false);
+      expect(await module.isLeastDevelopedCountry(UGANDA, 4_000_000_000n)).to.equal(true);
+      expect(await module.isLeastDevelopedCountry("0x4b45", 0n)).to.equal(false); // Kenya
+      expect((await module.LDC_TABLE()).length).to.equal(2 + 44 * 12);
     });
 
     it("rejects VMR0017 above 15 MW and a new reservoir at or below 4 W/m²", async function () {
@@ -540,7 +531,7 @@ describe("HydroVmr0017Module", function () {
       expect(t10.creditingEnd - t10.creditingStart).to.equal(10n * YEAR);
     });
 
-    it("renews only the grid factor, the dates and the calibration, at most three periods in total", async function () {
+    it("renews the grid factor, dates, calibration, Cap_PJ and A_PJ, and nothing else; at most three periods", async function () {
       const module = await ethers.deployContract("HydroVmr0017Module");
       const design = await plantDesign({ methodology: 1 });
       const params = paramsFromDesign(design, design.creditingStart);
@@ -551,9 +542,12 @@ describe("HydroVmr0017Module", function () {
       const terms = await module.validateRenewal(params, ok, design.creditingStart, design.creditingEnd, 1);
       expect(terms.creditingStart).to.equal(design.creditingEnd);
 
+      // Cap_PJ and A_PJ are measured again at the start of each crediting period (ACM0002 v22.0 tables 14, 15).
       const bigger = paramsFromDesign({ ...next, capacityKw: 600 }, design.creditingStart);
+      await module.validateRenewal(params, bigger, design.creditingStart, design.creditingEnd, 1);
+      const moved = paramsFromDesign({ ...next, hostCountry: "0x5457" }, design.creditingStart);
       await expect(
-        module.validateRenewal(params, bigger, design.creditingStart, design.creditingEnd, 1),
+        module.validateRenewal(params, moved, design.creditingStart, design.creditingEnd, 1),
       ).to.be.revertedWithCustomError(module, "ParamsChanged");
       const overlap = paramsFromDesign(
         { ...next, creditingStart: design.creditingEnd - 1n, creditingEnd: design.creditingEnd - 1n + 5n * YEAR },

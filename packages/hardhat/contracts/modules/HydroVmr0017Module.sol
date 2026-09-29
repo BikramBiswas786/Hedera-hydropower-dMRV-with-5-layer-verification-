@@ -9,6 +9,11 @@ import { IMethodology, Measurement, ProjectTerms, QuantResult } from "../interfa
 /// It also enforces the metering rules that need the methodology's encoding: the verifier's figures may only be more
 /// conservative than what the meter signed, gross generation is capped by the nameplate, and a period stays inside
 /// one crediting year. The registry checks the signatures over both encodings before it calls `quantify`.
+///
+/// Version 2 adds VMR0017 v1.0 Table 1 in full: a hydro project is eligible only in a UN Least Developed Country
+/// (checked at the registration request against `LDC_TABLE`, graduations included) and only up to 15 MW of the
+/// higher of the rated and the authorized capacity. A renewal may re-measure Cap_PJ and A_PJ, which ACM0002 v22.0
+/// (Data/Parameter tables 14 and 15) determines once at the beginning of each crediting period.
 /// @dev Ledger word, big-endian: `uint32 creditingYear | int112 yearNetWh | int112 balanceG`.
 contract HydroVmr0017Module is IMethodology {
     uint256 public constant CREDITING_YEAR = 365 days;
@@ -24,6 +29,18 @@ contract HydroVmr0017Module is IMethodology {
     uint256 private constant G_PER_TONNE = 1e6;
     uint256 private constant G_PER_UNIT = 1_000;
 
+    /// @notice UN list of Least Developed Countries (UN-OHRLLS, as of 25 Sep 2026): ISO 3166-1 alpha-2 code followed
+    /// by the graduation date as a big-endian uint32 unix time, 0 for none scheduled. Where only the year of a
+    /// graduation is known, 1 January of that year is used, so a country stops counting no later than it graduates.
+    /// `services/mrv/methodology/ldc.ts` holds the same list. A change is a new module version.
+    bytes public constant LDC_TABLE =
+        hex"414f00000000424a000000004246000000004249000000004346000000005444000000004b4d00000000434400000000"
+        hex"444a00000000455200000000455400000000474d00000000474e000000004757000000004c53000000004c5200000000"
+        hex"4d47000000004d57000000004d4c000000004d52000000004d5a000000004e4500000000525700000000534e6efaa500"
+        hex"534c00000000534f00000000535300000000534400000000545a000000005447000000005547000000005a4d00000000"
+        hex"41460000000042446b04d3804b486efaa5004c416b04d3804d4d000000004e506b04d380544c00000000594500000000"
+        hex"4854000000004b490000000053426b36ec80545600000000";
+
     uint8 private constant CDM = 0;
     uint8 private constant VMR = 1;
     uint8 private constant GREENFIELD = 0;
@@ -33,7 +50,11 @@ contract HydroVmr0017Module is IMethodology {
     struct HydroParams {
         uint8 projectType;
         uint8 methodology;
+        /// @dev ISO 3166-1 alpha-2 code of the host country, e.g. "UG".
+        bytes2 hostCountry;
         uint32 capacityKw;
+        /// @dev Capacity in the regulator's activity approval; 0 when none is stated. VMR0017 uses the higher one.
+        uint32 authorizedCapacityKw;
         uint32 baselineCapacityKw;
         uint64 reservoirAreaM2;
         uint64 baselineReservoirAreaM2;
@@ -67,6 +88,8 @@ contract HydroVmr0017Module is IMethodology {
     error ReservoirBelowBaseline();
     error PowerDensityTooLow(uint256 addedW, uint256 addedArea);
     error MethodologyNotApplicable(uint32 capacityKw);
+    error InvalidHostCountry(bytes2 hostCountry);
+    error NotLeastDevelopedCountry(bytes2 hostCountry, uint64 registrationRequestedAt);
     error NotRenewable();
     error RenewalOverlap();
     error RenewalSpan();
@@ -83,13 +106,13 @@ contract HydroVmr0017Module is IMethodology {
     }
 
     function version() external pure returns (uint32) {
-        return 1;
+        return 2;
     }
 
     function schemaHash() external pure returns (bytes32) {
         return
             keccak256(
-                "HydroParams(uint8,uint8,uint32,uint32,uint64,uint64,uint32,uint32,uint64,uint64,uint64,uint64,uint64,uint64,bytes32,bytes32)Energy(int64,uint64,uint64,uint64)"
+                "HydroParams(uint8,uint8,bytes2,uint32,uint32,uint32,uint64,uint64,uint32,uint32,uint64,uint64,uint64,uint64,uint64,uint64,bytes32,bytes32)Energy(int64,uint64,uint64,uint64)"
             );
     }
 
@@ -124,13 +147,14 @@ contract HydroVmr0017Module is IMethodology {
         if (uint256(newP.creditingEnd) - newP.creditingStart != _renewalSpan(newP.methodology, prevSpan)) {
             revert RenewalSpan();
         }
+        // Cap_PJ, the authorized capacity and A_PJ are re-determined at each crediting period (ACM0002 v22.0, Data /
+        // Parameter tables 14 and 15), so they may change; validateProject re-checks power density and Table 1.
         if (
             newP.registrationRequestedAt != oldP.registrationRequestedAt ||
             newP.projectType != oldP.projectType ||
             newP.methodology != oldP.methodology ||
-            newP.capacityKw != oldP.capacityKw ||
+            newP.hostCountry != oldP.hostCountry ||
             newP.baselineCapacityKw != oldP.baselineCapacityKw ||
-            newP.reservoirAreaM2 != oldP.reservoirAreaM2 ||
             newP.baselineReservoirAreaM2 != oldP.baselineReservoirAreaM2 ||
             newP.fuelCoefGPerTonne != oldP.fuelCoefGPerTonne ||
             newP.baselineWh != oldP.baselineWh ||
@@ -202,8 +226,11 @@ contract HydroVmr0017Module is IMethodology {
         HydroParams memory p = abi.decode(params, (HydroParams));
         return
             string.concat(
-                '{"id":"hydro/acm0002+vmr0017","version":1,"methodology":',
+                '{"id":"hydro/acm0002+vmr0017","version":2,"methodology":',
                 p.methodology == VMR ? '"VMR0017"' : '"CDM"',
+                ',"hostCountry":"',
+                string(abi.encodePacked(p.hostCountry)),
+                '"',
                 ',"efGridGPerMwh":',
                 _utoa(p.efGridGPerMwh),
                 "}"
@@ -239,10 +266,29 @@ contract HydroVmr0017Module is IMethodology {
         ) revert NotMetered();
     }
 
+    /// @notice Whether `country` is on the UN LDC list at `at` (unix seconds): listed, and not yet graduated.
+    function isLeastDevelopedCountry(bytes2 country, uint64 at) public pure returns (bool) {
+        bytes memory table = LDC_TABLE;
+        for (uint256 i = 0; i < table.length; i += 6) {
+            if (bytes2(bytes.concat(table[i], table[i + 1])) != country) continue;
+            uint32 graduation = uint32(bytes4(bytes.concat(table[i + 2], table[i + 3], table[i + 4], table[i + 5])));
+            return graduation == 0 || at < graduation;
+        }
+        return false;
+    }
+
     function _checkDesign(HydroParams memory p) private pure {
         if (p.projectType > CAPACITY_ADDITION || p.methodology > VMR) revert InvalidParams();
+        if (!_isCountryCode(p.hostCountry)) revert InvalidHostCountry(p.hostCountry);
         if (p.capacityKw == 0) revert InvalidBaseline();
-        if (p.methodology == VMR && p.capacityKw > VMR0017_MAX_HYDRO_KW) revert MethodologyNotApplicable(p.capacityKw);
+        if (p.methodology == VMR) {
+            // VMR0017 Table 1: hydroelectric, 15 MW or less by the higher of rated and authorized capacity, LDCs only.
+            uint32 capacity = p.authorizedCapacityKw > p.capacityKw ? p.authorizedCapacityKw : p.capacityKw;
+            if (capacity > VMR0017_MAX_HYDRO_KW) revert MethodologyNotApplicable(capacity);
+            if (!isLeastDevelopedCountry(p.hostCountry, p.registrationRequestedAt)) {
+                revert NotLeastDevelopedCountry(p.hostCountry, p.registrationRequestedAt);
+            }
+        }
         if (p.efGridGPerMwh == 0 || p.efGridGPerMwh > MAX_GRID_EF_G_PER_MWH) {
             revert GridEmissionFactorOutOfRange(p.efGridGPerMwh);
         }
@@ -259,6 +305,10 @@ contract HydroVmr0017Module is IMethodology {
         if (p.reservoirAreaM2 < p.baselineReservoirAreaM2) revert ReservoirBelowBaseline();
         (uint256 addedW, uint256 addedArea, ) = _density(p);
         if (addedArea != 0 && addedW <= MIN_POWER_DENSITY * addedArea) revert PowerDensityTooLow(addedW, addedArea);
+    }
+
+    function _isCountryCode(bytes2 code) private pure returns (bool) {
+        return code[0] >= "A" && code[0] <= "Z" && code[1] >= "A" && code[1] <= "Z";
     }
 
     /// @dev A VMR0017 period requested on or after 1 Jan 2027 is exactly 5 × 365 days. Earlier requests may be 5, 7 or 10.
