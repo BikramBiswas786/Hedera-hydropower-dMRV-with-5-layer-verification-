@@ -39,3 +39,7 @@ yarn-error.log*
 attest-*.json
 # Guardian bridge key written by `yarn guardian:publish-did --generate-key`
 .secrets/
+
+# Written by `yarn mrv:verify` and `yarn mainnet:checkout buy`; evidence goes to docs/evidence.md, not the repo
+verification-*.json
+*-checkout.json

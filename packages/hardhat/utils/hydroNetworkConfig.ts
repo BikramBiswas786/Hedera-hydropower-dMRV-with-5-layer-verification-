@@ -124,6 +124,18 @@ export function getHydroNetworkConfig(hre: HardhatRuntimeEnvironment): HydroNetw
         poolGuard: POOL_GUARDS.hederaMainnet,
       };
     default:
+      // A plain Hardhat fork of mainnet (HEDERA_FORK_NETWORK=mainnet) has the real oracles, factory and pair, so the
+      // mainnet deploy can be rehearsed on it. msg.value there is still in 18 decimals.
+      if (hre.network.name === "hardhat" && process.env.HEDERA_FORK_NETWORK === "mainnet") {
+        return {
+          oracles: ORACLES.hederaMainnet,
+          nativeUnitsPerHbar: WEI_PER_ETH,
+          maxPriceAgeSeconds,
+          saucerFactory: "0x0000000000000000000000000000000000103780",
+          saucerRouter: "0x00000000000000000000000000000000002e7a5d",
+          poolGuard: POOL_GUARDS.hederaMainnet,
+        };
+      }
       return { nativeUnitsPerHbar: WEI_PER_ETH, maxPriceAgeSeconds };
   }
 }

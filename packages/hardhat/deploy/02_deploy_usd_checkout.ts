@@ -2,8 +2,9 @@ import type { HardhatRuntimeEnvironment } from "hardhat/types";
 import type { DeployFunction } from "hardhat-deploy/types";
 
 import { getDeployGasPrice } from "../utils/getDeployGasPrice";
-import { getHydroNetworkConfig, hashscanContract, hashscanTx } from "../utils/hydroNetworkConfig";
+import { getHydroNetworkConfig, hashscanContract } from "../utils/hydroNetworkConfig";
 import { localPoolGuard } from "../utils/localSaucer";
+import { pinPoolGuard } from "../utils/poolGuard";
 
 /**
  * Deploys `UsdCheckout`: the same oracle + SaucerSwap settlement as `CreditMarket`, for any HTS fungible token.
@@ -31,28 +32,7 @@ const deployCheckout: DeployFunction = async function (hre: HardhatRuntimeEnviro
   });
 
   const guard = config.poolGuard ?? (await localPoolGuard(hre));
-  if (guard) {
-    const checkout = await hre.ethers.getContractAt(
-      "UsdCheckout",
-      deployed.address,
-      await hre.ethers.getSigner(deployer),
-    );
-    if ((await checkout.poolGuard()).pool.toLowerCase() !== guard.pool.toLowerCase()) {
-      const tx = await checkout.setPoolGuard(
-        guard.pool,
-        guard.isV2,
-        guard.whbar,
-        guard.whbarDecimals,
-        guard.usdDecimals,
-        guard.maxDeviationBps,
-        guard.minLiquidity,
-        guard.enabled,
-        { gasLimit: 300_000 },
-      );
-      await tx.wait();
-      console.log(`UsdCheckout pool guard ${guard.pool}: ${hashscanTx(config, tx.hash)}`);
-    }
-  }
+  if (guard) await pinPoolGuard(hre, "UsdCheckout", deployed.address, guard);
   console.log(`UsdCheckout:          ${hashscanContract(config, deployed.address)}`);
 };
 

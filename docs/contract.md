@@ -104,6 +104,12 @@ VerificationStatement(bytes32 projectId,uint32 firstRecord,uint32 lastRecord,byt
 - **`evidenceHash`** is an optional label for an external artefact the VVB relied on; each value backs one issuance
   (`EvidenceAlreadyUsed`). The contract checks nothing else about it: it is not a check of a Guardian VP, which needs
   Ed25519 signatures and IPFS documents a contract cannot read.
+- **A rejected run still counts toward the crediting year's energy.** The module advances its yearly net-energy total
+  when a record is made, before any verification. For a retrofit or capacity addition with an annual baseline
+  (`baselineWh`), a run the VVB rejects still uses up baseline allowance, so later periods of that year credit more than
+  if the rejected energy had never been metered. The VVB can offset it with `deductionG`; the contract does not force
+  it. Greenfield projects, both demo plants included, have no baseline allowance and are unaffected. The fix is a new
+  module version, and a project keeps its module for life.
 - **The HCS anchor is a number, not the message.** `recordMonitoring` and `verifyPeriod` require the audit topic and a
   non-zero sequence (`Unanchored`). The EVM cannot load an HCS message, so a direct call can cite a sequence whose bytes
   are something else. The app and `yarn mrv:reproduce` read the message and refuse a mismatch

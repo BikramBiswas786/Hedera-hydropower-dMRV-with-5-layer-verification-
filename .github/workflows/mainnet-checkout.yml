@@ -1,0 +1,120 @@
+name: Mainnet checkout
+
+# One sale through UsdCheckout on Hedera mainnet, so the settlement runs against SaucerSwap's public WHBAR/USDC pair
+# 0.0.1462797 at mainnet Chainlink, and the seller is paid real USDC (packages/nextjs/scripts/mainnetCheckout.ts).
+# What is sold is a labelled test token ("not a carbon credit"): the registry refuses demo plants on mainnet.
+#
+#   step=plan      read-only: the pair against Chainlink, whether a sale would settle now, the HBAR it needs and,
+#                  with the key, the seller's balance and associations. Spends nothing.
+#   step=execute   prepare (test token, USDC association, fund the buyer), deploy the feed and UsdCheckout
+#                  (deploy/05, tag MainnetCheckout), list, buy, prove the swap, verify on Sourcify. On mainnet it
+#                  runs only when `confirm` is "spend mainnet HBAR" (about 43 HBAR at 72 tinybar gas and $0.118; 20 of it goes to the buyer).
+#
+# Keys: MAINNET_DEPLOYER_KEY, the ECDSA key of a new account with an EVM alias that has never been pasted anywhere.
+# The buyer is a key derived from it (same holder), so this proves the settlement path, not an arm's-length trade.
+# network=testnet rehearses every step with TESTNET_REBALANCER_KEY on the existing testnet UsdCheckout; a push to a
+# claude/** branch whose message contains [checkout-rehearsal] runs that rehearsal.
+on:
+  workflow_dispatch:
+    inputs:
+      network:
+        type: choice
+        options: [mainnet, testnet]
+        default: mainnet
+      step:
+        type: choice
+        options: [plan, execute]
+        default: plan
+      confirm:
+        description: 'Type "spend mainnet HBAR" to execute on mainnet'
+        required: false
+        default: ""
+      price_usd_cents:
+        description: US cents per test token
+        default: "100"
+      buy_units:
+        description: Test tokens to buy
+        default: "1"
+  push:
+    branches: ["claude/**"]
+
+permissions:
+  contents: read
+
+jobs:
+  checkout:
+    if: github.event_name == 'workflow_dispatch' || contains(github.event.head_commit.message, '[checkout-rehearsal]')
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    concurrency: mainnet-checkout-${{ inputs.network || 'testnet' }}
+    env:
+      HEDERA_NETWORK: ${{ inputs.network || 'testnet' }}
+      STEP: ${{ inputs.step || 'execute' }}
+      PRICE_USD_CENTS: ${{ inputs.price_usd_cents || '100' }}
+      BUY_UNITS: ${{ inputs.buy_units || '1' }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20.18.3
+          cache: yarn
+
+      - run: yarn install --immutable
+
+      - name: Seller key
+        env:
+          MAINNET_KEY: ${{ secrets.MAINNET_DEPLOYER_KEY }}
+          TESTNET_KEY: ${{ secrets.TESTNET_REBALANCER_KEY }}
+        run: |
+          if [ "$HEDERA_NETWORK" = mainnet ]; then KEY="$MAINNET_KEY"; else KEY="$TESTNET_KEY"; fi
+          if [ -z "$KEY" ]; then
+            [ "$STEP" = plan ] && { echo "No key: the plan reads the pair only"; exit 0; }
+            echo "::error::Set the MAINNET_DEPLOYER_KEY secret (TESTNET_REBALANCER_KEY for testnet)"; exit 1
+          fi
+          KEY="${KEY#0x}"
+          echo "::add-mask::$KEY"
+          echo "SELLER_PRIVATE_KEY=0x$KEY" >> "$GITHUB_ENV"
+
+      - name: Plan
+        run: yarn mainnet:checkout plan
+
+      - name: Confirm
+        if: env.STEP == 'execute' && env.HEDERA_NETWORK == 'mainnet'
+        env:
+          CONFIRM: ${{ inputs.confirm }}
+        run: |
+          if [ "$CONFIRM" != "spend mainnet HBAR" ]; then
+            echo "::error::Type \"spend mainnet HBAR\" in confirm to execute on mainnet"; exit 1
+          fi
+
+      - name: Prepare (test token, USD token association, buyer)
+        if: env.STEP == 'execute'
+        run: yarn mainnet:checkout prepare
+
+      - name: Deploy the feed and UsdCheckout
+        if: env.STEP == 'execute' && env.HEDERA_NETWORK == 'mainnet'
+        working-directory: packages/hardhat
+        run: __RUNTIME_DEPLOYER_PRIVATE_KEY="$SELLER_PRIVATE_KEY" npx hardhat deploy --network hederaMainnet --tags MainnetCheckout
+
+      - name: List, buy and prove the swap
+        if: env.STEP == 'execute'
+        env:
+          # Testnet rehearses on the UsdCheckout already next to the seeded pair (docs/evidence.md).
+          CHECKOUT_ADDRESS: ${{ (inputs.network || 'testnet') == 'testnet' && '0x455eFbF07B2b5d5137AEc3601c43549593741898' || '' }}
+          EVIDENCE_FILE: ${{ github.workspace }}/checkout-evidence.json
+        run: yarn mainnet:checkout buy
+
+      - name: Verify on Sourcify
+        if: env.STEP == 'execute' && env.HEDERA_NETWORK == 'mainnet'
+        working-directory: packages/hardhat
+        run: yarn verify:sourcify hederaMainnet
+
+      - uses: actions/upload-artifact@v4
+        if: env.STEP == 'execute' && always()
+        with:
+          name: checkout-${{ env.HEDERA_NETWORK }}
+          path: |
+            checkout-evidence.json
+            packages/hardhat/deployments/hederaMainnet
+          if-no-files-found: ignore

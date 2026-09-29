@@ -29,3 +29,11 @@ jobs:
           HEDERA_FORK_NETWORK: mainnet
           HEDERA_RPC_URL: https://mainnet.hashio.io/api
         run: yarn workspace @sh/hardhat hardhat test test/MainnetFork.test.ts
+
+      # The deploy the Mainnet checkout workflow sends to mainnet, rehearsed on the fork: the feed on mainnet Chainlink
+      # and Supra, UsdCheckout, and setPoolGuard, which asks SaucerSwap's real factory for pair 0.0.1462797.
+      - name: Rehearse the mainnet UsdCheckout deploy
+        env:
+          HEDERA_FORK_NETWORK: mainnet
+          HEDERA_RPC_URL: https://mainnet.hashio.io/api
+        run: yarn workspace @sh/hardhat hardhat deploy --tags MainnetCheckout
