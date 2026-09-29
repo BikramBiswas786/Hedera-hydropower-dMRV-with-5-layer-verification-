@@ -76,15 +76,19 @@
               "command": "{run:mrv:create-topic}"
             },
             {
-              "label": "Step 1: verify a day of monitoring data and publish readings and report to HCS (writes attest-<plant>-<seq>.json)",
-              "command": "{run:mrv:attest}"
+              "label": "Monitoring: verify a day of sample data, publish readings and report to HCS and record the period on-chain (issues nothing)",
+              "command": "{run:mrv:record}"
             },
             {
-              "label": "The VVB signs the EIP-712 approval on its own machine (VVB_PRIVATE_KEY=… yarn mrv:approve attest-<plant>-<seq>.json)",
+              "label": "Verification: reproduce the pending records from HCS, publish the VVB's report, write verification-<plant>-<first>-<last>.json",
+              "command": "{run:mrv:verify} HYDRO-DEMO-01"
+            },
+            {
+              "label": "The VVB signs the EIP-712 VerificationStatement on its own machine (VVB_PRIVATE_KEY=… yarn mrv:approve verification-….json)",
               "command": "{run:mrv:approve}"
             },
             {
-              "label": "Step 2: relay the meter and VVB signatures; DmrvRegistry recomputes the tonnes and mints HTS credits",
+              "label": "Relay the signed statement; an approval issues HTS credits into the operator's custody",
               "command": "{run:mrv:submit}"
             }
           ]

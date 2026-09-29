@@ -1,85 +1,73 @@
 # Testnet evidence, keys and limits
 
-What is deployed, what each transaction proves, and where the testnet setup is weaker than a mainnet one. The
-README keeps only the quickstart; this is the record behind it.
+What is deployed, what each transaction proves, and where the testnet setup is weaker than a mainnet one. The README
+keeps only the quickstart; this is the record behind it.
 
-The live market the app reads is [`0x26E77708…1D61`](https://hashscan.io/testnet/contract/0x26E77708717cE69EBBBF76e59D106B20e67e1D61), the same address as `packages/nextjs/contracts/deployedContracts.ts`, built from the current `CreditMarket` source on 28 Sep 2026. [This transaction](https://hashscan.io/testnet/transaction/0xbbeb258c78ae6f1d9c2bfcbea37d754a151102b25528f63074f5e7f4c2b065f0) is `buyAndRetire` of 0.010 t through SaucerSwap V1 router `0.0.19264`. Settlement is Chainlink (Supra fallback) plus that pair. There is no second market on the site.
+## The VCS cycle on testnet, 29 Sep 2026
+
+The registry was deployed by the [Testnet deploy](../.github/workflows/testnet-deploy.yml) workflow from `3bbc4cd1`,
+and every step after it by the [Testnet evidence](../.github/workflows/testnet-evidence.yml) workflow with the same
+CLI an operator and a VVB use (`yarn mrv:record`, `mrv:verify`, `mrv:approve`, `mrv:submit`, `market:agent-buy`).
+Anyone can re-derive every record from HCS: `yarn mrv:reproduce`, or the links below.
+
+| Step | What it proves | Where |
+| --- | --- | --- |
+| Registration, validated | The admin registered each demo plant only with the demo VVB's `ValidationApproval` over its design, params and validation report. The report is the labelled demo statement in [`utils/validation.ts`](../packages/hardhat/utils/validation.ts) (what was and was not checked); its SHA-256 is the on-chain `validationReportHash` (`0x140bc36b…` and `0x201096d5…`) | [HYDRO-DEMO-01 0xc6fb2f1e…](https://hashscan.io/testnet/transaction/0xc6fb2f1e9b16b59e5a11134f4276cc9878ee5969fd5f4165edcf49f27b1ca520) · [HYDRO-DEMO-02 0xe09a2281…](https://hashscan.io/testnet/transaction/0xe09a2281b72ccbef798b5c96faca63e928ea9e2c0eb155283c6ec0e85d6183fc) |
+| Monitoring, recorded not issued | Three 24-hour periods (27–29 Sep), each signed by the plant's meter, published to HCS (readings, then report) and quantified by `HydroVmr0017Module` on-chain. DEMO-01: +0.769 t per day; DEMO-02: −2.689 t (below) | [record 0 0x0e3ed83c…](https://hashscan.io/testnet/transaction/0x0e3ed83c7a946f9b3ace4fa313d0beb11f57b11aa863efead770d82cb9e30d39) · [record 1 0x18676337…](https://hashscan.io/testnet/transaction/0x18676337a85c9ba59aa75aca4d251a14aa25960f9ed2df0afe2fa61a2a1a7ddc) · [DEMO-02 record 0 0x81e896dc…](https://hashscan.io/testnet/transaction/0x81e896dc4d2493335d8105299583057c0ce803387d7e9e20639aca6bafd43ca0) · reports on HCS [#10](https://hashscan.io/testnet/topic/0.0.10729650/message/10), [#15](https://hashscan.io/testnet/topic/0.0.10729650/message/15), [#20](https://hashscan.io/testnet/topic/0.0.10729650/message/20) |
+| Verification, then issuance | The VVB reproduced both DEMO-01 records from HCS, published its verification report and signed the `VerificationStatement` over the record chain head; relayed, it issued ⌊1,537,266 g / 1,000⌋ = 1.537 t | [verifyPeriod 0xffe81724…](https://hashscan.io/testnet/transaction/0xffe81724e83bc9fd4e85bae234e3654588d48f0833a0e18fc865f25fd0e391c4) · [verification report #21](https://hashscan.io/testnet/topic/0.0.10729650/message/21) |
+| A verified deficit | DEMO-02 is a storage plant on Uganda's hydro-dominated grid: PE_HP (100 kg/MWh) plus embodied LE (21 kg/MWh) exceed the 110 kg/MWh it displaces. The VVB approved the record; nothing was issued and the −2.689 t carries against its future periods | [verifyPeriod 0x036c34f5…](https://hashscan.io/testnet/transaction/0x036c34f5f3431eea65eb2a42681119a5240f34e497ece09c572c7125d623a1a8) · [verification report #22](https://hashscan.io/testnet/topic/0.0.10729650/message/22) |
+| Listing and an agent's purchase | The operator listed 1 t at $15/t. A separate buyer ran `get_dex_price → list_open_listings → prepare_purchase` and signed `buyAndRetire` of 0.010 t (1.2726 HBAR), swapped through SaucerSwap and retired with an HYRET certificate | [list 0x500c5be9…](https://hashscan.io/testnet/transaction/0x500c5be93df1ebaa510596b99bbec81540c891231ce2a9135082250d95929698) · [buyAndRetire 0x180f3a7c…](https://hashscan.io/testnet/transaction/0x180f3a7c2d0285a6a2ee0841c417232058a615093143c0a24489d396546178c0) |
+| Reproduction | All three records re-derived from HCS by the engine with the registered design and meter, including each record's hash-chain link | `yarn mrv:reproduce`, [`/api/registry/attestations/0/reproduce`](https://hydro-dmrv.vercel.app/api/registry/attestations/0/reproduce) |
 
 ## What is on testnet
 
-The app reads one registry. Older ones stay on chain so their mints still reproduce. Link the transactions below, not a contract's full history.
-
-| What (26 Sep 2026) | Where |
+| What | Where |
 | --- | --- |
-| `DmrvRegistry` · module · feed | [0xaf9C76B4…](https://hashscan.io/testnet/contract/0xaf9C76B48B317cee770ED6AE038D516b269E0129) · [0x8D574327…](https://hashscan.io/testnet/contract/0x8D57432792aD39Ef2d2e104904e31b157846261d) · [0x9529A018…](https://hashscan.io/testnet/contract/0x9529A0189654834949cf78f9ce25336be59F8AbB) |
-| `CreditMarket` (28 Sep 2026, current source): deploy, factory-checked pool guard, `MARKET_ROLE`, list 1 t at $15/t | [0x26E77708…](https://hashscan.io/testnet/contract/0x26E77708717cE69EBBBF76e59D106B20e67e1D61) · [guard 0xb533fbb4…](https://hashscan.io/testnet/transaction/0xb533fbb4b03119ab1294fdee0467e38cbcb06a99f2f25c61e892896a7cca5317) · [role 0xd7387d5a…](https://hashscan.io/testnet/transaction/0xd7387d5a362c43c0b290360a8c8c2242bcea89276e06c693c6ec24cf0f88d3b6) · [list 0xeed72e13…](https://hashscan.io/testnet/transaction/0xeed72e13ccdba73c2d8d7e7472fd4a2d12395685e49a49340d1eb366624b3a93) |
+| `DmrvRegistry` v2 · `HydroVmr0017Module` v2 · `RenewableVmr0017Module` (approved) · `DmrvAnnotations` · feed | [0x4EB51769…](https://hashscan.io/testnet/contract/0x4EB517694CBac7b59a26B188eFEBa35aAb5Fd48e) · [0xe9f23475…](https://hashscan.io/testnet/contract/0xe9f234753775AE6371819366472A84717ddb57eb) · [0x2A6FEc6B…](https://hashscan.io/testnet/contract/0x2A6FEc6Bf13FD1EdCa25F46943BEEfadDb75433a) · [0x2F5EC1b4…](https://hashscan.io/testnet/contract/0x2F5EC1b43414f97ae905808A69CE7040Ebb25E9F) · [0x59AFbF3a…](https://hashscan.io/testnet/contract/0x59AFbF3a3BA4587179d8E3aD49Bf7061fABa1e17) |
+| `CreditMarket`, the registry's one market (`setMarket`), pool guard enforced on the seeded SaucerSwap V1 pair | [0x48F5056E…](https://hashscan.io/testnet/contract/0x48F5056EdaD0B16c97a54085512b48417bC40F04) · [guard 0xaa2523e9…](https://hashscan.io/testnet/transaction/0xaa2523e9b30de8228af159263e8e92c233aed721781594dcfa45a19b9b55cb85) |
 | HCS audit topic | [0.0.10729650](https://hashscan.io/testnet/topic/0.0.10729650) |
-| Credits HYCC · certificates HYRET | [0.0.10729677](https://hashscan.io/testnet/token/0.0.10729677) · [0.0.10729678](https://hashscan.io/testnet/token/0.0.10729678) |
+| Credits HYCC · certificates HYRET | [0.0.10771273](https://hashscan.io/testnet/token/0.0.10771273) · [0.0.10771274](https://hashscan.io/testnet/token/0.0.10771274) |
 | SaucerSwap V1 pair the purchase swaps | [0xF98D0dF4…](https://hashscan.io/testnet/contract/0xF98D0dF4eC60d57f24Ce7BD24eAcAdF045219869) |
-| Meter + VVB signed mint → 4.791 t | [0x321b6d20…](https://hashscan.io/testnet/transaction/0x321b6d20db7b24eaee672160fcb9643d6fafd357c204934e892446ac6db11b6e) |
-| `buyAndRetire` 0.010 t on the current market through router `0.0.19264`, 1.159 HBAR | [0xbbeb258c…](https://hashscan.io/testnet/transaction/0xbbeb258c78ae6f1d9c2bfcbea37d754a151102b25528f63074f5e7f4c2b065f0) |
-| `buyAndRetire` 0.020 t on the first market [`0x5aeDe76f…`](https://hashscan.io/testnet/contract/0x5aeDe76fc6625cfA3227FFf70197D4D7ff3e5030). HYRET serial 2 | [0x47358084…](https://hashscan.io/testnet/transaction/0x4735808481bde453a2354b4ed395a00ba72112fdcbb0b96c9a1196e4c5753fab) |
 | Guardian check, negative: the holder 0.0.10721162 with a wrong token id, 0.0.10760320, answers HTTP 422 "No Guardian transfer", never `backed`; `checkout.purchase.test.ts` shows the builder returns 409 and never quotes for `not-backed` or `incomplete`, and fails if the trace call is removed | [trace, wrong token](https://hydro-dmrv.vercel.app/api/guardian/v1/trace?ref=ft:0.0.10760320:0.0.10721162) |
 | Guardian token sold: 12.5 t minted by Managed Guardian (trace `backed`), listed on `UsdCheckout` at $15/t and bought through SaucerSwap, only after the trace gate passed | token [0.0.10760359](https://hashscan.io/testnet/token/0.0.10760359) · [mint 0.0.10238177-1790602426-400520522](https://hashscan.io/testnet/transaction/0.0.10238177-1790602426-400520522) · [list 0x2c09bf5b…](https://hashscan.io/testnet/transaction/0x2c09bf5b139cd83ceec301a44ae32504883011a64d6c43d714ad4e99d9f1af7f) · [buy 0x01886451…](https://hashscan.io/testnet/transaction/0x0188645163e1bf1aa3cfac7ca72a0c31b9c4cc655938c9edde6746be9cbc0bfe) |
 | Schedule Service, 2-of-3: a KeyList account [0.0.10764798](https://hashscan.io/testnet/account/0.0.10764798) made admin of `UsdCheckout`. Holder 1 scheduled `setPoolGuardEnabled(true)` and it waited; holder 2's `ScheduleSign` made the network run it. Holders 3 and 1 then scheduled and signed `renounceRole`, so the account holds no role (`yarn admin:demo`, throwaway keys) | [schedule 0.0.10764799](https://hashscan.io/testnet/schedule/0.0.10764799) · [call](https://hashscan.io/testnet/transaction/0.0.10721162-1790620225-035173372) · [schedule 0.0.10764800](https://hashscan.io/testnet/schedule/0.0.10764800) · [renounce](https://hashscan.io/testnet/transaction/0.0.10721162-1790620227-436533410) |
-| Schedule Service, one key: the same admin call by the checkout's single-key admin, which meets its threshold at `ScheduleCreate` (`yarn admin:exec schedule`) | [schedule 0.0.10763814](https://hashscan.io/testnet/schedule/0.0.10763814) · [scheduled call](https://hashscan.io/testnet/transaction/1790616161.889953140) |
 | `UsdCheckout` (any HTS token): list 50 units, buy 10 through SaucerSwap | [0x455eFbF0…](https://hashscan.io/testnet/contract/0x455eFbF07B2b5d5137AEc3601c43549593741898) · [buy 0x51c9b006…](https://hashscan.io/testnet/transaction/0x51c9b0062bd36e119fbefe8b6e58e18717be1a5ea10fc2d54116a1d768ae379d) |
 
-Every contract above, and the first market, is verified on Sourcify with an **exact match** (source, compiler settings and metadata hash), so HashScan shows their source. The [Sourcify verify](../.github/workflows/sourcify-verify.yml) workflow compiles each commit they were deployed from (`06a6278c` for the registry, module and feed, `8ee7ead7` for the market, `61aba8a4` for the first market, `fc43362a` for the checkout) and submits the standard-JSON input; on 28 Sep 2026 it returned `exact_match` for all six. The source has moved on since: the testnet `HydroVmr0017Module` renews a VMR0017 plant for its original span, while the source moves renewals requested from 1 January 2027 to 5 years (VCS v5.0, V5#101). The first testnet crediting period ends in 2033, so no testnet renewal is affected before a redeploy.
+Every contract above is verified on Sourcify with an **exact match** (source, compiler settings and metadata hash),
+so HashScan shows its source. The [Sourcify verify](../.github/workflows/sourcify-verify.yml) workflow compiles the
+commit each was deployed from (`3bbc4cd1` for the v2 registry, modules, annotations, feed and market; `fc43362a` for
+the checkout) and submits the build the artifact came from; on 29 Sep 2026 it returned `exact_match` for all six v2
+contracts. Earlier deploys, which the app no longer reads, are in [operations.md](operations.md#older-deploys).
 
-The public testnet WHBAR/USDC pair priced HBAR at $2.28 that day. The oracle was $0.094, so the contract would refuse every sale against it. The pair above was created on SaucerSwap factory `0.0.9959` at the Chainlink price. The seller was paid that pair's token, not USDC. Testnet USDC is not a dollar, so that public pair cannot be the price check.
+The public testnet WHBAR/USDC pair priced HBAR at $2.28 on 26 Sep 2026. The oracle was $0.094, so the contract would
+refuse every sale against it. The pair above was created on SaucerSwap factory `0.0.9959` at the Chainlink price. The
+seller was paid that pair's token, not USDC. Testnet USDC is not a dollar, so that public pair cannot be the price
+check.
 
-The purchase builder also reads the public mainnet pair [0.0.1462797](https://hashscan.io/mainnet/contract/0xdB34c1Ef944883f0e5A2fC18B6C1978B088bD31d) and will not return a transaction unless it is within 3% of [mainnet Chainlink](https://hashscan.io/mainnet/contract/0xAF685FB45C12b92b5054ccb9313e135525F9b5d5). On 27 Sep 2026 the pair was $0.09490 and Chainlink was $0.09504, 15 bps. A mainnet deploy uses that pair on-chain. Nothing is deployed on mainnet.
+The purchase builder also reads the public mainnet pair [0.0.1462797](https://hashscan.io/mainnet/contract/0xdB34c1Ef944883f0e5A2fC18B6C1978B088bD31d) and will not return a transaction unless it is within 3% of [mainnet Chainlink](https://hashscan.io/mainnet/contract/0xAF685FB45C12b92b5054ccb9313e135525F9b5d5). A mainnet deploy uses that pair on-chain. Nothing is deployed on mainnet.
 
-The VVB `0x437EB06f434aD8061DEDdfCDd0ecE68Ea435e84F` is a labelled test key, not an accredited verifier. The meter addresses are `0x1a1b0B722a17C34BE6A08FE5efD636Dd54F848A2` and `0x485e9404831A05a072eeE80Aa4BfA05946fd6bF4`. Their private keys are not in the repository. Admin is operator `0.0.10721162` until a 2-of-3 account is set.
-
-The registry was deployed on 26 Sep, before its single `setMarket`, so it still has a grantable `MARKET_ROLE`. The market was redeployed from the current source on 28 Sep ([`scripts/redeployTestnetMarket.ts`](../packages/hardhat/scripts/redeployTestnetMarket.ts), the Checkout testnet demo workflow with `redeploy_market`): `setPoolGuard` asks SaucerSwap's factory for the pair, and there is no `proceedsOf` / `withdrawProceeds` or V2 branch. The first market [`0x5aeDe76f…`](https://hashscan.io/testnet/contract/0x5aeDe76fc6625cfA3227FFf70197D4D7ff3e5030) keeps its history; after the app on `main` read the new address, `redeploy_market: retire-old` [cancelled its listing](https://hashscan.io/testnet/transaction/0xa487f9c76af81af8de921170f35408b07c2e9881f4de5cf9c8550c8b61e770d2) and [revoked its `MARKET_ROLE`](https://hashscan.io/testnet/transaction/0x37c5e23cb12ab4db720a1f6df9c2659fc0f9b37a7dde138f679f438cf7da38d3), so exactly one market moves credits. The source is what `yarn test` and the Mainnet fork workflow check.
-
-Older deploys, not read by the app, are in [docs/operations.md](operations.md). The legacy registry [`0x9cdB5782…`](https://hashscan.io/testnet/contract/0x9cdB5782a10c41a103B722d1B8fa9CfaF84107a5) still reproduces the same two greenfield amounts.
-
-The legacy `HydroCreditRegistry` compiles to 24,551 B, 25 under Hedera's 24,576-byte limit, so it could not take another feature. After the split, `yarn hardhat:size` (a CI gate at 24,064 B) reports: `DmrvRegistry` 20,984 B, `CreditMarket` 9,044 B, `UsdCheckout` 8,595 B, `HydroVmr0017Module` 7,028 B, `ResilientHbarUsdFeed` 2,534 B. Since the redeploy the live issuer is `DmrvRegistry`.
-
-Phase 1 enforces the following on-chain; the legacy registry does not:
-
-- a crediting span of exactly 5, 7 or 10 × 365 days;
-- `registrationRequestedAt` with the VCS five-year rule from 2027;
-- a renewal that keeps the renewed span, or 5 years for a VMR0017 renewal from 2027 (VCS v5.0, V5#101);
-- calibration valid through the period end;
-- completeness computed from the meter-signed interval count;
-- the VVB's decision;
-- capacity-addition leakage as the higher of EG_PJ and EG_facility × Cap_add / Cap_PJ.
-
-Greenfield figures are unchanged, so the two legacy mints still reproduce.
-
-Design assessment also checks some things off-chain only:
-
-- the VT0008 sensitivity table (at least ±10%), the geographic area and a capacity band of at least ±50%;
-- the ACM0002 historical window for a retrofit or capacity addition;
-- a baseline-validity reference when a crediting period is renewed.
-
-A monitoring batch that reports captive supply must deliver more than half of it to the grid. The grid factor (TOOL07, or VT0011 for VMR0017):
-
-- counts net imports and Annex I imports at 0 t CO2/MWh;
-- takes the lowest fuel factor for a multi-fuel unit;
-- leaves purpose-built wheeling out.
-
-A measured fuel factor outside the IPCC 95% interval is refused. None of this changes a greenfield credited amount. Those evidence fields, and the registration request date, are not inside the on-chain `designHash`. That hash is the project document the testnet plants were registered with; the date is stored on-chain as `registrationRequestedAt`.
+The demo VVB `0xE079E4f1deE110c43E3a94c9b313c149505156F2`, the meters `0x3a2c6B89464dA5c20D749FB9fFC6d581e77159D6`
+(HYDRO-DEMO-01) and `0xbbd5eC3f5D146C3Cb6EB3B19a9F34C307558403E` (HYDRO-DEMO-02) and the buyer
+`0x3cCD45f560467A33206363046E0AFC63a7E44264` are derived from the deployer's secret in CI
+(`packages/hardhat/utils/testnetDemoKeys.ts`); their private keys are in no file. The operator and admin is
+`0.0.10721162` until a 2-of-3 account takes over.
 
 ## What keeps this true
 
-Five workflows check the claims above against Hedera:
+Six workflows check the claims above against Hedera:
 
-- [Live smoke](https://github.com/BikramBiswas786/Hedera-hydropower-dMRV-with-5-layer-verification-/actions/workflows/live-smoke.yml) (every 6 h and after each production deploy) clicks through the deployed app with no wallet: the pairs against their oracles, an open listing, an unsigned purchase, every mint re-derived from HCS, a real Guardian mint traced, the scenarios, the MCP tools.
-- [Guardian trace](https://github.com/BikramBiswas786/Hedera-hydropower-dMRV-with-5-layer-verification-/actions/workflows/guardian-trace.yml) (daily) traces a real Managed Guardian mint on testnet (token `0.0.10760359`, 12.5 t) and requires `backed`: record, order, payer, every signature, the MintToken VC's token and amount, and the treasury's DID.
+- [Testnet evidence](https://github.com/BikramBiswas786/Hedera-hydropower-dMRV-with-5-layer-verification-/actions/workflows/testnet-evidence.yml) (on demand) runs the whole cycle again: records, a VVB verification, a listing, an agent's `buyAndRetire`, and reproduces every record.
+- [Live smoke](https://github.com/BikramBiswas786/Hedera-hydropower-dMRV-with-5-layer-verification-/actions/workflows/live-smoke.yml) (every 6 h and after each production deploy) clicks through the deployed app with no wallet: the pairs against their oracles, an open listing, an unsigned purchase, every record re-derived from HCS, a real Guardian mint traced, the scenarios, the MCP tools.
+- [Guardian trace](https://github.com/BikramBiswas786/Hedera-hydropower-dMRV-with-5-layer-verification-/actions/workflows/guardian-trace.yml) (daily) traces a real Managed Guardian mint on testnet (token `0.0.10760359`, 12.5 t) and requires `backed`.
 - [Mainnet fork](https://github.com/BikramBiswas786/Hedera-hydropower-dMRV-with-5-layer-verification-/actions/workflows/mainnet-fork.yml) (every push) runs the settlement against SaucerSwap's real factory, the public WHBAR/USDC pair and mainnet Chainlink.
-- [Testnet pair keeper](https://github.com/BikramBiswas786/Hedera-hydropower-dMRV-with-5-layer-verification-/actions/workflows/testnet-pair-keeper.yml) (scheduled three times an hour, which GitHub runs best-effort; Live smoke also rebalances before each check) holds the seeded testnet pair at the oracle price, which it must: the pair does not follow HBAR, the oracle does. It also keeps a listing open. [`/api/market/dex`](https://hydro-dmrv.vercel.app/api/market/dex) shows whether a sale would settle right now.
+- [Testnet pair keeper](https://github.com/BikramBiswas786/Hedera-hydropower-dMRV-with-5-layer-verification-/actions/workflows/testnet-pair-keeper.yml) (scheduled three times an hour, best-effort) holds the seeded testnet pair at the oracle and keeps a listing open. [`/api/market/dex`](https://hydro-dmrv.vercel.app/api/market/dex) shows whether a sale would settle right now.
 - [Checkout testnet demo](https://github.com/BikramBiswas786/Hedera-hydropower-dMRV-with-5-layer-verification-/actions/workflows/checkout-testnet-demo.yml) (on demand) deploys `UsdCheckout` next to the live contracts and makes one sale.
 
 ## Buying
 
 The server never holds the buyer's key. `prepare_purchase` reads the pair stored on `CreditMarket` and returns no transaction when that pair is more than 3% from the oracle. The contract does the same check, then swaps. There is not a second pool.
 
-The market the app reads, [`0x26E77708…`](https://hashscan.io/testnet/contract/0x26E77708717cE69EBBBF76e59D106B20e67e1D61), sends the HBAR to SaucerSwap router `0.0.19264`. The seller is paid in the pair's USD token. The transaction [0x47358084…](https://hashscan.io/testnet/transaction/0x4735808481bde453a2354b4ed395a00ba72112fdcbb0b96c9a1196e4c5753fab) is that swap. The pair is [`0xF98D0dF4…`](https://hashscan.io/testnet/contract/0xF98D0dF4eC60d57f24Ce7BD24eAcAdF045219869). It was seeded because the canonical testnet WHBAR/USDC pair, [`0x87664e55…`](https://hashscan.io/testnet/contract/0x87664e55d9606657f049139FF654390A72657667), priced HBAR at about $2.28 on 26 September 2026 while Chainlink was about $0.095. Using that pair would revert every sale. The admin cannot turn the check off. On 27 Sep 2026 the seeded pair had drifted to 411 bps ($0.09105 against $0.09479), so `settlementPrice` would have reverted. [This swap](https://hashscan.io/testnet/transaction/0xf784083ceaf3a1b9b540d896f591e3db7186a379f34847770f4f13c4ae459d26) sold 0.377 of the pair's token back through router `0.0.19264` and the spot matched Chainlink again (0 bps). The pair does not follow HBAR, so this holds only while someone keeps it there: on 28 Sep 2026 it had drifted to 1,714 bps before the keeper pulled it back (198 bps, accepted, at 13:20 UTC). On 29 Sep 2026 at 03:46 UTC it read 44 bps, accepted ($0.11875 against $0.11822). [`/api/market/dex`](https://hydro-dmrv.vercel.app/api/market/dex) shows the gap and whether a sale would settle right now.
+The market the app reads, [`0x48F5056E…`](https://hashscan.io/testnet/contract/0x48F5056EdaD0B16c97a54085512b48417bC40F04), sends the HBAR to SaucerSwap router `0.0.19264`. The seller is paid in the pair's USD token. The transaction [0x180f3a7c…](https://hashscan.io/testnet/transaction/0x180f3a7c2d0285a6a2ee0841c417232058a615093143c0a24489d396546178c0) is that swap (29 Sep 2026, pair 74 bps from the oracle). The pair is [`0xF98D0dF4…`](https://hashscan.io/testnet/contract/0xF98D0dF4eC60d57f24Ce7BD24eAcAdF045219869). It was seeded because the canonical testnet WHBAR/USDC pair, [`0x87664e55…`](https://hashscan.io/testnet/contract/0x87664e55d9606657f049139FF654390A72657667), priced HBAR at about $2.28 on 26 September 2026 while Chainlink was about $0.095. Using that pair would revert every sale. The admin cannot turn the check off. On 27 Sep 2026 the seeded pair had drifted to 411 bps ($0.09105 against $0.09479), so `settlementPrice` would have reverted. [This swap](https://hashscan.io/testnet/transaction/0xf784083ceaf3a1b9b540d896f591e3db7186a379f34847770f4f13c4ae459d26) sold 0.377 of the pair's token back through router `0.0.19264` and the spot matched Chainlink again (0 bps). The pair does not follow HBAR, so this holds only while someone keeps it there: on 28 Sep 2026 it had drifted to 1,714 bps before the keeper pulled it back (198 bps, accepted, at 13:20 UTC). On 29 Sep 2026 at 10:28 UTC it read 74 bps, accepted ($0.11875 against $0.11787). [`/api/market/dex`](https://hydro-dmrv.vercel.app/api/market/dex) shows the gap and whether a sale would settle right now.
 
 Be clear about what that testnet pair is. It was seeded with 20 HBAR against QUSD, a test token this project minted, so a seller on testnet is paid in QUSD, not in money. At that depth a 0.01 t purchase (1.2 HBAR) moved it out of band on 28 Sep. `yarn pair:rebalance --execute --deepen 700` then [added 700 HBAR and 89.6 QUSD](https://hashscan.io/testnet/transaction/0x255d91818419e1cb853dfc58480cf399307be9812e97879d9ac48cd650b78734) at the pair's own ratio: it now holds 871 HBAR / 111.6 QUSD at the oracle price, so a purchase of a few dollars moves it a fraction of a percent. A trade large enough to leave the band blocks sales until the keeper runs (a denial of service), though never a cheaper purchase: the amount paid is still the oracle's. A TWAP would be stronger and is future work. The [Testnet pair keeper](https://github.com/BikramBiswas786/Hedera-hydropower-dMRV-with-5-layer-verification-/actions/workflows/testnet-pair-keeper.yml) workflow is scheduled to run `yarn pair:rebalance` three times an hour (GitHub runs schedules best-effort: on 28 Sep 2026 the single hourly slot fired at 05:52 UTC and then not for over seven hours, so [Live smoke](https://github.com/BikramBiswas786/Hedera-hydropower-dMRV-with-5-layer-verification-/actions/workflows/live-smoke.yml) runs the same rebalance before each check), because the seeded pair does not follow HBAR and a 3% move in HBAR is enough to push it out of band: it reads the market's pair, router and oracle, and with a `TESTNET_REBALANCER_KEY` repository secret it makes the one SaucerSwap swap that brings a pair drifted past 1% back to the oracle, then relists up to 1 t from that account's custody when less than 0.1 t is for sale (`yarn market:keep-listing`), so there is always something to buy. On mainnet the same code points at the public WHBAR/USDC pair `0.0.1462797`, where the seller receives USDC.
 
@@ -89,8 +77,19 @@ The seller must be able to receive the pair's USD token: associate it before lis
 
 ## Keys, honestly
 
-- **Local chains.** Demo meter keys are `keccak256("hydro-dmrv demo meter " + plant id)` and are public.
-- **Hedera networks.** The deploy throws unless every plant has a generated meter key (`METER_ADDRESSES` or `.secrets/meters.<network>.json`). `REGISTER_DEMO_PLANTS=true` does not override that on mainnet. A mainnet deploy also throws if `VERIFIER_ADDRESS` and `ADMIN_ADDRESS` are unset. The verifier cannot be the operator or the meter, and the contract checks this too.
-- **Meter keys on the demo server.** They are software keys in `METER_PRIVATE_KEYS`, standing in for data-logger hardware. Whoever runs the server can sign as the meter. That is why the VVB's second signature exists, and why the VVB may only lower figures.
-- **The admin.** It registers projects and meters and approves modules. It cannot move anyone's credits: the registry names its one market once (`setMarket`), and no role grant adds another. A new market means a new registry. (The testnet registry on the site predates this rule and uses a grantable `MARKET_ROLE`.)
-- **The demo VVB key.** `DEMO_VVB_PRIVATE_KEY` (`dmrv-demo-vvb-testnet`) is the author's labelled test key, not an accredited verifier. The server honours it only when `DEMO_REGISTRY_ADDRESS` equals the deployed registry. Every mint it approves is labelled "demo VVB" in the API, CLI and UI. Without it, the live API answers 409 "needs VVB approval" before publishing anything.
+- **Local chains.** Demo meter keys are `keccak256("hydro-dmrv demo meter " + plant id)` and the local VVB key is
+  `keccak256("hydro-dmrv demo vvb local")`. They are public.
+- **Hedera networks.** The deploy throws unless every plant has a generated meter key (`METER_ADDRESSES` or
+  `.secrets/meters.<network>.json`). A mainnet deploy also throws if `VERIFIER_ADDRESS` and `ADMIN_ADDRESS` are unset.
+  The contract refuses a VVB that is the operator, the meter or the reporter.
+- **Meter keys on the demo server.** They are software keys in `METER_PRIVATE_KEYS`, standing in for data-logger
+  hardware. Whoever runs the server can sign as the meter and record a period. It cannot issue: only a VVB's
+  verification does, and the VVB reproduces every record from HCS before it signs.
+- **The admin.** It registers projects and meters (only with a VVB's validation signature) and approves modules. It
+  cannot issue or move anyone's credits: the registry names its one market once (`setMarket`).
+- **The testnet demo VVB.** It is the author's labelled test key, derived in CI from the deployer secret, not an
+  accredited verifier. One person holds the operator, meter and VVB keys on testnet, which is exactly what a real
+  deployment must not do. The app and API hold no VVB key at all.
+- **What a credit is.** A unit is one tonne of verified emission reductions under the plant's registered methodology,
+  issued by this registry. It is not a Verra VCU. These testnet credits come from demo plants with illustrative
+  additionality evidence and no real impact assessment; they have no value.

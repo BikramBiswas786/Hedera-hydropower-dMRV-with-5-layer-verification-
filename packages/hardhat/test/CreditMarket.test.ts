@@ -20,7 +20,7 @@ const USDC = "0x0000000000000000000000000000000000001549"; // SaucerSwap testnet
 
 async function listed() {
   const ctx = await deployReady();
-  await submitPeriod(ctx.registry, await periodInput(PROJECT_ID)); // 450 units to the operator
+  await submitPeriod(ctx.registry, await periodInput(PROJECT_ID), ctx.operator); // 450 units to the operator
   await ctx.market.connect(ctx.operator).createListing(400, PRICE_CENTS_PER_TONNE);
   const pair = await ethers.deployContract("MockSaucerSwapV1Pair", [USDC, WHBAR]);
   // 250,000 USDC against 1,000,000 WHBAR: $0.25/HBAR, equal to the oracle.
@@ -244,7 +244,7 @@ describe("CreditMarket", function () {
 
     it("refuses a quote until a SaucerSwap pool is set", async function () {
       const ctx = await deployReady();
-      await submitPeriod(ctx.registry, await periodInput(PROJECT_ID));
+      await submitPeriod(ctx.registry, await periodInput(PROJECT_ID), ctx.operator);
       await ctx.market.connect(ctx.operator).createListing(400, PRICE_CENTS_PER_TONNE);
       await expect(ctx.market.quote(0, 1)).to.be.revertedWithCustomError(ctx.market, "InvalidPoolGuard");
       await expect(ctx.market.setPoolGuardEnabled(true)).to.be.revertedWithCustomError(ctx.market, "InvalidPoolGuard");

@@ -4,12 +4,12 @@
 
 ```bash
 yarn test              # contracts + frontend unit tests
-yarn hardhat:test      # 191 contract tests, hermetic (HTS mock at 0x167, oracle and SaucerSwap mocks)
+yarn hardhat:test      # 145 contract tests (3 more run only on a fork), hermetic (HTS mock at 0x167, oracle and SaucerSwap mocks)
 yarn hardhat:test:fork # same suite against Hedera's HTS emulation (HEDERA_FORKING, needs internet)
 HEDERA_FORK_NETWORK=mainnet HEDERA_RPC_URL=https://mainnet.hashio.io/api \
   yarn workspace @sh/hardhat hardhat test test/MainnetFork.test.ts  # real SaucerSwap + Chainlink on a mainnet fork
 yarn hardhat:test:gas  # with a gas report
-yarn next:test         # 352 vitest tests
+yarn next:test         # 373 vitest tests
 yarn hardhat:size      # runtime bytecode per contract; fails above 24,064 B (CI runs it)
 yarn lint && yarn next:build
 ```
@@ -23,9 +23,10 @@ What the tests pin down:
 - **Quantification in both implementations**: `test/fixtures/quantificationVectors.ts` (greenfield with reservoir and
   diesel emissions and a deficit; a retrofit across crediting years and past DATE_BaselineRetrofit) is asserted by the
   contract suite *and* the TypeScript suite, gram for gram.
-- **Meter provenance**: signatures interoperate with standard EIP-191 wallets both ways; wrong key, missing signature,
+- **Meter provenance**: EIP-712 statements interoperate with standard wallets both ways (legacy EIP-191 batch
+  signatures still verify); wrong key, missing signature,
   any edited reading and replay against another plant, chain or registry are rejected; edits after signing fail
-  reproduction, and `readings@2`–`@4` attestations still reproduce. A shared vector
+  reproduction, and `readings@2`–`@5` data messages still parse. A shared vector
   (`test/fixtures/meterStatementVector.ts`) pins the statement hash in both suites.
 - **Meter statements on-chain**: only the registered meter's signature is accepted; net above, fuel below or gross
   different from the statement revert (`NotMetered`); a statement signed for another registry reverts; only the admin
@@ -34,23 +35,29 @@ What the tests pin down:
 - **Engine**: every scenario on both plants; net metering; lower-of-two-meters; MPE after calibration expiry; gaps;
   replays; export capped at generation; physics exclusions; reservoir emissions from TEG; safeguards never changing
   the quantity; determinism.
-- **DmrvRegistry** (two-signature attestation): a stranger can relay the meter + VVB signatures; submissions without
-  the meter's signature, approvals from keys without `VERIFIER_ROLE`, from the project's operator or meter, or signed
-  before a role revocation are rejected; tampering with either figure set breaks a signature; the VVB may lower net
-  export and raise fuel/leakage but never the reverse; any decision other than approval reverts; signatures for another
-  registry, reused signature pairs, reused periods and reused `evidenceHash` (`evidenceUsed`) revert; completeness is
-  computed from the meter-signed interval count; periods after calibration lapses, outside the crediting window, in the
-  future or without an audit-topic anchor revert; a CDM renewal keeps the span; Article 6 metadata is recorded; custody,
-  retirement and certificates. The EIP-712 digests match `services/mrv/fixtures/eip712.json`, which the TypeScript
-  suite also asserts.
+- **DmrvRegistry** (the VCS cycle): **validation** — registration and renewal need a `ValidationApproval` from a
+  `VERIFIER_ROLE` key that is not the operator or meter, for exactly those terms, params and report; duplicates of a
+  meter, design or external id revert; the module's refusals (not an LDC, above 15 MW, 7 years requested after 2027)
+  surface. **Monitoring** — a meter-signed period is recorded as monitored ER and issues nothing; only the operator or
+  its named reporter records; a missing, wrong or foreign-registry meter signature, a raised figure, a reused signature
+  or period, a lapsed calibration, a period outside the crediting window or in the future, a missing HCS anchor and
+  gross above nameplate all revert; completeness is computed from the meter-signed interval count. **Verification** —
+  anyone relays a VVB's statement; runs are contiguous from the first unverified record; a different chain head, a key
+  without the role, a party, an unknown decision, a revoked VVB, a report off the audit topic and reused evidence all
+  revert; the deduction lowers issuance and the remainder carries; a rejection closes the run unissued and drops its
+  ER. **Renewal** — needs a new validation and every record verified, resets the module ledger, keeps the ER balance,
+  and may re-measure Cap_PJ and A_PJ. **Custody** — association before withdrawal, `deposit` back, retirement burns
+  and mints a certificate, pending certificates are claimable once, the market is named once. The EIP-712 digests and
+  the record chain match `services/mrv/fixtures/eip712.json`, which the TypeScript suite also asserts.
 - **HydroVmr0017Module**: 5-year VMR0017 periods for requests from 1 Jan 2027 (a 7-year request at 31 Dec 2026
-  23:59:59 UTC is still accepted), CDM renewals 5→5 and 7→7 only, VMR0017 renewals from 2027 5 years only (V5#101), metering rules, and parity: all 13 frozen outputs of the
-  legacy `HydroCreditRegistry.quantify` reproduce, and a full greenfield flow on the new registry reproduces the legacy
-  registry's 4 791 542 g and 73 386 435 g.
+  23:59:59 UTC is still accepted), CDM renewals 5→5 and 7→7 only, VMR0017 renewals from 2027 5 years only (V5#101), VMR0017 Table 1 on-chain (the UN LDC list with graduation dates, 15 MW by the higher of rated and
+  authorized capacity), metering rules, and parity: all 13 frozen outputs of the phase-0 registry's quantification
+  reproduce, and a full validated-record-verified flow on the v2 registry re-issues the phase-0 testnet mints'
+  4 791 542 g and 73 386 435 g.
 - **RenewableVmr0017Module**: VMR0017 Table 1 (terrestrial solar and wind refused in high-income countries; floating
   solar, wave and tidal accepted; CDM unrestricted), a declared battery refused, the 2027 five-year rule, renewals, VVB-only-lowers metering rules, the four shared vectors in
-  `fixtures/renewableVectors.ts` (also asserted by `renewable.test.ts`), and a two-signature solar mint through
-  `DmrvRegistry` with no registry change.
+  `fixtures/renewableVectors.ts` (also asserted by `renewable.test.ts`), and a validated, recorded and verified
+  solar issuance through `DmrvRegistry` with no registry change.
 - **CreditMarket**: escrow in registry custody, oracle-priced settlement, refunds, buy-and-retire, and the
   SaucerSwap guard: V1 `getReserves` read in feed decimals, settlement within 3%, blocked beyond 3% in either
   direction and on an illiquid pool, cannot be switched off, V2 pools and impostor pools refused, config validation.
@@ -58,12 +65,8 @@ What the tests pin down:
   second listing of the same token), prices per whole token rounded up, the seller's USD minimum, stale and
   out-of-band refusals, refunds, sell-out, a buyer not associated (HTS 184) and a failed swap each revert the whole
   purchase, and the invariant *checkout balance = active listings*.
-- **Local demo deploy** (`LocalDemo.test.ts`): the real deploy scripts install the stand-ins, mint one signed hour, list it, and a buyer can buy and retire.
-- **Contract size**: every deployable contract outside `mocks/` and `legacy/` is covered by the 24,064 B guard.
-- **Legacy HydroCreditRegistry** (kept for evidence): registration rules (PD, baselines, EF range, crediting period, renewal), on-chain ER with
-  fuel and leakage, remainders and deficits, crediting-year and stale-ledger guards, nameplate and net ≤ gross,
-  completeness, HTS token and NFT creation, mint and burn, association, certificates, oracle-priced quotes, refunds,
-  pull-payment proceeds, sweep, and the invariant *treasury balance = custody + listed*.
+- **Local demo deploy** (`LocalDemo.test.ts`): the real deploy scripts install the stand-ins, register the plants with a validation, record one signed hour, have the local VVB verify it, list the credits, and a buyer can buy and retire.
+- **Contract size**: every deployable contract outside `mocks/` is covered by the 24,064 B guard.
 - **ResilientHbarUsdFeed**: agreement, fallback, disagreement and double staleness, Supra's units, and a purchase
   settled through the fallback during a Chainlink outage.
 - **Guardian bridge** (`services/mrv/guardian/*.test.ts`, `server/guardianBridge.test.ts`): cross-check VCs signed
@@ -76,9 +79,14 @@ What the tests pin down:
   idempotency.
 - **HCS and reproduction** (against a fake mirror node that chunks like HCS): message sizes for every scenario,
   round-trips, a forged verdict over honest data, a swapped data message, a non-registered grid factor, interleaved
-  chunks and missing data.
-- **Gas**: one two-signature `submitAttestation` on the local Hardhat node used 697 539 gas (26 Sep 2026); the
-  server sends it with a 1 500 000 limit (`ATTEST_GAS`).
+  chunks, missing data, and a record whose hash-chain link breaks when the record before it is swapped.
+- **Server flows** (`record.dryrun.test.ts`, `verification.flow.test.ts`): nothing reaches HCS before the module
+  agrees with the engine, the dry run passes and the server key is the operator or reporter; data is published before
+  the report and the record cites the report's sequence; an approval is refused unless every record reproduces; a
+  signer without the role, or a statement that does not match the report at its HCS anchor, is refused before relay.
+- **Gas** on Hedera testnet (29 Sep 2026): `recordMonitoring` 625 591, `verifyPeriod` issuing credits 318 917,
+  `buyAndRetire` with the SaucerSwap swap and certificate 1 420 410. The server sends them with 1 200 000
+  (`RECORD_GAS`), 1 000 000 (`VERIFY_GAS`) and 3 000 000.
 - **Demo registration**: the integers the deploy script registers equal what the engine derives from the demo designs.
 
 The template ships a [Hedera Harness](https://github.com/hedera-dev/hedera-harness) recipe in `.harness/`: static and

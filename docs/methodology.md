@@ -132,12 +132,14 @@ the CDM solar unit from the BM overstate the factor by about 7% for a first-peri
 
 QA/QC and physics catch readings that are implausible; they cannot catch readings that are plausible but were changed
 on the way from the meter, or a verifier who reports more than the meter measured. So the plant's data logger holds a
-secp256k1 key, registered on-chain with the plant (`registerPlant(.., meter, ..)`, replaceable only by the admin with
-`setPlantMeter`), and signs a **meter statement** for every batch (`services/mrv/provenance.ts`):
+secp256k1 key, registered on-chain with the plant (`registerProject`, and validated by the VVB with it; replaceable
+only by the admin with `setMeter`), and signs an EIP-712 **meter statement** for every batch
+(`services/mrv/provenance.ts`):
 
 ```
-keccak256(abi.encode("hydro-dmrv/meter-statement@1" tag, chainId, registry, plantId,
-                     periodStart, periodEnd, grossWh, netWh, fuelG, sha256(readings)))   → EIP-191 personal_sign
+MeterStatement(projectId, sequence, periodStart, periodEnd, intervals, intervalSeconds,
+               meteredHash = keccak256(abi.encode(netWh, grossWh, fuelG, leakageG)), readingsDigest = sha256(readings))
+domain { name: "DmrvRegistry", version: "2", chainId, verifyingContract: registry }
 ```
 
 The totals are raw, before any QA/QC. Two independent checks use the same signature:
@@ -145,10 +147,10 @@ The totals are raw, before any QA/QC. Two independent checks use the same signat
 | Where | Check |
 | --- | --- |
 | Engine (QA/QC stage, and every reproduction from HCS) | the statement matches the readings and was signed by the metering record's key for this registry |
-| `HydroVmr0017Module` / `DmrvRegistry.submitAttestation` | the signer is the plant's registered meter; EG_facility ≤ the metered net export; FC ≥ the metered fuel; TEG = the metered gross, capped only at what the nameplate can produce in the period |
+| `HydroVmr0017Module` / `DmrvRegistry.recordMonitoring` | the signer is the plant's registered meter; EG_facility ≤ the metered net export; FC ≥ the metered fuel; TEG = the metered gross, capped only at what the nameplate can produce in the period |
 
 QA/QC may only make figures more conservative, and the contract enforces that direction. A stolen or misbehaving
-verifier key cannot mint a period the meter did not sign, inflate export, hide fuel, understate TEG to shrink reservoir
+verifier key cannot credit a period the meter did not sign, inflate export, hide fuel, understate TEG to shrink reservoir
 emissions, or replay a statement on another chain or registry. That holds only while the meter key is private. The two
 demo plants do not have that property: their keys are derived from the plant id, below.
 
@@ -214,12 +216,14 @@ flowchart LR
     SUP[Supra HBAR/USDT]
     MIRROR[Mirror node]
   end
-  DESIGN -- registerPlant(design) --> REG
+  VVB((VVB)) -- ValidationApproval --> REG
+  DESIGN -- registerProject(design, params) --> REG
   LOGGER --> ENGINE
   API --> ENGINE
   ENGINE -- 1. readings + metering + ledger (chunked) --> HCS
   ENGINE -- 2. report committing to them --> HCS
-  ENGINE -- 3. submitAttestation(monitored inputs, reportHash) --> REG
+  ENGINE -- 3. recordMonitoring(meter statement, figures, reportHash) --> REG
+  VVB -- 4. VerificationStatement over the record chain + report on HCS --> REG
   REG -- mint · burn · transfer via 0x167 --> TOK
   REG -- mint certificate --> NFT
   REG -- latestRoundData --> FEED
@@ -232,30 +236,40 @@ flowchart LR
   MIRROR -. readings + report .-> Auditor
 ```
 
-The sequence for one day of monitoring:
+The VCS project cycle, as the registry runs it:
 
-1. **Register** (once per crediting period). `assessProject` checks the design and derives the integers the contract
-   stores: grid EF from TOOL07, TOOL03 COEF, EG_historical + σ, crediting dates. `registerPlant` re-checks the power
-   density and baseline rules and stores them with `designHash`, the SHA-256 of the design document.
-2. **Verify.** The engine runs the five stages against the registered design and the plant's **on-chain ledger**.
-   Anything but APPROVED stops the server path. A direct `submitAttestation` still has to pass the contract: the meter
-   statement, the period, the nameplate, and the quantification. It does not re-run every engine stage.
-3. **Agree.** `submitAttestation` is simulated, and the contract's own `quantify()` must return the engine's ER and
-   credits to the gram. A disagreement stops the pipeline before anything is published.
-4. **Anchor.** The raw readings, plant profile, metering data and ledger go to HCS (up to 20 chunks), then the report,
-   which commits to them by SHA-256 and sequence number.
-5. **Issue.** `submitAttestation` records the monitored inputs (EG_facility, TEG, fuel, leakage, completeness), recomputes
-   EG_PJ, BE, PE_HP, PE_FF and ER, carries the remainder or deficit, and mints credits into the operator's custody.
-6. **Trade and retire.** Sellers list in USD per tonne. The purchase builder reads the SaucerSwap WHBAR/USDC reserves and returns no transaction if that spot is more than 3% from the settlement price. The contract then charges HBAR at the oracle price. Retiring burns the credits and mints an NFT certificate.
-7. **Reproduce.** **Check evidence** fetches both messages from the mirror node, verifies both hashes, checks the data
-   used the registered design, re-runs the engine and compares every figure with the chain.
+1. **Validate and register** (once per crediting period). `assessProject` checks the design and derives the integers
+   the module stores: grid EF (VT0011 or TOOL07), TOOL03 COEF, EG_historical + σ, crediting dates, host country and
+   authorized capacity. A VVB signs a `ValidationApproval` over the design hash, the params and its validation report;
+   `registerProject` refuses anything else, and the module re-checks VMR0017 Table 1 (15 MW, UN LDC host), the power
+   density and the baseline rules. `designHash` is the SHA-256 of the design document.
+2. **Monitor.** The engine runs the five stages against the registered design and the module's **on-chain ledger**.
+   Anything but APPROVED stops the server path. A direct `recordMonitoring` still has to pass the contract: the meter
+   statement, the period, the nameplate and the quantification. It does not re-run every engine stage; the VVB does.
+3. **Agree.** The project's module `quantify` must return the engine's ER to the gram, and `recordMonitoring` is
+   dry-run. A disagreement stops the pipeline before anything is published.
+4. **Anchor.** The raw readings, plant profile, metering data and ledger go to HCS (up to 20 chunks), then the
+   monitoring report, which commits to them by SHA-256 and sequence number.
+5. **Record.** `recordMonitoring` stores the monitored inputs, EG_PJ, BE, PE_HP, PE_FF, LE and ER, the completeness
+   computed from the meter-signed interval count, and extends the project's record hash chain. **Nothing is issued.**
+6. **Verify and issue.** A VVB reviews the pending run of records: `get_pending_verification` re-derives each one from
+   HCS, hash-chain link included. It publishes a verification report on HCS (decision, deduction, findings) and signs
+   a `VerificationStatement` over the chain head. `verifyPeriod` checks the signer is a VVB and not a party, then an
+   approval issues ⌊(balance + Σ ER − deduction) / 1000⌋ kg into the operator's custody and carries the remainder or
+   deficit; a rejection closes the run unissued.
+7. **Trade and retire.** Sellers list in USD per tonne. The purchase builder reads the SaucerSwap reserves and returns
+   no transaction if that spot is more than 3% from the settlement price. The contract then charges HBAR at the
+   oracle price. Retiring burns the credits and mints an NFT certificate.
+8. **Reproduce.** **Check evidence**, `yarn mrv:reproduce` or `reproduce_attestation` fetch both messages from the
+   mirror node, verify both hashes, check the data used the registered design and meter, re-run the engine, compare
+   every figure with the chain and recompute the record's hash-chain link.
 
 ### Why each integration is load-bearing
 
 | Piece | Remove it and… |
 | --- | --- |
 | **HCS readings + report** | The quantification becomes an unverifiable claim. With both on HCS, a verifier who approves bad data, or uses a flattering grid factor, is caught by anyone who re-runs the engine. |
-| **Contract quantification + HTS** | Credits would be whatever the verifier typed. Because the contract recomputes ER and is the only supply key, nothing can be minted outside the registered design and the equations. |
+| **Contract quantification + HTS** | Credits would be whatever the verifier typed. Because the contract recomputes ER and is the only supply key, nothing can be issued outside the registered design and the equations, and nothing without a VVB's verification of the meter-signed records. |
 | **Chainlink + Supra** | USD-denominated settlement is impossible on-chain. With one feed, a single outage halts the market and a single bad answer misprices it. Two providers that must agree remove both failure modes. |
 | **SaucerSwap WHBAR/USDC** | `quote`, `buy` and `buyAndRetire` revert. There is no settlement without a pool within 3% of the oracle. The market already on testnet was deployed before this rule. |
 
@@ -360,25 +374,29 @@ still reproduces.
 
 ## Public re-verification on HCS
 
-Two message types go to the audit topic (`services/mrv/report.ts`):
+Three message types go to the audit topic (`services/mrv/report.ts`, `services/mrv/verification.ts`):
 
 | Message | Schema | Contents | Size |
 | --- | --- | --- | --- |
-| Data | `hydro-dmrv/readings@5` | Every reading, the meter's signed statement and the registry it was signed for (`domain`), the plant profile (registered design + hydraulics), metering data including the meter's address, the plant's ledger before the period, engine version. `readings@2` (before meter signatures), `readings@3` (before VMR0017) and `readings@4` (batch signatures) are still reproduced. | 4 chunks for a day, 16 for a week; HCS caps a message at 20 |
-| Report | `hydro-dmrv/report@4` | Decision, coverage, monitored inputs (EG_facility, TEG, FC, LE), EG_PJ, BE, PE_HP, PE_FF, LE (with VMR0017 embodied emissions), ER, credits, parameters, `plantSequence`, and `data: { hash, sequence }` | 1 chunk (~700 bytes) |
+| Data | `hydro-dmrv/readings@6` | Every reading, the meter's signed statement and the registry and record number it was signed for (`domain`), the plant profile (registered design incl. host country and authorized capacity, and hydraulics), metering data including the meter's address, the module ledger before the period, engine version. `readings@2`–`@5` still parse. | 4 chunks for a day, 16 for a week; HCS caps a message at 20 |
+| Monitoring report | `hydro-dmrv/report@5` | Decision, coverage, monitored inputs (EG_facility, TEG, FC, LE), EG_PJ, BE, PE_HP, PE_FF, LE (with VMR0017 embodied emissions), ER, `unitsAtRecord` (whole tonnes the running balance reached; nothing is issued here), parameters, `plantSequence`, and `data: { hash, sequence }` | 1 chunk (~700 bytes) |
+| Verification report | `hydro-dmrv/verification@1` | The VVB's decision on records `first..last`, the chain head it signs, Σ ER, its deduction, the units that leaves to issue, how many records reproduced (and which did not), evidence hash and findings | 1 chunk |
 
 `reproduceAttestation` (`services/mrv/audit.ts`) runs these checks:
 
 1. **Report vs chain.** `sha256(report) == reportHash`, then every monitored input and every computed figure against
-   what the contract stored. This catches a verifier who anchors one report and attests different numbers.
+   what the contract stored. This catches an operator who anchors one report and records different numbers.
 2. **Data vs report.** Reassemble the chunked data message (matched by initial transaction id, ordered by chunk
    number, so interleaved messages cannot corrupt it) and check its hash against `report.data.hash`.
 3. **Design vs registration.** The plant design inside the data message must equal the on-chain registration, so a
    verifier cannot quantify with a flattering grid factor, and the meter in the metering record must be the plant's
    registered meter.
-4. **Figures vs data.** Re-run the engine and compare decision, coverage, EG_facility, TEG, fuel, EG_PJ, BE, PE, ER and
-   credits with the report. The re-run checks the meter's signature too, so readings edited after the meter signed
+4. **Figures vs data.** Re-run the engine and compare decision, coverage, EG_facility, TEG, fuel, EG_PJ, BE, PE, LE, ER
+   and units with the report. The re-run checks the meter's signature too, so readings edited after the meter signed
    them fail reproduction even when the report was computed from the edited values.
+5. **Record chain.** Given the previous record's chain hash, recompute this record's link from the meter statement
+   the readings produce, the recorded figures, the report hash, the HCS anchor and the ER, and compare it with the
+   chain. A VVB's signature over the chain head therefore covers exactly the readings on HCS.
 
 The same function backs the Audit page, `GET /api/registry/attestations/{id}/reproduce` and the
 `reproduce_attestation` MCP tool, and needs no credentials. The design documents themselves are served at

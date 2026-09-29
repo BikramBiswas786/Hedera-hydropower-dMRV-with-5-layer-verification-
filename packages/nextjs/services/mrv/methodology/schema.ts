@@ -64,6 +64,13 @@ export const projectDesignSchema = z.object({
     .regex(/^[A-Za-z]{2}$/, "ISO 3166-1 alpha-2 country code")
     .optional(),
   authorizedCapacityKw: wholeNumber.optional(),
+  safeguards: z
+    .object({
+      environmentalImpactAssessment: z.string().min(8).max(300),
+      stakeholderConsultation: z.string().min(8).max(300),
+      noNetHarm: z.string().min(8).max(300),
+    })
+    .optional(),
   additionality: z
     .object({
       tool: z.literal("VT0008"),
@@ -161,6 +168,7 @@ export const projectDesignSchema = z.object({
       reference: z.string().min(1).max(200),
       validFrom: z.iso.datetime({ offset: true }).optional(),
       validTo: z.iso.datetime({ offset: true }).optional(),
+      fixedAt: z.iso.datetime({ offset: true }).optional(),
     }),
   ]),
   hydraulics: z.object({

@@ -2,29 +2,50 @@ import {
   type MeterDomain,
   type MeterStatement,
   dmrvDomain,
-  encodeEnergy,
   meterStatementDigest,
+  plantIdHex,
   recoverDigest,
   signDigest,
 } from "./provenance";
-import { type Address, type Hex, hashTypedData, keccak256, zeroHash } from "viem";
+import { type Address, type Hex, encodeAbiParameters, hashTypedData, keccak256, zeroHash } from "viem";
 
 /**
- * The VVB's half of a DmrvRegistry attestation. The verifier signs an EIP-712 `VerifierApproval` that embeds the
- * digest of the meter's `MeterStatement`, so both signatures bind the same raw totals; the approval also binds the
- * accepted (`verified`) figures, the report hash, the HCS anchor and any external evidence (e.g. a Guardian VC).
- * The registry mints only if the meter signed, a key holding VERIFIER_ROLE approved, the VVB is neither the
- * operator nor the meter, and the accepted figures are no less conservative than the metered ones.
+ * The VVB's two EIP-712 messages to `DmrvRegistry`, in VCS order:
  *
- * The VVB key must be secp256k1 (ECDSA): `ecrecover` cannot verify an ED25519 Hedera key. Keep it off the server;
- * `yarn mrv:approve` signs on the VVB's own machine.
+ *   ValidationApproval     at registration (creditingPeriod 1) and at each renewal: the VVB validated this design,
+ *                          these module params and its validation report.
+ *   VerificationStatement  per monitoring period: the VVB verified the run of monitoring records `firstRecord..
+ *                          lastRecord` (committed by their hash chain), its verification report is anchored on HCS, and
+ *                          it approves (issuing the monitored ER minus any deduction) or rejects the run.
+ *
+ * The meter's `MeterStatement` (`provenance.ts`) signs each record's raw totals; the VVB never signs individual
+ * readings. The VVB key must be secp256k1 (`ecrecover` cannot verify ED25519) and stay off the server:
+ * `yarn mrv:approve` signs on the VVB's own machine. Byte-for-byte with the contract: `fixtures/eip712.json`.
  */
 export const DECISION_APPROVED = 1;
+export const DECISION_REJECTED = 2;
 
-export const VERIFIER_APPROVAL_TYPES = {
-  VerifierApproval: [
-    { name: "meterStatement", type: "bytes32" },
-    { name: "verifiedHash", type: "bytes32" },
+export const VALIDATION_APPROVAL_TYPES = {
+  ValidationApproval: [
+    { name: "projectId", type: "bytes32" },
+    { name: "module", type: "address" },
+    { name: "operator", type: "address" },
+    { name: "meter", type: "address" },
+    { name: "designHash", type: "bytes32" },
+    { name: "paramsHash", type: "bytes32" },
+    { name: "reportHash", type: "bytes32" },
+    { name: "externalId", type: "bytes32" },
+    { name: "creditingPeriod", type: "uint8" },
+  ],
+} as const;
+
+export const VERIFICATION_STATEMENT_TYPES = {
+  VerificationStatement: [
+    { name: "projectId", type: "bytes32" },
+    { name: "firstRecord", type: "uint32" },
+    { name: "lastRecord", type: "uint32" },
+    { name: "recordsHash", type: "bytes32" },
+    { name: "deductionG", type: "uint64" },
     { name: "reportHash", type: "bytes32" },
     { name: "hcsTopicNum", type: "uint64" },
     { name: "hcsSequence", type: "uint64" },
@@ -33,61 +54,164 @@ export const VERIFIER_APPROVAL_TYPES = {
   ],
 } as const;
 
-/** The figures the VVB accepts after QA/QC (module encoding) plus everything it attests to. */
-export type ApprovalInput = {
-  domain: MeterDomain;
+type Registry = Pick<MeterDomain, "chainId" | "registry">;
+
+// ─── Validation ─────────────────────────────────────────────────────────────
+
+export type ValidationInput = {
   plantId: string;
+  module: Address;
+  operator: Address;
+  meter: Address;
+  designHash: Hex;
+  params: Hex;
+  reportHash: Hex;
+  externalId?: Hex;
+  creditingPeriod: number;
+};
+
+export function validationTypedData(registry: Registry, v: ValidationInput) {
+  return {
+    domain: dmrvDomain(registry),
+    types: VALIDATION_APPROVAL_TYPES,
+    primaryType: "ValidationApproval" as const,
+    message: {
+      projectId: plantIdHex(v.plantId),
+      module: v.module,
+      operator: v.operator,
+      meter: v.meter,
+      designHash: v.designHash,
+      paramsHash: keccak256(v.params),
+      reportHash: v.reportHash,
+      externalId: v.externalId ?? zeroHash,
+      creditingPeriod: v.creditingPeriod,
+    },
+  };
+}
+
+export const validationDigest = (registry: Registry, v: ValidationInput): Hex =>
+  hashTypedData(validationTypedData(registry, v));
+
+// ─── Monitoring record chain ────────────────────────────────────────────────
+
+export type RecordLink = {
+  plantId: string;
+  sequence: number;
   statement: MeterStatement;
-  verified: { netWh: number; grossWh: number; fuelG: number; leakageG: number };
+  /** The module-encoded figures the record quantified (`verified` in the measurement). */
+  verified: Hex;
+  reportHash: Hex;
+  hcsTopicNum: bigint;
+  hcsSequence: bigint;
+  reductionG: bigint;
+};
+
+/**
+ * The next head of a project's record chain, exactly as `DmrvRegistry.recordMonitoring` computes it:
+ * keccak256(abi.encode(previous, meter statement digest, keccak256(verified), reportHash, topic, sequence, ER)).
+ */
+export function nextRecordsHash(previous: Hex, registry: Registry, r: RecordLink): Hex {
+  return keccak256(
+    encodeAbiParameters(
+      [
+        { type: "bytes32" },
+        { type: "bytes32" },
+        { type: "bytes32" },
+        { type: "bytes32" },
+        { type: "uint64" },
+        { type: "uint64" },
+        { type: "int256" },
+      ],
+      [
+        previous,
+        meterStatementDigest({ ...registry, sequence: r.sequence }, r.plantId, r.statement),
+        keccak256(r.verified),
+        r.reportHash,
+        r.hcsTopicNum,
+        r.hcsSequence,
+        r.reductionG,
+      ],
+    ),
+  );
+}
+
+// ─── Verification ───────────────────────────────────────────────────────────
+
+export type VerificationInput = {
+  plantId: string;
+  firstRecord: number;
+  lastRecord: number;
+  recordsHash: Hex;
+  deductionG: bigint;
   reportHash: Hex;
   hcsTopicNum: bigint;
   hcsSequence: bigint;
   evidenceHash?: Hex;
+  decision: number;
 };
 
-export function buildApproval(input: ApprovalInput, decision = DECISION_APPROVED) {
-  const verified = encodeEnergy(input.verified);
+export function verificationTypedData(registry: Registry, v: VerificationInput) {
   return {
-    domain: dmrvDomain(input.domain),
-    types: VERIFIER_APPROVAL_TYPES,
-    primaryType: "VerifierApproval" as const,
+    domain: dmrvDomain(registry),
+    types: VERIFICATION_STATEMENT_TYPES,
+    primaryType: "VerificationStatement" as const,
     message: {
-      meterStatement: meterStatementDigest(input.domain, input.plantId, input.statement),
-      verifiedHash: keccak256(verified),
-      reportHash: input.reportHash,
-      hcsTopicNum: input.hcsTopicNum,
-      hcsSequence: input.hcsSequence,
-      evidenceHash: input.evidenceHash ?? zeroHash,
-      decision,
+      projectId: plantIdHex(v.plantId),
+      firstRecord: v.firstRecord,
+      lastRecord: v.lastRecord,
+      recordsHash: v.recordsHash,
+      deductionG: v.deductionG,
+      reportHash: v.reportHash,
+      hcsTopicNum: v.hcsTopicNum,
+      hcsSequence: v.hcsSequence,
+      evidenceHash: v.evidenceHash ?? zeroHash,
+      decision: v.decision,
     },
-    /** The `verified` bytes the submission must carry. */
-    verified,
   };
 }
 
-/** Byte-for-byte `DmrvRegistry.approvalDigest`. */
-export function approvalDigest(input: ApprovalInput, decision = DECISION_APPROVED): Hex {
-  const { domain, types, primaryType, message } = buildApproval(input, decision);
-  return hashTypedData({ domain, types, primaryType, message });
+export const verificationDigest = (registry: Registry, v: VerificationInput): Hex =>
+  hashTypedData(verificationTypedData(registry, v));
+
+/** Signs with the VVB's secp256k1 key. */
+export const signVerification = (privateKey: Hex, registry: Registry, v: VerificationInput): Hex =>
+  signDigest(privateKey, verificationDigest(registry, v));
+
+export const signValidation = (privateKey: Hex, registry: Registry, v: ValidationInput): Hex =>
+  signDigest(privateKey, validationDigest(registry, v));
+
+/** The VVB behind a verification signature, or null when the signature is malformed. */
+export const recoverVerifier = (registry: Registry, v: VerificationInput, signature: Hex): Address | null =>
+  recoverDigest(verificationDigest(registry, v), signature);
+
+/** The statement as the contract takes it (`verifyPeriod` argument). */
+export function verificationArgs(v: VerificationInput) {
+  return {
+    projectId: plantIdHex(v.plantId),
+    firstRecord: v.firstRecord,
+    lastRecord: v.lastRecord,
+    recordsHash: v.recordsHash,
+    deductionG: v.deductionG,
+    reportHash: v.reportHash,
+    hcsTopicNum: v.hcsTopicNum,
+    hcsSequence: v.hcsSequence,
+    evidenceHash: v.evidenceHash ?? zeroHash,
+    decision: v.decision,
+  };
 }
 
-/** Signs the approval with the VVB's secp256k1 key. */
-export function signApproval(privateKey: Hex, input: ApprovalInput): Hex {
-  return signDigest(privateKey, approvalDigest(input));
-}
-
-/** The VVB address behind an approval signature, or null when the signature is malformed. */
-export function recoverApprover(input: ApprovalInput, signature: Hex): Address | null {
-  return recoverDigest(approvalDigest(input), signature);
-}
-
-/** JSON-safe typed data, for wallets (`eth_signTypedData_v4`) and the MCP preview tool. */
-export function approvalTypedDataJson(input: ApprovalInput) {
-  const { domain, types, primaryType, message } = buildApproval(input);
+/** JSON-safe typed data for wallets (`eth_signTypedData_v4`), MCP and `yarn mrv:approve`. */
+export function verificationTypedDataJson(registry: Registry, v: VerificationInput) {
+  const { domain, types, primaryType, message } = verificationTypedData(registry, v);
   return {
     domain: { ...domain, chainId: Number(domain.chainId) },
     types,
     primaryType,
-    message: { ...message, hcsTopicNum: message.hcsTopicNum.toString(), hcsSequence: message.hcsSequence.toString() },
+    message: {
+      ...message,
+      deductionG: message.deductionG.toString(),
+      hcsTopicNum: message.hcsTopicNum.toString(),
+      hcsSequence: message.hcsSequence.toString(),
+    },
   };
 }

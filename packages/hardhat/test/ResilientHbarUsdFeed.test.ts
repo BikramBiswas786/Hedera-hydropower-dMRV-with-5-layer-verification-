@@ -89,33 +89,56 @@ describe("ResilientHbarUsdFeed", function () {
     expect(primary.fresh || fallback.fresh).to.equal(false);
   });
 
-  it("settles HydroCreditRegistry purchases through the fallback during a Chainlink outage", async function () {
+  it("settles a credit purchase through the fallback during a Chainlink outage", async function () {
     const { chainlink, supra, feed } = await loadFixture(feedFixture);
     const [admin, operator, buyer] = await ethers.getSigners();
+    const helpers = await import("./helpers/dmrv");
     const { ensureHts } = await import("./helpers/hts");
-    const { METER, attestationInput, plantDesign } = await import("./helpers/registry");
     await ensureHts();
+    await helpers.ensureSaucerFactory();
 
-    const registry = await ethers.deployContract("HydroCreditRegistry", [
+    const registry = await ethers.deployContract("DmrvRegistry", [admin.address, 9_000]);
+    const module = await ethers.deployContract("HydroVmr0017Module");
+    const router = await ethers.deployContract("MockSaucerRouter");
+    const market = await ethers.deployContract("CreditMarket", [
       admin.address,
+      await registry.getAddress(),
       await feed.getAddress(),
       10n ** 18n,
-      9_000,
       HOUR,
+      helpers.SAUCER_FACTORY,
+      await router.getAddress(),
     ]);
-    await registry.createCreditToken("Hydro dMRV Carbon Credit", "HYCC");
-    const plantId = ethers.encodeBytes32String("PLANT");
-    await registry.registerPlant(plantId, "Plant", operator.address, METER.address, await plantDesign());
-    await registry.setAuditTopic(4_242_424);
-    await registry.submitAttestation(await attestationInput(registry, plantId, { netEnergyWh: 400_000n }));
-    await registry.connect(operator).createListing(400, 1_250);
+    await registry.createCreditToken("Hydro dMRV Carbon Credit", "HYCC", "", { value: ethers.parseEther("20") });
+    await registry.setModuleApproved(await module.getAddress(), true);
+    await registry.setMarket(await market.getAddress());
+    await registry.grantRole(await registry.VERIFIER_ROLE(), helpers.VVB.address);
+    await registry.setAuditTopic(helpers.AUDIT_TOPIC);
+    const params = await helpers.hydroParams();
+    await helpers.registerValidated(
+      registry,
+      await module.getAddress(),
+      helpers.encodeParams(params),
+      params.designHash,
+      { operator: operator.address },
+    );
+    const metered = { netWh: 400_000n, grossWh: 410_000n, fuelG: 0n, leakageG: 0n };
+    await helpers.submitPeriod(registry, await helpers.periodInput(helpers.PROJECT_ID, { metered }), operator);
+    await market.connect(operator).createListing(400, 1_250);
+    const WHBAR = "0x0000000000000000000000000000000000003aD2";
+    const USDC = "0x0000000000000000000000000000000000001549";
+    const pair = await ethers.deployContract("MockSaucerSwapV1Pair", [USDC, WHBAR]);
+    await pair.setReserves(250_000n * 10n ** 6n, 1_000_000n * 10n ** 8n);
+    await pair.setFactory(helpers.SAUCER_FACTORY);
+    await (await helpers.ensureSaucerFactory()).setPair(USDC, WHBAR, await pair.getAddress());
+    await market.setPoolGuard(await pair.getAddress(), false, WHBAR, 8, 6, 300, 10_000n * 10n ** 6n, true);
 
     await chainlink.setUpdatedAt(0);
     await supra.setPrice(SUPRA_HBAR_USDT, 25n * 10n ** 16n, 18, BigInt(await time.latest()) * 1_000n);
 
-    const cost = await registry.quote(0, 400);
+    const cost = await market.quote(0, 400);
     expect(cost).to.equal(20n * 10n ** 18n); // 400 kg at $12.50/t = $5.00 at the Supra price of $0.25
-    await expect(registry.connect(buyer).buyAndRetire(0, 400, "outage-proof", { value: cost })).to.emit(
+    await expect(market.connect(buyer).buyAndRetire(0, 400, "outage-proof", { value: cost })).to.emit(
       registry,
       "Retired",
     );

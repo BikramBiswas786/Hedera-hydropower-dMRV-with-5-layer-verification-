@@ -37,5 +37,7 @@ export const hydroEngine: MethodologyEngine<VerifyRequest> = {
   parse: input => verifyRequestSchema.parse(input),
   // The same defaults as POST /api/mrv/verify (demo metering, this app's meter domain).
   verify: request => toEngineReport(prepareAnchors(request).report),
-  example: end => generateScenario("healthy", { plant: DEMO_PLANTS[1], end, domain: PREVIEW_METER_DOMAIN }),
+  // The run-of-river plant: on Uganda's hydro-dominated grid the storage plant's reservoir and embodied emissions
+  // exceed its baseline, so its example would show a deficit rather than the typical case.
+  example: end => generateScenario("healthy", { plant: DEMO_PLANTS[0], end, domain: PREVIEW_METER_DOMAIN }),
 };

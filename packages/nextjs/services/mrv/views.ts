@@ -1,5 +1,5 @@
 import type { RegisteredDesign } from "./methodology/project";
-import { type Address, type Hex, decodeAbiParameters, hexToString, stringToHex, zeroHash } from "viem";
+import { type Address, type Hex, decodeAbiParameters, hexToString, stringToHex, zeroAddress, zeroHash } from "viem";
 
 /** Plant ids are short ASCII labels stored as bytes32 on-chain. */
 export const plantIdToBytes32 = (label: string): Hex => stringToHex(label, { size: 32 });
@@ -23,84 +23,7 @@ export const shortHashOr = (value: string | number | null | undefined) =>
 export const formatUsdCents = (cents: bigint | number) =>
   (Number(cents) / 100).toLocaleString("en-US", { style: "currency", currency: "USD" });
 
-export type AttestationView = {
-  id: number;
-  plantId: string;
-  periodStart: number;
-  periodEnd: number;
-  netEnergyWh: number;
-  grossEnergyWh: number;
-  fuelG: number;
-  projectEnergyWh: number;
-  baselineG: number;
-  reservoirG: number;
-  fossilFuelG: number;
-  leakageG: number;
-  reductionG: number;
-  unitsMinted: number;
-  completenessBps: number;
-  reportHash: Hex;
-  hcsTopicId: string | null;
-  hcsSequence: number;
-  verifier: Address;
-  timestamp: number;
-  /** DmrvRegistry only: the meter that signed, and external evidence the VVB relied on (null when none). */
-  meter?: Address | null;
-  evidenceHash?: Hex | null;
-  /** Which contract recorded it. */
-  registry?: "dmrv" | "legacy";
-};
-
-/** Legacy HydroCreditRegistry (5b7fe3f) attestation struct, as returned by `getAttestation(s)`. */
-export type RawAttestation = {
-  plantId: Hex;
-  periodStart: bigint;
-  periodEnd: bigint;
-  netEnergyWh: bigint;
-  grossEnergyWh: bigint;
-  fuelG: bigint;
-  projectEnergyWh: bigint;
-  baselineG: bigint;
-  reservoirG: bigint;
-  fossilFuelG: bigint;
-  leakageG: bigint;
-  reductionG: bigint;
-  unitsMinted: bigint;
-  completenessBps: number;
-  reportHash: Hex;
-  hcsTopicNum: bigint;
-  hcsSequence: bigint;
-  verifier: Address;
-  timestamp: bigint;
-};
-
-export function toAttestationView(raw: RawAttestation, id: number): AttestationView {
-  return {
-    id,
-    plantId: bytes32ToPlantId(raw.plantId),
-    periodStart: Number(raw.periodStart),
-    periodEnd: Number(raw.periodEnd),
-    netEnergyWh: Number(raw.netEnergyWh),
-    grossEnergyWh: Number(raw.grossEnergyWh),
-    fuelG: Number(raw.fuelG),
-    projectEnergyWh: Number(raw.projectEnergyWh),
-    baselineG: Number(raw.baselineG),
-    reservoirG: Number(raw.reservoirG),
-    fossilFuelG: Number(raw.fossilFuelG),
-    leakageG: Number(raw.leakageG),
-    reductionG: Number(raw.reductionG),
-    unitsMinted: Number(raw.unitsMinted),
-    completenessBps: raw.completenessBps,
-    reportHash: raw.reportHash,
-    hcsTopicId: topicIdFromNum(raw.hcsTopicNum),
-    hcsSequence: Number(raw.hcsSequence),
-    verifier: raw.verifier,
-    timestamp: Number(raw.timestamp),
-    registry: "legacy",
-  };
-}
-
-// ─── DmrvRegistry (phase 1) ────────────────────────────────────────────────
+// ─── DmrvRegistry ───────────────────────────────────────────────────────────
 
 const ENERGY_TYPES = [{ type: "int64" }, { type: "uint64" }, { type: "uint64" }, { type: "uint64" }] as const;
 const BREAKDOWN_TYPES = [
@@ -121,7 +44,9 @@ export const HYDRO_PARAMS_TYPES = [
     components: [
       { name: "projectType", type: "uint8" },
       { name: "methodology", type: "uint8" },
+      { name: "hostCountry", type: "bytes2" },
       { name: "capacityKw", type: "uint32" },
+      { name: "authorizedCapacityKw", type: "uint32" },
       { name: "baselineCapacityKw", type: "uint32" },
       { name: "reservoirAreaM2", type: "uint64" },
       { name: "baselineReservoirAreaM2", type: "uint64" },
@@ -173,7 +98,9 @@ export function decodeHydroParams(params: Hex): HydroParams {
   return {
     projectType: p.projectType,
     methodology: p.methodology,
+    hostCountry: hexToString(p.hostCountry, { size: 2 }).replace(/\0+$/, ""),
     capacityKw: p.capacityKw,
+    authorizedCapacityKw: p.authorizedCapacityKw,
     baselineCapacityKw: p.baselineCapacityKw,
     reservoirAreaM2: Number(p.reservoirAreaM2),
     baselineReservoirAreaM2: Number(p.baselineReservoirAreaM2),
@@ -195,7 +122,9 @@ export function registeredDesignOf(p: HydroParams): RegisteredDesign {
   return {
     projectType: p.projectType,
     methodology: p.methodology,
+    hostCountry: p.hostCountry,
     capacityKw: p.capacityKw,
+    authorizedCapacityKw: p.authorizedCapacityKw,
     baselineCapacityKw: p.baselineCapacityKw,
     reservoirAreaM2: p.reservoirAreaM2,
     baselineReservoirAreaM2: p.baselineReservoirAreaM2,
@@ -209,53 +138,179 @@ export function registeredDesignOf(p: HydroParams): RegisteredDesign {
   };
 }
 
+/**
+ * Where a monitoring record stands: awaiting verification, or closed by an approving or rejecting verification. An
+ * approved run issues whole tonnes of its ER; a deficit or remainder carries (see its `IssuanceView`).
+ */
+export type RecordStatus = "monitored" | "verified" | "rejected";
+
+/**
+ * One monitoring record (`DmrvRegistry.Attestation`): a meter-signed period the module quantified. It issues nothing
+ * by itself; a VVB's verification of a run of records does (`IssuanceView`).
+ */
+export type AttestationView = {
+  id: number;
+  plantId: string;
+  /** The record's number within its project (0, 1, …); verifications cover contiguous runs of these. */
+  sequence: number;
+  periodStart: number;
+  periodEnd: number;
+  netEnergyWh: number;
+  grossEnergyWh: number;
+  fuelG: number;
+  leakageInputG: number;
+  creditingYear: number;
+  projectEnergyWh: number;
+  baselineG: number;
+  reservoirG: number;
+  fossilFuelG: number;
+  /** LE: monitored leakage plus the embodied-emissions term. */
+  leakageG: number;
+  reductionG: number;
+  /** Σ ER over the project's records up to this one. */
+  cumulativeG: number;
+  /** Whole tonnes (in kg units) the module's running balance reached with this record; issuance happens later. */
+  unitsAtRecord: number;
+  completenessBps: number;
+  meter: Address;
+  reportHash: Hex;
+  readingsDigest: Hex;
+  /** Head of the project's record hash chain after this record. */
+  chainHash: Hex;
+  /** Module-encoded figures the record quantified (hydro: `Energy`). */
+  verified: Hex;
+  hcsTopicId: string | null;
+  hcsSequence: number;
+  timestamp: number;
+  status: RecordStatus;
+  /** The verification that closed this record, when one has. */
+  issuanceId: number | null;
+};
+
 /** DmrvRegistry `Attestation` struct. */
 export type RawDmrvAttestation = {
   projectId: Hex;
+  sequence: number;
   periodStart: bigint;
   periodEnd: bigint;
   reductionG: bigint;
-  unitsMinted: bigint;
+  cumulativeG: bigint;
   completenessBps: number;
-  verifier: Address;
   meter: Address;
-  hcsTopicNum: bigint;
   hcsSequence: bigint;
   timestamp: bigint;
   reportHash: Hex;
   readingsDigest: Hex;
-  evidenceHash: Hex;
+  chainHash: Hex;
   verified: Hex;
   breakdown: Hex;
 };
 
-export function toDmrvAttestationView(raw: RawDmrvAttestation, id: number): AttestationView {
+/** Which verification (if any) closed each project record, derived from the issuance list. */
+export type RecordClosure = (projectId: Hex, sequence: number) => { issuanceId: number; decision: number } | null;
+
+export function closureOf(issuances: IssuanceView[]): RecordClosure {
+  return (projectId, sequence) => {
+    const plantId = bytes32ToPlantId(projectId);
+    const issuance = issuances.find(
+      i => i.plantId === plantId && sequence >= i.firstRecord && sequence <= i.lastRecord,
+    );
+    return issuance ? { issuanceId: issuance.id, decision: issuance.decision } : null;
+  };
+}
+
+export function toDmrvAttestationView(
+  raw: RawDmrvAttestation,
+  id: number,
+  auditTopic: bigint,
+  closure: RecordClosure = () => null,
+): AttestationView {
   const energy = decodeEnergy(raw.verified);
   const b = decodeBreakdown(raw.breakdown);
+  const closed = closure(raw.projectId, raw.sequence);
   return {
     id,
     plantId: bytes32ToPlantId(raw.projectId),
+    sequence: raw.sequence,
     periodStart: Number(raw.periodStart),
     periodEnd: Number(raw.periodEnd),
     netEnergyWh: energy.netWh,
     grossEnergyWh: energy.grossWh,
     fuelG: energy.fuelG,
+    leakageInputG: energy.leakageG,
+    creditingYear: Number(b.creditingYear),
     projectEnergyWh: b.projectWh,
     baselineG: b.baselineG,
     reservoirG: b.reservoirG,
     fossilFuelG: b.fossilG,
     leakageG: b.leakageG,
     reductionG: Number(raw.reductionG),
-    unitsMinted: Number(raw.unitsMinted),
+    cumulativeG: Number(raw.cumulativeG),
+    unitsAtRecord: b.units,
     completenessBps: raw.completenessBps,
+    meter: raw.meter,
     reportHash: raw.reportHash,
-    hcsTopicId: topicIdFromNum(raw.hcsTopicNum),
+    readingsDigest: raw.readingsDigest,
+    chainHash: raw.chainHash,
+    verified: raw.verified,
+    hcsTopicId: topicIdFromNum(auditTopic),
     hcsSequence: Number(raw.hcsSequence),
+    timestamp: Number(raw.timestamp),
+    status: !closed ? "monitored" : closed.decision === 1 ? "verified" : "rejected",
+    issuanceId: closed?.issuanceId ?? null,
+  };
+}
+
+/** A VVB's verification of records `firstRecord..lastRecord` and what it issued. */
+export type IssuanceView = {
+  id: number;
+  plantId: string;
+  firstRecord: number;
+  lastRecord: number;
+  /** 1 = approved (issued), 2 = rejected (closed unissued). */
+  decision: number;
+  monitoredG: number;
+  deductionG: number;
+  unitsIssued: number;
+  verifier: Address;
+  timestamp: number;
+  reportHash: Hex;
+  hcsTopicId: string | null;
+  hcsSequence: number;
+  evidenceHash: Hex | null;
+};
+
+export type RawIssuance = {
+  projectId: Hex;
+  firstRecord: number;
+  lastRecord: number;
+  decision: number;
+  monitoredG: bigint;
+  deductionG: bigint;
+  unitsIssued: bigint;
+  verifier: Address;
+  timestamp: bigint;
+  hcsSequence: bigint;
+  reportHash: Hex;
+  evidenceHash: Hex;
+};
+
+export function toIssuanceView(raw: RawIssuance, id: number, auditTopic: bigint): IssuanceView {
+  return {
+    id,
+    plantId: bytes32ToPlantId(raw.projectId),
+    firstRecord: raw.firstRecord,
+    lastRecord: raw.lastRecord,
+    decision: raw.decision,
+    monitoredG: Number(raw.monitoredG),
+    deductionG: Number(raw.deductionG),
+    unitsIssued: Number(raw.unitsIssued),
     verifier: raw.verifier,
     timestamp: Number(raw.timestamp),
-    meter: raw.meter,
+    reportHash: raw.reportHash,
+    hcsTopicId: topicIdFromNum(auditTopic),
+    hcsSequence: Number(raw.hcsSequence),
     evidenceHash: raw.evidenceHash === zeroHash ? null : raw.evidenceHash,
-    registry: "dmrv",
   };
 }
 
@@ -263,10 +318,13 @@ export function toDmrvAttestationView(raw: RawDmrvAttestation, id: number): Atte
 export type RawProject = {
   operator: Address;
   meter: Address;
+  reporter: Address;
+  validator: Address;
   module: Address;
   active: boolean;
   creditingPeriods: number;
   attestations: number;
+  verifiedRecords: number;
   creditingStart: bigint;
   creditingEnd: bigint;
   lastPeriodEnd: bigint;
@@ -275,16 +333,26 @@ export type RawProject = {
   balanceG: bigint;
   issuedUnits: bigint;
   state: Hex;
+  recordsHash: Hex;
   designHash: Hex;
+  validationReportHash: Hex;
+  externalId: Hex;
   params: Hex;
 };
 
-/** The hydro module's ledger word: crediting year (32 bits) | year net Wh (int112) | balance g (int112). */
+/**
+ * The hydro module's ledger word: crediting year (32 bits) | year net Wh (int112) | balance g (int112). The balance
+ * is the module's running remainder at record time; issuance keeps its own (`PlantView.unissuedBalanceG`).
+ */
 export function decodeHydroState(state: Hex) {
   const word = BigInt(state);
   const mask = (1n << 112n) - 1n;
   const signed = (v: bigint) => (v >= 1n << 111n ? v - (1n << 112n) : v);
-  return { creditingYear: Number(word >> 224n), yearNetWh: Number(signed((word >> 112n) & mask)) };
+  return {
+    creditingYear: Number(word >> 224n),
+    yearNetWh: Number(signed((word >> 112n) & mask)),
+    balanceG: Number(signed(word & mask)),
+  };
 }
 
 /** PE_HP rate the module applies (VMR0017 or CDM), mirrored for display only. */
@@ -296,17 +364,44 @@ function reservoirRateOf(p: HydroParams): number {
   return p.methodology === 1 ? 100_000 : 90_000;
 }
 
-export function toProjectView(
-  id: Hex,
-  raw: RawProject,
-  name = bytes32ToPlantId(id),
-): PlantView & {
+export type PlantView = {
+  plantId: string;
+  name: string;
+  operator: Address;
+  /** The data logger whose EIP-712 statement every monitoring record must carry. */
+  meter: Address;
+  /** An account the operator lets record monitoring for it (its server); null for none. */
+  reporter: Address | null;
+  /** The VVB whose ValidationApproval registered (or last renewed) the project. */
+  validator: Address;
   module: Address;
+  active: boolean;
+  design: RegisteredDesign;
+  designHash: Hex;
+  validationReportHash: Hex;
+  /** Id of the same project in an external program (e.g. keccak256 of a Verra id); null when none. */
+  externalId: Hex | null;
+  reservoirGPerMwh: number;
+  /** The module ledger the next monitoring period is quantified against (the engine's `ledger`). */
+  ledger: { attestations: number; balanceG: number; creditingYear: number; yearNetWh: number };
+  /** Records a verification has closed; records from here to `ledger.attestations − 1` await one. */
+  verifiedRecords: number;
+  /** Head of the record hash chain a verification of all pending records must sign. */
+  recordsHash: Hex;
+  /** ER (g) verified but not yet a whole tonne, or a deficit carried forward. */
+  unissuedBalanceG: number;
+  lastPeriodEnd: number;
+  issuedUnits: number;
   creditingPeriods: number;
   calibrationValidUntil: number;
   registrationRequestedAt: number;
   meteringHash: Hex;
-} {
+  /** The module's raw params and ledger word, as `quantify` takes them. */
+  params: Hex;
+  state: Hex;
+};
+
+export function toProjectView(id: Hex, raw: RawProject, name = bytes32ToPlantId(id)): PlantView {
   const params = decodeHydroParams(raw.params);
   const state = decodeHydroState(raw.state);
   return {
@@ -314,111 +409,32 @@ export function toProjectView(
     name,
     operator: raw.operator,
     meter: raw.meter,
+    reporter: raw.reporter === zeroAddress ? null : raw.reporter,
+    validator: raw.validator,
+    module: raw.module,
     active: raw.active,
     design: registeredDesignOf(params),
     designHash: raw.designHash,
+    validationReportHash: raw.validationReportHash,
+    externalId: raw.externalId === zeroHash ? null : raw.externalId,
     reservoirGPerMwh: reservoirRateOf(params),
     ledger: {
       attestations: raw.attestations,
-      balanceG: Number(raw.balanceG),
+      balanceG: state.balanceG,
       creditingYear: state.creditingYear,
       yearNetWh: state.yearNetWh,
     },
+    verifiedRecords: raw.verifiedRecords,
+    recordsHash: raw.recordsHash,
+    unissuedBalanceG: Number(raw.balanceG),
     lastPeriodEnd: Number(raw.lastPeriodEnd),
-    totalNetWh: 0,
     issuedUnits: Number(raw.issuedUnits),
-    module: raw.module,
     creditingPeriods: raw.creditingPeriods,
     calibrationValidUntil: Number(raw.calibrationValidUntil),
     registrationRequestedAt: Number(raw.registrationRequestedAt),
     meteringHash: params.meteringHash,
-  };
-}
-
-type RawDesign = {
-  projectType: number;
-  /** Absent on registries deployed before VMR0017, which only knew the CDM rules. */
-  methodology?: number;
-  capacityKw: number;
-  baselineCapacityKw: number;
-  reservoirAreaM2: bigint;
-  baselineReservoirAreaM2: bigint;
-  efGridGPerMwh: number;
-  fuelCoefGPerTonne: number;
-  baselineWh: bigint;
-  baselineEndsAt: bigint;
-  creditingStart: bigint;
-  creditingEnd: bigint;
-  designHash: Hex;
-};
-
-/** Plant struct as returned by `getPlant`. */
-export type RawPlant = {
-  name: string;
-  operator: Address;
-  /** Absent on registries deployed before meter statements were checked on-chain. */
-  meter?: Address;
-  active: boolean;
-  design: RawDesign;
-  reservoirGPerMwh: number;
-  attestations: number;
-  creditingYear: number;
-  yearNetWh: bigint;
-  balanceG: bigint;
-  lastPeriodEnd: bigint;
-  totalNetWh: bigint;
-  issuedUnits: bigint;
-};
-
-export type PlantView = {
-  plantId: string;
-  name: string;
-  operator: Address;
-  /** The data logger whose signature every attestation must carry; null on registries that predate it. */
-  meter: Address | null;
-  active: boolean;
-  design: RegisteredDesign;
-  designHash: Hex;
-  reservoirGPerMwh: number;
-  ledger: { attestations: number; balanceG: number; creditingYear: number; yearNetWh: number };
-  lastPeriodEnd: number;
-  totalNetWh: number;
-  issuedUnits: number;
-};
-
-export function toPlantView(id: Hex, raw: RawPlant): PlantView {
-  const d = raw.design;
-  return {
-    plantId: bytes32ToPlantId(id),
-    name: raw.name,
-    operator: raw.operator,
-    meter: raw.meter ?? null,
-    active: raw.active,
-    design: {
-      projectType: d.projectType,
-      methodology: d.methodology ?? 0,
-      capacityKw: d.capacityKw,
-      baselineCapacityKw: d.baselineCapacityKw,
-      reservoirAreaM2: Number(d.reservoirAreaM2),
-      baselineReservoirAreaM2: Number(d.baselineReservoirAreaM2),
-      efGridGPerMwh: d.efGridGPerMwh,
-      fuelCoefGPerTonne: d.fuelCoefGPerTonne,
-      baselineWh: Number(d.baselineWh),
-      baselineEndsAt: Number(d.baselineEndsAt),
-      creditingStart: Number(d.creditingStart),
-      creditingEnd: Number(d.creditingEnd),
-    },
-    designHash: d.designHash,
-    reservoirGPerMwh: raw.reservoirGPerMwh,
-    ledger: {
-      attestations: raw.attestations,
-      balanceG: Number(raw.balanceG),
-      creditingYear: raw.creditingYear,
-      yearNetWh: Number(raw.yearNetWh),
-    },
-    lastPeriodEnd: Number(raw.lastPeriodEnd),
-    totalNetWh: Number(raw.totalNetWh),
-    issuedUnits: Number(raw.issuedUnits),
+    params: raw.params,
+    state: raw.state,
   };
 }
 

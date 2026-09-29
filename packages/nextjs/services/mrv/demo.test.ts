@@ -1,7 +1,7 @@
 import { DEMO_PLANTS as REGISTERED } from "../../../hardhat/utils/demoPlants";
 import { DEMO_ASSESSMENTS, DEMO_DESIGNS, DEMO_METERING, demoMeterKey, demoMeteringFor } from "./demo";
 import { buildProjectMessage } from "./report";
-import { readMeterKey } from "./server/attest";
+import { readMeterKey } from "./server/monitoring";
 import { generatePrivateKey } from "viem/accounts";
 import { afterEach, describe, expect, it } from "vitest";
 

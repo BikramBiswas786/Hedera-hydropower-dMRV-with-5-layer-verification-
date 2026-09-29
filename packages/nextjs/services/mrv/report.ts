@@ -16,15 +16,27 @@ import {
 import { type Hex, sha256, stringToBytes } from "viem";
 import { z } from "zod";
 
-export const REPORT_SCHEMA = "hydro-dmrv/report@4";
-/** report@3 predates VMR0017: no computed leakage in `emissions`. Still audited. */
-export const LEGACY_REPORT_SCHEMAS = ["hydro-dmrv/report@3"] as const;
-export const DATA_SCHEMA = "hydro-dmrv/readings@5";
+/**
+ * report@5 is a monitoring report: a record issues nothing, so its credit figure is `unitsAtRecord` (what the
+ * module's running balance reached), and issuance is the verification report's (`verification.ts`).
+ */
+export const REPORT_SCHEMA = "hydro-dmrv/report@5";
+/** report@3 predates VMR0017 (no computed leakage); report@4 named the credit figure `unitsMinted`. */
+export const LEGACY_REPORT_SCHEMAS = ["hydro-dmrv/report@3", "hydro-dmrv/report@4"] as const;
+export const DATA_SCHEMA = "hydro-dmrv/readings@6";
 /**
  * readings@2 predates meter signatures, readings@3 the plant's registered methodology, readings@4 the on-chain meter
- * statement (its signature covers the readings digest only). All still reproduce.
+ * statement (its signature covers the readings digest only), readings@5 the host country and authorized capacity
+ * in the registered design (they parse as "" and 0). All still reproduce.
  */
-export const LEGACY_DATA_SCHEMAS = ["hydro-dmrv/readings@2", "hydro-dmrv/readings@3", "hydro-dmrv/readings@4"] as const;
+export const LEGACY_DATA_SCHEMAS = [
+  "hydro-dmrv/readings@2",
+  "hydro-dmrv/readings@3",
+  "hydro-dmrv/readings@4",
+  "hydro-dmrv/readings@5",
+] as const;
+/** From readings@5 the data message names the registry, chain and sequence the meter statement is signed for. */
+const SIGNED_DOMAIN_SCHEMAS: string[] = [DATA_SCHEMA, "hydro-dmrv/readings@5"];
 export const PROJECT_SCHEMA = "hydro-dmrv/project@1";
 
 /** HCS splits messages into 1024-byte chunks and accepts at most 20 per message. */
@@ -170,7 +182,7 @@ export function parseDataMessage(text: string) {
     engine: body.engine,
     signature: body.signature ?? undefined,
     /** `null` for data messages before readings@5, whose signature covers the readings digest only. */
-    domain: body.schema === DATA_SCHEMA ? (body.domain ?? null) : null,
+    domain: SIGNED_DOMAIN_SCHEMAS.includes(body.schema) ? (body.domain ?? null) : null,
   };
 }
 
@@ -189,9 +201,9 @@ export type HcsReportMessage = {
   completenessBps: number;
   readings: number;
   excluded: number;
-  /** EG_facility, TEG, FC and LE: the monitored inputs `submitAttestation` receives. */
+  /** EG_facility, TEG, FC and LE: the monitored inputs `recordMonitoring` receives. */
   monitored: { netWh: number; grossWh: number; fuelG: number; leakageG: number };
-  /** EG_PJ, BE, PE_HP, PE_FF, LE, ER and credits: what the contract must compute from them. */
+  /** EG_PJ, BE, PE_HP, PE_FF, LE and ER: what the module must compute from them. */
   emissions: {
     egProjectWh: number;
     baselineG: number;
@@ -200,7 +212,10 @@ export type HcsReportMessage = {
     /** LE_y including VMR0017 embodied emissions (absent before report@4). */
     leakageG?: number;
     reductionG: number;
-    unitsMinted: number;
+    /** Whole tonnes (kg units) the module's running balance reached; nothing is issued before verification. */
+    unitsAtRecord?: number;
+    /** report@3 and @4. */
+    unitsMinted?: number;
   } | null;
   parameters: { efGridGPerMwh: number; reservoirGPerMwh: number; fuelCoefGPerTonne: number };
   issues: { review: number; info: number };
@@ -238,7 +253,7 @@ export function buildHcsMessage(report: VerificationReport, data: HcsReportMessa
       fossilFuelG: emissions.fossilFuelG,
       leakageG: emissions.leakageG,
       reductionG: emissions.reductionG,
-      unitsMinted: emissions.unitsMinted,
+      unitsAtRecord: emissions.unitsMinted,
     },
     parameters: {
       efGridGPerMwh: parameters.efGridGPerMwh,

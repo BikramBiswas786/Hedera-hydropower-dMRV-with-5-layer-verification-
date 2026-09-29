@@ -7,7 +7,7 @@ import type { GenericContractsDeclaration } from "~~/utils/scaffold-hbar/contrac
 const deployedContracts = {
   296: {
     CreditMarket: {
-      address: "0x26E77708717cE69EBBBF76e59D106B20e67e1D61",
+      address: "0x48F5056EdaD0B16c97a54085512b48417bC40F04",
       abi: [
         {
           inputs: [
@@ -1211,10 +1211,607 @@ const deployedContracts = {
         supportsInterface: "contracts/settlement/UsdSettlement.sol",
         sweepHbar: "contracts/settlement/UsdSettlement.sol",
       },
-      deployedOnBlock: 41102857,
+      deployedOnBlock: 41121773,
+    },
+    DmrvAnnotations: {
+      address: "0x2F5EC1b43414f97ae905808A69CE7040Ebb25E9F",
+      abi: [
+        {
+          inputs: [
+            {
+              internalType: "address",
+              name: "admin",
+              type: "address",
+            },
+            {
+              internalType: "contract IDmrvRegistryCounts",
+              name: "registry",
+              type: "address",
+            },
+          ],
+          stateMutability: "nonpayable",
+          type: "constructor",
+        },
+        {
+          inputs: [],
+          name: "AccessControlBadConfirmation",
+          type: "error",
+        },
+        {
+          inputs: [
+            {
+              internalType: "address",
+              name: "account",
+              type: "address",
+            },
+            {
+              internalType: "bytes32",
+              name: "neededRole",
+              type: "bytes32",
+            },
+          ],
+          name: "AccessControlUnauthorizedAccount",
+          type: "error",
+        },
+        {
+          inputs: [
+            {
+              internalType: "uint8",
+              name: "status",
+              type: "uint8",
+            },
+          ],
+          name: "InvalidStatus",
+          type: "error",
+        },
+        {
+          inputs: [
+            {
+              internalType: "uint256",
+              name: "issuanceId",
+              type: "uint256",
+            },
+          ],
+          name: "UnknownIssuance",
+          type: "error",
+        },
+        {
+          inputs: [
+            {
+              internalType: "bytes32",
+              name: "projectId",
+              type: "bytes32",
+            },
+          ],
+          name: "UnknownProject",
+          type: "error",
+        },
+        {
+          inputs: [],
+          name: "ZeroAddress",
+          type: "error",
+        },
+        {
+          anonymous: false,
+          inputs: [
+            {
+              indexed: true,
+              internalType: "bytes32",
+              name: "projectId",
+              type: "bytes32",
+            },
+            {
+              indexed: false,
+              internalType: "bytes2",
+              name: "hostParty",
+              type: "bytes2",
+            },
+            {
+              indexed: false,
+              internalType: "uint8",
+              name: "authorizedUse",
+              type: "uint8",
+            },
+            {
+              indexed: false,
+              internalType: "uint8",
+              name: "firstTransferDefinition",
+              type: "uint8",
+            },
+            {
+              indexed: false,
+              internalType: "bytes32",
+              name: "authorizationRef",
+              type: "bytes32",
+            },
+          ],
+          name: "Article6Set",
+          type: "event",
+        },
+        {
+          anonymous: false,
+          inputs: [
+            {
+              indexed: true,
+              internalType: "uint256",
+              name: "issuanceId",
+              type: "uint256",
+            },
+            {
+              indexed: false,
+              internalType: "uint8",
+              name: "status",
+              type: "uint8",
+            },
+            {
+              indexed: false,
+              internalType: "bytes32",
+              name: "ref",
+              type: "bytes32",
+            },
+          ],
+          name: "CorrespondingAdjustmentSet",
+          type: "event",
+        },
+        {
+          anonymous: false,
+          inputs: [
+            {
+              indexed: true,
+              internalType: "bytes32",
+              name: "role",
+              type: "bytes32",
+            },
+            {
+              indexed: true,
+              internalType: "bytes32",
+              name: "previousAdminRole",
+              type: "bytes32",
+            },
+            {
+              indexed: true,
+              internalType: "bytes32",
+              name: "newAdminRole",
+              type: "bytes32",
+            },
+          ],
+          name: "RoleAdminChanged",
+          type: "event",
+        },
+        {
+          anonymous: false,
+          inputs: [
+            {
+              indexed: true,
+              internalType: "bytes32",
+              name: "role",
+              type: "bytes32",
+            },
+            {
+              indexed: true,
+              internalType: "address",
+              name: "account",
+              type: "address",
+            },
+            {
+              indexed: true,
+              internalType: "address",
+              name: "sender",
+              type: "address",
+            },
+          ],
+          name: "RoleGranted",
+          type: "event",
+        },
+        {
+          anonymous: false,
+          inputs: [
+            {
+              indexed: true,
+              internalType: "bytes32",
+              name: "role",
+              type: "bytes32",
+            },
+            {
+              indexed: true,
+              internalType: "address",
+              name: "account",
+              type: "address",
+            },
+            {
+              indexed: true,
+              internalType: "address",
+              name: "sender",
+              type: "address",
+            },
+          ],
+          name: "RoleRevoked",
+          type: "event",
+        },
+        {
+          anonymous: false,
+          inputs: [
+            {
+              indexed: true,
+              internalType: "uint256",
+              name: "issuanceId",
+              type: "uint256",
+            },
+            {
+              indexed: false,
+              internalType: "bytes32",
+              name: "vcuReference",
+              type: "bytes32",
+            },
+          ],
+          name: "VcuReferenceSet",
+          type: "event",
+        },
+        {
+          anonymous: false,
+          inputs: [
+            {
+              indexed: true,
+              internalType: "address",
+              name: "verifier",
+              type: "address",
+            },
+            {
+              indexed: false,
+              internalType: "bytes32",
+              name: "accreditationHash",
+              type: "bytes32",
+            },
+          ],
+          name: "VerifierProfileSet",
+          type: "event",
+        },
+        {
+          inputs: [],
+          name: "DEFAULT_ADMIN_ROLE",
+          outputs: [
+            {
+              internalType: "bytes32",
+              name: "",
+              type: "bytes32",
+            },
+          ],
+          stateMutability: "view",
+          type: "function",
+        },
+        {
+          inputs: [],
+          name: "REGISTRY",
+          outputs: [
+            {
+              internalType: "contract IDmrvRegistryCounts",
+              name: "",
+              type: "address",
+            },
+          ],
+          stateMutability: "view",
+          type: "function",
+        },
+        {
+          inputs: [
+            {
+              internalType: "bytes32",
+              name: "projectId",
+              type: "bytes32",
+            },
+          ],
+          name: "article6Of",
+          outputs: [
+            {
+              internalType: "bytes2",
+              name: "hostParty",
+              type: "bytes2",
+            },
+            {
+              internalType: "uint8",
+              name: "authorizedUse",
+              type: "uint8",
+            },
+            {
+              internalType: "uint8",
+              name: "firstTransferDefinition",
+              type: "uint8",
+            },
+            {
+              internalType: "bytes32",
+              name: "authorizationRef",
+              type: "bytes32",
+            },
+          ],
+          stateMutability: "view",
+          type: "function",
+        },
+        {
+          inputs: [
+            {
+              internalType: "uint256",
+              name: "issuanceId",
+              type: "uint256",
+            },
+          ],
+          name: "correspondingAdjustmentOf",
+          outputs: [
+            {
+              internalType: "uint8",
+              name: "",
+              type: "uint8",
+            },
+          ],
+          stateMutability: "view",
+          type: "function",
+        },
+        {
+          inputs: [
+            {
+              internalType: "bytes32",
+              name: "role",
+              type: "bytes32",
+            },
+          ],
+          name: "getRoleAdmin",
+          outputs: [
+            {
+              internalType: "bytes32",
+              name: "",
+              type: "bytes32",
+            },
+          ],
+          stateMutability: "view",
+          type: "function",
+        },
+        {
+          inputs: [
+            {
+              internalType: "bytes32",
+              name: "role",
+              type: "bytes32",
+            },
+            {
+              internalType: "address",
+              name: "account",
+              type: "address",
+            },
+          ],
+          name: "grantRole",
+          outputs: [],
+          stateMutability: "nonpayable",
+          type: "function",
+        },
+        {
+          inputs: [
+            {
+              internalType: "bytes32",
+              name: "role",
+              type: "bytes32",
+            },
+            {
+              internalType: "address",
+              name: "account",
+              type: "address",
+            },
+          ],
+          name: "hasRole",
+          outputs: [
+            {
+              internalType: "bool",
+              name: "",
+              type: "bool",
+            },
+          ],
+          stateMutability: "view",
+          type: "function",
+        },
+        {
+          inputs: [
+            {
+              internalType: "bytes32",
+              name: "role",
+              type: "bytes32",
+            },
+            {
+              internalType: "address",
+              name: "callerConfirmation",
+              type: "address",
+            },
+          ],
+          name: "renounceRole",
+          outputs: [],
+          stateMutability: "nonpayable",
+          type: "function",
+        },
+        {
+          inputs: [
+            {
+              internalType: "bytes32",
+              name: "role",
+              type: "bytes32",
+            },
+            {
+              internalType: "address",
+              name: "account",
+              type: "address",
+            },
+          ],
+          name: "revokeRole",
+          outputs: [],
+          stateMutability: "nonpayable",
+          type: "function",
+        },
+        {
+          inputs: [
+            {
+              internalType: "bytes32",
+              name: "projectId",
+              type: "bytes32",
+            },
+            {
+              components: [
+                {
+                  internalType: "bytes2",
+                  name: "hostParty",
+                  type: "bytes2",
+                },
+                {
+                  internalType: "uint8",
+                  name: "authorizedUse",
+                  type: "uint8",
+                },
+                {
+                  internalType: "uint8",
+                  name: "firstTransferDefinition",
+                  type: "uint8",
+                },
+                {
+                  internalType: "bytes32",
+                  name: "authorizationRef",
+                  type: "bytes32",
+                },
+              ],
+              internalType: "struct DmrvAnnotations.Article6",
+              name: "a",
+              type: "tuple",
+            },
+          ],
+          name: "setArticle6",
+          outputs: [],
+          stateMutability: "nonpayable",
+          type: "function",
+        },
+        {
+          inputs: [
+            {
+              internalType: "uint256",
+              name: "issuanceId",
+              type: "uint256",
+            },
+            {
+              internalType: "uint8",
+              name: "status",
+              type: "uint8",
+            },
+            {
+              internalType: "bytes32",
+              name: "ref",
+              type: "bytes32",
+            },
+          ],
+          name: "setCorrespondingAdjustment",
+          outputs: [],
+          stateMutability: "nonpayable",
+          type: "function",
+        },
+        {
+          inputs: [
+            {
+              internalType: "uint256",
+              name: "issuanceId",
+              type: "uint256",
+            },
+            {
+              internalType: "bytes32",
+              name: "vcuReference",
+              type: "bytes32",
+            },
+          ],
+          name: "setVcuReference",
+          outputs: [],
+          stateMutability: "nonpayable",
+          type: "function",
+        },
+        {
+          inputs: [
+            {
+              internalType: "address",
+              name: "verifier",
+              type: "address",
+            },
+            {
+              internalType: "bytes32",
+              name: "accreditationHash",
+              type: "bytes32",
+            },
+          ],
+          name: "setVerifierProfile",
+          outputs: [],
+          stateMutability: "nonpayable",
+          type: "function",
+        },
+        {
+          inputs: [
+            {
+              internalType: "bytes4",
+              name: "interfaceId",
+              type: "bytes4",
+            },
+          ],
+          name: "supportsInterface",
+          outputs: [
+            {
+              internalType: "bool",
+              name: "",
+              type: "bool",
+            },
+          ],
+          stateMutability: "view",
+          type: "function",
+        },
+        {
+          inputs: [
+            {
+              internalType: "uint256",
+              name: "issuanceId",
+              type: "uint256",
+            },
+          ],
+          name: "vcuReferenceOf",
+          outputs: [
+            {
+              internalType: "bytes32",
+              name: "",
+              type: "bytes32",
+            },
+          ],
+          stateMutability: "view",
+          type: "function",
+        },
+        {
+          inputs: [
+            {
+              internalType: "address",
+              name: "verifier",
+              type: "address",
+            },
+          ],
+          name: "verifierProfileOf",
+          outputs: [
+            {
+              internalType: "bytes32",
+              name: "accreditationHash",
+              type: "bytes32",
+            },
+          ],
+          stateMutability: "view",
+          type: "function",
+        },
+      ],
+      inheritedFunctions: {
+        DEFAULT_ADMIN_ROLE: "@openzeppelin/contracts/access/AccessControl.sol",
+        getRoleAdmin: "@openzeppelin/contracts/access/AccessControl.sol",
+        grantRole: "@openzeppelin/contracts/access/AccessControl.sol",
+        hasRole: "@openzeppelin/contracts/access/AccessControl.sol",
+        renounceRole: "@openzeppelin/contracts/access/AccessControl.sol",
+        revokeRole: "@openzeppelin/contracts/access/AccessControl.sol",
+        supportsInterface: "@openzeppelin/contracts/access/AccessControl.sol",
+      },
+      deployedOnBlock: 41121770,
     },
     DmrvRegistry: {
-      address: "0xaf9C76B48B317cee770ED6AE038D516b269E0129",
+      address: "0x4EB517694CBac7b59a26B188eFEBa35aAb5Fd48e",
       abi: [
         {
           inputs: [
@@ -1352,6 +1949,17 @@ const deployedContracts = {
         {
           inputs: [
             {
+              internalType: "bytes32",
+              name: "externalId",
+              type: "bytes32",
+            },
+          ],
+          name: "ExternalIdAlreadyRegistered",
+          type: "error",
+        },
+        {
+          inputs: [
+            {
               internalType: "uint256",
               name: "amount",
               type: "uint256",
@@ -1395,23 +2003,34 @@ const deployedContracts = {
         {
           inputs: [
             {
-              internalType: "uint256",
-              name: "attestationId",
-              type: "uint256",
-            },
-          ],
-          name: "InvalidAttestation",
-          type: "error",
-        },
-        {
-          inputs: [
-            {
               internalType: "uint16",
               name: "value",
               type: "uint16",
             },
           ],
           name: "InvalidCompleteness",
+          type: "error",
+        },
+        {
+          inputs: [
+            {
+              internalType: "uint8",
+              name: "decision",
+              type: "uint8",
+            },
+          ],
+          name: "InvalidDecision",
+          type: "error",
+        },
+        {
+          inputs: [
+            {
+              internalType: "uint256",
+              name: "issuanceId",
+              type: "uint256",
+            },
+          ],
+          name: "InvalidIssuance",
           type: "error",
         },
         {
@@ -1460,6 +2079,33 @@ const deployedContracts = {
         {
           inputs: [
             {
+              internalType: "uint32",
+              name: "firstRecord",
+              type: "uint32",
+            },
+            {
+              internalType: "uint32",
+              name: "lastRecord",
+              type: "uint32",
+            },
+          ],
+          name: "InvalidRecordRange",
+          type: "error",
+        },
+        {
+          inputs: [
+            {
+              internalType: "address",
+              name: "market",
+              type: "address",
+            },
+          ],
+          name: "MarketAlreadySet",
+          type: "error",
+        },
+        {
+          inputs: [
+            {
               internalType: "address",
               name: "meter",
               type: "address",
@@ -1493,6 +2139,28 @@ const deployedContracts = {
             },
           ],
           name: "NoCertificateToClaim",
+          type: "error",
+        },
+        {
+          inputs: [
+            {
+              internalType: "address",
+              name: "caller",
+              type: "address",
+            },
+          ],
+          name: "NotMarket",
+          type: "error",
+        },
+        {
+          inputs: [
+            {
+              internalType: "address",
+              name: "caller",
+              type: "address",
+            },
+          ],
+          name: "NotReporter",
           type: "error",
         },
         {
@@ -1558,6 +2226,22 @@ const deployedContracts = {
             },
           ],
           name: "ProjectInactive",
+          type: "error",
+        },
+        {
+          inputs: [
+            {
+              internalType: "bytes32",
+              name: "expected",
+              type: "bytes32",
+            },
+            {
+              internalType: "bytes32",
+              name: "provided",
+              type: "bytes32",
+            },
+          ],
+          name: "RecordsHashMismatch",
           type: "error",
         },
         {
@@ -1665,110 +2349,6 @@ const deployedContracts = {
           anonymous: false,
           inputs: [
             {
-              indexed: true,
-              internalType: "bytes32",
-              name: "projectId",
-              type: "bytes32",
-            },
-            {
-              indexed: false,
-              internalType: "bytes2",
-              name: "hostParty",
-              type: "bytes2",
-            },
-            {
-              indexed: false,
-              internalType: "uint8",
-              name: "authorizedUse",
-              type: "uint8",
-            },
-            {
-              indexed: false,
-              internalType: "uint8",
-              name: "firstTransferDefinition",
-              type: "uint8",
-            },
-            {
-              indexed: false,
-              internalType: "bytes32",
-              name: "authorizationRef",
-              type: "bytes32",
-            },
-          ],
-          name: "Article6Set",
-          type: "event",
-        },
-        {
-          anonymous: false,
-          inputs: [
-            {
-              indexed: true,
-              internalType: "uint256",
-              name: "attestationId",
-              type: "uint256",
-            },
-            {
-              indexed: true,
-              internalType: "bytes32",
-              name: "projectId",
-              type: "bytes32",
-            },
-            {
-              indexed: true,
-              internalType: "address",
-              name: "verifier",
-              type: "address",
-            },
-            {
-              indexed: false,
-              internalType: "int256",
-              name: "reductionG",
-              type: "int256",
-            },
-            {
-              indexed: false,
-              internalType: "uint256",
-              name: "unitsMinted",
-              type: "uint256",
-            },
-            {
-              indexed: false,
-              internalType: "bytes32",
-              name: "reportHash",
-              type: "bytes32",
-            },
-            {
-              indexed: false,
-              internalType: "uint64",
-              name: "hcsTopicNum",
-              type: "uint64",
-            },
-            {
-              indexed: false,
-              internalType: "uint64",
-              name: "hcsSequence",
-              type: "uint64",
-            },
-            {
-              indexed: false,
-              internalType: "bytes32",
-              name: "evidenceHash",
-              type: "bytes32",
-            },
-            {
-              indexed: false,
-              internalType: "bytes",
-              name: "breakdown",
-              type: "bytes",
-            },
-          ],
-          name: "AttestationSubmitted",
-          type: "event",
-        },
-        {
-          anonymous: false,
-          inputs: [
-            {
               indexed: false,
               internalType: "uint64",
               name: "topic",
@@ -1871,31 +2451,6 @@ const deployedContracts = {
           inputs: [
             {
               indexed: true,
-              internalType: "uint256",
-              name: "attestationId",
-              type: "uint256",
-            },
-            {
-              indexed: false,
-              internalType: "uint8",
-              name: "status",
-              type: "uint8",
-            },
-            {
-              indexed: false,
-              internalType: "bytes32",
-              name: "ref",
-              type: "bytes32",
-            },
-          ],
-          name: "CorrespondingAdjustmentSet",
-          type: "event",
-        },
-        {
-          anonymous: false,
-          inputs: [
-            {
-              indexed: true,
               internalType: "address",
               name: "token",
               type: "address",
@@ -1965,6 +2520,38 @@ const deployedContracts = {
           inputs: [
             {
               indexed: true,
+              internalType: "address",
+              name: "account",
+              type: "address",
+            },
+            {
+              indexed: false,
+              internalType: "uint256",
+              name: "units",
+              type: "uint256",
+            },
+          ],
+          name: "Deposited",
+          type: "event",
+        },
+        {
+          anonymous: false,
+          inputs: [
+            {
+              indexed: true,
+              internalType: "address",
+              name: "market",
+              type: "address",
+            },
+          ],
+          name: "MarketSet",
+          type: "event",
+        },
+        {
+          anonymous: false,
+          inputs: [
+            {
+              indexed: true,
               internalType: "bytes32",
               name: "projectId",
               type: "bytes32",
@@ -1977,44 +2564,6 @@ const deployedContracts = {
             },
           ],
           name: "MeterChanged",
-          type: "event",
-        },
-        {
-          anonymous: false,
-          inputs: [
-            {
-              indexed: true,
-              internalType: "uint256",
-              name: "attestationId",
-              type: "uint256",
-            },
-            {
-              indexed: true,
-              internalType: "address",
-              name: "meter",
-              type: "address",
-            },
-            {
-              indexed: false,
-              internalType: "bytes32",
-              name: "readingsDigest",
-              type: "bytes32",
-            },
-          ],
-          name: "MeterStatementAccepted",
-          type: "event",
-        },
-        {
-          anonymous: false,
-          inputs: [
-            {
-              indexed: false,
-              internalType: "uint16",
-              name: "minCompletenessBps",
-              type: "uint16",
-            },
-          ],
-          name: "MinCompletenessChanged",
           type: "event",
         },
         {
@@ -2059,6 +2608,140 @@ const deployedContracts = {
           inputs: [
             {
               indexed: true,
+              internalType: "uint256",
+              name: "attestationId",
+              type: "uint256",
+            },
+            {
+              indexed: true,
+              internalType: "bytes32",
+              name: "projectId",
+              type: "bytes32",
+            },
+            {
+              indexed: false,
+              internalType: "uint32",
+              name: "sequence",
+              type: "uint32",
+            },
+            {
+              indexed: false,
+              internalType: "int256",
+              name: "reductionG",
+              type: "int256",
+            },
+            {
+              indexed: false,
+              internalType: "bytes32",
+              name: "reportHash",
+              type: "bytes32",
+            },
+            {
+              indexed: false,
+              internalType: "uint64",
+              name: "hcsTopicNum",
+              type: "uint64",
+            },
+            {
+              indexed: false,
+              internalType: "uint64",
+              name: "hcsSequence",
+              type: "uint64",
+            },
+            {
+              indexed: false,
+              internalType: "bytes32",
+              name: "chainHash",
+              type: "bytes32",
+            },
+            {
+              indexed: false,
+              internalType: "bytes",
+              name: "breakdown",
+              type: "bytes",
+            },
+          ],
+          name: "MonitoringRecorded",
+          type: "event",
+        },
+        {
+          anonymous: false,
+          inputs: [
+            {
+              indexed: true,
+              internalType: "uint256",
+              name: "issuanceId",
+              type: "uint256",
+            },
+            {
+              indexed: true,
+              internalType: "bytes32",
+              name: "projectId",
+              type: "bytes32",
+            },
+            {
+              indexed: true,
+              internalType: "address",
+              name: "verifier",
+              type: "address",
+            },
+            {
+              indexed: false,
+              internalType: "uint32",
+              name: "firstRecord",
+              type: "uint32",
+            },
+            {
+              indexed: false,
+              internalType: "uint32",
+              name: "lastRecord",
+              type: "uint32",
+            },
+            {
+              indexed: false,
+              internalType: "uint8",
+              name: "decision",
+              type: "uint8",
+            },
+            {
+              indexed: false,
+              internalType: "int256",
+              name: "monitoredG",
+              type: "int256",
+            },
+            {
+              indexed: false,
+              internalType: "uint64",
+              name: "deductionG",
+              type: "uint64",
+            },
+            {
+              indexed: false,
+              internalType: "uint256",
+              name: "unitsIssued",
+              type: "uint256",
+            },
+            {
+              indexed: false,
+              internalType: "bytes32",
+              name: "reportHash",
+              type: "bytes32",
+            },
+            {
+              indexed: false,
+              internalType: "bytes32",
+              name: "evidenceHash",
+              type: "bytes32",
+            },
+          ],
+          name: "PeriodVerified",
+          type: "event",
+        },
+        {
+          anonymous: false,
+          inputs: [
+            {
+              indexed: true,
               internalType: "bytes32",
               name: "projectId",
               type: "bytes32",
@@ -2074,12 +2757,6 @@ const deployedContracts = {
               internalType: "address",
               name: "operator",
               type: "address",
-            },
-            {
-              indexed: false,
-              internalType: "string",
-              name: "name",
-              type: "string",
             },
             {
               indexed: false,
@@ -2120,6 +2797,62 @@ const deployedContracts = {
             },
           ],
           name: "ProjectStatusChanged",
+          type: "event",
+        },
+        {
+          anonymous: false,
+          inputs: [
+            {
+              indexed: true,
+              internalType: "bytes32",
+              name: "projectId",
+              type: "bytes32",
+            },
+            {
+              indexed: true,
+              internalType: "address",
+              name: "validator",
+              type: "address",
+            },
+            {
+              indexed: false,
+              internalType: "uint8",
+              name: "creditingPeriod",
+              type: "uint8",
+            },
+            {
+              indexed: false,
+              internalType: "bytes32",
+              name: "reportHash",
+              type: "bytes32",
+            },
+            {
+              indexed: false,
+              internalType: "bytes32",
+              name: "externalId",
+              type: "bytes32",
+            },
+          ],
+          name: "ProjectValidated",
+          type: "event",
+        },
+        {
+          anonymous: false,
+          inputs: [
+            {
+              indexed: true,
+              internalType: "bytes32",
+              name: "projectId",
+              type: "bytes32",
+            },
+            {
+              indexed: true,
+              internalType: "address",
+              name: "reporter",
+              type: "address",
+            },
+          ],
+          name: "ReporterChanged",
           type: "event",
         },
         {
@@ -2234,25 +2967,6 @@ const deployedContracts = {
             {
               indexed: true,
               internalType: "address",
-              name: "verifier",
-              type: "address",
-            },
-            {
-              indexed: false,
-              internalType: "bytes32",
-              name: "accreditationHash",
-              type: "bytes32",
-            },
-          ],
-          name: "VerifierProfileSet",
-          type: "event",
-        },
-        {
-          anonymous: false,
-          inputs: [
-            {
-              indexed: true,
-              internalType: "address",
               name: "account",
               type: "address",
             },
@@ -2294,6 +3008,19 @@ const deployedContracts = {
         },
         {
           inputs: [],
+          name: "DECISION_REJECTED",
+          outputs: [
+            {
+              internalType: "uint8",
+              name: "",
+              type: "uint8",
+            },
+          ],
+          stateMutability: "view",
+          type: "function",
+        },
+        {
+          inputs: [],
           name: "DEFAULT_ADMIN_ROLE",
           outputs: [
             {
@@ -2313,19 +3040,6 @@ const deployedContracts = {
               internalType: "uint256",
               name: "",
               type: "uint256",
-            },
-          ],
-          stateMutability: "view",
-          type: "function",
-        },
-        {
-          inputs: [],
-          name: "MARKET_ROLE",
-          outputs: [
-            {
-              internalType: "bytes32",
-              name: "",
-              type: "bytes32",
             },
           ],
           stateMutability: "view",
@@ -2372,7 +3086,20 @@ const deployedContracts = {
         },
         {
           inputs: [],
-          name: "VERIFIER_APPROVAL_TYPEHASH",
+          name: "VALIDATION_APPROVAL_TYPEHASH",
+          outputs: [
+            {
+              internalType: "bytes32",
+              name: "",
+              type: "bytes32",
+            },
+          ],
+          stateMutability: "view",
+          type: "function",
+        },
+        {
+          inputs: [],
+          name: "VERIFICATION_STATEMENT_TYPEHASH",
           outputs: [
             {
               internalType: "bytes32",
@@ -2399,109 +3126,6 @@ const deployedContracts = {
         {
           inputs: [
             {
-              components: [
-                {
-                  internalType: "bytes32",
-                  name: "projectId",
-                  type: "bytes32",
-                },
-                {
-                  internalType: "uint32",
-                  name: "sequence",
-                  type: "uint32",
-                },
-                {
-                  internalType: "uint32",
-                  name: "intervals",
-                  type: "uint32",
-                },
-                {
-                  internalType: "uint32",
-                  name: "intervalSeconds",
-                  type: "uint32",
-                },
-                {
-                  internalType: "bytes32",
-                  name: "readingsDigest",
-                  type: "bytes32",
-                },
-                {
-                  internalType: "bytes32",
-                  name: "reportHash",
-                  type: "bytes32",
-                },
-                {
-                  internalType: "uint64",
-                  name: "hcsTopicNum",
-                  type: "uint64",
-                },
-                {
-                  internalType: "uint64",
-                  name: "hcsSequence",
-                  type: "uint64",
-                },
-                {
-                  internalType: "bytes32",
-                  name: "evidenceHash",
-                  type: "bytes32",
-                },
-                {
-                  components: [
-                    {
-                      internalType: "uint64",
-                      name: "periodStart",
-                      type: "uint64",
-                    },
-                    {
-                      internalType: "uint64",
-                      name: "periodEnd",
-                      type: "uint64",
-                    },
-                    {
-                      internalType: "bytes",
-                      name: "metered",
-                      type: "bytes",
-                    },
-                    {
-                      internalType: "bytes",
-                      name: "verified",
-                      type: "bytes",
-                    },
-                  ],
-                  internalType: "struct Measurement",
-                  name: "measurement",
-                  type: "tuple",
-                },
-                {
-                  internalType: "bytes",
-                  name: "meterSignature",
-                  type: "bytes",
-                },
-                {
-                  internalType: "bytes",
-                  name: "verifierSignature",
-                  type: "bytes",
-                },
-              ],
-              internalType: "struct DmrvRegistry.Submission",
-              name: "s",
-              type: "tuple",
-            },
-          ],
-          name: "approvalDigest",
-          outputs: [
-            {
-              internalType: "bytes32",
-              name: "",
-              type: "bytes32",
-            },
-          ],
-          stateMutability: "view",
-          type: "function",
-        },
-        {
-          inputs: [
-            {
               internalType: "contract IMethodology",
               name: "module",
               type: "address",
@@ -2513,40 +3137,6 @@ const deployedContracts = {
               internalType: "bool",
               name: "",
               type: "bool",
-            },
-          ],
-          stateMutability: "view",
-          type: "function",
-        },
-        {
-          inputs: [
-            {
-              internalType: "bytes32",
-              name: "projectId",
-              type: "bytes32",
-            },
-          ],
-          name: "article6Of",
-          outputs: [
-            {
-              internalType: "bytes2",
-              name: "hostParty",
-              type: "bytes2",
-            },
-            {
-              internalType: "uint8",
-              name: "authorizedUse",
-              type: "uint8",
-            },
-            {
-              internalType: "uint8",
-              name: "firstTransferDefinition",
-              type: "uint8",
-            },
-            {
-              internalType: "bytes32",
-              name: "authorizationRef",
-              type: "bytes32",
             },
           ],
           stateMutability: "view",
@@ -2602,25 +3192,6 @@ const deployedContracts = {
           name: "claimCertificate",
           outputs: [],
           stateMutability: "nonpayable",
-          type: "function",
-        },
-        {
-          inputs: [
-            {
-              internalType: "uint256",
-              name: "attestationId",
-              type: "uint256",
-            },
-          ],
-          name: "correspondingAdjustmentOf",
-          outputs: [
-            {
-              internalType: "uint8",
-              name: "",
-              type: "uint8",
-            },
-          ],
-          stateMutability: "view",
           type: "function",
         },
         {
@@ -2702,6 +3273,19 @@ const deployedContracts = {
           type: "function",
         },
         {
+          inputs: [
+            {
+              internalType: "uint256",
+              name: "units",
+              type: "uint256",
+            },
+          ],
+          name: "deposit",
+          outputs: [],
+          stateMutability: "nonpayable",
+          type: "function",
+        },
+        {
           inputs: [],
           name: "domainSeparator",
           outputs: [
@@ -2737,107 +3321,6 @@ const deployedContracts = {
           inputs: [
             {
               internalType: "uint256",
-              name: "attestationId",
-              type: "uint256",
-            },
-          ],
-          name: "getAttestation",
-          outputs: [
-            {
-              components: [
-                {
-                  internalType: "bytes32",
-                  name: "projectId",
-                  type: "bytes32",
-                },
-                {
-                  internalType: "uint64",
-                  name: "periodStart",
-                  type: "uint64",
-                },
-                {
-                  internalType: "uint64",
-                  name: "periodEnd",
-                  type: "uint64",
-                },
-                {
-                  internalType: "int64",
-                  name: "reductionG",
-                  type: "int64",
-                },
-                {
-                  internalType: "uint64",
-                  name: "unitsMinted",
-                  type: "uint64",
-                },
-                {
-                  internalType: "uint16",
-                  name: "completenessBps",
-                  type: "uint16",
-                },
-                {
-                  internalType: "address",
-                  name: "verifier",
-                  type: "address",
-                },
-                {
-                  internalType: "address",
-                  name: "meter",
-                  type: "address",
-                },
-                {
-                  internalType: "uint64",
-                  name: "hcsTopicNum",
-                  type: "uint64",
-                },
-                {
-                  internalType: "uint64",
-                  name: "hcsSequence",
-                  type: "uint64",
-                },
-                {
-                  internalType: "uint64",
-                  name: "timestamp",
-                  type: "uint64",
-                },
-                {
-                  internalType: "bytes32",
-                  name: "reportHash",
-                  type: "bytes32",
-                },
-                {
-                  internalType: "bytes32",
-                  name: "readingsDigest",
-                  type: "bytes32",
-                },
-                {
-                  internalType: "bytes32",
-                  name: "evidenceHash",
-                  type: "bytes32",
-                },
-                {
-                  internalType: "bytes",
-                  name: "verified",
-                  type: "bytes",
-                },
-                {
-                  internalType: "bytes",
-                  name: "breakdown",
-                  type: "bytes",
-                },
-              ],
-              internalType: "struct DmrvRegistry.Attestation",
-              name: "",
-              type: "tuple",
-            },
-          ],
-          stateMutability: "view",
-          type: "function",
-        },
-        {
-          inputs: [
-            {
-              internalType: "uint256",
               name: "start",
               type: "uint256",
             },
@@ -2857,6 +3340,11 @@ const deployedContracts = {
                   type: "bytes32",
                 },
                 {
+                  internalType: "uint32",
+                  name: "sequence",
+                  type: "uint32",
+                },
+                {
                   internalType: "uint64",
                   name: "periodStart",
                   type: "uint64",
@@ -2872,9 +3360,9 @@ const deployedContracts = {
                   type: "int64",
                 },
                 {
-                  internalType: "uint64",
-                  name: "unitsMinted",
-                  type: "uint64",
+                  internalType: "int128",
+                  name: "cumulativeG",
+                  type: "int128",
                 },
                 {
                   internalType: "uint16",
@@ -2883,18 +3371,8 @@ const deployedContracts = {
                 },
                 {
                   internalType: "address",
-                  name: "verifier",
-                  type: "address",
-                },
-                {
-                  internalType: "address",
                   name: "meter",
                   type: "address",
-                },
-                {
-                  internalType: "uint64",
-                  name: "hcsTopicNum",
-                  type: "uint64",
                 },
                 {
                   internalType: "uint64",
@@ -2918,7 +3396,7 @@ const deployedContracts = {
                 },
                 {
                   internalType: "bytes32",
-                  name: "evidenceHash",
+                  name: "chainHash",
                   type: "bytes32",
                 },
                 {
@@ -2935,6 +3413,87 @@ const deployedContracts = {
               internalType: "struct DmrvRegistry.Attestation[]",
               name: "page",
               type: "tuple[]",
+            },
+          ],
+          stateMutability: "view",
+          type: "function",
+        },
+        {
+          inputs: [
+            {
+              internalType: "uint256",
+              name: "issuanceId",
+              type: "uint256",
+            },
+          ],
+          name: "getIssuance",
+          outputs: [
+            {
+              components: [
+                {
+                  internalType: "bytes32",
+                  name: "projectId",
+                  type: "bytes32",
+                },
+                {
+                  internalType: "uint32",
+                  name: "firstRecord",
+                  type: "uint32",
+                },
+                {
+                  internalType: "uint32",
+                  name: "lastRecord",
+                  type: "uint32",
+                },
+                {
+                  internalType: "uint8",
+                  name: "decision",
+                  type: "uint8",
+                },
+                {
+                  internalType: "int128",
+                  name: "monitoredG",
+                  type: "int128",
+                },
+                {
+                  internalType: "uint64",
+                  name: "deductionG",
+                  type: "uint64",
+                },
+                {
+                  internalType: "uint64",
+                  name: "unitsIssued",
+                  type: "uint64",
+                },
+                {
+                  internalType: "address",
+                  name: "verifier",
+                  type: "address",
+                },
+                {
+                  internalType: "uint64",
+                  name: "timestamp",
+                  type: "uint64",
+                },
+                {
+                  internalType: "uint64",
+                  name: "hcsSequence",
+                  type: "uint64",
+                },
+                {
+                  internalType: "bytes32",
+                  name: "reportHash",
+                  type: "bytes32",
+                },
+                {
+                  internalType: "bytes32",
+                  name: "evidenceHash",
+                  type: "bytes32",
+                },
+              ],
+              internalType: "struct DmrvRegistry.Issuance",
+              name: "",
+              type: "tuple",
             },
           ],
           stateMutability: "view",
@@ -2963,6 +3522,16 @@ const deployedContracts = {
                   type: "address",
                 },
                 {
+                  internalType: "address",
+                  name: "reporter",
+                  type: "address",
+                },
+                {
+                  internalType: "address",
+                  name: "validator",
+                  type: "address",
+                },
+                {
                   internalType: "contract IMethodology",
                   name: "module",
                   type: "address",
@@ -2980,6 +3549,11 @@ const deployedContracts = {
                 {
                   internalType: "uint32",
                   name: "attestations",
+                  type: "uint32",
+                },
+                {
+                  internalType: "uint32",
+                  name: "verifiedRecords",
                   type: "uint32",
                 },
                 {
@@ -3024,7 +3598,22 @@ const deployedContracts = {
                 },
                 {
                   internalType: "bytes32",
+                  name: "recordsHash",
+                  type: "bytes32",
+                },
+                {
+                  internalType: "bytes32",
                   name: "designHash",
+                  type: "bytes32",
+                },
+                {
+                  internalType: "bytes32",
+                  name: "validationReportHash",
+                  type: "bytes32",
+                },
+                {
+                  internalType: "bytes32",
+                  name: "externalId",
                   type: "bytes32",
                 },
                 {
@@ -3108,62 +3697,6 @@ const deployedContracts = {
         {
           inputs: [
             {
-              internalType: "uint256",
-              name: "start",
-              type: "uint256",
-            },
-            {
-              internalType: "uint256",
-              name: "count",
-              type: "uint256",
-            },
-          ],
-          name: "getRetirements",
-          outputs: [
-            {
-              components: [
-                {
-                  internalType: "address",
-                  name: "account",
-                  type: "address",
-                },
-                {
-                  internalType: "uint64",
-                  name: "units",
-                  type: "uint64",
-                },
-                {
-                  internalType: "uint64",
-                  name: "timestamp",
-                  type: "uint64",
-                },
-                {
-                  internalType: "string",
-                  name: "beneficiary",
-                  type: "string",
-                },
-                {
-                  internalType: "uint64",
-                  name: "certificateSerial",
-                  type: "uint64",
-                },
-                {
-                  internalType: "bool",
-                  name: "certificateDelivered",
-                  type: "bool",
-                },
-              ],
-              internalType: "struct DmrvRegistry.Retirement[]",
-              name: "page",
-              type: "tuple[]",
-            },
-          ],
-          stateMutability: "view",
-          type: "function",
-        },
-        {
-          inputs: [
-            {
               internalType: "bytes32",
               name: "role",
               type: "bytes32",
@@ -3223,103 +3756,26 @@ const deployedContracts = {
           type: "function",
         },
         {
-          inputs: [
-            {
-              components: [
-                {
-                  internalType: "bytes32",
-                  name: "projectId",
-                  type: "bytes32",
-                },
-                {
-                  internalType: "uint32",
-                  name: "sequence",
-                  type: "uint32",
-                },
-                {
-                  internalType: "uint32",
-                  name: "intervals",
-                  type: "uint32",
-                },
-                {
-                  internalType: "uint32",
-                  name: "intervalSeconds",
-                  type: "uint32",
-                },
-                {
-                  internalType: "bytes32",
-                  name: "readingsDigest",
-                  type: "bytes32",
-                },
-                {
-                  internalType: "bytes32",
-                  name: "reportHash",
-                  type: "bytes32",
-                },
-                {
-                  internalType: "uint64",
-                  name: "hcsTopicNum",
-                  type: "uint64",
-                },
-                {
-                  internalType: "uint64",
-                  name: "hcsSequence",
-                  type: "uint64",
-                },
-                {
-                  internalType: "bytes32",
-                  name: "evidenceHash",
-                  type: "bytes32",
-                },
-                {
-                  components: [
-                    {
-                      internalType: "uint64",
-                      name: "periodStart",
-                      type: "uint64",
-                    },
-                    {
-                      internalType: "uint64",
-                      name: "periodEnd",
-                      type: "uint64",
-                    },
-                    {
-                      internalType: "bytes",
-                      name: "metered",
-                      type: "bytes",
-                    },
-                    {
-                      internalType: "bytes",
-                      name: "verified",
-                      type: "bytes",
-                    },
-                  ],
-                  internalType: "struct Measurement",
-                  name: "measurement",
-                  type: "tuple",
-                },
-                {
-                  internalType: "bytes",
-                  name: "meterSignature",
-                  type: "bytes",
-                },
-                {
-                  internalType: "bytes",
-                  name: "verifierSignature",
-                  type: "bytes",
-                },
-              ],
-              internalType: "struct DmrvRegistry.Submission",
-              name: "s",
-              type: "tuple",
-            },
-          ],
-          name: "meterStatementDigest",
+          inputs: [],
+          name: "issuanceCount",
           outputs: [
             {
-              internalType: "bytes32",
+              internalType: "uint256",
               name: "",
-              type: "bytes32",
+              type: "uint256",
+            },
+          ],
+          stateMutability: "view",
+          type: "function",
+        },
+        {
+          inputs: [],
+          name: "market",
+          outputs: [
+            {
+              internalType: "address",
+              name: "",
+              type: "address",
             },
           ],
           stateMutability: "view",
@@ -3365,65 +3821,16 @@ const deployedContracts = {
           inputs: [
             {
               internalType: "bytes32",
-              name: "projectId",
+              name: "designHash",
               type: "bytes32",
             },
-            {
-              components: [
-                {
-                  internalType: "uint64",
-                  name: "periodStart",
-                  type: "uint64",
-                },
-                {
-                  internalType: "uint64",
-                  name: "periodEnd",
-                  type: "uint64",
-                },
-                {
-                  internalType: "bytes",
-                  name: "metered",
-                  type: "bytes",
-                },
-                {
-                  internalType: "bytes",
-                  name: "verified",
-                  type: "bytes",
-                },
-              ],
-              internalType: "struct Measurement",
-              name: "m",
-              type: "tuple",
-            },
           ],
-          name: "preview",
+          name: "projectOfDesign",
           outputs: [
             {
-              components: [
-                {
-                  internalType: "int256",
-                  name: "reductionG",
-                  type: "int256",
-                },
-                {
-                  internalType: "bytes32",
-                  name: "newState",
-                  type: "bytes32",
-                },
-                {
-                  internalType: "bytes",
-                  name: "breakdown",
-                  type: "bytes",
-                },
-              ],
-              internalType: "struct QuantResult",
-              name: "q",
-              type: "tuple",
-            },
-            {
-              internalType: "uint256",
-              name: "units",
-              type: "uint256",
+              internalType: "bytes32",
+              name: "projectId",
+              type: "bytes32",
             },
           ],
           stateMutability: "view",
@@ -3433,11 +3840,11 @@ const deployedContracts = {
           inputs: [
             {
               internalType: "bytes32",
-              name: "designHash",
+              name: "externalId",
               type: "bytes32",
             },
           ],
-          name: "projectOfDesign",
+          name: "projectOfExternalId",
           outputs: [
             {
               internalType: "bytes32",
@@ -3470,38 +3877,148 @@ const deployedContracts = {
         {
           inputs: [
             {
-              internalType: "bytes32",
-              name: "projectId",
-              type: "bytes32",
+              components: [
+                {
+                  internalType: "bytes32",
+                  name: "projectId",
+                  type: "bytes32",
+                },
+                {
+                  internalType: "uint32",
+                  name: "sequence",
+                  type: "uint32",
+                },
+                {
+                  internalType: "uint32",
+                  name: "intervals",
+                  type: "uint32",
+                },
+                {
+                  internalType: "uint32",
+                  name: "intervalSeconds",
+                  type: "uint32",
+                },
+                {
+                  internalType: "bytes32",
+                  name: "readingsDigest",
+                  type: "bytes32",
+                },
+                {
+                  internalType: "bytes32",
+                  name: "reportHash",
+                  type: "bytes32",
+                },
+                {
+                  internalType: "uint64",
+                  name: "hcsTopicNum",
+                  type: "uint64",
+                },
+                {
+                  internalType: "uint64",
+                  name: "hcsSequence",
+                  type: "uint64",
+                },
+                {
+                  components: [
+                    {
+                      internalType: "uint64",
+                      name: "periodStart",
+                      type: "uint64",
+                    },
+                    {
+                      internalType: "uint64",
+                      name: "periodEnd",
+                      type: "uint64",
+                    },
+                    {
+                      internalType: "bytes",
+                      name: "metered",
+                      type: "bytes",
+                    },
+                    {
+                      internalType: "bytes",
+                      name: "verified",
+                      type: "bytes",
+                    },
+                  ],
+                  internalType: "struct Measurement",
+                  name: "measurement",
+                  type: "tuple",
+                },
+                {
+                  internalType: "bytes",
+                  name: "meterSignature",
+                  type: "bytes",
+                },
+              ],
+              internalType: "struct DmrvRegistry.Submission",
+              name: "s",
+              type: "tuple",
             },
+          ],
+          name: "recordMonitoring",
+          outputs: [
             {
-              internalType: "string",
-              name: "name",
-              type: "string",
+              internalType: "uint256",
+              name: "attestationId",
+              type: "uint256",
             },
+          ],
+          stateMutability: "nonpayable",
+          type: "function",
+        },
+        {
+          inputs: [
             {
-              internalType: "contract IMethodology",
-              name: "module",
-              type: "address",
-            },
-            {
-              internalType: "address",
-              name: "operator",
-              type: "address",
-            },
-            {
-              internalType: "address",
-              name: "meter",
-              type: "address",
-            },
-            {
-              internalType: "bytes32",
-              name: "designHash",
-              type: "bytes32",
+              components: [
+                {
+                  internalType: "bytes32",
+                  name: "projectId",
+                  type: "bytes32",
+                },
+                {
+                  internalType: "contract IMethodology",
+                  name: "module",
+                  type: "address",
+                },
+                {
+                  internalType: "address",
+                  name: "operator",
+                  type: "address",
+                },
+                {
+                  internalType: "address",
+                  name: "meter",
+                  type: "address",
+                },
+                {
+                  internalType: "bytes32",
+                  name: "designHash",
+                  type: "bytes32",
+                },
+                {
+                  internalType: "bytes32",
+                  name: "validationReportHash",
+                  type: "bytes32",
+                },
+                {
+                  internalType: "bytes32",
+                  name: "externalId",
+                  type: "bytes32",
+                },
+                {
+                  internalType: "bytes",
+                  name: "params",
+                  type: "bytes",
+                },
+              ],
+              internalType: "struct DmrvRegistry.Registration",
+              name: "r",
+              type: "tuple",
             },
             {
               internalType: "bytes",
-              name: "params",
+              name: "validationSignature",
               type: "bytes",
             },
           ],
@@ -3520,6 +4037,16 @@ const deployedContracts = {
             {
               internalType: "bytes",
               name: "newParams",
+              type: "bytes",
+            },
+            {
+              internalType: "bytes32",
+              name: "validationReportHash",
+              type: "bytes32",
+            },
+            {
+              internalType: "bytes",
+              name: "validationSignature",
               type: "bytes",
             },
           ],
@@ -3633,46 +4160,6 @@ const deployedContracts = {
         {
           inputs: [
             {
-              internalType: "bytes32",
-              name: "projectId",
-              type: "bytes32",
-            },
-            {
-              components: [
-                {
-                  internalType: "bytes2",
-                  name: "hostParty",
-                  type: "bytes2",
-                },
-                {
-                  internalType: "uint8",
-                  name: "authorizedUse",
-                  type: "uint8",
-                },
-                {
-                  internalType: "uint8",
-                  name: "firstTransferDefinition",
-                  type: "uint8",
-                },
-                {
-                  internalType: "bytes32",
-                  name: "authorizationRef",
-                  type: "bytes32",
-                },
-              ],
-              internalType: "struct DmrvRegistry.Article6",
-              name: "a",
-              type: "tuple",
-            },
-          ],
-          name: "setArticle6",
-          outputs: [],
-          stateMutability: "nonpayable",
-          type: "function",
-        },
-        {
-          inputs: [
-            {
               internalType: "uint64",
               name: "topic",
               type: "uint64",
@@ -3709,22 +4196,12 @@ const deployedContracts = {
         {
           inputs: [
             {
-              internalType: "uint256",
-              name: "attestationId",
-              type: "uint256",
-            },
-            {
-              internalType: "uint8",
-              name: "status",
-              type: "uint8",
-            },
-            {
-              internalType: "bytes32",
-              name: "ref",
-              type: "bytes32",
+              internalType: "address",
+              name: "market_",
+              type: "address",
             },
           ],
-          name: "setCorrespondingAdjustment",
+          name: "setMarket",
           outputs: [],
           stateMutability: "nonpayable",
           type: "function",
@@ -3743,19 +4220,6 @@ const deployedContracts = {
             },
           ],
           name: "setMeter",
-          outputs: [],
-          stateMutability: "nonpayable",
-          type: "function",
-        },
-        {
-          inputs: [
-            {
-              internalType: "uint16",
-              name: "minCompletenessBps_",
-              type: "uint16",
-            },
-          ],
-          name: "setMinCompleteness",
           outputs: [],
           stateMutability: "nonpayable",
           type: "function",
@@ -3799,121 +4263,18 @@ const deployedContracts = {
         {
           inputs: [
             {
-              internalType: "address",
-              name: "verifier",
-              type: "address",
-            },
-            {
               internalType: "bytes32",
-              name: "accreditationHash",
+              name: "projectId",
               type: "bytes32",
             },
+            {
+              internalType: "address",
+              name: "reporter",
+              type: "address",
+            },
           ],
-          name: "setVerifierProfile",
+          name: "setReporter",
           outputs: [],
-          stateMutability: "nonpayable",
-          type: "function",
-        },
-        {
-          inputs: [
-            {
-              components: [
-                {
-                  internalType: "bytes32",
-                  name: "projectId",
-                  type: "bytes32",
-                },
-                {
-                  internalType: "uint32",
-                  name: "sequence",
-                  type: "uint32",
-                },
-                {
-                  internalType: "uint32",
-                  name: "intervals",
-                  type: "uint32",
-                },
-                {
-                  internalType: "uint32",
-                  name: "intervalSeconds",
-                  type: "uint32",
-                },
-                {
-                  internalType: "bytes32",
-                  name: "readingsDigest",
-                  type: "bytes32",
-                },
-                {
-                  internalType: "bytes32",
-                  name: "reportHash",
-                  type: "bytes32",
-                },
-                {
-                  internalType: "uint64",
-                  name: "hcsTopicNum",
-                  type: "uint64",
-                },
-                {
-                  internalType: "uint64",
-                  name: "hcsSequence",
-                  type: "uint64",
-                },
-                {
-                  internalType: "bytes32",
-                  name: "evidenceHash",
-                  type: "bytes32",
-                },
-                {
-                  components: [
-                    {
-                      internalType: "uint64",
-                      name: "periodStart",
-                      type: "uint64",
-                    },
-                    {
-                      internalType: "uint64",
-                      name: "periodEnd",
-                      type: "uint64",
-                    },
-                    {
-                      internalType: "bytes",
-                      name: "metered",
-                      type: "bytes",
-                    },
-                    {
-                      internalType: "bytes",
-                      name: "verified",
-                      type: "bytes",
-                    },
-                  ],
-                  internalType: "struct Measurement",
-                  name: "measurement",
-                  type: "tuple",
-                },
-                {
-                  internalType: "bytes",
-                  name: "meterSignature",
-                  type: "bytes",
-                },
-                {
-                  internalType: "bytes",
-                  name: "verifierSignature",
-                  type: "bytes",
-                },
-              ],
-              internalType: "struct DmrvRegistry.Submission",
-              name: "s",
-              type: "tuple",
-            },
-          ],
-          name: "submitAttestation",
-          outputs: [
-            {
-              internalType: "uint256",
-              name: "attestationId",
-              type: "uint256",
-            },
-          ],
           stateMutability: "nonpayable",
           type: "function",
         },
@@ -3978,20 +4339,77 @@ const deployedContracts = {
         {
           inputs: [
             {
-              internalType: "address",
-              name: "verifier",
-              type: "address",
+              components: [
+                {
+                  internalType: "bytes32",
+                  name: "projectId",
+                  type: "bytes32",
+                },
+                {
+                  internalType: "uint32",
+                  name: "firstRecord",
+                  type: "uint32",
+                },
+                {
+                  internalType: "uint32",
+                  name: "lastRecord",
+                  type: "uint32",
+                },
+                {
+                  internalType: "bytes32",
+                  name: "recordsHash",
+                  type: "bytes32",
+                },
+                {
+                  internalType: "uint64",
+                  name: "deductionG",
+                  type: "uint64",
+                },
+                {
+                  internalType: "bytes32",
+                  name: "reportHash",
+                  type: "bytes32",
+                },
+                {
+                  internalType: "uint64",
+                  name: "hcsTopicNum",
+                  type: "uint64",
+                },
+                {
+                  internalType: "uint64",
+                  name: "hcsSequence",
+                  type: "uint64",
+                },
+                {
+                  internalType: "bytes32",
+                  name: "evidenceHash",
+                  type: "bytes32",
+                },
+                {
+                  internalType: "uint8",
+                  name: "decision",
+                  type: "uint8",
+                },
+              ],
+              internalType: "struct DmrvRegistry.VerificationStatement",
+              name: "v",
+              type: "tuple",
+            },
+            {
+              internalType: "bytes",
+              name: "signature",
+              type: "bytes",
             },
           ],
-          name: "verifierProfileOf",
+          name: "verifyPeriod",
           outputs: [
             {
-              internalType: "bytes32",
-              name: "accreditationHash",
-              type: "bytes32",
+              internalType: "uint256",
+              name: "issuanceId",
+              type: "uint256",
             },
           ],
-          stateMutability: "view",
+          stateMutability: "nonpayable",
           type: "function",
         },
         {
@@ -4017,10 +4435,10 @@ const deployedContracts = {
         revokeRole: "@openzeppelin/contracts/access/AccessControl.sol",
         supportsInterface: "@openzeppelin/contracts/access/AccessControl.sol",
       },
-      deployedOnBlock: 41009354,
+      deployedOnBlock: 41121767,
     },
     HydroVmr0017Module: {
-      address: "0x8D57432792aD39Ef2d2e104904e31b157846261d",
+      address: "0xe9f234753775AE6371819366472A84717ddb57eb",
       abi: [
         {
           inputs: [
@@ -4076,6 +4494,17 @@ const deployedContracts = {
           type: "error",
         },
         {
+          inputs: [
+            {
+              internalType: "bytes2",
+              name: "hostCountry",
+              type: "bytes2",
+            },
+          ],
+          name: "InvalidHostCountry",
+          type: "error",
+        },
+        {
           inputs: [],
           name: "InvalidParams",
           type: "error",
@@ -4115,6 +4544,22 @@ const deployedContracts = {
             },
           ],
           name: "NetExceedsGross",
+          type: "error",
+        },
+        {
+          inputs: [
+            {
+              internalType: "bytes2",
+              name: "hostCountry",
+              type: "bytes2",
+            },
+            {
+              internalType: "uint64",
+              name: "registrationRequestedAt",
+              type: "uint64",
+            },
+          ],
+          name: "NotLeastDevelopedCountry",
           type: "error",
         },
         {
@@ -4203,6 +4648,19 @@ const deployedContracts = {
               internalType: "uint256",
               name: "",
               type: "uint256",
+            },
+          ],
+          stateMutability: "view",
+          type: "function",
+        },
+        {
+          inputs: [],
+          name: "LDC_TABLE",
+          outputs: [
+            {
+              internalType: "bytes",
+              name: "",
+              type: "bytes",
             },
           ],
           stateMutability: "view",
@@ -4326,6 +4784,30 @@ const deployedContracts = {
               internalType: "string",
               name: "",
               type: "string",
+            },
+          ],
+          stateMutability: "pure",
+          type: "function",
+        },
+        {
+          inputs: [
+            {
+              internalType: "bytes2",
+              name: "country",
+              type: "bytes2",
+            },
+            {
+              internalType: "uint64",
+              name: "at",
+              type: "uint64",
+            },
+          ],
+          name: "isLeastDevelopedCountry",
+          outputs: [
+            {
+              internalType: "bool",
+              name: "",
+              type: "bool",
             },
           ],
           stateMutability: "pure",
@@ -4560,10 +5042,608 @@ const deployedContracts = {
         validateRenewal: "contracts/interfaces/IMethodology.sol",
         version: "contracts/interfaces/IMethodology.sol",
       },
-      deployedOnBlock: 41009352,
+      deployedOnBlock: 41121764,
+    },
+    RenewableVmr0017Module: {
+      address: "0x2A6FEc6Bf13FD1EdCa25F46943BEEfadDb75433a",
+      abi: [
+        {
+          inputs: [],
+          name: "BatteryStorageNotSupported",
+          type: "error",
+        },
+        {
+          inputs: [
+            {
+              internalType: "uint64",
+              name: "grossWh",
+              type: "uint64",
+            },
+            {
+              internalType: "uint256",
+              name: "maxWh",
+              type: "uint256",
+            },
+          ],
+          name: "EnergyExceedsCapacity",
+          type: "error",
+        },
+        {
+          inputs: [],
+          name: "FuelNotRegistered",
+          type: "error",
+        },
+        {
+          inputs: [
+            {
+              internalType: "uint32",
+              name: "ef",
+              type: "uint32",
+            },
+          ],
+          name: "GridEmissionFactorOutOfRange",
+          type: "error",
+        },
+        {
+          inputs: [
+            {
+              internalType: "uint64",
+              name: "start",
+              type: "uint64",
+            },
+            {
+              internalType: "uint64",
+              name: "end",
+              type: "uint64",
+            },
+          ],
+          name: "InvalidCreditingPeriod",
+          type: "error",
+        },
+        {
+          inputs: [],
+          name: "InvalidParams",
+          type: "error",
+        },
+        {
+          inputs: [],
+          name: "MissingCalibration",
+          type: "error",
+        },
+        {
+          inputs: [],
+          name: "MissingRegistrationRequest",
+          type: "error",
+        },
+        {
+          inputs: [
+            {
+              internalType: "int64",
+              name: "netWh",
+              type: "int64",
+            },
+            {
+              internalType: "uint64",
+              name: "grossWh",
+              type: "uint64",
+            },
+          ],
+          name: "NetExceedsGross",
+          type: "error",
+        },
+        {
+          inputs: [
+            {
+              internalType: "uint8",
+              name: "technology",
+              type: "uint8",
+            },
+          ],
+          name: "NotApplicableInHighIncomeCountry",
+          type: "error",
+        },
+        {
+          inputs: [],
+          name: "NotMetered",
+          type: "error",
+        },
+        {
+          inputs: [],
+          name: "NotRenewable",
+          type: "error",
+        },
+        {
+          inputs: [],
+          name: "ParamsChanged",
+          type: "error",
+        },
+        {
+          inputs: [
+            {
+              internalType: "uint64",
+              name: "periodStart",
+              type: "uint64",
+            },
+            {
+              internalType: "uint64",
+              name: "periodEnd",
+              type: "uint64",
+            },
+          ],
+          name: "PeriodCrossesCreditingYear",
+          type: "error",
+        },
+        {
+          inputs: [
+            {
+              internalType: "uint64",
+              name: "requestedAt",
+              type: "uint64",
+            },
+          ],
+          name: "RegistrationInTheFuture",
+          type: "error",
+        },
+        {
+          inputs: [],
+          name: "RenewalOverlap",
+          type: "error",
+        },
+        {
+          inputs: [],
+          name: "RenewalSpan",
+          type: "error",
+        },
+        {
+          inputs: [],
+          name: "StateOverflow",
+          type: "error",
+        },
+        {
+          inputs: [],
+          name: "CREDITING_YEAR",
+          outputs: [
+            {
+              internalType: "uint256",
+              name: "",
+              type: "uint256",
+            },
+          ],
+          stateMutability: "view",
+          type: "function",
+        },
+        {
+          inputs: [],
+          name: "EMBODIED_OCEAN_G_PER_MWH",
+          outputs: [
+            {
+              internalType: "uint32",
+              name: "",
+              type: "uint32",
+            },
+          ],
+          stateMutability: "view",
+          type: "function",
+        },
+        {
+          inputs: [],
+          name: "EMBODIED_SOLAR_G_PER_MWH",
+          outputs: [
+            {
+              internalType: "uint32",
+              name: "",
+              type: "uint32",
+            },
+          ],
+          stateMutability: "view",
+          type: "function",
+        },
+        {
+          inputs: [],
+          name: "EMBODIED_WIND_G_PER_MWH",
+          outputs: [
+            {
+              internalType: "uint32",
+              name: "",
+              type: "uint32",
+            },
+          ],
+          stateMutability: "view",
+          type: "function",
+        },
+        {
+          inputs: [],
+          name: "FLOATING_SOLAR",
+          outputs: [
+            {
+              internalType: "uint8",
+              name: "",
+              type: "uint8",
+            },
+          ],
+          stateMutability: "view",
+          type: "function",
+        },
+        {
+          inputs: [],
+          name: "HIGH_INCOME",
+          outputs: [
+            {
+              internalType: "uint8",
+              name: "",
+              type: "uint8",
+            },
+          ],
+          stateMutability: "view",
+          type: "function",
+        },
+        {
+          inputs: [],
+          name: "MAX_GRID_EF_G_PER_MWH",
+          outputs: [
+            {
+              internalType: "uint32",
+              name: "",
+              type: "uint32",
+            },
+          ],
+          stateMutability: "view",
+          type: "function",
+        },
+        {
+          inputs: [],
+          name: "SOLAR_PV",
+          outputs: [
+            {
+              internalType: "uint8",
+              name: "",
+              type: "uint8",
+            },
+          ],
+          stateMutability: "view",
+          type: "function",
+        },
+        {
+          inputs: [],
+          name: "TIDAL",
+          outputs: [
+            {
+              internalType: "uint8",
+              name: "",
+              type: "uint8",
+            },
+          ],
+          stateMutability: "view",
+          type: "function",
+        },
+        {
+          inputs: [],
+          name: "VCS_FIVE_YEAR_FROM",
+          outputs: [
+            {
+              internalType: "uint64",
+              name: "",
+              type: "uint64",
+            },
+          ],
+          stateMutability: "view",
+          type: "function",
+        },
+        {
+          inputs: [],
+          name: "WAVE",
+          outputs: [
+            {
+              internalType: "uint8",
+              name: "",
+              type: "uint8",
+            },
+          ],
+          stateMutability: "view",
+          type: "function",
+        },
+        {
+          inputs: [],
+          name: "WIND_OFFSHORE",
+          outputs: [
+            {
+              internalType: "uint8",
+              name: "",
+              type: "uint8",
+            },
+          ],
+          stateMutability: "view",
+          type: "function",
+        },
+        {
+          inputs: [],
+          name: "WIND_ONSHORE",
+          outputs: [
+            {
+              internalType: "uint8",
+              name: "",
+              type: "uint8",
+            },
+          ],
+          stateMutability: "view",
+          type: "function",
+        },
+        {
+          inputs: [
+            {
+              internalType: "bytes",
+              name: "params",
+              type: "bytes",
+            },
+          ],
+          name: "describe",
+          outputs: [
+            {
+              internalType: "string",
+              name: "",
+              type: "string",
+            },
+          ],
+          stateMutability: "pure",
+          type: "function",
+        },
+        {
+          inputs: [
+            {
+              internalType: "uint8",
+              name: "methodology",
+              type: "uint8",
+            },
+            {
+              internalType: "uint8",
+              name: "technology",
+              type: "uint8",
+            },
+          ],
+          name: "embodiedRate",
+          outputs: [
+            {
+              internalType: "uint32",
+              name: "",
+              type: "uint32",
+            },
+          ],
+          stateMutability: "pure",
+          type: "function",
+        },
+        {
+          inputs: [],
+          name: "methodologyId",
+          outputs: [
+            {
+              internalType: "bytes32",
+              name: "",
+              type: "bytes32",
+            },
+          ],
+          stateMutability: "pure",
+          type: "function",
+        },
+        {
+          inputs: [
+            {
+              internalType: "bytes",
+              name: "params",
+              type: "bytes",
+            },
+            {
+              internalType: "bytes32",
+              name: "state",
+              type: "bytes32",
+            },
+            {
+              components: [
+                {
+                  internalType: "uint64",
+                  name: "periodStart",
+                  type: "uint64",
+                },
+                {
+                  internalType: "uint64",
+                  name: "periodEnd",
+                  type: "uint64",
+                },
+                {
+                  internalType: "bytes",
+                  name: "metered",
+                  type: "bytes",
+                },
+                {
+                  internalType: "bytes",
+                  name: "verified",
+                  type: "bytes",
+                },
+              ],
+              internalType: "struct Measurement",
+              name: "m",
+              type: "tuple",
+            },
+          ],
+          name: "quantify",
+          outputs: [
+            {
+              components: [
+                {
+                  internalType: "int256",
+                  name: "reductionG",
+                  type: "int256",
+                },
+                {
+                  internalType: "bytes32",
+                  name: "newState",
+                  type: "bytes32",
+                },
+                {
+                  internalType: "bytes",
+                  name: "breakdown",
+                  type: "bytes",
+                },
+              ],
+              internalType: "struct QuantResult",
+              name: "result",
+              type: "tuple",
+            },
+          ],
+          stateMutability: "pure",
+          type: "function",
+        },
+        {
+          inputs: [],
+          name: "schemaHash",
+          outputs: [
+            {
+              internalType: "bytes32",
+              name: "",
+              type: "bytes32",
+            },
+          ],
+          stateMutability: "pure",
+          type: "function",
+        },
+        {
+          inputs: [
+            {
+              internalType: "bytes",
+              name: "params",
+              type: "bytes",
+            },
+          ],
+          name: "validateProject",
+          outputs: [
+            {
+              components: [
+                {
+                  internalType: "uint64",
+                  name: "creditingStart",
+                  type: "uint64",
+                },
+                {
+                  internalType: "uint64",
+                  name: "creditingEnd",
+                  type: "uint64",
+                },
+                {
+                  internalType: "uint64",
+                  name: "maxQuantityPerSecond",
+                  type: "uint64",
+                },
+                {
+                  internalType: "uint64",
+                  name: "calibrationValidUntil",
+                  type: "uint64",
+                },
+                {
+                  internalType: "uint64",
+                  name: "registrationRequestedAt",
+                  type: "uint64",
+                },
+              ],
+              internalType: "struct ProjectTerms",
+              name: "terms",
+              type: "tuple",
+            },
+          ],
+          stateMutability: "view",
+          type: "function",
+        },
+        {
+          inputs: [
+            {
+              internalType: "bytes",
+              name: "oldParams",
+              type: "bytes",
+            },
+            {
+              internalType: "bytes",
+              name: "newParams",
+              type: "bytes",
+            },
+            {
+              internalType: "uint64",
+              name: "prevStart",
+              type: "uint64",
+            },
+            {
+              internalType: "uint64",
+              name: "prevEnd",
+              type: "uint64",
+            },
+            {
+              internalType: "uint8",
+              name: "periods",
+              type: "uint8",
+            },
+          ],
+          name: "validateRenewal",
+          outputs: [
+            {
+              components: [
+                {
+                  internalType: "uint64",
+                  name: "creditingStart",
+                  type: "uint64",
+                },
+                {
+                  internalType: "uint64",
+                  name: "creditingEnd",
+                  type: "uint64",
+                },
+                {
+                  internalType: "uint64",
+                  name: "maxQuantityPerSecond",
+                  type: "uint64",
+                },
+                {
+                  internalType: "uint64",
+                  name: "calibrationValidUntil",
+                  type: "uint64",
+                },
+                {
+                  internalType: "uint64",
+                  name: "registrationRequestedAt",
+                  type: "uint64",
+                },
+              ],
+              internalType: "struct ProjectTerms",
+              name: "",
+              type: "tuple",
+            },
+          ],
+          stateMutability: "view",
+          type: "function",
+        },
+        {
+          inputs: [],
+          name: "version",
+          outputs: [
+            {
+              internalType: "uint32",
+              name: "",
+              type: "uint32",
+            },
+          ],
+          stateMutability: "pure",
+          type: "function",
+        },
+      ],
+      inheritedFunctions: {
+        describe: "contracts/interfaces/IMethodology.sol",
+        methodologyId: "contracts/interfaces/IMethodology.sol",
+        quantify: "contracts/interfaces/IMethodology.sol",
+        schemaHash: "contracts/interfaces/IMethodology.sol",
+        validateProject: "contracts/interfaces/IMethodology.sol",
+        validateRenewal: "contracts/interfaces/IMethodology.sol",
+        version: "contracts/interfaces/IMethodology.sol",
+      },
+      deployedOnBlock: 41121805,
     },
     ResilientHbarUsdFeed: {
-      address: "0x9529A0189654834949cf78f9ce25336be59F8AbB",
+      address: "0x59AFbF3a3BA4587179d8E3aD49Bf7061fABa1e17",
       abi: [
         {
           inputs: [
@@ -4857,7 +5937,7 @@ const deployedContracts = {
         description: "contracts/interfaces/AggregatorV3Interface.sol",
         latestRoundData: "contracts/interfaces/AggregatorV3Interface.sol",
       },
-      deployedOnBlock: 41009349,
+      deployedOnBlock: 41121761,
     },
   },
 } as const;

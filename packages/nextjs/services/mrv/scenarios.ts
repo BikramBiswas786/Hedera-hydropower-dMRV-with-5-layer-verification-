@@ -13,7 +13,7 @@ export const PREVIEW_METER_DOMAIN: MeterDomain = {
 export const SCENARIOS = {
   healthy: "24 h of normal operation with main and check meters in agreement. Should be APPROVED.",
   reservoir:
-    "The registered storage design HYDRO-DEMO-02 (12 MW, new 1.8 km² reservoir, PD 6.67 W/m²) on a normal day: 4 < PD ≤ 10, so PE_HP = EF_Res (100 kg/MWh under VMR0017) × TEG. A fixture of the on-chain design; no host country is stored, so this is not a VCS eligibility pass. Should be APPROVED.",
+    "The registered storage design HYDRO-DEMO-02 (12 MW, new 1.8 km² reservoir, PD 6.67 W/m²) on a normal day: 4 < PD ≤ 10, so PE_HP = EF_Res (100 kg/MWh under VMR0017) × TEG. The design is registered on-chain with host country UG (an LDC) under VMR0017, so it is in VMR0017's scope; on Uganda's grid its PE_HP and embodied LE exceed BE, so ER is negative and carries as a deficit. Should be APPROVED.",
   "diesel-backup":
     "A 3-hour grid outage: the plant stops exporting and a diesel generator runs the auxiliaries, adding PE_FF via TOOL03. Should be APPROVED.",
   "calibration-overdue":

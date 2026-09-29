@@ -8,18 +8,18 @@ import {
 } from "../network";
 import {
   type AttestationView,
+  type IssuanceView,
   type ListingView,
   type PlantView,
   bytes32ToPlantId,
-  toAttestationView,
+  closureOf,
   toDmrvAttestationView,
+  toIssuanceView,
   toListingView,
-  toPlantView,
   toProjectView,
 } from "../views";
 import { ApiError } from "./errors";
-import { type Abi, type Address, type Hex, createPublicClient, http, isAddressEqual, zeroAddress } from "viem";
-import { LEGACY_REGISTRY } from "~~/contracts/legacy/hydroCreditRegistry5b7fe3f";
+import { type Abi, type Address, type Hex, createPublicClient, http, zeroAddress } from "viem";
 import scaffoldConfig from "~~/scaffold.config";
 
 const MAX_PAGE = 100;
@@ -69,34 +69,6 @@ export function publicClient() {
   return client;
 }
 
-/**
- * Which registry read routes serve: DmrvRegistry once deployed, otherwise (before the phase-1 redeploy) the legacy
- * HydroCreditRegistry on Hedera testnet, read-only.
- */
-export type ActiveRegistry = { kind: "dmrv"; address: Address } | { kind: "legacy"; address: Address };
-
-export function activeRegistry(): ActiveRegistry {
-  const dmrv = getRegistryDeployment();
-  if (dmrv) return { kind: "dmrv", address: dmrv.address };
-  if (HYDRO_CHAIN_ID === LEGACY_REGISTRY.chainId) return { kind: "legacy", address: LEGACY_REGISTRY.address };
-  throw new RegistryNotDeployedError();
-}
-
-/** Selects the registry by address (historic evidence links), defaulting to the active one. */
-export function registryAt(address?: string | null): ActiveRegistry {
-  if (address && isAddressEqual(address as Address, LEGACY_REGISTRY.address)) {
-    return { kind: "legacy", address: LEGACY_REGISTRY.address };
-  }
-  const active = activeRegistry();
-  if (address && !isAddressEqual(address as Address, active.address)) {
-    throw new ApiError(`Unknown registry ${address}. Known: ${active.address}, ${LEGACY_REGISTRY.address}`, 404);
-  }
-  return active;
-}
-
-/** The phase-0 HydroCreditRegistry, read-only. */
-export const legacy = { address: LEGACY_REGISTRY.address, abi: LEGACY_REGISTRY.abi } as const;
-
 type SourceStatus = { price: number | null; updatedAt: number; fresh: boolean };
 
 export type OracleStatus = {
@@ -134,14 +106,16 @@ export async function getOracleStatus(): Promise<OracleStatus | null> {
 export type RegistryOverview = {
   chainId: number;
   address: Address;
-  /** "legacy" until the phase-1 redeploy: read-only HydroCreditRegistry. */
-  registry: ActiveRegistry["kind"];
   market: Address | null;
   creditToken: Address;
-  /** Credits minted and retired, in kg CO2e (1 token = 1 t). */
+  /** HCS topic every monitoring and verification report must cite. */
+  auditTopic: string | null;
+  /** Credits issued and retired, in kg CO2e (1 token = 1 t). */
   totalIssuedKg: number;
   totalRetiredKg: number;
+  /** Monitoring records, verifications (issuances), listings and retirements so far. */
   attestationCount: number;
+  issuanceCount: number;
   listingCount: number;
   retirementCount: number;
   minCompletenessBps: number;
@@ -150,68 +124,46 @@ export type RegistryOverview = {
 };
 
 export async function getRegistryOverview(): Promise<RegistryOverview> {
-  const active = activeRegistry();
-  const oracle = getOracleStatus().catch(() => null);
-  if (active.kind === "legacy") {
-    const [creditToken, issued, retired, attestations, listings, retirements, minCompleteness, plantIds] =
-      await Promise.all([
-        client.readContract({ ...legacy, functionName: "creditToken" }),
-        client.readContract({ ...legacy, functionName: "totalIssuedUnits" }),
-        client.readContract({ ...legacy, functionName: "totalRetiredUnits" }),
-        client.readContract({ ...legacy, functionName: "attestationCount" }),
-        client.readContract({ ...legacy, functionName: "listingCount" }),
-        client.readContract({ ...legacy, functionName: "retirementCount" }),
-        client.readContract({ ...legacy, functionName: "minCompletenessBps" }),
-        client.readContract({ ...legacy, functionName: "getPlantIds" }),
-      ]);
-    const plants = await Promise.all(
-      plantIds.map(async id =>
-        toPlantView(id, await client.readContract({ ...legacy, functionName: "getPlant", args: [id] })),
-      ),
-    );
-    return {
-      chainId: HYDRO_CHAIN_ID,
-      address: active.address,
-      registry: "legacy",
-      market: null,
-      creditToken,
-      totalIssuedKg: Number(issued),
-      totalRetiredKg: Number(retired),
-      attestationCount: Number(attestations),
-      listingCount: Number(listings),
-      retirementCount: Number(retirements),
-      minCompletenessBps: minCompleteness,
-      oracle: await oracle,
-      plants,
-    };
-  }
-
   const { address, abi } = requireDeployment();
   const read = { address, abi } as const;
+  const oracle = getOracleStatus().catch(() => null);
   const market = getMarketDeployment();
-  const [creditToken, issued, retired, attestations, retirements, minCompleteness, projectIds, listings] =
-    await Promise.all([
-      client.readContract({ ...read, functionName: "creditToken" }),
-      client.readContract({ ...read, functionName: "totalIssuedUnits" }),
-      client.readContract({ ...read, functionName: "totalRetiredUnits" }),
-      client.readContract({ ...read, functionName: "attestationCount" }),
-      client.readContract({ ...read, functionName: "retirementCount" }),
-      client.readContract({ ...read, functionName: "minCompletenessBps" }),
-      client.readContract({ ...read, functionName: "getProjectIds" }),
-      market
-        ? client.readContract({ address: market.address, abi: market.abi, functionName: "listingCount" })
-        : Promise.resolve(0n),
-    ]);
+  const [
+    creditToken,
+    topic,
+    issued,
+    retired,
+    attestations,
+    issuances,
+    retirements,
+    minCompleteness,
+    projectIds,
+    listings,
+  ] = await Promise.all([
+    client.readContract({ ...read, functionName: "creditToken" }),
+    client.readContract({ ...read, functionName: "auditTopic" }),
+    client.readContract({ ...read, functionName: "totalIssuedUnits" }),
+    client.readContract({ ...read, functionName: "totalRetiredUnits" }),
+    client.readContract({ ...read, functionName: "attestationCount" }),
+    client.readContract({ ...read, functionName: "issuanceCount" }),
+    client.readContract({ ...read, functionName: "retirementCount" }),
+    client.readContract({ ...read, functionName: "minCompletenessBps" }),
+    client.readContract({ ...read, functionName: "getProjectIds" }),
+    market
+      ? client.readContract({ address: market.address, abi: market.abi, functionName: "listingCount" })
+      : Promise.resolve(0n),
+  ]);
   const plants = await Promise.all(projectIds.map(id => readProject(id)));
   return {
     chainId: HYDRO_CHAIN_ID,
     address,
-    registry: "dmrv",
     market: market?.address ?? null,
     creditToken,
+    auditTopic: topic === 0n ? null : `0.0.${topic}`,
     totalIssuedKg: Number(issued),
     totalRetiredKg: Number(retired),
     attestationCount: Number(attestations),
+    issuanceCount: Number(issuances),
     listingCount: Number(listings),
     retirementCount: Number(retirements),
     minCompletenessBps: minCompleteness,
@@ -226,68 +178,69 @@ async function readProject(id: Hex) {
   return toProjectView(id, raw, findDemoPlant(bytes32ToPlantId(id))?.name);
 }
 
-/** A project on the active registry (or the given one), or null when it is not registered. */
-export async function getPlant(plantId: Hex, registry: ActiveRegistry = activeRegistry()): Promise<PlantView | null> {
-  if (registry.kind === "legacy") {
-    const plant = toPlantView(
-      plantId,
-      await client.readContract({ ...legacy, functionName: "getPlant", args: [plantId] }),
-    );
-    return plant.operator === zeroAddress ? null : plant;
-  }
+/** A project on the registry, or null when it is not registered. */
+export async function getPlant(plantId: Hex): Promise<PlantView | null> {
   const project = await readProject(plantId);
   return project.operator === zeroAddress ? null : project;
 }
 
-/** DmrvRegistry project with its phase-1 fields (module, calibration, registration request). */
-export async function getProject(plantId: Hex) {
-  const project = await readProject(plantId);
-  return project.operator === zeroAddress ? null : project;
+export const getProject = getPlant;
+
+export async function getAuditTopic(): Promise<bigint> {
+  const { address, abi } = requireDeployment();
+  return client.readContract({ address, abi, functionName: "auditTopic" });
 }
 
-export async function getAttestations(
-  start: number,
-  count: number,
-  registry: ActiveRegistry = activeRegistry(),
-): Promise<AttestationView[]> {
-  const args = [BigInt(start), BigInt(Math.min(count, MAX_PAGE))] as const;
-  if (registry.kind === "legacy") {
-    const page = await client.readContract({ ...legacy, functionName: "getAttestations", args });
-    return page.map((raw, i) => toAttestationView(raw, start + i));
-  }
+/** Every verification so far, oldest first. */
+export async function getIssuances(): Promise<IssuanceView[]> {
   const { address, abi } = requireDeployment();
-  const page = await client.readContract({ address, abi, functionName: "getAttestations", args });
-  return page.map((raw, i) => toDmrvAttestationView(raw, start + i));
-}
-
-export async function getAttestation(
-  id: number,
-  registry: ActiveRegistry = activeRegistry(),
-): Promise<AttestationView> {
-  if (registry.kind === "legacy") {
-    return toAttestationView(
-      await client.readContract({ ...legacy, functionName: "getAttestation", args: [BigInt(id)] }),
-      id,
-    );
-  }
-  const { address, abi } = requireDeployment();
-  return toDmrvAttestationView(
-    await client.readContract({ address, abi, functionName: "getAttestation", args: [BigInt(id)] }),
-    id,
+  const [count, topic] = await Promise.all([
+    client.readContract({ address, abi, functionName: "issuanceCount" }),
+    getAuditTopic(),
+  ]);
+  return Promise.all(
+    Array.from({ length: Number(count) }, async (_, i) =>
+      toIssuanceView(
+        await client.readContract({ address, abi, functionName: "getIssuance", args: [BigInt(i)] }),
+        i,
+        topic,
+      ),
+    ),
   );
+}
+
+export async function getIssuance(id: number): Promise<IssuanceView> {
+  const { address, abi } = requireDeployment();
+  const count = await client.readContract({ address, abi, functionName: "issuanceCount" });
+  if (id >= Number(count)) throw new ApiError(`Issuance ${id} does not exist`, 404);
+  const [raw, topic] = await Promise.all([
+    client.readContract({ address, abi, functionName: "getIssuance", args: [BigInt(id)] }),
+    getAuditTopic(),
+  ]);
+  return toIssuanceView(raw, id, topic);
+}
+
+export async function getAttestations(start: number, count: number): Promise<AttestationView[]> {
+  const { address, abi } = requireDeployment();
+  const args = [BigInt(start), BigInt(Math.min(count, MAX_PAGE))] as const;
+  const [page, topic, issuances] = await Promise.all([
+    client.readContract({ address, abi, functionName: "getAttestations", args }),
+    getAuditTopic(),
+    getIssuances(),
+  ]);
+  const closure = closureOf(issuances);
+  return page.map((raw, i) => toDmrvAttestationView(raw, start + i, topic, closure));
+}
+
+export async function getAttestation(id: number): Promise<AttestationView> {
+  const [attestation] = await getAttestations(id, 1);
+  if (!attestation) throw new ApiError(`Attestation ${id} does not exist`, 404);
+  return attestation;
 }
 
 export type ListingQuote = ListingView & { quoteFullListingTinybar: string | null };
 
 export async function getOpenListings(): Promise<ListingQuote[]> {
-  if (activeRegistry().kind === "legacy") {
-    const count = await client.readContract({ ...legacy, functionName: "listingCount" });
-    const listings = await client.readContract({ ...legacy, functionName: "getListings", args: [0n, count] });
-    return listings
-      .map(toListingView)
-      .filter(listing => listing.active)
-      .map(listing => ({ ...listing, quoteFullListingTinybar: null }));
-  }
   const { address, abi } = requireMarket();
   const count = await client.readContract({ address, abi, functionName: "listingCount" });
   const listings = await client.readContract({ address, abi, functionName: "getListings", args: [0n, count] });

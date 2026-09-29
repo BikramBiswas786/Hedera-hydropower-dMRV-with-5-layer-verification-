@@ -45,9 +45,14 @@ describe("OpenAPI description", () => {
     expect(verify.required).toEqual(["readings"]);
   });
 
-  it("requires the operator key only for attestation", () => {
+  it("requires the server key only where the server publishes or pays", () => {
     expect(spec.security).toEqual([]);
     const secured = operations.filter(op => "security" in op).map(op => op.operationId);
-    expect(secured.sort()).toEqual(["guardian_cross_check", "submit_attestation"]);
+    expect(secured.sort()).toEqual([
+      "guardian_cross_check",
+      "prepare_verification",
+      "record_monitoring",
+      "submit_verification",
+    ]);
   });
 });

@@ -88,6 +88,15 @@ const deployDmrv: DeployFunction = async function (hre: HardhatRuntimeEnvironmen
     gasPrice,
   });
 
+  const annotations = await deploy("DmrvAnnotations", {
+    from: deployer,
+    args: [deployer, registry.address],
+    log: true,
+    autoMine: true,
+    gasLimit: 1_500_000,
+    gasPrice,
+  });
+
   const saucer =
     config.saucerFactory && config.saucerRouter
       ? { saucerFactory: config.saucerFactory, saucerRouter: config.saucerRouter }
@@ -114,6 +123,7 @@ const deployDmrv: DeployFunction = async function (hre: HardhatRuntimeEnvironmen
   console.log(`HydroVmr0017Module:   ${hashscanContract(config, module.address)}`);
   console.log(`DmrvRegistry:         ${hashscanContract(config, registry.address)}`);
   console.log(`CreditMarket:         ${hashscanContract(config, market.address)}`);
+  console.log(`DmrvAnnotations:      ${hashscanContract(config, annotations.address)}`);
 };
 
 deployDmrv.tags = ["DmrvRegistry"];

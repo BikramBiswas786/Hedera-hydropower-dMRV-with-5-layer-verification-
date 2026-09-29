@@ -1,0 +1,68 @@
+name: Testnet deploy
+
+# Deploys the registry, both methodology modules, the market, the feed and the annotations contract to Hedera testnet
+# from the commit that triggered it, registers the demo plants with a VVB's ValidationApproval, verifies every
+# contract on Sourcify from the exact compiler input, and commits the regenerated
+# packages/nextjs/contracts/deployedContracts.ts back to the branch.
+#
+# Keys: the deployer is TESTNET_REBALANCER_KEY. The demo meter and VVB keys are derived from it
+# (packages/hardhat/utils/testnetDemoKeys.ts), so they are secret but reproducible; they are labelled demo keys.
+#
+# Runs on a push to a claude/** branch whose commit message contains [deploy-testnet] (a push runs the branch's own
+# copy of this file), or by hand.
+on:
+  push:
+    branches: ["claude/**"]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  deploy:
+    if: github.event_name == 'workflow_dispatch' || contains(github.event.head_commit.message, '[deploy-testnet]')
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    concurrency: testnet-deploy
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20.18.3
+          cache: yarn
+
+      - run: yarn install --immutable
+
+      - name: Derive the demo meter and VVB keys
+        env:
+          TESTNET_DEPLOYER_KEY: ${{ secrets.TESTNET_REBALANCER_KEY }}
+        working-directory: packages/hardhat
+        run: |
+          if [ -z "$TESTNET_DEPLOYER_KEY" ]; then echo "::error::Set the TESTNET_REBALANCER_KEY secret"; exit 1; fi
+          npx ts-node scripts/testnetDemoKeys.ts
+
+      - name: Deploy and register the demo plants
+        env:
+          KEY: ${{ secrets.TESTNET_REBALANCER_KEY }}
+          # The existing HCS audit topic; readings, reports and validation statements keep one public trail.
+          HCS_TOPIC_ID: "0.0.10729650"
+        working-directory: packages/hardhat
+        run: |
+          KEY="${KEY#0x}"
+          echo "::add-mask::$KEY"
+          __RUNTIME_DEPLOYER_PRIVATE_KEY="0x$KEY" npx hardhat deploy --network hederaTestnet \
+            --tags DmrvRegistry,DmrvRegistrySetup,RenewableModule
+
+      - name: Verify on Sourcify
+        working-directory: packages/hardhat
+        run: yarn verify:sourcify hederaTestnet
+
+      - name: Commit deployedContracts.ts
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add packages/nextjs/contracts/deployedContracts.ts
+          if git diff --cached --quiet; then echo "No contract changes"; exit 0; fi
+          git commit -m "Testnet deploy from ${GITHUB_SHA::8}: regenerated deployedContracts.ts"
+          git push origin "HEAD:${GITHUB_REF_NAME}"

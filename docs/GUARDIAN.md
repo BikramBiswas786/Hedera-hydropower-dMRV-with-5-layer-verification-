@@ -251,7 +251,7 @@ Content-Type: application/json
 
 Store `report.decision` and `report.emissions` on the monitoring VC. Do not treat `APPROVED` from this API as a registry issuance. The live demo meter keys are public, so a signature on the demo plants is not evidence of a physical meter. A real plant registers a key that is not derived from the plant id.
 
-Minting (`POST /api/mrv/attest`) needs `Authorization: Bearer $MRV_API_KEY`. Leave that off a policy that only needs the check.
+Recording (`POST /api/mrv/record`) and relaying a verification need `Authorization: Bearer $MRV_API_KEY`, and only a VVB's verification issues. Leave those off a policy that only needs the check.
 
 ### What this does not do
 

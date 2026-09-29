@@ -3,30 +3,40 @@ import { artifacts, ethers, network } from "hardhat";
 import { time } from "@nomicfoundation/hardhat-network-helpers";
 import type { CreditMarket, DmrvRegistry, HydroVmr0017Module, MockSaucerRouter } from "../../typechain-types";
 import {
+  DECISION_APPROVED,
+  DECISION_REJECTED,
   type Energy,
   ENERGY_TYPES,
   METER_STATEMENT_TYPES,
   type Submission,
   type SubmissionInput,
-  VERIFIER_APPROVAL_TYPES,
-  approvalOf,
+  VALIDATION_APPROVAL_TYPES,
+  VERIFICATION_STATEMENT_TYPES,
+  type VerificationStatement,
   encodeEnergy,
   meterStatementOf,
   registryDomain,
-  signAttestation,
+  signSubmission as signMeterStatement,
+  signValidation,
+  signVerification,
 } from "../../utils/attestation";
 import { ensureHts } from "./hts";
 
 export {
+  DECISION_APPROVED,
+  DECISION_REJECTED,
   ENERGY_TYPES,
   METER_STATEMENT_TYPES,
-  VERIFIER_APPROVAL_TYPES,
-  approvalOf,
+  VALIDATION_APPROVAL_TYPES,
+  VERIFICATION_STATEMENT_TYPES,
   encodeEnergy,
   meterStatementOf,
+  signValidation,
+  signVerification,
   type Energy,
   type Submission,
   type SubmissionInput,
+  type VerificationStatement,
 };
 
 export const DAY = 86_400;
@@ -36,6 +46,10 @@ export const YEAR = BigInt(CREDITING_YEAR);
 export const FIVE_YEAR_FROM = 1_798_761_600n; // 2027-01-01T00:00:00Z
 export const AUDIT_TOPIC = 4_242_424n;
 export const REPORT_HASH = ethers.sha256(ethers.toUtf8Bytes('{"schema":"hydro-dmrv/report@4"}'));
+export const VALIDATION_REPORT_HASH = ethers.sha256(ethers.toUtf8Bytes("validation report"));
+export const VERIFICATION_REPORT_HASH = ethers.sha256(ethers.toUtf8Bytes("verification report"));
+/** Uganda, a UN Least Developed Country: VMR0017 hydro is eligible there. */
+export const UGANDA = "0x5547";
 export const FEED_DECIMALS = 8;
 export const HBAR_USD = 25_000_000n; // $0.25
 export const NATIVE_PER_HBAR = 10n ** 18n; // local Hardhat EVM
@@ -49,12 +63,16 @@ export const VVB = new ethers.Wallet(ethers.id("dmrv test vvb"));
 export const OTHER_VVB = new ethers.Wallet(ethers.id("dmrv test vvb 2"));
 
 export const HYDRO_PARAMS_TYPE =
-  "tuple(uint8 projectType,uint8 methodology,uint32 capacityKw,uint32 baselineCapacityKw,uint64 reservoirAreaM2,uint64 baselineReservoirAreaM2,uint32 efGridGPerMwh,uint32 fuelCoefGPerTonne,uint64 baselineWh,uint64 baselineEndsAt,uint64 creditingStart,uint64 creditingEnd,uint64 registrationRequestedAt,uint64 calibrationValidUntil,bytes32 meteringHash,bytes32 designHash)";
+  "tuple(uint8 projectType,uint8 methodology,bytes2 hostCountry,uint32 capacityKw,uint32 authorizedCapacityKw,uint32 baselineCapacityKw,uint64 reservoirAreaM2,uint64 baselineReservoirAreaM2,uint32 efGridGPerMwh,uint32 fuelCoefGPerTonne,uint64 baselineWh,uint64 baselineEndsAt,uint64 creditingStart,uint64 creditingEnd,uint64 registrationRequestedAt,uint64 calibrationValidUntil,bytes32 meteringHash,bytes32 designHash)";
 
 export type HydroParams = {
   projectType: number;
   methodology: number;
+  /** ISO 3166-1 alpha-2 as bytes2 hex, e.g. "0x5547" (UG). Defaults to Uganda when encoding. */
+  hostCountry?: string;
   capacityKw: number;
+  /** Authorized capacity (kW) from the activity approval; 0 when none. */
+  authorizedCapacityKw?: number;
   baselineCapacityKw: number;
   reservoirAreaM2: number;
   baselineReservoirAreaM2: number;
@@ -79,7 +97,9 @@ export function encodeParams(p: HydroParams): string {
       [
         p.projectType,
         p.methodology,
+        p.hostCountry ?? UGANDA,
         p.capacityKw,
+        p.authorizedCapacityKw ?? 0,
         p.baselineCapacityKw,
         p.reservoirAreaM2,
         p.baselineReservoirAreaM2,
@@ -131,15 +151,13 @@ export async function domainOf(registry: DmrvRegistry) {
   return registryDomain(chainId, await registry.getAddress());
 }
 
-/** Signs a submission with the meter key (raw totals) and the VVB key (approval over the meter digest). */
+/** Signs a monitoring period with the meter key. */
 export async function signSubmission(
   registry: DmrvRegistry,
   input: SubmissionInput,
   meter: Wallet = METER,
-  vvb: Wallet = VVB,
-  decision = 1,
 ): Promise<Submission> {
-  return signAttestation(await domainOf(registry), input, meter, vvb, decision);
+  return signMeterStatement(await domainOf(registry), input, meter);
 }
 
 export type PeriodOptions = {
@@ -151,7 +169,6 @@ export type PeriodOptions = {
   intervals?: number;
   intervalSeconds?: number;
   hcsSequence?: bigint;
-  evidenceHash?: string;
   reportHash?: string;
   hcsTopicNum?: bigint;
 };
@@ -174,7 +191,6 @@ export async function periodInput(projectId: string, o: PeriodOptions = {}): Pro
     reportHash: o.reportHash ?? REPORT_HASH,
     hcsTopicNum: o.hcsTopicNum ?? AUDIT_TOPIC,
     hcsSequence: o.hcsSequence ?? BigInt(sequence + 1),
-    evidenceHash: o.evidenceHash ?? ethers.ZeroHash,
     measurement: { periodStart, periodEnd, metered: encodeEnergy(metered), verified: encodeEnergy(verified) },
   };
 }
@@ -228,6 +244,41 @@ export async function deployCore(): Promise<Ctx> {
 
 export const PROJECT_ID = ethers.encodeBytes32String("HYDRO-DEMO-01");
 
+export type RegisterOptions = {
+  projectId?: string;
+  operator?: string;
+  meter?: string;
+  validator?: Wallet;
+  externalId?: string;
+  reportHash?: string;
+};
+
+/** Registers a project with a VVB's `ValidationApproval` over exactly this registration. */
+export async function registerValidated(
+  registry: DmrvRegistry,
+  module: string,
+  params: string,
+  designHash: string,
+  o: RegisterOptions & { operator: string },
+) {
+  const r = {
+    projectId: o.projectId ?? PROJECT_ID,
+    module,
+    operator: o.operator,
+    meter: o.meter ?? METER.address,
+    designHash,
+    validationReportHash: o.reportHash ?? VALIDATION_REPORT_HASH,
+    externalId: o.externalId ?? ethers.ZeroHash,
+    params,
+  };
+  const signature = await signValidation(
+    await domainOf(registry),
+    { ...r, reportHash: r.validationReportHash, creditingPeriod: 1 },
+    o.validator ?? VVB,
+  );
+  return registry.registerProject(r, signature);
+}
+
 /** Tokens created, module approved, market and VVB roles granted, audit topic set, one project registered. */
 export async function deployReady(paramsOverrides: Partial<HydroParams> = {}) {
   const ctx = await deployCore();
@@ -243,21 +294,76 @@ export async function deployReady(paramsOverrides: Partial<HydroParams> = {}) {
   await registry.grantRole(await registry.VERIFIER_ROLE(), VVB.address);
   await registry.setAuditTopic(AUDIT_TOPIC);
   const params = await hydroParams(paramsOverrides);
-  await registry.registerProject(
-    PROJECT_ID,
-    "Demo run-of-river",
-    await module.getAddress(),
-    operator.address,
-    METER.address,
-    params.designHash,
-    encodeParams(params),
-  );
+  await registerValidated(registry, await module.getAddress(), encodeParams(params), params.designHash, {
+    operator: operator.address,
+  });
   return { ...ctx, params };
 }
 
-/** Submits one signed period and returns the attestation id. */
-export async function submitPeriod(registry: DmrvRegistry, input: SubmissionInput, meter = METER, vvb = VVB) {
-  const submission = await signSubmission(registry, input, meter, vvb);
-  await registry.submitAttestation(submission);
+/** Records one meter-signed period as the operator and returns its attestation id. */
+export async function recordPeriod(
+  registry: DmrvRegistry,
+  input: SubmissionInput,
+  reporter: Parameters<DmrvRegistry["connect"]>[0],
+  meter = METER,
+) {
+  const submission = await signSubmission(registry, input, meter);
+  await registry.connect(reporter).recordMonitoring(submission);
   return Number(await registry.attestationCount()) - 1;
+}
+
+export type VerifyOptions = {
+  firstRecord?: number;
+  lastRecord?: number;
+  deductionG?: bigint;
+  decision?: number;
+  evidenceHash?: string;
+  reportHash?: string;
+  hcsSequence?: bigint;
+  vvb?: Wallet;
+  recordsHash?: string;
+};
+
+/** The statement a VVB signs for records first..last of a project, with the chain head read from the registry. */
+export async function verificationOf(
+  registry: DmrvRegistry,
+  projectId: string,
+  o: VerifyOptions = {},
+): Promise<VerificationStatement> {
+  const project = await registry.getProject(projectId);
+  const firstRecord = o.firstRecord ?? Number(project.verifiedRecords);
+  const lastRecord = o.lastRecord ?? Number(project.attestations) - 1;
+  const all = await registry.getAttestations(0, await registry.attestationCount());
+  const last = all.find(a => a.projectId === projectId && Number(a.sequence) === lastRecord);
+  return {
+    projectId,
+    firstRecord,
+    lastRecord,
+    recordsHash: o.recordsHash ?? last?.chainHash ?? ethers.ZeroHash,
+    deductionG: o.deductionG ?? 0n,
+    reportHash: o.reportHash ?? VERIFICATION_REPORT_HASH,
+    hcsTopicNum: AUDIT_TOPIC,
+    hcsSequence: o.hcsSequence ?? 1_000n + BigInt(lastRecord),
+    evidenceHash: o.evidenceHash ?? ethers.ZeroHash,
+    decision: o.decision ?? DECISION_APPROVED,
+  };
+}
+
+/** Signs and relays a verification of the project's unverified records; returns the issuance id. */
+export async function verifyRecords(registry: DmrvRegistry, projectId: string, o: VerifyOptions = {}) {
+  const statement = await verificationOf(registry, projectId, o);
+  const signature = await signVerification(await domainOf(registry), statement, o.vvb ?? VVB);
+  await registry.verifyPeriod(statement, signature);
+  return Number(await registry.issuanceCount()) - 1;
+}
+
+/** Records one period as the operator and verifies it at once: the shortest path to issued credits. */
+export async function submitPeriod(
+  registry: DmrvRegistry,
+  input: SubmissionInput,
+  reporter: Parameters<DmrvRegistry["connect"]>[0],
+) {
+  const attestationId = await recordPeriod(registry, input, reporter);
+  const issuanceId = await verifyRecords(registry, input.projectId);
+  return { attestationId, issuanceId };
 }

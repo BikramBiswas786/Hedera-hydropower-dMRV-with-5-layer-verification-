@@ -7,12 +7,12 @@ import {
   DAY,
   FIVE_YEAR_FROM,
   HOUR,
-  METER,
   VVB,
   YEAR,
   deployCore,
   encodeEnergy,
   periodInput,
+  registerValidated,
   submitPeriod,
 } from "./helpers/dmrv";
 import { RENEWABLE_VECTORS } from "./fixtures/renewableVectors";
@@ -312,19 +312,14 @@ describe("RenewableVmr0017Module", function () {
       await registry.setAuditTopic(AUDIT_TOPIC);
       const params = await renewableParams();
       const projectId = ethers.encodeBytes32String("SOLAR-DEMO-01");
-      await registry.registerProject(
+      await registerValidated(registry, await solar.getAddress(), encode(params), params.designHash, {
         projectId,
-        "Demo solar PV",
-        await solar.getAddress(),
-        operator.address,
-        METER.address,
-        params.designHash,
-        encode(params),
-      );
+        operator: operator.address,
+      });
       return { ...ctx, solar, projectId };
     }
 
-    it("mints solar credits with the same meter and VVB signatures, relayed by anyone", async function () {
+    it("issues solar credits through the same validation, meter signature and VVB verification", async function () {
       const { registry, solar, projectId, operator, stranger } = await loadFixture(solarProject);
       const input = await periodInput(projectId, {
         metered: { netWh: 450_000n, grossWh: 460_000n, fuelG: 0n, leakageG: 0n },
@@ -332,8 +327,9 @@ describe("RenewableVmr0017Module", function () {
       // EF 1 t/MWh: BE 450 000 g; VMR0017 solar LE 450 000 × 0.043 = 19 350 g; ER 430 650 g → 430 units.
       const preview = await solar.quantify(encode(await renewableParams()), ethers.ZeroHash, input.measurement);
       expect(preview.reductionG).to.equal(430_650n);
-      const id = await submitPeriod(registry.connect(stranger), input);
-      const attestation = await registry.getAttestation(id);
+      await registry.connect(operator).setReporter(projectId, stranger.address);
+      const { attestationId } = await submitPeriod(registry, input, stranger);
+      const [attestation] = await registry.getAttestations(attestationId, 1);
       expect(attestation.reductionG).to.equal(430_650n);
       expect(await registry.custodyBalanceOf(operator.address)).to.equal(430n);
       expect((await registry.getProject(projectId)).module).to.equal(await solar.getAddress());

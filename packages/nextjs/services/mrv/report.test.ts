@@ -90,9 +90,9 @@ describe("HCS data message", () => {
     expect(parsed.domain).toBeNull();
   });
 
-  it("carries the registry the meter statement is signed for (readings@5)", () => {
+  it("carries the registry the meter statement is signed for (readings@5 and later)", () => {
     const { data } = anchors("healthy");
-    expect(data.body.schema).toBe("hydro-dmrv/readings@5");
+    expect(data.body.schema).toBe("hydro-dmrv/readings@6");
     expect(parseDataMessage(data.message).domain).toEqual(DOMAIN);
     const legacy = { ...JSON.parse(data.message), schema: "hydro-dmrv/readings@4" };
     expect(parseDataMessage(JSON.stringify(legacy)).domain).toBeNull();

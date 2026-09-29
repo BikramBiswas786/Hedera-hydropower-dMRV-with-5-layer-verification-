@@ -9,12 +9,11 @@ Nothing is required to browse the app or use the engine. Copy the `.env.example`
 | Variable | Required for | Notes |
 | --- | --- | --- |
 | `HEDERA_OPERATOR_ID` | publishing | Account that signs and pays for HCS messages. |
-| `HEDERA_OPERATOR_KEY` | publishing | Hex or DER. If ECDSA, it is also the relayer's EVM key (the relayer needs no role). |
-| `HCS_TOPIC_ID` | publishing | Created by `yarn mrv:create-topic`; the operator key is its submit key. |
-| `MRV_API_KEY` | publishing | Bearer token for `POST /api/mrv/attest` and the MCP `submit_attestation` tool. Unset disables writes. |
-| `VERIFIER_PRIVATE_KEY` | optional | Overrides the relayer EVM key that sends `submitAttestation` (ED25519 operators, local chains). It is **not** a VVB key and needs no role. |
+| `HEDERA_OPERATOR_KEY` | publishing | Hex or DER. If ECDSA, it is also the relayer's EVM key. To record monitoring that address must be the plant's operator or the reporter it named (`setReporter`); relaying a verification needs no role. |
+| `HCS_TOPIC_ID` | publishing | The registry's audit topic (`yarn mrv:create-topic`); the server refuses to publish to any other. |
+| `MRV_API_KEY` | publishing | Bearer token for `POST /api/mrv/record`, `/api/mrv/verification`, `/api/mrv/verification/submit` and the MCP write tools. Unset disables writes. |
+| `RELAYER_PRIVATE_KEY` | optional | Overrides the relayer EVM key (ED25519 operators, local chains). It is **not** a VVB key. |
 | `METER_PRIVATE_KEYS` | server-side meter signing | JSON `{ "<plantId>": "<hex key>" }`, from `yarn hardhat:meter-keys`. Used only when a request has no meter signature. Software keys standing in for logger hardware; the public demo derivation is refused on Hedera chain ids. |
-| `DEMO_VVB_PRIVATE_KEY` · `DEMO_REGISTRY_ADDRESS` | demo one-step minting | The labelled `dmrv-demo-vvb-testnet` key. Honoured only when `DEMO_REGISTRY_ADDRESS` equals the deployed `DmrvRegistry`; every mint it approves is labelled demo. Unset in production. |
 | `BRIDGE_ED25519_PRIVATE_KEY` / `BRIDGE_DID` | Guardian bridge | Ed25519 key and its published `did:hedera` DID (`yarn guardian:publish-did`). The cross-check route answers 503 until both are set and match. |
 | `GUARDIAN_BRIDGE_API_KEY` | Guardian bridge | Bearer token the policy's httpRequestBlock sends. |
 | `GUARDIAN_BRIDGE_RESULT_SCHEMA` | Guardian bridge | JSON `{type, contextUrl}` of the imported "DMRV Cross-Check Result" schema, or a map by policyId. |
@@ -30,7 +29,8 @@ Nothing is required to browse the app or use the engine. Copy the `.env.example`
 | Variable | Notes |
 | --- | --- |
 | `DEPLOYER_PRIVATE_KEY_ENCRYPTED` | Written by `yarn hardhat:account:import` / `:generate`. |
-| `VERIFIER_ADDRESS` | The VVB's secp256k1 signing address: gets `VERIFIER_ROLE`. Must not be a plant operator (the deploy throws) or a meter (the contract rejects). |
+| `VERIFIER_ADDRESS` | The VVB's secp256k1 signing address: gets `VERIFIER_ROLE`. Must not be a plant operator (the deploy throws), a meter or a reporter (the contract rejects its signatures). |
+| `VALIDATOR_PRIVATE_KEY` | Testnet demo only: the labelled demo VVB key that signs the demo plants' `ValidationApproval` during the deploy (the Testnet deploy workflow derives it). Without it the demo plants are not registered. A real VVB signs on its own machine. |
 | `METER_ADDRESSES` | JSON `{ "<plantId>": "0x…" }` of the plants' meter addresses. Otherwise read from `.secrets/meters.<network>.json` (`yarn hardhat:meter-keys`). On Hedera networks the deploy throws if one is missing or equals the public demo derivation. |
 | `POOL_GUARD_ENABLED` | Ignored. The contract rejects a pool guard that is switched off. |
 | `ADMIN_ADDRESS` | Admin after setup on both `DmrvRegistry` and `CreditMarket` (EVM address or `0.0.<num>`; the 2-of-3 account from `yarn admin:threshold`): gets `DEFAULT_ADMIN_ROLE`, and the deployer renounces it. |
@@ -45,13 +45,13 @@ Nothing is required to browse the app or use the engine. Copy the `.env.example`
 | --- | --- |
 | **Home** `/` | The flow, live registry totals in t CO₂e, and how to connect an agent over MCP. |
 | **Methodology** `/methodology` | The equations, QA/QC rules, the TOOL07 calculation on the demo grid unit by unit (EF_EL, option A1/A2, BM sample), each demo plant's assessment and the exact integers registered on-chain. |
-| **Verify** `/verify` | Pick a plant and a scenario, or edit the JSON (readings, meter calibration, even the plant design). The report updates as you type: decision, five stages, ER / BE / PE / LE, an equation trace, QA/QC deductions and every finding. When the registry is deployed it quantifies against the plant's on-chain ledger. It previews the exact HCS report and data hash; operators can publish with the API key. |
+| **Verify** `/verify` | Pick a plant and a scenario, or edit the JSON (readings, meter calibration, even the plant design). The report updates as you type: decision, five stages, ER / BE / PE / LE, an equation trace, QA/QC deductions and every finding. When the registry is deployed it quantifies against the plant's on-chain ledger. It previews the exact HCS report and data hash; operators can record the period with the API key (nothing is issued until a VVB verifies it). |
 | **Market** `/market` | Both oracle sources, which one is pricing, and the SaucerSwap pair the contract swaps. List credits in USD per tonne; buy, or buy and retire in one transaction; associate the HTS token (HIP-719) and withdraw to your wallet. Buy stays off while the pair is outside 3% of the oracle. |
-| **Plants** `/plants`, `/plants/{id}` | Every registered plant; per plant the registered design (capacity, reservoir and power density, TOOL07 grid factor, TOOL03 COEF, baseline, crediting period, design hash), the on-chain ledger (crediting year, carried balance) and every attestation with BE, PE, ER, credits, coverage and links to its HCS report and reproduction. Rendered on the server from the same reads as the API. |
+| **Plants** `/plants`, `/plants/{id}` | Every registered plant; per plant the registered design (host country, capacity, reservoir and power density, VT0011 / TOOL07 grid factor, TOOL03 COEF, baseline, crediting period, design hash), who validated it and its validation report hash, the ledger (records, verified records, unissued balance, record chain head), every monitoring record with BE, PE, LE, ER, coverage, status and links to its HCS report and reproduction, and every verification with what it issued. The **Verification (VVB)** panel loads the pending run, reproduced from HCS, and lets a VVB publish its report, sign the statement with its own wallet and relay it. |
 | **Portfolio** `/portfolio` | Everything an account retired, or anyone retired on behalf of a company, with totals, NFT certificates and a **CSV export** for a GHG inventory or ESG report (beneficiary names are formula-escaped). |
-| **Audit** `/audit` | Every attestation with EG_PJ, ER, credits and its HCS link. **Check evidence** runs the full reproduction in your browser. Retirements link to their certificates. |
+| **Audit** `/audit` | Every monitoring record with EG_PJ, ER, its status and HCS link; every verification with its decision, deduction, units issued, VVB and report. **Check evidence** runs the full reproduction in your browser, including the record's hash-chain link. Retirements link to their certificates. |
 | **Certificate** `/certificate/{id}` | A printable retirement certificate in t CO₂e backed by on-chain data, with its NFT serial and Hashscan link. If the NFT could not be delivered at retirement, associate and claim it here. |
-| **Debug** `/debug` | Scaffold-HBAR's contract console for every function, including `preview` to quantify a period. `buy` / `buyAndRetire` are hidden: purchases go through `prepare_purchase`. |
+| **Debug** `/debug` | Scaffold-HBAR's contract console for every function (the module's `quantify` previews a period). `buy` / `buyAndRetire` are hidden: purchases go through `prepare_purchase`. |
 
 ## Scripts
 
@@ -60,11 +60,14 @@ Nothing is required to browse the app or use the engine. Copy the `.env.example`
 | `yarn chain:offline` · `yarn deploy --network localhost` · `yarn start` | Local chain, contracts and demo batch, app |
 | `yarn test` · `yarn lint` · `yarn next:build` | Contract and app tests, lint, production build |
 | `yarn hardhat:size` | Contract-size gate (24,064 B) |
-| `yarn mrv:attest` · `yarn mrv:approve` · `yarn mrv:submit` | Two-signature attestation from the CLI |
+| `yarn mrv:record` | Monitoring: verify, publish to HCS, `recordMonitoring` (issues nothing) |
+| `yarn mrv:verify` · `yarn mrv:approve` · `yarn mrv:submit` | Verification: publish the VVB's report, the VVB signs on its own machine, relay `verifyPeriod` |
+| `yarn mrv:reproduce [plantId…]` | Anyone, no key: re-derive every record from HCS, hash chain included |
 | `yarn admin:threshold` · `yarn admin:exec` · `yarn admin:demo` | 2-of-3 admin account, scheduled admin calls, and the whole path on testnet with throwaway keys |
 | `yarn live:smoke` · `yarn pair:rebalance` · `yarn market:keep-listing` | Check the live app; keep the testnet pair and a listing healthy |
+| `yarn market:agent-buy [kg] [beneficiary]` | The agent purchase flow with `BUYER_PRIVATE_KEY`: `get_dex_price → list_open_listings → prepare_purchase → sign` |
 | `yarn guardian:trace <ref>` | Is a Guardian-minted token backed? Mirror node + CID-checked IPFS, no Guardian login |
-| `yarn hardhat:verify:testnet <address> [args]` | Verify a deployment on Sourcify (HashScan shows the source) |
+| `yarn verify:sourcify hederaTestnet` (in `packages/hardhat`) | Verify a deployment on Sourcify (HashScan shows the source); the Sourcify verify workflow does it from the deploy commit |
 
 ## Project structure
 
@@ -72,31 +75,35 @@ Nothing is required to browse the app or use the engine. Copy the `.env.example`
 packages/
 ├── hardhat/
 │   ├── contracts/
-│   │   ├── DmrvRegistry.sol             projects, meters, VVBs, two-signature attestation, custody, retirement, all HTS
-│   │   ├── modules/HydroVmr0017Module.sol   IMethodology: hydro registration rules and on-chain quantification
-│   │   ├── CreditMarket.sol             listings, oracle settlement, SaucerSwap pool guard (required)
+│   │   ├── DmrvRegistry.sol             validation, monitoring records, verification and issuance, custody, all HTS
+│   │   ├── DmrvAnnotations.sol          records nothing enforces: accreditation, Article 6.2, VCU references
+│   │   ├── modules/HydroVmr0017Module.sol   IMethodology: hydro applicability (Table 1, LDC list) and quantification
+│   │   ├── modules/RenewableVmr0017Module.sol   IMethodology: greenfield solar, wind, ocean
+│   │   ├── CreditMarket.sol · UsdCheckout.sol · settlement/UsdSettlement.sol   sales at a USD price via SaucerSwap
 │   │   ├── ResilientHbarUsdFeed.sol     Chainlink + Supra aggregator behind AggregatorV3Interface
-│   │   ├── legacy/HydroCreditRegistry.sol   phase-0 registry (read-only on testnet; kept for evidence)
 │   │   ├── lib/HederaTokenLib.sol       HTS create / mint / burn / transfer for tokens and NFTs
 │   │   ├── interfaces/                  IMethodology, ISaucerSwap, IHederaTokenService subset, Chainlink, Supra
 │   │   └── mocks/                       HTS (tokens + NFTs + association), Chainlink, Supra, SaucerSwap V1/V2 pools
-│   ├── deploy/                          00 feed + module + registry + market · 01 idempotent setup (tokens, roles, plants, pool guard)
-│   ├── scripts/                         checkContractSizes.ts (CI gate) · generateMeterKeys.ts
-│   ├── utils/                           per-network config (feeds, pool guards) · demoPlants.ts · meterKeys.ts
-│   └── test/                            registry, module, market, sizes, meter keys, legacy, oracle, fixtures/
+│   ├── deploy/                          00 feed, module, registry, annotations, market · 01 setup (tokens, roles, validated plants, pool guard) · 02 checkout · 03 local seed · 04 renewable module
+│   ├── scripts/                         checkContractSizes.ts (CI gate) · generateMeterKeys.ts · testnetDemoKeys.ts · verifySourcify.ts
+│   ├── utils/                           per-network config · attestation.ts (EIP-712) · validation.ts · demoPlants.ts · meterKeys.ts · testnetDemoKeys.ts
+│   └── test/                            registry, modules, market, checkout, sizes, meter keys, oracle, mainnet fork, fixtures/
 └── nextjs/
     ├── app/
     │   ├── methodology/ verify/ market/ audit/ certificate/[id]/   pages; client components in _components/
     │   └── api/                         methodology/* · mrv/* · registry/* · market/* · mcp
     ├── services/mrv/
-    │   ├── methodology/                 fuels (IPCC) · tool07 · tool03 · project · quantify · schema · document
+    │   ├── methodology/                 fuels (IPCC) · tool07 (+VT0011) · tool03 · ldc · project · quantify · renewable · schema · document
+    │   ├── engines/                     one plug-in engine per methodology (hydro, renewable)
+    │   ├── provenance.ts  approval.ts  verification.ts   meter statement, VVB messages and record chain, verification report
     │   ├── engine.ts  schema.ts         5-stage verification and QA/QC
     │   ├── demo.ts  scenarios.ts        illustrative grid, demo designs and plants, deterministic scenarios
     │   ├── report.ts  pipeline.ts       HCS data, report and project messages
     │   ├── mirror.ts  audit.ts          mirror-node reads, audit and reproduction
     │   ├── pricing.ts  views.ts  network.ts
-    │   └── server/                      HCS publishing, registry reads, attestation, methodology, market, MCP, auth
-    ├── scripts/mrv.ts                   yarn mrv:create-topic · mrv:attest · mrv:approve · mrv:submit · mrv:meter-key · mrv:sign
+    │   └── server/                      HCS publishing, registry reads, monitoring, verification, methodology, market, MCP, auth
+    ├── scripts/mrv.ts                   yarn mrv:create-topic · mrv:record · mrv:verify · mrv:approve · mrv:submit · mrv:reproduce · mrv:meter-key · mrv:sign
+    ├── scripts/agentBuy.ts              yarn market:agent-buy
     ├── scripts/createThresholdAdmin.ts  yarn admin:threshold (2-of-3 KeyList account)
     ├── scripts/adminExec.ts             yarn admin:exec (admin calls as scheduled transactions)
     ├── scripts/thresholdAdminDemo.ts    yarn admin:demo (2-of-3 schedule, sign, renounce on testnet)
@@ -109,12 +116,14 @@ template.json                            create-scaffold-hbar manifest
 
 - **Your plant.** Write its `ProjectDesign` (capacity, reservoir areas, history for retrofits, fuel, crediting period,
   and either your grid's per-unit data for TOOL07 or a DNA-published combined margin), run `assess_project` or
-  `POST /api/methodology/assess`, and register the returned params and `designHash` with `registerProject`. Serve or
-  publish the design document so anyone can check the hash.
-- **Real monitoring data.** Have the logger sign each batch's EIP-712 meter statement, post it to
-  `POST /api/mrv/attest` with `publishForApproval: true`, get the VVB's signature, and post again with `anchor` and
-  `verifierSignature`. Include your plant profile and metering data (accuracy classes, calibration dates). Keep batches under the 20-chunk limit (about a
-  week of hourly data).
+  `POST /api/methodology/assess`, have your VVB validate it and sign the `ValidationApproval`, and register the
+  returned params and `designHash` with `registerProject`. Serve or publish the design document so anyone can check
+  the hash.
+- **Real monitoring data.** Have the logger sign each batch's EIP-712 meter statement and post it to
+  `POST /api/mrv/record` with your plant profile and metering data (accuracy classes, calibration dates). Keep batches
+  under the 20-chunk limit (about a week of hourly data). When a verification is due, your VVB reviews
+  `GET /api/mrv/verification?plantId=…`, publishes its report (`POST /api/mrv/verification`), signs the statement
+  with its own key and relays it (`/api/mrv/verification/submit`, or from its own wallet).
 - **More of the methodology.** TOOL07 option B, dispatch-data and ex-post OM, imports and off-grid plants, integrated
   hydro projects, battery storage, TOOL05 for grid electricity consumed by the project. Add them in `methodology/`
   with hand-checked tests; mirror anything that changes issued quantities in the contract and the shared vectors.
@@ -124,40 +133,50 @@ template.json                            create-scaffold-hbar manifest
 
 ## What is deployed
 
-The app reads `DmrvRegistry` `0xaf9C76B48B317cee770ED6AE038D516b269E0129` and `CreditMarket`
-`0x26E77708717cE69EBBBF76e59D106B20e67e1D61` (current source, 28 Sep 2026; the first market `0x5aeDe76fc6625cfA3227FFf70197D4D7ff3e5030` is retired with `redeploy_market: retire-old`). Topic `0.0.10729650`.
-HYCC `0.0.10729677`, HYRET `0.0.10729678`. Admin is operator `0.0.10721162` until a 2-of-3 account is set.
-The Hashscan links are in the README.
+The app reads `DmrvRegistry` `0x4EB517694CBac7b59a26B188eFEBa35aAb5Fd48e` and `CreditMarket`
+`0x48F5056EdaD0B16c97a54085512b48417bC40F04` (29 Sep 2026, from `3bbc4cd1`). Topic `0.0.10729650`. HYCC
+`0.0.10771273`, HYRET `0.0.10771274`. Admin and operator is `0.0.10721162` until a 2-of-3 account is set. Every
+transaction is in [evidence.md](evidence.md).
 
-An earlier testnet run the same day is not what the app reads. Operator `0.0.10727555`, topic `0.0.10727574`,
-`DmrvRegistry` `0xc427610cFfBC919dC0B2c3f71644a4fDcB7ef84a`, `CreditMarket` `0xd94157D9FEA7c1e572e3674c2854B404a82cf39E`.
-A second unused deploy is `DmrvRegistry` `0xe34BeFc4081a8e751271C3549B861e03Fac512b9`. The legacy registry
-`0x9cdB5782a10c41a103B722d1B8fa9CfaF84107a5` still reproduces.
+### Older deploys
+
+Kept on chain so their history stays checkable; the app does not read them.
+
+| Registry | What it was |
+| --- | --- |
+| `DmrvRegistry` v1 `0xaf9C76B48B317cee770ED6AE038D516b269E0129` (26 Sep 2026) with markets `0x26E77708717cE69EBBBF76e59D106B20e67e1D61` and `0x5aeDe76fc6625cfA3227FFf70197D4D7ff3e5030`, HYCC `0.0.10729677` | Minted on a meter signature plus a VVB approval of one period, with no validation at registration and no separation of monitoring and verification. Superseded by v2 |
+| `HydroCreditRegistry` `0x9cdB5782a10c41a103B722d1B8fa9CfaF84107a5` (phase 0) | One verifier key, public demo meters. Its two mints (4,791,542 g and 73,386,435 g) still reproduce through `HydroVmr0017Module` (`test/fixtures/liveAttestations.ts`) |
+| `0xc427610cFfBC919dC0B2c3f71644a4fDcB7ef84a`, `0xe34BeFc4081a8e751271C3549B861e03Fac512b9` | Unused phase-1 test deploys |
 
 ## To deploy again
 
+The [Testnet deploy](../.github/workflows/testnet-deploy.yml) workflow does steps 1–5 from a commit whose message
+contains `[deploy-testnet]`, with the `TESTNET_REBALANCER_KEY` secret and demo keys derived from it; the
+[Testnet evidence](../.github/workflows/testnet-evidence.yml) workflow does step 6. By hand:
+
 1. **Meter keys.** `yarn hardhat:meter-keys --network hederaTestnet` writes `packages/hardhat/.secrets/meters.hederaTestnet.json`
    (gitignored). Put the private keys into the server's `METER_PRIVATE_KEYS`, or on the loggers.
-2. **VVB key.** Create a secp256k1 key for the demo VVB (`dmrv-demo-vvb-testnet`), separate from the operator and the
-   meters. Its address is `VERIFIER_ADDRESS`. A real VVB keeps its own key and only ever sends a signature.
+2. **VVB key.** A secp256k1 key separate from the operator, the meters and any reporter. Its address is
+   `VERIFIER_ADDRESS`. A real VVB keeps its own key and only ever sends signatures. For the demo plants the deploy can
+   sign their validation with `VALIDATOR_PRIVATE_KEY`, a labelled demo key.
 3. **Threshold admin.** Collect three public keys, then
    `THRESHOLD_ADMIN_PUBLIC_KEYS="pk1,pk2,pk3" yarn admin:threshold --execute`. It prints `0.0.x` and the long-zero
    address; that is `ADMIN_ADDRESS`.
-4. **Deploy.** Create a topic first (`yarn mrv:create-topic`), then `HCS_TOPIC_ID=0.0.… VERIFIER_ADDRESS=… ADMIN_ADDRESS=… yarn deploy --network hederaTestnet`. It
-   deploys the module, registry and market, creates new HTS tokens, registers both demo plants with the generated
-   meters, stores the SaucerSwap testnet pool with the check on, names the market once (`setMarket`), grants
-   `VERIFIER_ROLE`, and hands admin to the threshold
-   account. It regenerates `packages/nextjs/contracts/deployedContracts.ts`.
-5. **Verify.** `yarn hardhat:verify:sourcify hederaTestnet` (Sourcify v2 API, shown on HashScan; `yarn hardhat:verify:testnet`
-   calls the retired v1 API and fails), then check the roles:
-   `hasRole(VERIFIER_ROLE, VVB)`, `hasRole(DEFAULT_ADMIN_ROLE, threshold)`, and no admin role left on the deployer.
-6. **Evidence.** Run `yarn mrv:attest healthy HYDRO-DEMO-01` (it writes `attest-HYDRO-DEMO-01-<seq>.json`), then
-   `VVB_PRIVATE_KEY=… yarn mrv:approve attest-HYDRO-DEMO-01-<seq>.json` and `yarn mrv:submit attest-HYDRO-DEMO-01-<seq>.json`.
-   Do the same for `diesel-backup HYDRO-DEMO-02`, then list and buy-and-retire one tonne from `/market`. Record the transaction links
-   in the README evidence table.
-7. **Vercel env.** `METER_PRIVATE_KEYS`, and if the demo site should mint in one step, `DEMO_VVB_PRIVATE_KEY` +
-   `DEMO_REGISTRY_ADDRESS` (the new registry). Redeploy the app.
-8. **Tag** the release and keep the legacy links: `/api/registry/attestations/{id}/reproduce?registry=0x9cdB…`.
+4. **Deploy.** Create a topic first (`yarn mrv:create-topic`), then
+   `HCS_TOPIC_ID=0.0.… VERIFIER_ADDRESS=… VALIDATOR_PRIVATE_KEY=… ADMIN_ADDRESS=… yarn deploy --network hederaTestnet`.
+   It deploys the modules, registry, annotations and market, creates new HTS tokens, registers both demo plants with
+   the generated meters and a validation signature, stores the SaucerSwap testnet pool with the check on, names the
+   market once (`setMarket`), grants `VERIFIER_ROLE`, and hands admin to the threshold account. It regenerates
+   `packages/nextjs/contracts/deployedContracts.ts`.
+5. **Verify.** `yarn verify:sourcify hederaTestnet` in `packages/hardhat` (Sourcify v2 API, shown on HashScan), then
+   check the roles: `hasRole(VERIFIER_ROLE, VVB)`, `hasRole(DEFAULT_ADMIN_ROLE, threshold)`, and no admin role left on
+   the deployer.
+6. **Evidence.** `yarn mrv:record healthy HYDRO-DEMO-01`, then `yarn mrv:verify HYDRO-DEMO-01` (it writes
+   `verification-HYDRO-DEMO-01-<first>-<last>.json`), `VVB_PRIVATE_KEY=… yarn mrv:approve verification-….json` on the
+   VVB's machine and `yarn mrv:submit verification-….json`. Then `yarn market:keep-listing --execute` and
+   `BUYER_PRIVATE_KEY=… yarn market:agent-buy`, and record the links in [evidence.md](evidence.md).
+7. **Vercel env.** `HEDERA_OPERATOR_*`, `HCS_TOPIC_ID`, `MRV_API_KEY`, `METER_PRIVATE_KEYS` if the site should record
+   the demo plants. Redeploy the app.
 
 Admin changes after the handover go through the threshold account:
 `yarn admin:exec schedule <CreditMarket 0x…> "setPoolGuardEnabled(bool)" true` by one holder, then
@@ -168,7 +187,7 @@ Admin changes after the handover go through the threshold account:
 The on-chain guard compares the pair stored on `CreditMarket` with the oracle and reverts beyond 3%.
 `setPoolGuardEnabled(false)` reverts. The admin can repoint the pool only.
 
-The live market `0x26E77708717cE69EBBBF76e59D106B20e67e1D61` has this rule. It swaps through router `0.0.19264` and the pair is `0xF98D0dF4eC60d57f24Ce7BD24eAcAdF045219869`.
+The live market `0x48F5056EdaD0B16c97a54085512b48417bC40F04` has this rule. It swaps through router `0.0.19264` and the pair is `0xF98D0dF4eC60d57f24Ce7BD24eAcAdF045219869`.
 
 The public testnet V1 WHBAR/USDC pair (`0x87664e55d9606657f049139FF654390A72657667`, factory `0.0.9959`) priced HBAR at $2.28 on 26 Sep 2026. The oracle was about $0.094. Pointing the guard at that pair would reject every sale, because testnet USDC is not a dollar. The exhibit uses a pair seeded on the same factory at the Chainlink price. The purchase builder also refuses unless the public mainnet pair `0.0.1462797` is within 3% of mainnet Chainlink. On 27 Sep 2026 that was 15 bps ($0.09490 against $0.09504). A mainnet deploy uses that pair on-chain. Nothing is deployed on mainnet.
 
@@ -176,26 +195,30 @@ A spot price can be moved in one block, so the guard can block sales. It cannot 
 
 ## Security model and limitations
 
-- **No single key mints.** A mint needs the project's meter signature and a registered VVB's approval over that
-  statement's digest, and the VVB may only make figures more conservative. Readings, reports and hashes are public
-  and the engine is deterministic. Residual trust:
+- **No single key issues.** Registration needs a VVB's validation signature; a monitoring record needs the project's
+  meter signature and issues nothing; issuance needs a VVB's verification of the records' hash chain and its report
+  on HCS, and the VVB may only make figures more conservative. Readings, reports and hashes are public and the engine
+  is deterministic. Residual trust:
   - **The demo site's meter keys are server-held software keys** (`METER_PRIVATE_KEYS`). Whoever runs the server can
-    sign as the meter, up to the nameplate. A production plant needs a key that never leaves the logger.
-  - **The demo VVB key is the author's labelled test key.** It is honoured only on a matching `DEMO_REGISTRY_ADDRESS`,
-    and every mint says so.
-  - **The legacy testnet registry** registered the public demo meter derivation and trusted one verifier key. Its two
-    mints prove the quantification, not the metering.
+    sign as the meter and record, up to the nameplate. A production plant needs a key that never leaves the logger.
+    The VVB is the check: it reproduces every record from HCS before it signs.
+  - **The testnet demo VVB is the author's labelled test key** (derived in CI). The app and API hold no VVB key.
+  - **Older testnet registries** (see [older deploys](#older-deploys)) issued under weaker rules. Their mints prove the
+    quantification, not the VCS cycle.
   - **Registration.** An admin chooses the meter and approves modules, so `DEFAULT_ADMIN_ROLE` sits in the 2-of-3
-    threshold account, and a VVB should validate the design and the meter before `registerProject`. The setup script refuses demo plants on Hedera mainnet, including when
-  `REGISTER_DEMO_PLANTS=true`. It also refuses a mainnet deploy that leaves both roles on the deployer.
+    threshold account; the registry refuses a registration without a VVB's `ValidationApproval` over that meter and
+    design. The setup script refuses demo plants on Hedera mainnet, including when `REGISTER_DEMO_PLANTS=true`. It
+    also refuses a mainnet deploy that leaves both roles on the deployer.
 - **Nobody shares a private key.** Buyers and agents sign with their own wallets (`prepare_purchase` returns unsigned
   transactions); the public deployment holds no server keys; the burner wallet is offered only on a local chain.
 - **Public API.** Read and verify endpoints are unauthenticated and bounded by input limits (2 000 readings per
   batch); put a rate limit in front of a public deployment (e.g. a Vercel Firewall rule on `/api/*`).
 - **Not a certification.** This implements the equations of VMR0017 v1.0 with ACM0002 v22.0, AMS-I.D, VT0011,
-  TOOL07 and TOOL03 as described above. It records VT0008 additionality evidence and checks it for completeness, but the
-  determination, stakeholder consultation, the monitoring plan and verification remain the job of a VVB and a
-  registry (Verra, Gold Standard).
+  TOOL07 and TOOL03 as described above, and the order of the VCS project cycle. It records VT0008 additionality
+  evidence and the safeguards references and checks them for completeness, but the determination, stakeholder
+  consultation, the monitoring plan and verification remain the job of a VVB, and issuance of VCUs the job of Verra.
+  An issued unit here is a verified emission reduction under the registered methodology, not a VCU; an operator that
+  also issues on Verra records the VCU range in `DmrvAnnotations`, and must not sell both.
 - **Grid factor scope.** VT0011 and TOOL07 are implemented ex-ante with option A per-unit data and the simple,
   simple adjusted or average OM; the dispatch-data OM, option B, ex-post vintages and the annual BM update (VT0011
   ¶72 option 2) are not. Register a published combined margin (`grid.source: "published"`) for those; on the VMR0017
@@ -205,8 +228,7 @@ A spot price can be moved in one block, so the guard can block sales. It cannot 
   other instrument for the same generation.
 - **Registry custody** means the registry holds credits and undelivered certificates for accounts. The contracts are
   not upgradeable. The only path that moves someone else's balance is the market named once by `setMarket`
-  (`CreditMarket`, for listings and purchases the owner initiated). No role grant can add another caller. The
-  testnet registry deployed before this rule used a grantable `MARKET_ROLE`, so there the admin could.
+  (`CreditMarket`, for listings and purchases the owner initiated). No role grant can add another caller.
 - **Oracle risk** is bounded by two independent providers, a deviation guard, staleness checks and the
   seller-favouring round-up. Tune `MAX_PRICE_AGE_SECONDS` and `MAX_ORACLE_DEVIATION_BPS` to the feeds' heartbeats.
   `CreditMarket` enforces a SaucerSwap pool check on-chain on every quote and purchase (testnet and mainnet; see

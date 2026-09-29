@@ -4,17 +4,18 @@
 > (per plant; the demo plants) or CDM AMS-I.D (≤ 15 MW) and ACM0002, with TOOL07
 > (grid emission factor) and TOOL03 (fossil fuel combustion). A deterministic 5-stage engine verifies monitoring data
 > and quantifies ER = BE − PE − LE. Raw readings and reports are published on the Hedera Consensus Service (HCS), so
-> any agent can reproduce every figure. The DmrvRegistry contract stores each plant's validated design,
-> recomputes the emission reductions through its VMR0017 module, and mints Hedera Token Service credits (1 token =
-> 1 t CO2e, 1 base unit = 1 kg) only with two signatures: the plant's meter and a registered VVB, who may only lower
-> the figures. CreditMarket sells them at USD prices settled in HBAR through Chainlink HBAR/USD cross-checked against
+> any agent can reproduce every figure. The DmrvRegistry contract runs the VCS project cycle: a VVB-validated
+> registration of the plant's design, meter-signed monitoring records that its VMR0017 module quantifies (recorded,
+> not issued, in a hash chain), and a VVB's verification of a run of records, which alone issues Hedera Token Service
+> credits (1 token = 1 t CO2e, 1 base unit = 1 kg). The VVB may only lower the figures. CreditMarket sells them at USD prices settled in HBAR through Chainlink HBAR/USD cross-checked against
 > a Supra fallback (plus an on-chain SaucerSwap pool check where enabled); retirement burns them and mints an HTS NFT
 > certificate.
 
 Registry methodology is on-chain; demo plants are VMR0017.
 This is the on-chain half of a Hedera Guardian workflow, not a replacement for it. Guardian runs the roles, documents
 and methodology policies; a Guardian mint is an amount a policy rule computes and the Guardian service signs. Here the
-contract holds the supply key, recomputes the tonnes and needs the meter and VVB signatures, and the credit can be
+contract holds the supply key, recomputes the tonnes and needs the meter and two VVB signatures (validation,
+verification), and the credit can be
 priced, bought and retired on-chain. `trace_guardian_mint` checks a Guardian token before you buy it;
 `compare_guardian_report` and `verify_guardian_evidence` check a Guardian figure.
 
@@ -31,9 +32,12 @@ buyer's key: purchases are returned as unsigned transactions. The REST API is de
 - Monitoring: `list_scenarios`, `generate_sample_telemetry`, `verify_telemetry` (decision, 5 stages, EG_PJ, BE, PE,
   LE, ER with an equation trace, the exact HCS report)
 - Registry: `get_registry_overview` (totals in kg CO2e, plants with design and ledger, tokens, both oracle sources),
-  `list_attestations`, `get_plant` (design, ledger, lifetime totals and attestations of one plant)
+  `list_attestations` (monitoring records with status monitored / issued / rejected), `list_issuances` (VVB
+  verifications: records, decision, deduction, units issued), `get_plant` (design, validation, ledger, records and
+  verifications of one plant)
 - Evidence: `audit_attestation` (report vs chain), `reproduce_attestation` (re-run the engine on the data published to
-  HCS, check the registered design was used, compare every figure)
+  HCS, check the registered design and meter, recompute the record's hash-chain link, compare every figure)
+- Verification: `get_pending_verification { plantId }` (the run a VVB verifies next, each record reproduced from HCS)
 - Guardian, before buying: `trace_guardian_mint { ref }` (ref = nft:<token>:<serial>, ft:<token>:<holder> or a mint
   transaction id; follows the mint memo / NFT metadata to the VP on HCS, reads it from IPFS hash-checked against the
   CID, verifies the signatures, and checks the MintToken VC names this token and amount and the signer's DID was
@@ -48,10 +52,10 @@ buyer's key: purchases are returned as unsigned transactions. The REST API is de
   `get_retirement_certificate`, `get_portfolio` (retirements by an account or on behalf of a beneficiary)
 - Guardian figures: `compare_guardian_report` (recompute a Guardian VMR0017 monitoring report's BE, PE, LE and ER:
   MATCH, MISMATCH or NOT_COMPARABLE)
-- VVB: `approve_attestation` (read-only: the exact EIP-712 VerifierApproval the registry will check for a step-1
-  anchor; sign it with your own key and pass it to `submit_attestation` as `verifierSignature`)
-- Write tool `submit_attestation` (two steps: publish for approval, then relay with the VVB signature) is listed only
-  when the request carries `Authorization: Bearer <MRV_API_KEY>`
+- Write tools, listed only when the request carries `Authorization: Bearer <MRV_API_KEY>`: `record_monitoring`
+  (verify → HCS → recordMonitoring; issues nothing), `prepare_verification` (publish the VVB's verification report,
+  return the EIP-712 VerificationStatement), `submit_verification` (relay the VVB's signature to verifyPeriod; an
+  approval issues). The VVB signs with its own key; the server never holds one
 - Resource: `hydro-dmrv://methodology` (equations, QA/QC rules, IPCC bounds, what is not implemented)
 
 Buying as an agent: `get_dex_price` → `list_open_listings` → `prepare_purchase { listingId, amountKg, beneficiary }` → sign and send `{ to, data, value }` with your wallet on `chainId` → `get_retirement_certificate`. `prepare_purchase` returns nothing if the SaucerSwap WHBAR/USDC spot is more than 3% from the settlement price. The server never holds your key.
@@ -94,9 +98,10 @@ seller.
 - `POST /api/mrv/verify` — body `{ readings, plant?, metering?, ledger?, signature? }` → report, HCS report message, reportHash,
   dataHash, dataChunks
 - `GET  /api/registry` — on-chain totals, plants (design + ledger), credit token, oracle status
-- `GET  /api/registry/plants` — registered plants; `GET /api/registry/plants/{plantId}` — design, ledger, totals,
-  attestations
-- `GET  /api/registry/attestations?start=0&count=20` — attestations: monitored inputs, EG_PJ, BE, PE, LE, ER, credits
+- `GET  /api/registry/plants` — registered plants; `GET /api/registry/plants/{plantId}` — design, validation,
+  ledger, totals, records, verifications
+- `GET  /api/registry/attestations?start=0&count=20` — monitoring records: monitored inputs, EG_PJ, BE, PE, LE, ER,
+  chain hash, status
 - `GET  /api/registry/attestations/{id}/audit` — report vs on-chain record
 - `GET  /api/registry/attestations/{id}/reproduce` — full reproduction from HCS data
 - `GET  /api/registry/listings` — open listings with HBAR quotes (tinybar)
@@ -108,9 +113,12 @@ seller.
 - `GET  /api/registry/retirements/{id}` — retirement and NFT certificate
 - `GET  /api/registry/retirements?account=0x…&beneficiary=…&format=json|csv` — portfolio: retirements by the
   account or on behalf of the beneficiary, totals, certificates; CSV for ESG reporting
-- `POST /api/mrv/attest` — verify → HCS (readings, report) → submitAttestation; requires `Authorization: Bearer
-  <MRV_API_KEY>`
-- `POST /api/mrv/approve` — body = the attest body + `anchor` → the VerifierApproval typed data a VVB signs; no key
+- `POST /api/mrv/record` — verify → HCS (readings, report) → recordMonitoring (issues nothing); bearer MRV_API_KEY
+- `GET  /api/mrv/verification?plantId=…&lastRecord=…` — records awaiting a VVB, each reproduced from HCS
+- `POST /api/mrv/verification` — body `{ plantId, decision: approve|reject, deductionG?, findings?, evidenceHash?,
+  lastRecord? }` → publishes the verification report, returns `statement` + EIP-712 `typedData`; bearer MRV_API_KEY
+- `POST /api/mrv/verification/submit` — body `{ plantId, statement, signature }` → verifyPeriod; bearer MRV_API_KEY
+- `GET  /api/registry/issuances` — every VVB verification and what it issued
 - `POST /api/methodology/compare` — a Guardian monitoring report's figures → MATCH / MISMATCH / NOT_COMPARABLE
 - `POST /api/guardian/v1/cross-check?policyId=…` — for a Guardian policy's httpRequestBlock: body = the Monitoring
   Report VC → a "DMRV Cross-Check Result" VC signed by the bridge did:hedera (Ed25519Signature2018); requires
@@ -125,32 +133,37 @@ seller.
 - Reading: `{ timestamp (ISO 8601, end of interval), intervalMinutes, generationKwh (gross, TEG), exportKwh,
   importKwh?, checkExportKwh?, flowRateM3s, headM, fuelKg?, ph?, turbidityNtu?, temperatureC? }`
 - Metering: `{ mainMeterAccuracyPct, checkMeterAccuracyPct, calibrationValidUntil, flowUncertaintyPct, deviceAddress? }`
-- Meter signature: a verify request's `signature` is the meter key's EIP-191 signature over the meter statement
-  keccak256(abi.encode(keccak256("hydro-dmrv/meter-statement@1"), chainId, registry, plantId, periodStart, periodEnd,
-  grossWh, netWh, fuelG, readingsDigest)) with raw totals, `readingsDigest` = sha256({ schema:
-  "hydro-dmrv/meter-batch@1", plantId, fields, readings }), and `domain: { chainId, registry }` naming the registry
-  (defaults to this app's). See `services/mrv/provenance.ts`. Required when `metering.deviceAddress` is set; the
-  contract also requires it, from the plant's registered meter, and rejects figures less conservative than the
-  statement. Sample telemetry is signed by the public demo meter keys.
+- Meter signature: a verify request's `signature` is the meter key's EIP-712 signature over
+  `MeterStatement(bytes32 projectId,uint32 sequence,uint64 periodStart,uint64 periodEnd,uint32 intervals,uint32
+  intervalSeconds,bytes32 meteredHash,bytes32 readingsDigest)` in the domain `{ name: "DmrvRegistry", version: "2",
+  chainId, verifyingContract }`, with `meteredHash` = keccak256(abi.encode(int64 netWh, uint64 grossWh, uint64 fuelG,
+  uint64 leakageG)) of the raw totals and `readingsDigest` = sha256({ schema: "hydro-dmrv/meter-batch@1", plantId,
+  fields, readings }); `domain: { chainId, registry, sequence }` names the registry and the plant's next record
+  number. See `services/mrv/provenance.ts`. Required when `metering.deviceAddress` is set; the contract also requires
+  it, from the plant's registered meter, and rejects figures less conservative than the statement. Sample telemetry
+  is signed by the public demo meter keys.
 - Decision: REJECTED for a missing or invalid meter signature, replayed or overlapping intervals, > 20% of intervals physically impossible, periods outside
   the crediting period or across a crediting year, or unregistered fuel; FLAGGED for coverage < 90%, excluded
   intervals, main/check meter disagreement, efficiency outliers or safeguard exceedances; otherwise APPROVED.
 - Units: energy in Wh, emissions in g CO2e, grid EF in g CO2/MWh, fuel in g, COEF in g CO2 per tonne of fuel.
   BE rounds down, PE rounds up; sub-kg remainders and deficits carry to the plant's next period.
-- VMR0017 (methodology 1 on-chain): hydro ≤ 15 MW in LDCs, VT0008 additionality evidence (IRR below the benchmark
+- VMR0017 (methodology 1 on-chain): hydro ≤ 15 MW (higher of rated and authorized capacity) in UN LDCs at the
+  registration request, checked on-chain, VT0008 additionality evidence (IRR below the benchmark
   with a sensitivity analysis; common practice when F > 20% and N_all − N_diff > 3), EF_Res 100 kg CO2e/MWh,
   leakage = embodied emissions 21 g CO2e/kWh of EG_facility (greenfield) or EG_PJ_Add (capacity addition), and the
   grid factor by VT0011 (BM over all units incl. VCS/CDM ones, hydro weights 0.4/0.6 then 0.25/0.75). The grid-factor
   tool takes `tool: "TOOL07" | "VT0011"`.
-- HCS: `hydro-dmrv/readings@5` (readings + meter signature + domain + plant + metering + ledger, up to 20 chunks) then `hydro-dmrv/report@4`
-  (monitored inputs, emissions, `data: { hash, sequence }`). The contract stores sha256(report) and its sequence.
+- HCS: `hydro-dmrv/readings@6` (readings + meter signature + domain + plant + metering + ledger, up to 20 chunks) then
+  `hydro-dmrv/report@5` (monitored inputs, emissions, `data: { hash, sequence }`); the contract stores sha256(report)
+  and its sequence in the record. A verification publishes `hydro-dmrv/verification@1` (records, chain head, decision,
+  deduction, units to issue, findings), whose sha256 the VVB signs.
 - Prices: listings in US cents per tonne; quotes in the EVM's native unit (tinybar on Hedera); `prepare_purchase`
   returns `value` already scaled to 18-decimal weibar with a 1% buffer that the contract refunds.
 
 ## Source
 
-- Contracts: `packages/hardhat/contracts/DmrvRegistry.sol`, `modules/HydroVmr0017Module.sol`, `CreditMarket.sol`,
-  `ResilientHbarUsdFeed.sol` (legacy: `legacy/HydroCreditRegistry.sol`)
+- Contracts: `packages/hardhat/contracts/DmrvRegistry.sol`, `modules/HydroVmr0017Module.sol`,
+  `modules/RenewableVmr0017Module.sol`, `DmrvAnnotations.sol`, `CreditMarket.sol`, `ResilientHbarUsdFeed.sol`
 - Methodology: `packages/nextjs/services/mrv/methodology/` (tool07.ts, tool03.ts, project.ts, quantify.ts)
 - Engine: `packages/nextjs/services/mrv/engine.ts`; reproduction: `services/mrv/audit.ts`
 - Agent briefing for coding agents: `AGENTS.md`

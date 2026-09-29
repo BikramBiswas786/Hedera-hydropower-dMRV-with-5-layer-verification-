@@ -50,6 +50,11 @@ describe("hydro monitoring report (VMR0017 §9 / ACM0002 §5.10, §6.1)", () => 
     expect(report.emissions!.reservoirG).toBeGreaterThan(0);
     expect(row(m, "LE_y")).toMatchObject({ value: report.emissions!.leakageG / 1e6, equation: "(19)" });
     expect(row(m, "ER_y")).toMatchObject({ value: report.emissions!.reductionG / 1e6, equation: "(17)" });
+    // VMR0017 §9.2: the metering uncertainty (here the meter class, no calibration error recorded) propagates to BE.
+    expect(row(m, "U(BE_y)")).toMatchObject({
+      value: request.metering!.lastCalibrationUncertaintyPct ?? request.metering!.mainMeterAccuracyPct,
+      clause: "VMR0017 §9.2 (QA/QC: propagate uncertainty)",
+    });
     expect(m.notApplied.map(n => n.symbol)).toEqual(["PE_GP,y", "PE_BESS,y", "PE_PSP,y", "PE_FSS,y"]);
   });
 

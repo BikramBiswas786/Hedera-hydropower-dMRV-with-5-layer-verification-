@@ -1,3 +1,4 @@
+import { nextRecordsHash } from "./approval";
 import { ENGINE_VERSION, type VerificationReport, verifyReadings } from "./engine";
 import type { RegisteredDesign } from "./methodology/project";
 import { fetchChunkedMessage, fetchTopicMessage } from "./mirror";
@@ -11,7 +12,7 @@ import {
   parseDataMessage,
 } from "./report";
 import type { AttestationView } from "./views";
-import type { Address, Hex } from "viem";
+import { type Address, type Hex, zeroHash } from "viem";
 
 export type AuditCheck = {
   field: string;
@@ -43,7 +44,7 @@ export type AuditResult =
     };
 
 /**
- * Proves the attestation's evidence was not altered: fetches the HCS report from the public mirror node, hashes
+ * Proves a monitoring record's evidence was not altered: fetches its HCS report from the public mirror node, hashes
  * it, and checks the hash and every monitored input and computed emission figure against what the contract
  * recorded. Needs no credentials, so it runs the same in a browser, an API route or an AI agent.
  */
@@ -76,20 +77,20 @@ export async function auditAttestation(
     check("reportHash", attestation.reportHash, hash),
     check("decision", "APPROVED", report?.decision),
     check("plantId", attestation.plantId, report?.plantId),
+    check("plantSequence", attestation.sequence, report?.plantSequence),
     check("periodStart", attestation.periodStart, report?.periodStart),
     check("periodEnd", attestation.periodEnd, report?.periodEnd),
     check("completenessBps", attestation.completenessBps, report?.completenessBps),
     check("EG_facility (netWh)", attestation.netEnergyWh, report?.monitored.netWh),
     check("TEG (grossWh)", attestation.grossEnergyWh, report?.monitored.grossWh),
     check("FC (fuelG)", attestation.fuelG, report?.monitored.fuelG),
-    // From report@4 the contract stores LE_y (monitored + embodied); report@3 had monitored leakage only.
     check("LE (leakageG)", attestation.leakageG, e?.leakageG ?? report?.monitored.leakageG),
     check("EG_PJ (Wh)", attestation.projectEnergyWh, e?.egProjectWh),
     check("BE (g)", attestation.baselineG, e?.baselineG),
     check("PE_HP (g)", attestation.reservoirG, e?.reservoirG),
     check("PE_FF (g)", attestation.fossilFuelG, e?.fossilFuelG),
     check("ER (g)", attestation.reductionG, e?.reductionG),
-    check("credits (kg)", attestation.unitsMinted, e?.unitsMinted),
+    check("units at record (kg)", attestation.unitsAtRecord, e?.unitsAtRecord ?? e?.unitsMinted),
   ];
 
   return {
@@ -119,10 +120,12 @@ export type ReproductionResult =
     };
 
 /**
- * Re-derives the credits from public data alone: audits the report, fetches the raw readings it commits to from
- * HCS (reassembling chunks), checks their hash, re-runs the deterministic engine on them and compares every
+ * Re-derives a monitoring record from public data alone: audits the report, fetches the raw readings it commits to
+ * from HCS (reassembling chunks), checks their hash, re-runs the deterministic engine on them and compares every
  * figure. When the plant's registered design is supplied it also checks the data message used the on-chain
- * parameters (grid EF, fuel coefficient, baseline, crediting period), so a verifier cannot swap them.
+ * parameters (grid EF, fuel coefficient, baseline, crediting period), so no one can swap them. With the previous
+ * record's chain hash it also recomputes this record's link in the registry's hash chain from the readings, which
+ * proves the published readings are the ones the meter signed on-chain.
  */
 export async function reproduceAttestation(
   attestation: AttestationView,
@@ -130,6 +133,8 @@ export async function reproduceAttestation(
   registered?: RegisteredDesign,
   /** The plant's meter as registered on-chain; checked against the metering record the readings were verified with. */
   registeredMeter?: Address | null,
+  /** Chain head before this record (`zeroHash` for a project's first record); omit to skip the chain check. */
+  previousChainHash?: Hex,
 ): Promise<ReproductionResult> {
   const audit = await auditAttestation(attestation, fetchImpl);
   if (audit.status !== "verified" && audit.status !== "mismatch") return { status: "not-auditable", audit };
@@ -167,11 +172,29 @@ export async function reproduceAttestation(
   const r = recomputed.emissions;
   const e = report.emissions;
   const designChecks = registered
-    ? (Object.keys(registered) as (keyof RegisteredDesign)[])
-        // registrationRequestedAt is DmrvRegistry-only; data messages published before it do not carry it.
-        .filter(key => key !== "registrationRequestedAt" || parsed.plant.design[key] !== undefined)
-        .map(key => check(`registered.${key}`, registered[key] ?? null, parsed.plant.design[key] ?? null))
+    ? (Object.keys(registered) as (keyof RegisteredDesign)[]).map(key =>
+        check(`registered.${key}`, registered[key], parsed.plant.design[key]),
+      )
     : [];
+  const chainChecks =
+    previousChainHash !== undefined && parsed.domain && attestation.hcsTopicId
+      ? [
+          check(
+            "record chain hash",
+            attestation.chainHash,
+            nextRecordsHash(previousChainHash ?? zeroHash, parsed.domain, {
+              plantId: attestation.plantId,
+              sequence: attestation.sequence,
+              statement: recomputed.meterStatement,
+              verified: attestation.verified,
+              reportHash: attestation.reportHash,
+              hcsTopicNum: BigInt(attestation.hcsTopicId.replace(/^0\.0\./, "")),
+              hcsSequence: BigInt(attestation.hcsSequence),
+              reductionG: BigInt(attestation.reductionG),
+            }),
+          ),
+        ]
+      : [];
   const meterChecks = registeredMeter
     ? [check("registered.meter", registeredMeter.toLowerCase(), parsed.metering.deviceAddress?.toLowerCase() ?? null)]
     : [];
@@ -193,10 +216,11 @@ export async function reproduceAttestation(
     check("PE_FF (g)", e?.fossilFuelG ?? null, r?.fossilFuelG ?? null),
     ...(e?.leakageG === undefined ? [] : [check("LE (g)", e.leakageG, r?.leakageG ?? null)]),
     check("ER (g)", e?.reductionG ?? null, r?.reductionG ?? null),
-    check("credits (kg)", e?.unitsMinted ?? null, r?.unitsMinted ?? null),
+    check("units at record (kg)", e?.unitsAtRecord ?? e?.unitsMinted ?? null, r?.unitsMinted ?? null),
     check("EF_grid,CM (g/MWh)", report.parameters.efGridGPerMwh, recomputed.parameters.efGridGPerMwh),
     ...designChecks,
     ...meterChecks,
+    ...chainChecks,
   ];
 
   return {

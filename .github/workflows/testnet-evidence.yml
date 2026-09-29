@@ -1,0 +1,107 @@
+name: Testnet evidence
+
+# Runs the product's VCS flow on the live testnet contracts, with the same CLI an operator and a VVB would use:
+#   1. monitoring: two 24-hour periods of HYDRO-DEMO-01 and one of HYDRO-DEMO-02 are verified by the engine, published
+#      to HCS (readings, then report) and recorded on DmrvRegistry with each plant's meter signature;
+#   2. verification: each plant's pending records are reproduced from HCS, a verification report is published, the
+#      labelled demo VVB key signs the VerificationStatement and it is relayed; only that issues credits;
+#   3. sale: the operator lists issued credits and a separate buyer runs the agent flow
+#      (get_dex_price -> list_open_listings -> prepare_purchase -> sign and send), buyAndRetire through SaucerSwap.
+#
+# Keys: the deployer/operator is TESTNET_REBALANCER_KEY. The meters, the demo VVB and the buyer are derived from it
+# (packages/hardhat/utils/testnetDemoKeys.ts): secret, reproducible, and labelled demo keys. One person holding the
+# operator and VVB keys is what a real deployment must not do.
+#
+# Runs on a push to a claude/** branch whose commit message contains [testnet-evidence], or by hand.
+on:
+  push:
+    branches: ["claude/**"]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  evidence:
+    if: github.event_name == 'workflow_dispatch' || contains(github.event.head_commit.message, '[testnet-evidence]')
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    concurrency: testnet-evidence
+    env:
+      NEXT_PUBLIC_TARGET_NETWORK: testnet
+      HCS_TOPIC_ID: "0.0.10729650"
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20.18.3
+          cache: yarn
+
+      - run: yarn install --immutable
+
+      - name: Derive the demo meter, VVB and buyer keys; resolve the operator account
+        env:
+          TESTNET_DEPLOYER_KEY: ${{ secrets.TESTNET_REBALANCER_KEY }}
+        run: |
+          if [ -z "$TESTNET_DEPLOYER_KEY" ]; then echo "::error::Set the TESTNET_REBALANCER_KEY secret"; exit 1; fi
+          (cd packages/hardhat && npx ts-node scripts/testnetDemoKeys.ts)
+          KEY="${TESTNET_DEPLOYER_KEY#0x}"
+          echo "::add-mask::$KEY"
+          ADDRESS=$(cd packages/hardhat && node -e "const {Wallet}=require('ethers');console.log(new Wallet('0x$KEY').address)")
+          ACCOUNT=$(curl -s "https://testnet.mirrornode.hedera.com/api/v1/accounts/$ADDRESS" | node -e "let s='';process.stdin.on('data',d=>s+=d).on('end',()=>console.log(JSON.parse(s).account))")
+          echo "Operator $ACCOUNT ($ADDRESS)"
+          {
+            echo "HEDERA_OPERATOR_ID=$ACCOUNT"
+            echo "HEDERA_OPERATOR_KEY=$KEY"
+            echo "KEEPER_PRIVATE_KEY=$KEY"
+            echo "DEPLOYER_KEY=$KEY"
+          } >> "$GITHUB_ENV"
+
+      - name: Monitoring (records, not issued)
+        working-directory: packages/nextjs
+        run: |
+          NOW=$(date -u +%s)
+          HOUR=$(( NOW / 3600 * 3600 ))
+          FIRST_END=$(date -u -d "@$(( HOUR - 86400 ))" +%Y-%m-%dT%H:%M:%SZ)
+          yarn mrv:record healthy HYDRO-DEMO-01 "$FIRST_END"
+          yarn mrv:record healthy HYDRO-DEMO-01
+          yarn mrv:record healthy HYDRO-DEMO-02
+
+      - name: Verification by the demo VVB (issuance)
+        working-directory: packages/nextjs
+        run: |
+          # The mirror node trails consensus by a few seconds; the VVB reproduces every record from it.
+          sleep 20
+          yarn mrv:verify HYDRO-DEMO-01 approve 0 "Demo VVB (labelled test key, not accredited): every record reproduced from HCS"
+          yarn mrv:verify HYDRO-DEMO-02 approve 0 "Demo VVB (labelled test key, not accredited): reproduced; ER is negative on this grid and carries as a deficit"
+          for file in verification-*.json; do
+            VVB_PRIVATE_KEY="$VALIDATOR_PRIVATE_KEY" yarn mrv:approve "$file"
+            yarn mrv:submit "$file"
+          done
+
+      - name: List and buy-and-retire through SaucerSwap (agent flow, separate buyer)
+        working-directory: packages/nextjs
+        run: |
+          yarn market:keep-listing --execute
+          # Fund the derived buyer (its first transfer creates the account) if it holds under 5 HBAR.
+          node -e "
+            const { createPublicClient, createWalletClient, http, parseEther } = require('viem');
+            const { privateKeyToAccount } = require('viem/accounts');
+            const { hederaTestnet } = require('viem/chains');
+            const transport = http('https://testnet.hashio.io/api');
+            const client = createPublicClient({ chain: hederaTestnet, transport });
+            (async () => {
+              const buyer = process.env.BUYER_ADDRESS;
+              if ((await client.getBalance({ address: buyer })) >= parseEther('5')) return;
+              const wallet = createWalletClient({ account: privateKeyToAccount('0x' + process.env.DEPLOYER_KEY), chain: hederaTestnet, transport });
+              const hash = await wallet.sendTransaction({ to: buyer, value: parseEther('10'), gasPrice: await client.getGasPrice() });
+              await client.waitForTransactionReceipt({ hash });
+              console.log('Funded buyer ' + buyer + ': ' + hash);
+            })().catch(e => { console.error(e); process.exit(1); });
+          "
+          yarn market:agent-buy 10 "Hydro dMRV testnet evidence"
+
+      - name: Reproduce every record from HCS
+        working-directory: packages/nextjs
+        run: yarn mrv:reproduce

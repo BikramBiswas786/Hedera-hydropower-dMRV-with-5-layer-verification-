@@ -2,62 +2,41 @@ import { PROJECT_TYPES, powerDensity, registeredMethodologyLabel, reservoirEfGPe
 import { hashscan, isLiveHederaChain } from "../network";
 import {
   type AttestationView,
+  type IssuanceView,
   type PlantView,
   type RetirementView,
   plantIdToBytes32,
-  toAttestationView,
-  toDmrvAttestationView,
   toRetirementView,
 } from "../views";
 import { ApiError } from "./errors";
-import { activeRegistry, getPlant, legacy, publicClient, requireDeployment } from "./registry";
+import { getAttestations, getIssuances, getPlant, publicClient, requireDeployment } from "./registry";
 import { type Address, getAddress, isAddress, zeroAddress } from "viem";
 import { z } from "zod";
 
 /** Contract pages are capped so a single eth_call stays small on the JSON-RPC relay. */
-const PAGE = 100n;
+const PAGE = 100;
 
-async function readPaged<T>(count: bigint, page: (start: bigint, size: bigint) => Promise<readonly T[]>) {
-  const out: T[] = [];
-  for (let start = 0n; start < count; start += PAGE) {
-    out.push(...(await page(start, count - start < PAGE ? count - start : PAGE)));
-  }
-  return out;
-}
-
-/** Every attestation on the active registry (the legacy one until the phase-1 redeploy). */
+/** Every monitoring record on the registry, each with the verification (if any) that closed it. */
 export async function getAllAttestations(): Promise<AttestationView[]> {
-  if (activeRegistry().kind === "legacy") {
-    const client = publicClient();
-    const count = await client.readContract({ ...legacy, functionName: "attestationCount" });
-    const raw = await readPaged(count, (start, size) =>
-      client.readContract({ ...legacy, functionName: "getAttestations", args: [start, size] }),
-    );
-    return raw.map((attestation, i) => toAttestationView(attestation, i));
-  }
   const { address, abi, client } = requireDeployment();
-  const count = await client.readContract({ address, abi, functionName: "attestationCount" });
-  const raw = await readPaged(count, (start, size) =>
-    client.readContract({ address, abi, functionName: "getAttestations", args: [start, size] }),
+  const count = Number(await client.readContract({ address, abi, functionName: "attestationCount" }));
+  const pages = await Promise.all(
+    Array.from({ length: Math.ceil(count / PAGE) }, (_, i) => getAttestations(i * PAGE, PAGE)),
   );
-  return raw.map((attestation, i) => toDmrvAttestationView(attestation, i));
+  return pages.flat();
 }
 
 export async function getAllRetirements(): Promise<RetirementView[]> {
-  if (activeRegistry().kind === "legacy") {
-    const client = publicClient();
-    const count = await client.readContract({ ...legacy, functionName: "retirementCount" });
-    const raw = await readPaged(count, (start, size) =>
-      client.readContract({ ...legacy, functionName: "getRetirements", args: [start, size] }),
-    );
-    return raw.map((retirement, i) => toRetirementView(retirement, i));
-  }
   const { address, abi, client } = requireDeployment();
-  const count = await client.readContract({ address, abi, functionName: "retirementCount" });
-  const raw = await readPaged(count, (start, size) =>
-    client.readContract({ address, abi, functionName: "getRetirements", args: [start, size] }),
+  const count = Number(await client.readContract({ address, abi, functionName: "retirementCount" }));
+  return Promise.all(
+    Array.from({ length: count }, async (_, i) =>
+      toRetirementView(
+        await client.readContract({ address, abi, functionName: "getRetirement", args: [BigInt(i)] }),
+        i,
+      ),
+    ),
   );
-  return raw.map((retirement, i) => toRetirementView(retirement, i));
 }
 
 // ─── Plants ──────────────────────────────────────────────────────────────────
@@ -70,12 +49,15 @@ export type PlantTotals = {
   reservoirG: number;
   fossilFuelG: number;
   reductionG: number;
-  unitsMinted: number;
-  /** Coverage of the attested periods, weighted by period length (basis points). */
+  /** Credits issued by approving verifications (kg units), and ER still awaiting verification (g). */
+  unitsIssued: number;
+  pendingRecords: number;
+  pendingReductionG: number;
+  /** Coverage of the monitored periods, weighted by period length (basis points). */
   completenessBps: number | null;
   firstPeriodStart: number | null;
   lastPeriodEnd: number | null;
-  /** Credits per MWh exported: the plant's realised emission-reduction intensity. */
+  /** Issued credits per MWh exported: the plant's realised emission-reduction intensity. */
   creditsPerMwh: number | null;
 };
 
@@ -88,14 +70,16 @@ export type PlantDetail = {
   powerDensity: { wPerM2: number | null; basis: string };
   totals: PlantTotals;
   attestations: PlantAttestation[];
+  issuances: (IssuanceView & { reportUrl: string | null })[];
   links: { designDocument: string; registry: string | null };
 };
 
-export function plantTotals(attestations: AttestationView[]): PlantTotals {
+export function plantTotals(attestations: AttestationView[], issuances: IssuanceView[]): PlantTotals {
   const sum = (pick: (a: AttestationView) => number) => attestations.reduce((s, a) => s + pick(a), 0);
   const seconds = sum(a => a.periodEnd - a.periodStart);
   const netWh = sum(a => a.netEnergyWh);
-  const unitsMinted = sum(a => a.unitsMinted);
+  const unitsIssued = issuances.reduce((s, i) => s + i.unitsIssued, 0);
+  const pending = attestations.filter(a => a.status === "monitored");
   return {
     attestations: attestations.length,
     netWh,
@@ -104,33 +88,40 @@ export function plantTotals(attestations: AttestationView[]): PlantTotals {
     reservoirG: sum(a => a.reservoirG),
     fossilFuelG: sum(a => a.fossilFuelG),
     reductionG: sum(a => a.reductionG),
-    unitsMinted,
+    unitsIssued,
+    pendingRecords: pending.length,
+    pendingReductionG: pending.reduce((s, a) => s + a.reductionG, 0),
     completenessBps:
       seconds > 0 ? Math.floor(sum(a => a.completenessBps * (a.periodEnd - a.periodStart)) / seconds) : null,
     firstPeriodStart: attestations.length ? Math.min(...attestations.map(a => a.periodStart)) : null,
     lastPeriodEnd: attestations.length ? Math.max(...attestations.map(a => a.periodEnd)) : null,
-    creditsPerMwh: netWh > 0 ? unitsMinted / 1_000 / (netWh / 1e6) : null,
+    creditsPerMwh: netWh > 0 ? unitsIssued / 1_000 / (netWh / 1e6) : null,
   };
 }
 
 export async function listPlants(): Promise<PlantView[]> {
-  const ids =
-    activeRegistry().kind === "legacy"
-      ? await publicClient().readContract({ ...legacy, functionName: "getPlantIds" })
-      : await (() => {
-          const { address, abi, client } = requireDeployment();
-          return client.readContract({ address, abi, functionName: "getProjectIds" });
-        })();
+  const { address, abi, client } = requireDeployment();
+  const ids = await client.readContract({ address, abi, functionName: "getProjectIds" });
   const plants = await Promise.all(ids.map(id => getPlant(id)));
   return plants.filter((plant): plant is PlantView => plant !== null);
 }
 
 export async function getPlantDetail(plantId: string): Promise<PlantDetail> {
   if (!/^[\x20-\x7e]{1,31}$/.test(plantId)) throw new ApiError("Plant ids are 1–31 printable ASCII characters", 400);
-  const [plant, all] = await Promise.all([getPlant(plantIdToBytes32(plantId)), getAllAttestations()]);
+  const [plant, all, allIssuances] = await Promise.all([
+    getPlant(plantIdToBytes32(plantId)),
+    getAllAttestations(),
+    getIssuances(),
+  ]);
   if (!plant) throw new ApiError(`Plant ${plantId} is not registered`, 404);
 
-  const { address } = activeRegistry();
+  const { address } = requireDeployment();
+  const issuances = allIssuances
+    .filter(i => i.plantId === plantId)
+    .map(i => ({
+      ...i,
+      reportUrl: i.hcsTopicId && isLiveHederaChain() ? hashscan.topicMessage(i.hcsTopicId, i.hcsSequence) : null,
+    }));
   const attestations = all
     .filter(a => a.plantId === plantId)
     .map(a => ({
@@ -144,8 +135,9 @@ export async function getPlantDetail(plantId: string): Promise<PlantDetail> {
     methodology: registeredMethodologyLabel(plant.design),
     projectType: PROJECT_TYPES[plant.design.projectType] ?? "unknown",
     powerDensity: { wPerM2: pd.wPerM2, basis: pd.basis },
-    totals: plantTotals(attestations),
+    totals: plantTotals(attestations, issuances),
     attestations,
+    issuances,
     links: {
       designDocument: `/api/methodology/projects/${encodeURIComponent(plantId)}?raw=1`,
       registry: isLiveHederaChain() ? hashscan.contract(address) : null,
@@ -184,20 +176,11 @@ export async function getPortfolio(input: z.input<typeof portfolioQuerySchema>):
   const query = portfolioQuerySchema.parse(input);
   const account = query.account ? getAddress(query.account) : null;
   const client = publicClient();
-  const read =
-    activeRegistry().kind === "legacy"
-      ? {
-          certificateToken: () => client.readContract({ ...legacy, functionName: "certificateToken" }),
-          custody: (who: Address) => client.readContract({ ...legacy, functionName: "custodyBalanceOf", args: [who] }),
-        }
-      : (() => {
-          const { address, abi } = requireDeployment();
-          return {
-            certificateToken: () => client.readContract({ address, abi, functionName: "certificateToken" }),
-            custody: (who: Address) =>
-              client.readContract({ address, abi, functionName: "custodyBalanceOf", args: [who] }),
-          };
-        })();
+  const { address, abi } = requireDeployment();
+  const read = {
+    certificateToken: () => client.readContract({ address, abi, functionName: "certificateToken" }),
+    custody: (who: Address) => client.readContract({ address, abi, functionName: "custodyBalanceOf", args: [who] }),
+  };
   const [all, token, custody] = await Promise.all([
     getAllRetirements(),
     read.certificateToken(),

@@ -27,11 +27,12 @@ export function readOperatorConfig(): OperatorConfig | null {
 }
 
 /**
- * EVM key that signs `submitAttestation`. Defaults to the operator key, which works when the operator is an ECDSA
- * account (its EVM alias is the address granted VERIFIER_ROLE). ED25519 accounts must set VERIFIER_PRIVATE_KEY.
+ * EVM key that relays `recordMonitoring` and `verifyPeriod`. It signs neither statement: recording needs the
+ * project's operator or the reporter it named, and relaying a VVB's verification needs no role at all. Defaults to
+ * the operator key when that is an ECDSA account; ED25519 accounts set RELAYER_PRIVATE_KEY.
  */
-export function readVerifierKey(operator = readOperatorConfig()): Hex | null {
-  const explicit = process.env.VERIFIER_PRIVATE_KEY;
+export function readRelayerKey(operator = readOperatorConfig()): Hex | null {
+  const explicit = process.env.RELAYER_PRIVATE_KEY;
   if (explicit) return `0x${explicit.trim().replace(/^0x/, "")}`;
   if (operator?.privateKey.type === "secp256k1") return `0x${operator.privateKey.toStringRaw()}`;
   return null;

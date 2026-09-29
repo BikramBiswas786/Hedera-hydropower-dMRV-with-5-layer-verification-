@@ -18,8 +18,8 @@ import { getDeployGasPrice } from "../utils/getDeployGasPrice";
 import { getHydroNetworkConfig, hashscanContract, hashscanTx } from "../utils/hydroNetworkConfig";
 
 /** The live testnet contracts, as in packages/nextjs/contracts/deployedContracts.ts (chain 296). */
-const LIVE_REGISTRY = process.env.REGISTRY_ADDRESS ?? "0xaf9C76B48B317cee770ED6AE038D516b269E0129";
-const LIVE_MARKET = process.env.MARKET_ADDRESS ?? "0x26E77708717cE69EBBBF76e59D106B20e67e1D61";
+const LIVE_REGISTRY = process.env.REGISTRY_ADDRESS ?? "0x4EB517694CBac7b59a26B188eFEBa35aAb5Fd48e";
+const LIVE_MARKET = process.env.MARKET_ADDRESS ?? "0x48F5056EdaD0B16c97a54085512b48417bC40F04";
 const LIST_UNITS = BigInt(process.env.LIST_UNITS || 50); // 0.050 t of a 3-decimal token
 const BUY_UNITS = BigInt(process.env.BUY_UNITS || 10);
 const PRICE_USD_CENTS_PER_TOKEN = BigInt(process.env.PRICE_USD_CENTS || 1_500); // $15 per whole token

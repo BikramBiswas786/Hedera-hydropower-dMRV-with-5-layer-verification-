@@ -53,10 +53,10 @@ function assert(condition: unknown, message: string): asserts condition {
 }
 
 type Overview = {
-  registry: string;
   address: string;
   market: string | null;
   attestationCount: number;
+  issuanceCount: number;
   totalIssuedKg: number;
   totalRetiredKg: number;
   retirementCount: number;
@@ -140,13 +140,13 @@ async function main() {
 
   await check("Registry overview", async () => {
     const o = await call<Overview>("/api/registry");
-    assert(o.registry !== "legacy", `the app reads the legacy registry ${o.address}`);
     assert(o.address.toLowerCase() === REGISTRY, `registry ${o.address} is not deployedContracts' ${REGISTRY}`);
     assert(o.market?.toLowerCase() === MARKET, `market ${o.market} is not deployedContracts' ${MARKET}`);
-    assert(o.attestationCount > 0, "no attestations");
+    assert(o.attestationCount > 0, "no monitoring records");
+    assert(o.issuanceCount > 0, "no VVB verification");
     oracle = o.oracle;
     assert(!oracle?.pausedReason || sourcesDisagree(), `oracle paused: ${oracle?.pausedReason}`);
-    return `${o.attestationCount} attestations, ${o.totalIssuedKg / 1000} t issued, ${o.retirementCount} retirements`;
+    return `${o.attestationCount} records, ${o.issuanceCount} verifications, ${o.totalIssuedKg / 1000} t issued, ${o.retirementCount} retirements`;
   });
 
   await check("SaucerSwap pair vs oracle", async () => {
@@ -213,9 +213,9 @@ async function main() {
     return `listing #${listing.id}, ${Math.min(10, listing.unitsAvailable)} kg, value ${(Number(BigInt(p.value) / 10n ** 10n) / 1e8).toFixed(6)} HBAR (not sent)`;
   });
 
-  await check("Every issuance reproduces from HCS", async () => {
+  await check("Every monitoring record reproduces from HCS", async () => {
     const { attestations } = await call<{ attestations: Attestation[] }>("/api/registry/attestations?count=100");
-    assert(attestations.length > 0, "no attestations");
+    assert(attestations.length > 0, "no monitoring records");
     const results = await Promise.all(
       attestations.map(async a => {
         const r = await call<Reproduction>(`/api/registry/attestations/${a.id}/reproduce`);
@@ -224,7 +224,7 @@ async function main() {
     );
     const bad = results.filter(r => !r.ok);
     assert(bad.length === 0, bad.map(r => `#${r.id} ${r.status}`).join(", "));
-    return `${results.length}/${results.length} reproduced (engine re-run on HCS readings matches report and chain)`;
+    return `${results.length}/${results.length} reproduced (engine re-run on HCS readings matches report, chain and record hash chain)`;
   });
 
   for (const [scenario, expected] of [
@@ -293,11 +293,14 @@ async function main() {
       "list_open_listings",
       "prepare_purchase",
       "reproduce_attestation",
+      "get_pending_verification",
       "trace_guardian_mint",
     ]) {
       assert(names.includes(tool), `missing ${tool}`);
     }
-    assert(!names.includes("submit_attestation"), "submit_attestation is listed without a key");
+    for (const write of ["record_monitoring", "prepare_verification", "submit_verification"]) {
+      assert(!names.includes(write), `${write} is listed without a key`);
+    }
     return `${names.length} public tools`;
   });
 

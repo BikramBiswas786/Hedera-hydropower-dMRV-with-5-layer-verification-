@@ -41,6 +41,14 @@ const config: HardhatUserConfig = {
         },
       },
     ],
+    overrides: {
+      // Deployed once and read far more than it runs: optimise the registry for size so it stays under the 24 KB
+      // code limit (`yarn hardhat:size`).
+      "contracts/DmrvRegistry.sol": {
+        version: "0.8.28",
+        settings: { optimizer: { enabled: true, runs: 1 }, viaIR: true },
+      },
+    },
   },
   defaultNetwork: "hardhat",
   namedAccounts: {

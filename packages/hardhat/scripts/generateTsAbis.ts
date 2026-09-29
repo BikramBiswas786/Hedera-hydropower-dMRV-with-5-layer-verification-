@@ -38,7 +38,11 @@ function getActualSourcesForContract(sources: Record<string, any>, contractName:
   for (const sourcePath of Object.keys(sources)) {
     const sourceName = sourcePath.split("/").pop()?.split(".sol")[0];
     if (sourceName === contractName) {
-      const contractContent = sources[sourcePath].content as string;
+      // Metadata from a compiler-settings override (DmrvRegistry's viaIR build) carries no literal content, only
+      // hashes, so fall back to the source on disk.
+      const contractContent =
+        (sources[sourcePath].content as string | undefined) ??
+        (fs.existsSync(sourcePath) ? fs.readFileSync(sourcePath).toString() : "");
       const regex = /contract\s+(\w+)\s+is\s+([^{}]+)\{/;
       const match = contractContent.match(regex);
 
