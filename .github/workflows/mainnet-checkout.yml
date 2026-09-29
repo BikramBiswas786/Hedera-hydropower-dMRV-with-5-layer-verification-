@@ -8,7 +8,7 @@ name: Mainnet checkout
 #                  with the key, the seller's balance and associations. Spends nothing.
 #   step=execute   prepare (test token, USDC association, fund the buyer), deploy the feed and UsdCheckout
 #                  (deploy/05, tag MainnetCheckout), list, buy, prove the swap, verify on Sourcify. On mainnet it
-#                  runs only when `confirm` is "spend mainnet HBAR" (about 36 HBAR at 72 tinybar gas and $0.119).
+#                  runs only when `confirm` is "spend mainnet HBAR" (about 43 HBAR at 72 tinybar gas and $0.118; 20 of it goes to the buyer).
 #
 # Keys: MAINNET_DEPLOYER_KEY, the ECDSA key of a new account with an EVM alias that has never been pasted anywhere.
 # The buyer is a key derived from it (same holder), so this proves the settlement path, not an arm's-length trade.

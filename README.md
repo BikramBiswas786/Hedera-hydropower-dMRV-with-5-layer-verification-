@@ -35,6 +35,7 @@ Every step after the deploy was run by the [Testnet evidence](.github/workflows/
 - The demo grid factor is Uganda's published CDM standardized baseline (ASB0054-2022, 2017–2019 data), re-weighted with VT0011. That baseline expired on 9 August 2025, and the demo plants were registered in 2026, outside its validity window; a real project needs a new VT0011 calculation. The Uganda tonnes illustrate the arithmetic, not a current grid.
 - The contract checks that each record and verification cites a non-zero sequence on the audit topic `0.0.10729650`. It cannot load that message: the EVM has no access to HCS content. `yarn mrv:reproduce`, the app and the VVB flow read it and refuse a mismatch; a direct `verifyPeriod` call can cite a sequence whose bytes are something else.
 - `evidenceHash` in a verification is an optional, single-use label. The contract checks nothing about what it names; it is not a Guardian proof.
+- For a retrofit or capacity addition, a monitoring run the VVB rejects still counts toward the crediting year's energy, so later periods of that year can credit more ([contract.md](docs/contract.md)). Both demo plants are greenfield and unaffected.
 - The meter uncertainty `U(BE_y)` (VMR0017 §9.2) is reported with each record, not deducted from the tonnes. The conservative QA/QC (lower of two meters, MPE after calibration expiry) is deducted.
 
 > **Disclaimer.** Contracts, app and tooling are experimental and not audited. The engine implements published equations; it is not a certification body.

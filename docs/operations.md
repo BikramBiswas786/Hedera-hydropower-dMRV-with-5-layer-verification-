@@ -203,7 +203,7 @@ seller is paid USDC. The [Mainnet checkout](../.github/workflows/mainnet-checkou
 test token (`DMRVTEST`, supply 10, no admin or supply key, memo "not a carbon credit"):
 
 1. **Plan** (`step=plan`, no key needed): the pair against Chainlink, whether `settlementPrice` would pass, and the
-   HBAR the run needs (about 36 HBAR at 72 tinybar gas and $0.119 per HBAR on 29 Sep 2026). With the key it also
+   HBAR the run needs (about 43 HBAR at 72 tinybar gas and $0.118 per HBAR on 29 Sep 2026, 20 of it sent to the buyer). With the key it also
    checks the seller's account, balance and USDC association.
 2. **Execute** (`step=execute`, `confirm` = `spend mainnet HBAR`): creates the token and associates the seller with
    USDC `0.0.456858` (Hedera SDK), funds a buyer, deploys `ResilientHbarUsdFeed` and `UsdCheckout` with
@@ -214,7 +214,10 @@ test token (`DMRVTEST`, supply 10, no admin or supply key, memo "not a carbon cr
 The key is `MAINNET_DEPLOYER_KEY`, the ECDSA key of a new account with an EVM alias. The buyer's key is derived from it
 unless `BUYER_PRIVATE_KEY` is set, so one person holds both: the exhibit proves the settlement path, not an arm's-length
 trade. The Mainnet fork workflow rehearses the deploy on every push, and `network=testnet` (or a push whose message
-contains `[checkout-rehearsal]`) runs every step on testnet first. It has not been run on mainnet.
+contains `[checkout-rehearsal]`) runs every step on testnet first. The rehearsal on 29 Sep 2026 created
+[`DMRVTEST` 0.0.10776102](https://hashscan.io/testnet/token/0.0.10776102), listed 2 and
+[bought 1 for 8.389 HBAR](https://hashscan.io/testnet/transaction/0x019dc29be04bf50685238322d834bbde6ed932f51e2fd3e5fabec771b98bef26):
+the pair logged the swap and the seller received 0.981 QUSD (at least 0.97 required). It has not been run on mainnet.
 
 ## Security model and limitations
 
