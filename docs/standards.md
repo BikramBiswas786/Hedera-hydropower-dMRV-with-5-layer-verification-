@@ -87,4 +87,6 @@ uses TOOL07's 0.5 / 0.5 weights. VMR0017 §9.3 requires VT0011, whose 0.4 / 0.6 
 the published CM would credit 25% more than the methodology allows. A published factor on the VMR0017 path
 therefore needs its OM and BM; the engine recombines them with VT0011's weights and keeps the lower CM. On the CDM
 path it checks that the published CM is TOOL07's weighting of the same margins. ASB0054 was valid from 10 Aug 2022
-to 9 Aug 2025.
+to 9 Aug 2025. The demo designs date their CM to 1 Jul 2025, but the demo plants were registered on testnet in 2026,
+outside that window: the Uganda tonnes illustrate the arithmetic, not a current grid. A real project needs a new
+VT0011 calculation.

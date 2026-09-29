@@ -90,6 +90,12 @@ The seller must be able to receive the pair's USD token: associate it before lis
 - **The testnet demo VVB.** It is the author's labelled test key, derived in CI from the deployer secret, not an
   accredited verifier. One person holds the operator, meter and VVB keys on testnet, which is exactly what a real
   deployment must not do. The app and API hold no VVB key at all.
+- **What the contract checks of HCS.** Only that a record or verification cites a non-zero sequence on topic
+  `0.0.10729650`. It cannot load the message. `yarn mrv:reproduce`, the app and the VVB flow read it and refuse a
+  mismatch; a direct `verifyPeriod` call can cite a sequence whose bytes are something else. `evidenceHash` is a
+  single-use label, not a check of a Guardian VP.
+- **The Uganda grid factor.** ASB0054-2022 expired on 9 August 2025; the demo plants were registered in 2026, outside
+  its validity window. The tonnes illustrate the arithmetic, not a current grid.
 - **What a credit is.** A unit is one tonne of verified emission reductions under the plant's registered methodology,
   issued by this registry. It is not a Verra VCU. These testnet credits come from demo plants with illustrative
   additionality evidence and no real impact assessment; they have no value.

@@ -101,8 +101,13 @@ VerificationStatement(bytes32 projectId,uint32 firstRecord,uint32 lastRecord,byt
 - **The figures may only get more conservative.** The module reverts `NotMetered` if the recorded net exceeds the
   metered net, fuel or leakage is below the metered value, or gross differs from the metered gross capped at
   nameplate. A VVB's `deductionG` can only lower issuance.
-- **`evidenceHash`** is an optional external artefact the VVB relied on (e.g. a Guardian VP); each value backs one
-  issuance (`EvidenceAlreadyUsed`).
+- **`evidenceHash`** is an optional label for an external artefact the VVB relied on; each value backs one issuance
+  (`EvidenceAlreadyUsed`). The contract checks nothing else about it: it is not a check of a Guardian VP, which needs
+  Ed25519 signatures and IPFS documents a contract cannot read.
+- **The HCS anchor is a number, not the message.** `recordMonitoring` and `verifyPeriod` require the audit topic and a
+  non-zero sequence (`Unanchored`). The EVM cannot load an HCS message, so a direct call can cite a sequence whose bytes
+  are something else. The app and `yarn mrv:reproduce` read the message and refuse a mismatch
+  (`verification.flow.test.ts`); a reader checks with `reproduce_attestation`.
 - **The calibration must be valid through the period end** (`CalibrationExpired`; the admin records a renewed
   certificate with `setCalibrationValidUntil`).
 
