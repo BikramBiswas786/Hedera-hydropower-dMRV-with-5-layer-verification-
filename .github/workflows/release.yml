@@ -1,0 +1,44 @@
+name: Release
+
+# Publishes a GitHub release from `.github/release-notes/<tag>.md` at the commit this run is on, and marks it latest.
+# `retire` deletes an older release object whose notes describe code no longer in the repository; its git tag stays.
+on:
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: Tag to create or update
+        default: v2.0.0
+      title:
+        description: Release title
+        default: "v2.0.0: on-chain issuance, SaucerSwap settlement and a Guardian trace, as a Scaffold-HBAR template"
+      retire:
+        description: Release to delete (its tag is kept); empty keeps every release
+        default: v1.6.1
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Publish
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ inputs.tag }}
+          TITLE: ${{ inputs.title }}
+          RETIRE: ${{ inputs.retire }}
+        run: |
+          notes=".github/release-notes/${TAG}.md"
+          test -f "$notes" || { echo "::error::No $notes"; exit 1; }
+          if gh release view "$TAG" >/dev/null 2>&1; then
+            gh release edit "$TAG" --title "$TITLE" --notes-file "$notes" --latest
+          else
+            gh release create "$TAG" --target "$GITHUB_SHA" --title "$TITLE" --notes-file "$notes" --latest
+          fi
+          if [ -n "$RETIRE" ] && [ "$RETIRE" != "$TAG" ] && gh release view "$RETIRE" >/dev/null 2>&1; then
+            gh release delete "$RETIRE" --yes
+          fi
+          gh release view "$TAG" --json url,isLatest,tagName >> "$GITHUB_STEP_SUMMARY"
