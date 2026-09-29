@@ -8,10 +8,10 @@ on:
     inputs:
       tag:
         description: Tag to create or update
-        default: v3.0.0
+        default: v3.0.1
       title:
         description: Release title
-        default: "v3.0.0: the VCS project cycle on-chain (validation, monitoring, verification, issuance)"
+        default: "v3.0.1: a rehearsed mainnet settlement path and one more disclosed limit"
       target:
         description: Commit to tag when the tag is new; empty tags the commit this run is on
         default: ""
