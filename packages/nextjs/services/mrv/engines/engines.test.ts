@@ -53,6 +53,19 @@ describe("hydro monitoring report (VMR0017 §9 / ACM0002 §5.10, §6.1)", () => 
     expect(m.notApplied.map(n => n.symbol)).toEqual(["PE_GP,y", "PE_BESS,y", "PE_PSP,y", "PE_FSS,y"]);
   });
 
+  it("states BE − PE − LE in the stage line and the exact reason PE_HP is zero", () => {
+    const { report } = prepareAnchors(generateScenario("healthy", { end: END, domain: PREVIEW_METER_DOMAIN }));
+    const e = report.emissions!;
+    const summary = report.stages.find(s => s.stage === "quantification")!.summary;
+    // Run-of-river: PE = 0, and LE is VMR0017's embodied emissions (21 g CO2e/kWh), not zero.
+    expect(e.leakageG).toBeGreaterThan(0);
+    expect(summary).toContain(`− ${(e.leakageG / 1e6).toFixed(3)} =`);
+    const peHp = report.equations.find(step => step.symbol === "PE_HP")!.expression;
+    expect(peHp).toContain("ACM0002 eq. (10)");
+    expect(peHp).toContain("No new or enlarged reservoir");
+    expect(peHp).not.toContain("PD > 10");
+  });
+
   it("cites a clause on every finding, including rejections", () => {
     const { report } = prepareAnchors(generateScenario("tampered", { end: END, domain: PREVIEW_METER_DOMAIN }));
     expect(report.decision).toBe("REJECTED");

@@ -175,6 +175,10 @@ export type VerificationReport = {
     /** TEG as metered, capped only at what the nameplate can produce in the period (the PE_HP basis). */
     grossWh: number;
     fuelG: number;
+    /**
+     * Leakage assessed outside the methodology's equations (e.g. transferred equipment), the contract's monitored input;
+     * normally 0. VMR0017's embodied emissions are computed from EG_facility and reported in `emissions.leakageG`.
+     */
     leakageG: number;
     /** Export not credited, by reason (Wh). */
     deductions: { excludedWh: number; checkMeterWh: number; calibrationWh: number; aboveGenerationWh: number };
@@ -641,7 +645,7 @@ export function verifyReadings(
     integrity: `${PROVENANCE_SUMMARY[provenance.status]}; ${(completenessBps / 100).toFixed(1)}% of the period covered, ${fmt(gapMinutes, 0)} min of gaps, ${checkMeterDiscrepancies} meter discrepancies`,
     physics: `${intervals.length - excludedIntervals.length}/${intervals.length} intervals within nameplate and ρ·g·Q·H·η_max`,
     quantification: emissions
-      ? `ER = ${fmt(emissions.reductionG / 1e6, 3)} t CO2e from ${fmt(emissions.egProjectWh / 1e6, 3)} MWh EG_PJ`
+      ? `ER = BE − PE − LE = ${fmt(emissions.baselineG / 1e6, 3)} − ${fmt(emissions.projectG / 1e6, 3)} − ${fmt(emissions.leakageG / 1e6, 3)} = ${fmt(emissions.reductionG / 1e6, 3)} t CO2e from ${fmt(emissions.egProjectWh / 1e6, 3)} MWh EG_PJ`
       : "Not quantified",
     safeguards: "Water quality is monitored for review only; it never changes the credited quantity",
   };
@@ -688,7 +692,7 @@ export function verifyReadings(
     },
     emissions,
     ledger: { before: ledgerJson, after: quantification && toLedgerJson(quantification.ledger) },
-    equations: equationsFor(plant, netWh, grossWh, fuelG, emissions, reservoirGPerMwh),
+    equations: equationsFor(plant, netWh, grossWh, fuelG, emissions, reservoirGPerMwh, pd.basis),
     monitoring: hydroMonitoringReport(plant, metering, {
       netWh,
       grossWh,
@@ -745,6 +749,8 @@ function equationsFor(
   fuelG: number,
   emissions: Emissions | null,
   reservoirGPerMwh: number,
+  /** Which ACM0002 §5.4.3 case applies (VMR0017 keeps the power-density bands and changes only EF_Res). */
+  reservoirBasis: string,
 ): EquationStep[] {
   const { design } = plant;
   const steps: EquationStep[] = [
@@ -773,8 +779,8 @@ function equationsFor(
     {
       symbol: "PE_HP",
       expression: reservoirGPerMwh
-        ? `EF_Res (${reservoirGPerMwh / 1_000} kg/MWh) × TEG`
-        : "0 (no reservoir emissions: PD > 10 or no new area)",
+        ? `EF_Res (${reservoirGPerMwh / 1_000} kg/MWh) × TEG, ACM0002 eq. (9)`
+        : `0, ACM0002 eq. (10): ${reservoirBasis}`,
       value: emissions.reservoirG / 1e6,
       unit: "t CO2e",
     },
