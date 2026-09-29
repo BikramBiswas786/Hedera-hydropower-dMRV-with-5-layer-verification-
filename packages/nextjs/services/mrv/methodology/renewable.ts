@@ -20,8 +20,6 @@ import { type Hex, encodeAbiParameters } from "viem";
  * capacity additions are not covered by this module. AMS-I.D is not offered: the module has no 15 MW cap.
  */
 
-export const RENEWABLE_METHODOLOGY_ID = "renewable/acm0002+vmr0017";
-
 export const TECHNOLOGY_CODE = {
   "solar-pv": 0,
   "floating-solar": 1,

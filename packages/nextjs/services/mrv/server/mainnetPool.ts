@@ -1,6 +1,7 @@
 import {
   SAUCERSWAP_MAX_DEVIATION_BPS,
   SAUCERSWAP_PAIR,
+  SAUCERSWAP_PAIR_ID,
   deviationBps,
   dexAccepted,
   hbarUsd8FromReserves,
@@ -13,7 +14,7 @@ const GET_RESERVES = "0x0902f1ac";
 const LATEST_ROUND = "0xfeaf968c";
 
 export type PublicMainnetPool = {
-  pair: "0.0.1462797";
+  pair: typeof SAUCERSWAP_PAIR_ID;
   pairAddress: typeof SAUCERSWAP_PAIR;
   chainlink: typeof CHAINLINK;
   price: number;
@@ -40,7 +41,7 @@ export function publicMainnetPoolFromCalls(reservesHex: string, roundHex: string
   const oracle8 = abiWord(roundHex, 1);
   const bps = deviationBps(oracle8, dex8);
   return {
-    pair: "0.0.1462797",
+    pair: SAUCERSWAP_PAIR_ID,
     pairAddress: SAUCERSWAP_PAIR,
     chainlink: CHAINLINK,
     price: Number(dex8) / 1e8,

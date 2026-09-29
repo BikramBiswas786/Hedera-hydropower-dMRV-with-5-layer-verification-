@@ -180,7 +180,6 @@ export const DEMO_PLANTS: PlantProfile[] = DEMO_DESIGNS.map((design, i) => ({
 export const DEMO_PLANT = DEMO_PLANTS[0];
 
 export const findDemoPlant = (plantId: string) => DEMO_PLANTS.find(p => p.plantId === plantId);
-export const findDemoDesign = (plantId: string) => DEMO_DESIGNS.find(d => d.plantId === plantId);
 
 /** Class 0.2S main meter, class 0.5S check meter, calibrated until mid-2027, ±5% ultrasonic flow meter. */
 export const DEMO_METERING: Metering = {
