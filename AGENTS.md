@@ -47,6 +47,7 @@ yarn guardian:trace <ref>         # is a Guardian-minted token backed? nft:<toke
 yarn pair:rebalance [--execute]   # hold the testnet SaucerSwap pair at the oracle (Testnet pair keeper)
 yarn market:keep-listing [--execute]  # keep a listing open on the testnet market
 yarn market:agent-buy [kg] [beneficiary]  # the agent purchase flow with BUYER_PRIVATE_KEY (buyAndRetire)
+yarn mainnet:checkout plan|prepare|buy    # mainnet settlement exhibit: a test token sold through UsdCheckout on pair 0.0.1462797
 ```
 
 `yarn deploy` without `--network` targets the in-process `hardhat` network, not a running node.

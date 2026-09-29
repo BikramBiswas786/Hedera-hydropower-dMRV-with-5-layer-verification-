@@ -66,6 +66,7 @@ Nothing is required to browse the app or use the engine. Copy the `.env.example`
 | `yarn admin:threshold` · `yarn admin:exec` · `yarn admin:demo` | 2-of-3 admin account, scheduled admin calls, and the whole path on testnet with throwaway keys |
 | `yarn live:smoke` · `yarn pair:rebalance` · `yarn market:keep-listing` | Check the live app; keep the testnet pair and a listing healthy |
 | `yarn market:agent-buy [kg] [beneficiary]` | The agent purchase flow with `BUYER_PRIVATE_KEY`: `get_dex_price → list_open_listings → prepare_purchase → sign` |
+| `yarn mainnet:checkout plan \| prepare \| buy` | The mainnet settlement exhibit (below): read-only plan, then a test token, the feed and `UsdCheckout`, and one sale through pair `0.0.1462797` |
 | `yarn guardian:trace <ref>` | Is a Guardian-minted token backed? Mirror node + CID-checked IPFS, no Guardian login |
 | `yarn verify:sourcify hederaTestnet` (in `packages/hardhat`) | Verify a deployment on Sourcify (HashScan shows the source); the Sourcify verify workflow does it from the deploy commit |
 
@@ -192,6 +193,28 @@ The live market `0x48F5056EdaD0B16c97a54085512b48417bC40F04` has this rule. It s
 The public testnet V1 WHBAR/USDC pair (`0x87664e55d9606657f049139FF654390A72657667`, factory `0.0.9959`) priced HBAR at $2.28 on 26 Sep 2026. The oracle was about $0.094. Pointing the guard at that pair would reject every sale, because testnet USDC is not a dollar. The exhibit uses a pair seeded on the same factory at the Chainlink price. The purchase builder also refuses unless the public mainnet pair `0.0.1462797` is within 3% of mainnet Chainlink. On 27 Sep 2026 that was 15 bps ($0.09490 against $0.09504). A mainnet deploy uses that pair on-chain. Nothing is deployed on mainnet.
 
 A spot price can be moved in one block, so the guard can block sales. It cannot make them cheaper, because payment uses the oracle price.
+
+### Mainnet settlement exhibit
+
+The registry refuses demo plants on mainnet, so no carbon credit is sold there. What mainnet can show is the
+settlement itself: `UsdCheckout` pricing a sale at mainnet Chainlink (Supra fallback), refusing it while SaucerSwap's
+public WHBAR/USDC pair `0.0.1462797` is more than 3% away, and swapping the buyer's HBAR through that pair so the
+seller is paid USDC. The [Mainnet checkout](../.github/workflows/mainnet-checkout.yml) workflow does it with a labelled
+test token (`DMRVTEST`, supply 10, no admin or supply key, memo "not a carbon credit"):
+
+1. **Plan** (`step=plan`, no key needed): the pair against Chainlink, whether `settlementPrice` would pass, and the
+   HBAR the run needs (about 36 HBAR at 72 tinybar gas and $0.119 per HBAR on 29 Sep 2026). With the key it also
+   checks the seller's account, balance and USDC association.
+2. **Execute** (`step=execute`, `confirm` = `spend mainnet HBAR`): creates the token and associates the seller with
+   USDC `0.0.456858` (Hedera SDK), funds a buyer, deploys `ResilientHbarUsdFeed` and `UsdCheckout` with
+   `deploy/05_deploy_mainnet_checkout.ts`, lists 2 tokens at $1, buys 1, and fails unless the receipt has a log from
+   the pair and the seller's USDC grew by at least `minUsdOut`. Then it verifies both contracts on Sourcify and uploads
+   the evidence and deployment files.
+
+The key is `MAINNET_DEPLOYER_KEY`, the ECDSA key of a new account with an EVM alias. The buyer's key is derived from it
+unless `BUYER_PRIVATE_KEY` is set, so one person holds both: the exhibit proves the settlement path, not an arm's-length
+trade. The Mainnet fork workflow rehearses the deploy on every push, and `network=testnet` (or a push whose message
+contains `[checkout-rehearsal]`) runs every step on testnet first. It has not been run on mainnet.
 
 ## Security model and limitations
 

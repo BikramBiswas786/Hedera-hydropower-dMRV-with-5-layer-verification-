@@ -54,13 +54,14 @@ The demo VVB `0xE079E4f1deE110c43E3a94c9b313c149505156F2`, the meters `0x3a2c6B8
 
 ## What keeps this true
 
-Six workflows check the claims above against Hedera:
+Seven workflows check the claims above against Hedera or produce them:
 
 - [Testnet evidence](https://github.com/BikramBiswas786/Hedera-hydropower-dMRV-with-5-layer-verification-/actions/workflows/testnet-evidence.yml) (on demand) runs the whole cycle again: records, a VVB verification, a listing, an agent's `buyAndRetire`, and reproduces every record.
 - [Live smoke](https://github.com/BikramBiswas786/Hedera-hydropower-dMRV-with-5-layer-verification-/actions/workflows/live-smoke.yml) (every 6 h and after each production deploy) clicks through the deployed app with no wallet: the pairs against their oracles, an open listing, an unsigned purchase, every record re-derived from HCS, a real Guardian mint traced, the scenarios, the MCP tools.
 - [Guardian trace](https://github.com/BikramBiswas786/Hedera-hydropower-dMRV-with-5-layer-verification-/actions/workflows/guardian-trace.yml) (daily) traces a real Managed Guardian mint on testnet (token `0.0.10760359`, 12.5 t) and requires `backed`.
 - [Mainnet fork](https://github.com/BikramBiswas786/Hedera-hydropower-dMRV-with-5-layer-verification-/actions/workflows/mainnet-fork.yml) (every push) runs the settlement against SaucerSwap's real factory, the public WHBAR/USDC pair and mainnet Chainlink.
 - [Testnet pair keeper](https://github.com/BikramBiswas786/Hedera-hydropower-dMRV-with-5-layer-verification-/actions/workflows/testnet-pair-keeper.yml) (scheduled three times an hour, best-effort) holds the seeded testnet pair at the oracle and keeps a listing open. [`/api/market/dex`](https://hydro-dmrv.vercel.app/api/market/dex) shows whether a sale would settle right now.
+- [Mainnet checkout](https://github.com/BikramBiswas786/Hedera-hydropower-dMRV-with-5-layer-verification-/actions/workflows/mainnet-checkout.yml) (on demand) is the mainnet settlement exhibit: a labelled test token sold through `UsdCheckout` against the public pair `0.0.1462797`, the seller paid USDC ([operations.md](operations.md#mainnet-settlement-exhibit)). It is ready and rehearsed; it has not been run on mainnet, which needs a funded account.
 - [Checkout testnet demo](https://github.com/BikramBiswas786/Hedera-hydropower-dMRV-with-5-layer-verification-/actions/workflows/checkout-testnet-demo.yml) (on demand) deploys `UsdCheckout` next to the live contracts and makes one sale.
 
 ## Buying
