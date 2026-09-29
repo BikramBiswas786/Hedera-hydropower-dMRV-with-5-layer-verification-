@@ -1,19 +1,23 @@
 name: Release
 
-# Publishes a GitHub release from `.github/release-notes/<tag>.md` at the commit this run is on, and marks it latest.
+# Publishes a GitHub release from `.github/release-notes/<tag>.md`, tagged at `target` (default: the commit this run is
+# on), and marks it latest. The notes are read from the run's ref, so they can ship after the code they describe.
 # `retire` deletes an older release object whose notes describe code no longer in the repository; its git tag stays.
 on:
   workflow_dispatch:
     inputs:
       tag:
         description: Tag to create or update
-        default: v2.0.0
+        default: v3.0.0
       title:
         description: Release title
-        default: "v2.0.0: on-chain issuance, SaucerSwap settlement and a Guardian trace, as a Scaffold-HBAR template"
+        default: "v3.0.0: the VCS project cycle on-chain (validation, monitoring, verification, issuance)"
+      target:
+        description: Commit to tag when the tag is new; empty tags the commit this run is on
+        default: ""
       retire:
         description: Release to delete (its tag is kept); empty keeps every release
-        default: v1.6.1
+        default: ""
 
 permissions:
   contents: write
@@ -29,6 +33,7 @@ jobs:
           GH_TOKEN: ${{ github.token }}
           TAG: ${{ inputs.tag }}
           TITLE: ${{ inputs.title }}
+          TARGET: ${{ inputs.target || github.sha }}
           RETIRE: ${{ inputs.retire }}
         run: |
           notes=".github/release-notes/${TAG}.md"
@@ -36,9 +41,9 @@ jobs:
           if gh release view "$TAG" >/dev/null 2>&1; then
             gh release edit "$TAG" --title "$TITLE" --notes-file "$notes" --latest
           else
-            gh release create "$TAG" --target "$GITHUB_SHA" --title "$TITLE" --notes-file "$notes" --latest
+            gh release create "$TAG" --target "$TARGET" --title "$TITLE" --notes-file "$notes" --latest
           fi
           if [ -n "$RETIRE" ] && [ "$RETIRE" != "$TAG" ] && gh release view "$RETIRE" >/dev/null 2>&1; then
             gh release delete "$RETIRE" --yes
           fi
-          gh release view "$TAG" --json url,isLatest,tagName >> "$GITHUB_STEP_SUMMARY"
+          gh release view "$TAG" --json url,tagName,targetCommitish >> "$GITHUB_STEP_SUMMARY"
