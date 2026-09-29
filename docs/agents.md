@@ -15,7 +15,8 @@ claude mcp add --transport http hydro-dmrv https://hydro-dmrv.vercel.app/api/mcp
 | `calculate_grid_emission_factor` | public | TOOL07 OM / BM sample group / CM from per-unit grid data |
 | `get_project_design` | public | A registered design document and whether its hash matches the chain |
 | `list_scenarios` · `generate_sample_telemetry` | public | Scenario catalogue, demo plants and metering, ready-to-verify monitoring data |
-| `verify_telemetry` | public | Full report with equation trace, HCS report message, data hash and chunk count; writes nothing |
+| `verify_telemetry` | public | Full report with equation trace, clause-cited findings, the VMR0017 / ACM0002 data and parameters table, HCS report message, data hash and chunk count; writes nothing |
+| `list_methodology_engines` · `get_methodology_engine` · `verify_with_engine` | public | One engine per methodology (hydro; solar, wind and ocean): documents and on-chain module · an example period · decision, findings with the clause each enforces, and the methodology's data and parameters table |
 | `get_registry_overview` | public | Totals in kg CO₂e, plants with design and ledger, tokens, both oracle sources |
 | `list_attestations` | public | Attestations with monitored inputs, EG_PJ, BE, PE, LE, ER, credits and HCS anchors |
 | `audit_attestation` · `reproduce_attestation` | public | Report vs chain · full reproduction from HCS including the registered design |

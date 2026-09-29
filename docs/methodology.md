@@ -294,6 +294,49 @@ The storage demo plant (12 MW, new 1.8 km² reservoir, PD 6.67 W/m², second cre
 emissions: under VMR0017 a healthy day is about 208 MWh net, BE 109.2 t, PE_HP 21.1 t (EF_Res 100 kg/MWh), LE 4.4 t
 (embodied emissions), ER 83.7 t.
 
+## One engine per methodology
+
+The hydro engine above is one plug-in. `packages/nextjs/services/mrv/engines/` holds the registry (`ENGINES`) and the
+`MethodologyEngine` interface each methodology implements: its own input schema, its own QA/QC and quantification, and
+a common report. The on-chain side has the same shape (one `IMethodology` contract per methodology behind the same
+`DmrvRegistry`), so a new methodology is one engine plus one module; the market, the HCS audit trail, the MCP tools and
+the `/verify` page pick it up from the registry.
+
+| Engine | Methodology | Scope | On-chain module |
+| --- | --- | --- | --- |
+| `hydro-vmr0017` | VMR0017 v1.0 with ACM0002 v22.0, or CDM ACM0002 / AMS-I.D | greenfield, retrofit and capacity-addition hydro; VMR0017 only ≤ 15 MW in LDCs | `HydroVmr0017Module` |
+| `renewable-vmr0017` | the same documents | greenfield solar PV (terrestrial, floating), onshore and offshore wind, wave and tidal | `RenewableVmr0017Module` |
+
+The solar, wind and ocean engine applies the same meter QA/QC (continuity, check meter, delayed calibration,
+completeness), VMR0017 Table 1's income-group rule, AMS-I.D's 15 MW limit, and resource cross-checks instead of the
+hydraulic one: PV output against plane-of-array irradiance, wind output outside the cut-in/cut-out speeds. Its
+quantities are the integers `RenewableVmr0017Module` recomputes.
+
+`GET /api/mrv/engines` lists them, `GET /api/mrv/engines/{id}` returns an example period, and
+`POST /api/mrv/engines/{id}/verify` runs one (MCP: `list_methodology_engines`, `get_methodology_engine`,
+`verify_with_engine`).
+
+### The monitoring report
+
+Every engine reports its period the way the methodology's monitoring section is written, not only as a total:
+
+- **Findings cite clauses.** Each finding carries the clause it enforces, e.g. a broken meter signature cites
+  VMR0017 §9.2 (EG_facility,y by direct measurement at the grid interface), a gap cites ACM0002 ¶82 (100% of data
+  monitored), a reservoir below 4 W/m² cites ACM0002 ¶9 eq. (7)–(8). The physical and resource cross-checks are the
+  engine's own plausibility tests and say so.
+- **Data and parameters tables.** `report.monitoring` lists every parameter in the methodology's tables with its value
+  for this period, unit, source, monitoring frequency, the QA/QC applied and the equation and clause:
+  - fixed at validation: EF_grid,CM,y (VT0011 or TOOL07), EF_Res (VMR0017 §9.1: 100 kg/MWh; ACM0002 table 6: 90),
+    EF_embodied (VMR0017 §9.1), Cap_BL, A_BL, EG_historical + σ, COEF;
+  - monitored: Cap_PJ, A_PJ (ACM0002 tables 14–15), EG_facility,y (VMR0017 §9.2), TEG_y (ACM0002 table 13), FC;
+  - calculated: PD eq. (7)–(8), EG_PJ,y eq. (12)–(16), BE_y eq. (11), PE_HP,y eq. (9)–(10), PE_FF,y (TOOL03),
+    PE_y VMR0017 eq. (1), LE_y VMR0017 eq. (19)–(20), ER_y eq. (17).
+- **What does not apply, and why.** PE_GP, PE_BESS, PE_PSP and VMR0017's PE_FSS are listed with the clause and the
+  reason they are zero for this project, so a zero reads as a decision, not a gap.
+
+The HCS report message is unchanged (it carries the figures and counts, not this table), so every anchored report
+still reproduces.
+
 ## Public re-verification on HCS
 
 Two message types go to the audit topic (`services/mrv/report.ts`):

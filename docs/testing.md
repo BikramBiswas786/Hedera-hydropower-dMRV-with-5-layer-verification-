@@ -9,7 +9,7 @@ yarn hardhat:test:fork # same suite against Hedera's HTS emulation (HEDERA_FORKI
 HEDERA_FORK_NETWORK=mainnet HEDERA_RPC_URL=https://mainnet.hashio.io/api \
   yarn workspace @sh/hardhat hardhat test test/MainnetFork.test.ts  # real SaucerSwap + Chainlink on a mainnet fork
 yarn hardhat:test:gas  # with a gas report
-yarn next:test         # 342 vitest tests
+yarn next:test         # 352 vitest tests
 yarn hardhat:size      # runtime bytecode per contract; fails above 24,064 B (CI runs it)
 yarn lint && yarn next:build
 ```

@@ -67,6 +67,7 @@ yarn market:keep-listing [--execute]  # keep a listing open on the testnet marke
 | Per-network feeds, units, staleness | `packages/hardhat/utils/hydroNetworkConfig.ts` |
 | Methodology (pure): VMR0017 / CDM rules, TOOL07 and VT0011, TOOL03, LDC list, VT0008 checks, design assessment, integer quantification | `packages/nextjs/services/mrv/methodology/` |
 | Verification engine (pure): 5 stages, QA/QC, report | `packages/nextjs/services/mrv/engine.ts`, `schema.ts` |
+| Methodology engines as plug-ins: `MethodologyEngine` interface, registry, clause-cited findings, the methodology's data and parameters table (hydro, and solar/wind/ocean) | `packages/nextjs/services/mrv/engines/` (`types.ts`, `index.ts`, `hydro.ts`, `hydroMonitoring.ts`, `renewable.ts`); REST `app/api/mrv/engines/`, UI `app/verify/_components/EngineWorkbench.tsx` |
 | Meter statements (pure): raw totals, EIP-712 digest, sign, recover | `packages/nextjs/services/mrv/provenance.ts` |
 | VVB approval (pure): EIP-712 `VerifierApproval` | `packages/nextjs/services/mrv/approval.ts`; contract parity fixture `services/mrv/fixtures/eip712.json` |
 | Demo grid, designs, plants, scenarios | `packages/nextjs/services/mrv/demo.ts`, `scenarios.ts` |
@@ -266,13 +267,18 @@ The registry is methodology-agnostic; a methodology is one stateless contract pl
 2. **TypeScript twin.** Put the same integer arithmetic in `packages/nextjs/services/mrv/methodology/<name>.ts`,
    pure and deterministic, and add shared vectors to `packages/hardhat/test/fixtures/quantificationVectors.ts` (or a
    sibling fixture) so the Hardhat and vitest suites assert the same integers.
-3. **Tests.** `test/<Name>Module.test.ts`: one case per revert in `validateProject` and `quantify`, the vectors,
+3. **Engine.** Add `packages/nextjs/services/mrv/engines/<name>.ts` implementing `MethodologyEngine` (`types.ts`):
+   `parse` (a zod schema of the monitoring input), `verify` (QA/QC, then your twin's quantification) and `example`.
+   Every finding carries the clause it enforces, and `monitoring` lists the methodology's data and parameters tables
+   (value, source, frequency, QA/QC, equation, clause) plus the terms that do not apply. Add it to `ENGINES` in
+   `engines/index.ts`; `/api/mrv/engines`, the MCP tools and `/verify` pick it up. `renewable.ts` is the reference.
+4. **Tests.** `test/<Name>Module.test.ts`: one case per revert in `validateProject` and `quantify`, the vectors,
    and one end-to-end `submitAttestation` through `DmrvRegistry` using `test/helpers/dmrv.ts` (`signSubmission`
-   builds both EIP-712 signatures).
-4. **Wire it.** Deploy the module, call `DmrvRegistry.setModuleApproved(module, true)` (admin), then
+   builds both EIP-712 signatures); `engines/engines.test.ts` for the engine.
+5. **Wire it.** Deploy the module, call `DmrvRegistry.setModuleApproved(module, true)` (admin), then
    `registerProject(id, name, module, operator, meter, designHash, params)`. Projects keep their module for life;
    a new version is a new module.
-5. **Check.** `yarn test`, `yarn hardhat:size`, `yarn lint`. The market, checkout, HCS reproduction and MCP tools
+6. **Check.** `yarn test`, `yarn hardhat:size`, `yarn lint`. The market, checkout, HCS reproduction and MCP tools
    work unchanged, because they read the registry, not the methodology.
 - **An API route or MCP tool**: validate input with zod (`schema.ts`, or a schema next to the server function),
   throw `ApiError` for caller mistakes, give every MCP tool a REST twin, and list both in `public/llms.txt` and the

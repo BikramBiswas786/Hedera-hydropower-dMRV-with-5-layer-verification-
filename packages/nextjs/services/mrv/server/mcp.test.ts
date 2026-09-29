@@ -36,6 +36,9 @@ const PUBLIC = [
   "get_retirement_certificate",
   "get_portfolio",
   "approve_attestation",
+  "list_methodology_engines",
+  "get_methodology_engine",
+  "verify_with_engine",
 ];
 
 describe("agent tool list", () => {

@@ -1,3 +1,4 @@
+import { EngineWorkbench } from "./_components/EngineWorkbench";
 import { VerifyWorkbench } from "./_components/VerifyWorkbench";
 import type { NextPage } from "next";
 import { PageHeader } from "~~/components/hydro/ui";
@@ -5,7 +6,8 @@ import { getMetadata } from "~~/utils/scaffold-hbar/getMetadata";
 
 export const metadata = getMetadata({
   title: "Verify & quantify",
-  description: "Verify hydropower monitoring data and quantify emission reductions under AMS-I.D / ACM0002",
+  description:
+    "Verify monitoring data and quantify emission reductions under VMR0017, ACM0002 and AMS-I.D, one engine per methodology",
 });
 
 const VerifyPage: NextPage = () => (
@@ -18,6 +20,15 @@ const VerifyPage: NextPage = () => (
       </p>
     </PageHeader>
     <VerifyWorkbench />
+    <section className="flex flex-col gap-3 mt-4">
+      <h2 className="text-xl font-bold m-0">Other methodologies: one engine each</h2>
+      <p className="m-0 text-base-content/70">
+        Every methodology is a plug-in engine with its own QA/QC and its own data and parameters table, paired with an{" "}
+        <code>IMethodology</code> contract. The registry, market and audit trail are shared. Solar, wind and ocean power
+        under VMR0017 / ACM0002 / AMS-I.D runs here on an example day.
+      </p>
+      <EngineWorkbench />
+    </section>
   </div>
 );
 

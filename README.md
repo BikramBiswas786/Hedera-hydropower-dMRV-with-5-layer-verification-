@@ -6,6 +6,7 @@
 
 - **Issuance a contract enforces.** `DmrvRegistry` holds the HTS supply key and mints only with two EIP-712 signatures (the plant's meter over the raw totals, and a VVB who may only lower figures), and only the integer its methodology module recomputes: `ER = BE − PE − LE`. Readings and reports go to HCS, so anyone can re-derive a mint.
 - **A dollar price, paid through SaucerSwap.** `UsdSettlement` prices HBAR from Chainlink (Supra fallback) and swaps the buyer's HBAR to the seller through SaucerSwap, reverting while the pool is more than 3% from the oracle. Remove the router and there is no sale. `CreditMarket` uses it for credits, `UsdCheckout` for **any** HTS token.
+- **One engine per methodology, reported the way Verra writes it.** Each methodology is a plug-in engine (`services/mrv/engines/`) paired with an `IMethodology` contract behind the same registry: hydropower, and solar, wind and ocean power, both under VMR0017 v1.0 / ACM0002 v22.0 / AMS-I.D. Every finding cites the clause it enforces (VMR0017 §9.2, ACM0002 ¶82, …) and every report carries the methodology's data and parameters table: EF_grid,CM, EF_Res, EF_embodied, EG_facility, TEG, PE_HP, PE_FF, LE, ER, each with its value, source, QA/QC, equation and clause.
 - **A buyer's check on Guardian tokens, in the purchase path.** `trace_guardian_mint` follows a Guardian mint to its signed VP through the mirror node and CID-checked IPFS, with no Guardian login. The checkout builds no purchase for a token whose Guardian record does not check out.
 
 Hedera services in play: HTS (a credit token and a certificate NFT whose treasury and supply keys are the registry contract), HCS (readings and reports), smart contracts with the HTS system contract at `0x167`, the Schedule Service (2-of-3 admin calls, `yarn admin:exec`), and the mirror node for every read-back.
@@ -51,7 +52,7 @@ The deploy installs local stand-ins for HTS, Chainlink, Supra and SaucerSwap, re
 Then:
 
 - `/verify` runs the five-stage engine: `healthy` passes, `inflated` and `tampered` do not.
-- `yarn test` runs 191 contract tests and 342 app tests, including the Solidity and TypeScript quantification agreeing on the same integers.
+- `yarn test` runs 191 contract tests and 352 app tests, including the Solidity and TypeScript quantification agreeing on the same integers.
 
 ## Deploy to Hedera testnet
 
