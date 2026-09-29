@@ -2,13 +2,18 @@
  * Command-line access to the same pipeline the app, REST API and MCP tools use.
  *
  *   yarn mrv:create-topic          create the HCS audit topic (prints HCS_TOPIC_ID)
- *   yarn mrv:attest [scenario] [plantId]
- *                                  verify sample monitoring data and anchor it on HCS (step 1). Writes
- *                                  attest-<plant>-<sequence>.json with the VVB's typed data. On a labelled demo
- *                                  registry with DEMO_VVB_PRIVATE_KEY it attests in one step.
- *   yarn mrv:approve <attest.json> the VVB signs the EIP-712 VerifierApproval with VVB_PRIVATE_KEY (secp256k1 only),
- *                                  on its own machine, after reviewing the summary
- *   yarn mrv:submit <attest.json>  relay the meter + VVB signatures to DmrvRegistry.submitAttestation (step 2)
+ *   yarn mrv:record [scenario] [plantId]
+ *                                  monitoring: verify sample data, publish readings and report to HCS and record the
+ *                                  period on DmrvRegistry with the meter's signature. Issues nothing.
+ *   yarn mrv:verify <plantId> [approve|reject] [deductionTonnes] [findings]
+ *                                  verification, step 1: reproduce the plant's pending records from HCS, publish the
+ *                                  verification report and write verification-<plant>-<first>-<last>.json for the VVB
+ *   yarn mrv:approve <verification.json>
+ *                                  the VVB signs the EIP-712 VerificationStatement with VVB_PRIVATE_KEY (secp256k1
+ *                                  only), on its own machine, after reviewing the summary
+ *   yarn mrv:submit <verification.json>
+ *                                  step 2: relay the signed statement to DmrvRegistry.verifyPeriod; an approval issues
+ *                                  credits into the operator's custody
  *   yarn mrv:meter-key             generate a key for a plant's data logger (its address is registered with the plant)
  *   yarn mrv:sign <request.json>   sign the batch's EIP-712 meter statement with METER_PRIVATE_KEY, as the meter
  *                                  would, for this app's registry at the request ledger's sequence (or `domain`)
@@ -21,7 +26,7 @@ import { DEMO_PLANTS, findDemoPlant } from "~~/services/mrv/demo";
 import { defaultMeterDomain } from "~~/services/mrv/network";
 import { signDigest, signMeterStatement } from "~~/services/mrv/provenance";
 import { SCENARIO_NAMES, type ScenarioName, generateScenario, lastWholeHour } from "~~/services/mrv/scenarios";
-import { attestRequestSchema, verifyRequestSchema } from "~~/services/mrv/schema";
+import { verifyRequestSchema } from "~~/services/mrv/schema";
 
 // Server modules read env at import time, so load .env.local first and import them dynamically below.
 if (existsSync(".env.local")) process.loadEnvFile(".env.local");
@@ -41,11 +46,11 @@ async function createTopic() {
 
 /** Points a registry compiled with setAuditTopic at this topic. Older deployments ignore the call. */
 async function registerAuditTopic(topicId: string) {
-  const { readVerifierKey } = await import("~~/services/mrv/server/config");
+  const { readRelayerKey } = await import("~~/services/mrv/server/config");
   const { hydroChain, hydroTransport, requireDeployment } = await import("~~/services/mrv/server/registry");
   const { createPublicClient, createWalletClient } = await import("viem");
   const { privateKeyToAccount } = await import("viem/accounts");
-  const key = readVerifierKey();
+  const key = readRelayerKey();
   if (!key) return;
   const abi = [
     { type: "function", name: "auditTopic", stateMutability: "view", inputs: [], outputs: [{ type: "uint64" }] },
@@ -84,37 +89,22 @@ async function registerAuditTopic(topicId: string) {
   }
 }
 
-type AttestFile = {
-  request: ReturnType<typeof attestRequestSchema.parse>;
-  approval: {
+type VerificationFile = {
+  plantId: string;
+  summary: string;
+  statement: import("~~/services/mrv/server/verification").StatementJson;
+  typedData: {
     domain: { name: string; version: string; chainId: number; verifyingContract: Hex };
     types: Record<string, { name: string; type: string }[]>;
-    primaryType: "VerifierApproval";
+    primaryType: "VerificationStatement";
     message: Record<string, string | number>;
   };
-  summary: string;
+  signature?: Hex;
 };
 
-function printOutcome(outcome: Awaited<ReturnType<typeof import("~~/services/mrv/server/attest").attestReadings>>) {
-  const { report } = outcome;
-  console.log(`Decision: ${report.decision} (${report.methodology}, ${report.completenessBps / 100}% coverage)`);
-  console.log(report.reasoning);
-  for (const step of report.equations) console.log(`  ${step.symbol.padEnd(12)} ${step.value} ${step.unit}`);
-  if (outcome.status === "not-eligible") return;
-  if (outcome.hcs) {
-    console.log(`HCS readings:  ${outcome.hcs.dataUrl}`);
-    console.log(`HCS report:    ${outcome.hcs.url}`);
-  }
-  if (outcome.status !== "attested") return;
-  console.log(
-    `Attestation #${outcome.attestationId} minted ${outcome.unitsMinted / 1_000} t CO2e, approved by VVB ${outcome.verifier.address}${outcome.verifier.demo ? " (labelled demo VVB key)" : ""}`,
-  );
-  console.log(`Contract call: ${outcome.transaction.url ?? outcome.transaction.hash}`);
-}
-
-/** Step 1. Starts where the last attestation ended so repeated runs never overlap on-chain. */
-async function attest(scenario: ScenarioName, plantId: string) {
-  const { attestReadings, readDemoVvbKey, readMeterKey } = await import("~~/services/mrv/server/attest");
+/** Monitoring. Starts where the last record ended so repeated runs never overlap on-chain. */
+async function record(scenario: ScenarioName, plantId: string) {
+  const { recordReadings, readMeterKey } = await import("~~/services/mrv/server/monitoring");
   const { getProject, requireDeployment } = await import("~~/services/mrv/server/registry");
   const { plantIdToBytes32 } = await import("~~/services/mrv/views");
   const { HYDRO_CHAIN_ID, isLiveHederaChain } = await import("~~/services/mrv/network");
@@ -127,7 +117,7 @@ async function attest(scenario: ScenarioName, plantId: string) {
 
   const end = lastWholeHour();
   const available = Math.floor((end.getTime() / 1_000 - plant.lastPeriodEnd) / HOUR_S);
-  // With no unattested hours left an APPROVED batch will be refused as overlapping; other decisions still print.
+  // With no unrecorded hours left an APPROVED batch will be refused as overlapping; other decisions still print.
   const hours = available >= 1 ? Math.min(MAX_HOURS, available) : MAX_HOURS;
   const domain = { chainId: HYDRO_CHAIN_ID, registry: address, sequence: plant.ledger.attestations };
   const generated = generateScenario(scenario, { end, hours, plant: profile, domain });
@@ -142,21 +132,52 @@ async function attest(scenario: ScenarioName, plantId: string) {
         signature: undefined,
       }
     : generated;
-  const demoVvb = Boolean(readDemoVvbKey(address));
 
-  const outcome = await attestReadings({ ...request, publishForApproval: !demoVvb });
-  printOutcome(outcome);
-  if (outcome.status !== "awaiting-approval") return;
+  const outcome = await recordReadings(request);
+  const { report } = outcome;
+  console.log(`Decision: ${report.decision} (${report.methodology}, ${report.completenessBps / 100}% coverage)`);
+  console.log(report.reasoning);
+  for (const step of report.equations) console.log(`  ${step.symbol.padEnd(12)} ${step.value} ${step.unit}`);
+  if (outcome.status !== "recorded") return;
+  if (outcome.hcs) {
+    console.log(`HCS readings:  ${outcome.hcs.dataUrl}`);
+    console.log(`HCS report:    ${outcome.hcs.url}`);
+  }
+  console.log(
+    `Recorded ${plantId} record ${outcome.sequence} (#${outcome.attestationId}), ER ${outcome.reductionG} g, chain head ${outcome.chainHash}`,
+  );
+  console.log(`Contract call: ${outcome.transaction.url ?? outcome.transaction.hash}`);
+  console.log(`Nothing is issued yet. A VVB verifies it: \`yarn mrv:verify ${plantId}\`.`);
+}
 
-  const file = `attest-${plantId}-${plant.ledger.attestations}.json`;
-  const content: AttestFile = {
-    request: { ...request, signature: request.signature, anchor: outcome.anchor },
-    approval: outcome.approval as unknown as AttestFile["approval"],
-    summary: `${plantId} #${plant.ledger.attestations}: net ${outcome.report.monitored.netWh} Wh, ER ${outcome.report.emissions?.reductionG} g, ${outcome.report.emissions?.unitsMinted} kg credits, report ${outcome.anchor.reportHash}`,
+/** Verification step 1: the operator's server publishes the VVB's report and writes the statement to sign. */
+async function verify(plantId: string | undefined, decision = "approve", deductionT = "0", findings = "") {
+  if (!plantId) throw new Error("Usage: yarn mrv:verify <plantId> [approve|reject] [deductionTonnes] [findings]");
+  if (decision !== "approve" && decision !== "reject") throw new Error("The decision is approve or reject");
+  const { prepareVerification } = await import("~~/services/mrv/server/verification");
+  const prepared = await prepareVerification({
+    plantId,
+    decision,
+    deductionG: Math.round(Number(deductionT) * 1e6),
+    findings,
+  });
+  const { pending, report } = prepared;
+  for (const r of pending.records) {
+    console.log(
+      `  record ${r.sequence}: ER ${r.reductionG} g, ${r.reproduction}${r.failedChecks.length ? ` (${r.failedChecks.join(", ")})` : ""}`,
+    );
+  }
+  if (prepared.hcs) console.log(`Verification report on HCS: ${prepared.hcs.url}`);
+  const file = `verification-${plantId}-${report.records.first}-${report.records.last}.json`;
+  const content: VerificationFile = {
+    plantId,
+    summary: `${plantId} records ${report.records.first}-${report.records.last}: ${report.decision}, monitored ${report.monitoredG} g, deduction ${report.deductionG} g, issues ${report.unitsToIssue} kg; report ${prepared.reportHash}`,
+    statement: prepared.statement,
+    typedData: prepared.typedData as unknown as VerificationFile["typedData"],
   };
   writeFileSync(resolve(process.env.INIT_CWD ?? process.cwd(), file), `${JSON.stringify(content, null, 2)}\n`);
-  console.log(`\nAnchored. Awaiting VVB approval: send ${file} to the VVB, who runs \`yarn mrv:approve ${file}\`,`);
-  console.log(`then relay it with \`yarn mrv:submit ${file}\`.`);
+  console.log(`\n${content.summary}`);
+  console.log(`Send ${file} to the VVB, who runs \`yarn mrv:approve ${file}\`; then \`yarn mrv:submit ${file}\`.`);
 }
 
 /** ED25519 Hedera keys cannot produce an `ecrecover`-able signature. */
@@ -165,7 +186,9 @@ function readVvbKey(): Hex {
   if (!raw) throw new Error("Set VVB_PRIVATE_KEY to the VVB's secp256k1 (ECDSA) key");
   const hex = raw.replace(/^0x/, "");
   if (/^302e020100300506032b6570/i.test(hex)) {
-    throw new Error("VVB_PRIVATE_KEY is a DER ED25519 key; DmrvRegistry verifies approvals with ecrecover (secp256k1)");
+    throw new Error(
+      "VVB_PRIVATE_KEY is a DER ED25519 key; DmrvRegistry verifies statements with ecrecover (secp256k1)",
+    );
   }
   const der = hex.match(/^3030020100300706052b8104000a04220420([0-9a-f]{64})$/i);
   if (der) return `0x${der[1]}`;
@@ -173,40 +196,52 @@ function readVvbKey(): Hex {
   return `0x${hex}`;
 }
 
-/** Step 1½, on the VVB's machine: review and sign. Nothing is sent anywhere. */
+/** On the VVB's machine: review and sign. Nothing is sent anywhere. */
 function approve(file: string | undefined) {
-  if (!file) throw new Error("Usage: yarn mrv:approve <attest.json>");
+  if (!file) throw new Error("Usage: yarn mrv:approve <verification.json>");
   const path = resolve(process.env.INIT_CWD ?? process.cwd(), file);
-  const content = JSON.parse(readFileSync(path, "utf8")) as AttestFile;
-  const { domain, types, primaryType, message } = content.approval;
+  const content = JSON.parse(readFileSync(path, "utf8")) as VerificationFile;
+  const { domain, types, primaryType, message } = content.typedData;
   const key = readVvbKey();
   const digest = hashTypedData({
     domain: { ...domain, chainId: BigInt(domain.chainId) },
     types,
     primaryType,
-    message: { ...message, hcsTopicNum: BigInt(message.hcsTopicNum), hcsSequence: BigInt(message.hcsSequence) },
+    message: {
+      ...message,
+      deductionG: BigInt(message.deductionG),
+      hcsTopicNum: BigInt(message.hcsTopicNum),
+      hcsSequence: BigInt(message.hcsSequence),
+    },
   });
   const signature = signDigest(key, digest);
-  writeFileSync(
-    path,
-    `${JSON.stringify({ ...content, request: { ...content.request, verifierSignature: signature } }, null, 2)}\n`,
-  );
+  writeFileSync(path, `${JSON.stringify({ ...content, signature }, null, 2)}\n`);
   console.log(`Reviewed: ${content.summary}`);
   console.log(
-    `Signed VerifierApproval ${digest} as VVB ${privateKeyToAddress(key)} for registry ${domain.verifyingContract} on chain ${domain.chainId}`,
+    `Signed VerificationStatement ${digest} as VVB ${privateKeyToAddress(key)} for registry ${domain.verifyingContract} on chain ${domain.chainId}`,
   );
 }
 
-/** Step 2: relay both signatures. The relayer needs no role. */
+/** Verification step 2: relay the signed statement. The relayer needs no role. */
 async function submit(file: string | undefined) {
-  if (!file) throw new Error("Usage: yarn mrv:submit <attest.json>");
-  const { attestReadings } = await import("~~/services/mrv/server/attest");
+  if (!file) throw new Error("Usage: yarn mrv:submit <verification.json>");
+  const { submitVerification } = await import("~~/services/mrv/server/verification");
   const path = resolve(process.env.INIT_CWD ?? process.cwd(), file);
-  const content = JSON.parse(readFileSync(path, "utf8")) as AttestFile;
-  const request = attestRequestSchema.parse(content.request);
-  if (!request.verifierSignature)
-    throw new Error(`${file} has no verifierSignature yet: run \`yarn mrv:approve ${file}\``);
-  printOutcome(await attestReadings(request));
+  const content = JSON.parse(readFileSync(path, "utf8")) as VerificationFile;
+  if (!content.signature) throw new Error(`${file} has no signature yet: run \`yarn mrv:approve ${file}\``);
+  const outcome = await submitVerification({
+    plantId: content.plantId,
+    statement: content.statement,
+    signature: content.signature,
+  });
+  console.log(
+    outcome.status === "issued"
+      ? outcome.unitsIssued > 0
+        ? `Verification #${outcome.issuanceId} issued ${outcome.unitsIssued / 1_000} t CO2e (VVB ${outcome.verifier})`
+        : `Verification #${outcome.issuanceId} approved records ${outcome.records.first}-${outcome.records.last}; nothing to issue, the ER deficit or sub-tonne remainder carries forward (VVB ${outcome.verifier})`
+      : `Verification #${outcome.issuanceId} rejected records ${outcome.records.first}-${outcome.records.last} (VVB ${outcome.verifier})`,
+  );
+  console.log(`Contract call: ${outcome.transaction.url ?? outcome.transaction.hash}`);
 }
 
 function meterKey() {
@@ -234,20 +269,21 @@ function sign(file: string | undefined) {
 }
 
 async function main() {
-  const [command, arg, plantArg] = process.argv.slice(2);
+  const [command, arg, plantArg, ...rest] = process.argv.slice(2);
   if (command === "create-topic") return createTopic();
   if (command === "meter-key") return meterKey();
   if (command === "sign") return sign(arg);
   if (command === "approve") return approve(arg);
   if (command === "submit") return submit(arg);
-  if (command === "attest") {
+  if (command === "verify") return verify(arg, plantArg, rest[0], rest[1]);
+  if (command === "record") {
     const scenario = (arg ?? "healthy") as ScenarioName;
     if (!SCENARIO_NAMES.includes(scenario))
       throw new Error(`Unknown scenario. Use one of: ${SCENARIO_NAMES.join(", ")}`);
-    return attest(scenario, plantArg ?? DEMO_PLANTS[0].plantId);
+    return record(scenario, plantArg ?? DEMO_PLANTS[0].plantId);
   }
   console.log(
-    "Usage: mrv.ts create-topic | attest [scenario] [plantId] | approve <attest.json> | submit <attest.json> | meter-key | sign <request.json>",
+    "Usage: mrv.ts create-topic | record [scenario] [plantId] | verify <plantId> [approve|reject] [deductionTonnes] [findings] | approve <verification.json> | submit <verification.json> | meter-key | sign <request.json>",
   );
   process.exitCode = 1;
 }

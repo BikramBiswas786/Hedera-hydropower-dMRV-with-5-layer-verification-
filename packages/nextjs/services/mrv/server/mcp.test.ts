@@ -28,6 +28,8 @@ const PUBLIC = [
   "trace_guardian_mint",
   "compare_guardian_report",
   "reproduce_attestation",
+  "list_issuances",
+  "get_pending_verification",
   "list_open_listings",
   "get_dex_price",
   "prepare_purchase",
@@ -35,18 +37,20 @@ const PUBLIC = [
   "prepare_checkout_purchase",
   "get_retirement_certificate",
   "get_portfolio",
-  "approve_attestation",
   "list_methodology_engines",
   "get_methodology_engine",
   "verify_with_engine",
 ];
+
+/** Record, publish a verification report, relay a VVB signature. None signs as the VVB. */
+const WRITE = ["record_monitoring", "prepare_verification", "submit_verification"];
 
 describe("agent tool list", () => {
   it("lists the public tools, including prepare_purchase, and no write tools", () => {
     const listed = tools(false);
     expect(Object.keys(listed).sort()).toEqual([...PUBLIC].sort());
     expect(listed.prepare_purchase).toBeDefined();
-    expect(listed.submit_attestation).toBeUndefined();
+    for (const write of WRITE) expect(listed[write], write).toBeUndefined();
   });
 
   it("marks every public tool read-only", () => {
@@ -55,16 +59,9 @@ describe("agent tool list", () => {
     }
   });
 
-  it("adds the authenticated write tool only when the bearer was accepted", () => {
+  it("adds the authenticated write tools only when the bearer was accepted", () => {
     const listed = tools(true);
-    expect(Object.keys(listed).sort()).toEqual([...PUBLIC, "submit_attestation"].sort());
-    expect(listed.submit_attestation.annotations?.readOnlyHint).toBe(false);
-  });
-});
-
-describe("approve_attestation", () => {
-  it("is read-only: a VVB previews the typed data, the server never signs it", () => {
-    const tool = tools(false).approve_attestation;
-    expect(tool.annotations?.readOnlyHint).toBe(true);
+    expect(Object.keys(listed).sort()).toEqual([...PUBLIC, ...WRITE].sort());
+    for (const write of WRITE) expect(listed[write].annotations?.readOnlyHint, write).toBe(false);
   });
 });

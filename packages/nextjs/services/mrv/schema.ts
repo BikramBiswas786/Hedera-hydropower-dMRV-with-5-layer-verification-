@@ -85,7 +85,14 @@ export const registeredDesignSchema = z.object({
   projectType: z.number().int().min(0).max(2),
   /** 0 = CDM (ACM0002 / AMS-I.D), 1 = VMR0017 v1.0; absent in data messages published before VMR0017. */
   methodology: z.number().int().min(0).max(1).default(0),
+  /** ISO 3166-1 alpha-2 host country ("" when none); absent in data messages before HydroVmr0017Module v2. */
+  hostCountry: z
+    .string()
+    .regex(/^([A-Z]{2})?$/, "ISO 3166-1 alpha-2 code in capitals")
+    .default(""),
   capacityKw: safeInt(1),
+  /** Capacity in the activity approval (kW), 0 when none; absent in data messages before module v2. */
+  authorizedCapacityKw: safeInt().default(0),
   baselineCapacityKw: safeInt(),
   reservoirAreaM2: safeInt(),
   baselineReservoirAreaM2: safeInt(),
@@ -95,8 +102,8 @@ export const registeredDesignSchema = z.object({
   baselineEndsAt: safeInt(),
   creditingStart: safeInt(),
   creditingEnd: safeInt(),
-  /** VCS Table 8 date; absent in data messages published for the legacy registry. */
-  registrationRequestedAt: safeInt().optional(),
+  /** VCS Table 8 date; absent in data messages published for the phase-0 registry. */
+  registrationRequestedAt: safeInt().default(0),
 });
 
 /** Everything the monitoring engine needs about a plant: the registered design plus its hydraulic envelope. */
@@ -136,36 +143,59 @@ export const verifyRequestSchema = z.object({
 });
 
 /**
- * `POST /api/mrv/attest` (DmrvRegistry two-signature flow).
- * - No `verifierSignature`, no `publishForApproval`: 409 "needs VVB approval" before anything is published, unless
- *   this deployment is a labelled demo registry with its own demo VVB key (then the call completes in one step).
- * - Step 1, `publishForApproval: true`: verify, publish the readings and the report to HCS, and return the
- *   `VerifierApproval` typed data and the `anchor` for the VVB.
- * - Step 2, `anchor` + `verifierSignature`: re-derive the same report, check its hash, dry-run, then relay.
+ * `POST /api/mrv/record`: verify one monitoring period, publish its readings and report to HCS, and record it on
+ * `DmrvRegistry` with the meter's signature. A record is monitored, not verified: it issues nothing.
  */
-export const attestRequestSchema = verifyRequestSchema.extend({
-  /** The VVB's EIP-712 `VerifierApproval` signature (secp256k1). */
-  verifierSignature: signatureSchema.optional(),
-  /** keccak256 of external evidence the VVB relied on (e.g. a Guardian VC); single-use on-chain. */
+export const recordRequestSchema = verifyRequestSchema;
+
+export type RecordRequest = z.infer<typeof recordRequestSchema>;
+
+/**
+ * A VVB's verification of a plant's next run of monitoring records.
+ * - Step 1, `POST /api/mrv/verification`: the server reproduces every record from HCS, publishes the verification
+ *   report and returns the `VerificationStatement` typed data for the VVB to sign.
+ * - Step 2, `POST /api/mrv/verification/submit` (`statement` from step 1 + `signature`): relay `verifyPeriod`. An
+ *   approval issues credits.
+ */
+export const verificationRequestSchema = z.object({
+  plantId: z.string().min(1).max(31),
+  /** Last record (project sequence) the run covers; defaults to the latest. The run starts at the first unverified. */
+  lastRecord: safeInt().optional(),
+  decision: z.enum(["approve", "reject"]),
+  /** Grams CO2e the VVB deducts from the monitored total for its own findings. It can only lower issuance. */
+  deductionG: safeInt().default(0),
+  /** The VVB's findings, published in the verification report (≤ 280 characters). */
+  findings: z.string().max(280).default(""),
+  /** keccak256 of external evidence the VVB relied on (e.g. a Guardian VP); single-use on-chain. */
   evidenceHash: bytes32Schema.optional(),
-  /**
-   * Step 1 of the two-step flow: publish the readings and report to HCS and return the typed data the VVB must sign.
-   * Without it (and without `verifierSignature`), the server refuses with 409 before publishing anything.
-   */
-  publishForApproval: z.boolean().optional(),
-  /** The HCS messages from step 1, which the approval signs over. */
-  anchor: z
+  /** Step 2: the statement returned by step 1, unchanged, and the VVB's EIP-712 signature over it. */
+  statement: z
     .object({
+      firstRecord: safeInt(),
+      lastRecord: safeInt(),
+      recordsHash: bytes32Schema,
+      deductionG: z.string().regex(/^\d+$/),
       reportHash: bytes32Schema,
       hcsTopicNum: z.string().regex(/^\d+$/),
       hcsSequence: z.string().regex(/^\d+$/),
-      dataSequence: z.number().int().positive(),
+      evidenceHash: bytes32Schema,
+      decision: z.number().int().min(1).max(2),
     })
     .optional(),
+  signature: signatureSchema.optional(),
 });
 
-export type AttestRequest = z.infer<typeof attestRequestSchema>;
+export type VerificationRequest = z.input<typeof verificationRequestSchema>;
 
+/** Step 1: what the VVB decided; the server publishes the report and returns the statement to sign. */
+export const prepareVerificationSchema = verificationRequestSchema.omit({ statement: true, signature: true });
+
+/** Step 2: the statement from step 1, unchanged, and the VVB's signature. */
+export const submitVerificationSchema = z.object({
+  plantId: verificationRequestSchema.shape.plantId,
+  statement: verificationRequestSchema.shape.statement.unwrap(),
+  signature: signatureSchema,
+});
 export type Reading = z.infer<typeof readingSchema>;
 export type Metering = z.infer<typeof meteringSchema>;
 export type PlantProfile = z.infer<typeof plantProfileSchema>;

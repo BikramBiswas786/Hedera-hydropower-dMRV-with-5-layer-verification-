@@ -4,7 +4,7 @@ import { type RetirementView, formatTonnes, toRetirementView } from "../views";
 import { type SellerReadiness, readSellerReadiness } from "./association";
 import { type DexCheck, readDexCheck } from "./dex";
 import { ApiError, revertReason } from "./errors";
-import { activeRegistry, legacy, publicClient, requireDeployment, requireMarket } from "./registry";
+import { publicClient, requireDeployment, requireMarket } from "./registry";
 import { type Address, type Hex, encodeFunctionData, parseAbi, zeroAddress } from "viem";
 import { z } from "zod";
 
@@ -140,22 +140,12 @@ export type RetirementCertificate = RetirementView & {
 
 export async function getRetirementCertificate(retirementId: number): Promise<RetirementCertificate> {
   const client = publicClient();
-  const read =
-    activeRegistry().kind === "legacy"
-      ? {
-          count: () => client.readContract({ ...legacy, functionName: "retirementCount" }),
-          retirement: (id: bigint) => client.readContract({ ...legacy, functionName: "getRetirement", args: [id] }),
-          token: () => client.readContract({ ...legacy, functionName: "certificateToken" }),
-        }
-      : (() => {
-          const { address, abi } = requireDeployment();
-          return {
-            count: () => client.readContract({ address, abi, functionName: "retirementCount" }),
-            retirement: (id: bigint) =>
-              client.readContract({ address, abi, functionName: "getRetirement", args: [id] }),
-            token: () => client.readContract({ address, abi, functionName: "certificateToken" }),
-          };
-        })();
+  const { address, abi } = requireDeployment();
+  const read = {
+    count: () => client.readContract({ address, abi, functionName: "retirementCount" }),
+    retirement: (id: bigint) => client.readContract({ address, abi, functionName: "getRetirement", args: [id] }),
+    token: () => client.readContract({ address, abi, functionName: "certificateToken" }),
+  };
   const count = await read.count();
   if (BigInt(retirementId) >= count) throw new ApiError(`Retirement #${retirementId} does not exist`, 404);
 

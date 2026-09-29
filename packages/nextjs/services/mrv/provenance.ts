@@ -27,10 +27,10 @@ import { publicKeyToAddress } from "viem/accounts";
  * the contract checks the same signature and only accepts figures at least as conservative as the statement, so a
  * verifier key on its own cannot mint.
  *
- * `DmrvRegistry` (phase 1) uses EIP-712 typed data: domain `DmrvRegistry` v1 bound to the chain and registry, type
- * `MeterStatement` (below). A registered VVB then signs a `VerifierApproval` that embeds the meter statement's
- * digest (`approval.ts`), and the registry needs both signatures to mint. A domain with a `sequence` selects this
- * scheme. Without one, statements use the legacy `HydroCreditRegistry` (5b7fe3f) EIP-191 hash, so historic HCS
+ * `DmrvRegistry` uses EIP-712 typed data: domain `DmrvRegistry` v2 bound to the chain and registry, type
+ * `MeterStatement` (below). The operator records each signed period; a VVB later verifies a run of those records
+ * with a `VerificationStatement` (`approval.ts`), and only that issues credits. A domain with a `sequence` selects
+ * this scheme. Without one, statements use the legacy `HydroCreditRegistry` (5b7fe3f) EIP-191 hash, so historic HCS
  * data keeps verifying. Data messages published before readings@5 carry the earlier batch signature (over the
  * readings digest alone). Verification is synchronous (no I/O) to keep the engine pure.
  */
@@ -99,7 +99,7 @@ export function meterStatementOf(plantId: string, readings: Reading[]): MeterSta
 // ─── DmrvRegistry: EIP-712 ────────────────────────────────────────────────
 
 export const DMRV_EIP712_NAME = "DmrvRegistry";
-export const DMRV_EIP712_VERSION = "1";
+export const DMRV_EIP712_VERSION = "2";
 
 export const METER_STATEMENT_TYPES = {
   MeterStatement: [
@@ -114,7 +114,7 @@ export const METER_STATEMENT_TYPES = {
   ],
 } as const;
 
-export function dmrvDomain(domain: MeterDomain) {
+export function dmrvDomain(domain: Pick<MeterDomain, "chainId" | "registry">) {
   return {
     name: DMRV_EIP712_NAME,
     version: DMRV_EIP712_VERSION,

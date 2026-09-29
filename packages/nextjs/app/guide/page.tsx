@@ -170,17 +170,19 @@ const GuidePage: NextPage = async () => {
           </Step>
           <Step n={3} title="Give the meter a key">
             <code>yarn mrv:meter-key</code> creates a key for the data logger; its address is registered with the plant.
-            The logger signs every batch&apos;s totals (<code>yarn mrv:sign</code> or any Ethereum library), a VVB
-            approves the same statement, and the contract never mints more than the meter signed.
+            The logger signs every batch&apos;s totals (<code>yarn mrv:sign</code> or any Ethereum library), and the
+            contract never credits more than the meter signed.
           </Step>
-          <Step n={4} title="Attest and sell">
-            <code>yarn mrv:attest</code> (or <code>POST /api/mrv/attest</code> with your API key) verifies a period,
-            publishes it to HCS and mints the credits to you. Then open{" "}
+          <Step n={4} title="Record, get verified, sell">
+            <code>yarn mrv:record</code> (or <code>POST /api/mrv/record</code> with your API key) verifies a period,
+            publishes it to HCS and records it on-chain. Nothing is issued yet: your VVB reviews the pending records (
+            <code>yarn mrv:verify</code>), signs the verification with its own key, and only its approval issues the
+            credits to you. Then open{" "}
             <Link href="/market" className="link link-primary">
               Market
             </Link>
-            , choose <strong>List for sale</strong> and set a price in US dollars per tonne. When buyers pay, collect
-            the HBAR under <em>Sale proceeds</em> in the same panel.
+            , choose <strong>List for sale</strong> and set a price in US dollars per tonne. Each sale is swapped
+            through SaucerSwap and paid to you in the settlement pair&apos;s USD token.
           </Step>
         </ol>
         <p className="text-sm text-base-content/60 m-0">

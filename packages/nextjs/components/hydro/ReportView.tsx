@@ -69,7 +69,7 @@ export const ReportView = ({ report }: { report: VerificationReport }) => {
         <Figure label="EG_PJ" value={emissions ? formatWhAsMwh(emissions.egProjectWh) : "—"} unit="MWh" />
         <Figure label="EF_grid,CM" value={(report.parameters.efGridGPerMwh / 1e6).toFixed(6)} unit="t/MWh" />
         <Figure
-          label="Credits minted"
+          label="Whole tonnes at record (issued only after VVB verification)"
           value={emissions ? (emissions.unitsMinted / 1_000).toLocaleString("en-US") : "—"}
           unit="t"
         />

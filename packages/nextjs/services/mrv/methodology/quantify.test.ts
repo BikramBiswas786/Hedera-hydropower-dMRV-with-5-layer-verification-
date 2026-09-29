@@ -16,7 +16,9 @@ const DAY = 86_400;
 const greenfield: RegisteredDesign = {
   projectType: PROJECT_TYPE_CODE.greenfield,
   methodology: 0,
+  hostCountry: "UG",
   capacityKw: 12_000,
+  authorizedCapacityKw: 0,
   baselineCapacityKw: 0,
   reservoirAreaM2: 0,
   baselineReservoirAreaM2: 0,
@@ -26,6 +28,7 @@ const greenfield: RegisteredDesign = {
   baselineEndsAt: 0,
   creditingStart: START,
   creditingEnd: START + 7 * CREDITING_YEAR_SECONDS,
+  registrationRequestedAt: START,
 };
 
 const period = (day: number, overrides: Partial<MonitoredQuantities> = {}): MonitoredQuantities => ({
@@ -154,9 +157,12 @@ describe("shared vectors (the contract test asserts the same numbers)", () => {
       const { baselineEndsAtDay, ...integers } = vector.design;
       const design: RegisteredDesign = {
         ...integers,
+        hostCountry: "UG",
+        authorizedCapacityKw: 0,
         baselineEndsAt: baselineEndsAtDay === null ? 0 : START + baselineEndsAtDay * DAY,
         creditingStart: START,
         creditingEnd: START + 7 * CREDITING_YEAR_SECONDS,
+        registrationRequestedAt: START,
       };
       let ledger: PlantLedger = EMPTY_LEDGER;
       for (const p of vector.periods) {

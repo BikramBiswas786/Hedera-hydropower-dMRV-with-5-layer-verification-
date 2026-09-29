@@ -9,11 +9,13 @@ const ENDPOINTS = [
   ["POST", "/api/methodology/grid-emission-factor", "TOOL07 or VT0011 combined margin from per-unit grid data"],
   ["GET", "/api/mrv/scenarios/{name}", "Deterministic sample monitoring data"],
   ["GET", "/api/registry", "On-chain totals, plants and ledgers, oracle price"],
-  ["GET", "/api/registry/plants/{id}", "A plant's design, ledger, lifetime ER and attestations"],
+  ["GET", "/api/registry/plants/{id}", "A plant's design, ledger, records and verifications"],
   ["GET", "/api/registry/attestations/{id}/reproduce", "Re-run the engine on readings published to HCS"],
+  ["GET", "/api/mrv/verification?plantId=…", "Records awaiting a VVB, each reproduced from HCS"],
   ["POST", "/api/market/prepare-purchase", "Unsigned buy / buy-and-retire tx for your own wallet"],
   ["GET", "/api/registry/retirements?format=csv", "Retirement portfolio for ESG reporting"],
-  ["POST", "/api/mrv/attest", "Verify → HCS → mint (Bearer MRV_API_KEY)"],
+  ["POST", "/api/mrv/record", "Verify → HCS → record a monitoring period (Bearer MRV_API_KEY)"],
+  ["POST", "/api/mrv/verification", "Publish a VVB verification report, get the statement to sign"],
 ] as const;
 
 export const AgentAccess = () => {

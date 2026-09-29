@@ -80,7 +80,7 @@
         "yarn install",
         "yarn deploy --network localhost",
         "yarn deploy --network hederaTestnet",
-        "yarn mrv:attest",
+        "yarn mrv:record",
         "/api/mcp",
         "reproduce_attestation",
         "Supra",

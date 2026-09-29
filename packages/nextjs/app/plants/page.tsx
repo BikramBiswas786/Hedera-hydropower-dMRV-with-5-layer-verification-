@@ -5,7 +5,7 @@ import scaffoldConfig from "~~/scaffold.config";
 import { registeredMethodologyLabel } from "~~/services/mrv/methodology/project";
 import { listPlants } from "~~/services/mrv/server/insights";
 import { RegistryNotDeployedError } from "~~/services/mrv/server/registry";
-import { formatTonnes, formatWhAsMwh } from "~~/services/mrv/views";
+import { formatTonnes } from "~~/services/mrv/views";
 import { getMetadata } from "~~/utils/scaffold-hbar/getMetadata";
 
 export const dynamic = "force-dynamic";
@@ -59,7 +59,7 @@ const PlantsPage: NextPage = async () => {
               <h2 className="text-xl font-bold m-0">{plant.name}</h2>
               <div className="grid grid-cols-3 gap-2">
                 <StatCard label="Capacity" value={`${(plant.design.capacityKw / 1_000).toLocaleString()} MW`} />
-                <StatCard label="Exported" value={`${formatWhAsMwh(plant.totalNetWh)} MWh`} />
+                <StatCard label="Records" value={`${plant.ledger.attestations} (${plant.verifiedRecords} verified)`} />
                 <StatCard label="Issued" value={`${formatTonnes(plant.issuedUnits)} t`} />
               </div>
             </Link>

@@ -1,5 +1,5 @@
 /**
- * Shared test vectors for the emission-reduction arithmetic. `HydroCreditRegistry.test.ts` checks the contract
+ * Shared test vectors for the emission-reduction arithmetic. `HydroVmr0017Module.test.ts` checks the contract
  * against them and `services/mrv/methodology/quantify.test.ts` checks the TypeScript mirror, so the two
  * implementations cannot drift apart. Days are offsets from the crediting start; each period lasts one day.
  *

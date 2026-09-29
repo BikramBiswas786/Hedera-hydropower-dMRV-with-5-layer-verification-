@@ -4,7 +4,12 @@ import { compareReportSchema } from "../guardian/compare";
 import { gridEmissionFactorRequestSchema, projectDesignSchema } from "../methodology/schema";
 import { HYDRO_CHAIN_ID } from "../network";
 import { SCENARIO_NAMES } from "../scenarios";
-import { attestRequestSchema, verifyRequestSchema } from "../schema";
+import {
+  prepareVerificationSchema,
+  recordRequestSchema,
+  submitVerificationSchema,
+  verifyRequestSchema,
+} from "../schema";
 import { prepareCheckoutPurchaseSchema } from "./checkout";
 import { portfolioQuerySchema } from "./insights";
 import { preparePurchaseSchema } from "./market";
@@ -68,12 +73,13 @@ export function buildOpenApi(origin: string) {
       license: { name: "MIT", identifier: "MIT" },
     },
     servers: [{ url: origin }],
-    // Reads and unsigned purchases are public; only /api/mrv/attest overrides this with the operator's key.
+    // Reads and unsigned purchases are public; recording and verification writes override this with the server key.
     security: [],
     externalDocs: { description: "Guide for AI agents", url: `${origin}/llms.txt` },
     tags: [
       { name: "methodology", description: "Project design, TOOL07 / VT0011 grid factor, design documents" },
-      { name: "monitoring", description: "Sample telemetry, verification, attestation" },
+      { name: "monitoring", description: "Sample telemetry, verification, monitoring records" },
+      { name: "verification", description: "VVB verification of monitoring records; only an approval issues credits" },
       { name: "registry", description: `On-chain state on chain ${HYDRO_CHAIN_ID}` },
       { name: "evidence", description: "Audit and reproduction from HCS through the public mirror node" },
       { name: "market", description: "Listings, unsigned purchases, retirements and certificates" },
@@ -174,28 +180,61 @@ export function buildOpenApi(origin: string) {
         requestBody: body(verifyRequestSchema),
         responses: ok("Verification report and HCS anchors"),
       }),
-      "/api/mrv/attest": post({
-        operationId: "submit_attestation",
+      "/api/mrv/record": post({
+        operationId: "record_monitoring",
         tags: ["monitoring"],
-        summary: "Two-step attestation: anchor on HCS, then relay the meter + VVB signatures",
+        summary: "Record a monitoring period on DmrvRegistry (issues nothing)",
         description:
-          "Only for the plant operator's server: requires the MRV_API_KEY bearer token. Without `verifierSignature` it answers 409 (nothing published) unless `publishForApproval: true`, which publishes readings and report to HCS and returns `status: awaiting-approval` with the VerifierApproval typed data and `anchor`. Step 2 sends the same body plus `anchor` and `verifierSignature` (an accredited VVB's EIP-712 signature) and relays DmrvRegistry.submitAttestation. Optional `evidenceHash` binds external evidence such as a Guardian VC (single use). Refuses anything but APPROVED periods and anything the module's preview() disagrees with.",
+          "Only for the plant operator's server: requires the MRV_API_KEY bearer token, and the server key must be the plant's operator or the reporter it named. Verifies the readings against the registered design and module ledger, checks the project's module computes the same ER, dry-runs recordMonitoring, then publishes readings and report to HCS and records the period with the meter's EIP-712 signature. Returns the record's sequence and hash-chain head.",
         security: [{ mrvApiKey: [] }],
-        requestBody: body(attestRequestSchema),
+        requestBody: body(recordRequestSchema),
         responses: {
-          ...ok("awaiting-approval (typed data + anchor) or attested (id, credits minted, VVB, Hashscan links)"),
+          ...ok("not-eligible (report) or recorded (attestationId, sequence, reductionG, chainHash, HCS links)"),
           "401": { $ref: "#/components/responses/Error" },
           "409": { $ref: "#/components/responses/Error" },
         },
       }),
-      "/api/mrv/approve": post({
-        operationId: "approve_attestation",
-        tags: ["monitoring"],
-        summary: "Preview the VVB's EIP-712 approval (writes and signs nothing)",
+      "/api/mrv/verification": {
+        get: {
+          operationId: "get_pending_verification",
+          tags: ["verification"],
+          summary: "The run of records a VVB verifies next, each reproduced from HCS",
+          parameters: [
+            query("plantId", "Plant id, e.g. HYDRO-DEMO-01", { type: "string" }),
+            query("lastRecord", "Last record of the run (default: the latest)", { type: "integer", minimum: 0 }),
+          ],
+          responses: ok(
+            "{ pending: { firstRecord, lastRecord, records, recordsHash, monitoredG, unitsIfApproved } | null }",
+          ),
+        },
+        post: {
+          operationId: "prepare_verification",
+          tags: ["verification"],
+          summary: "Publish the VVB's verification report and return the statement to sign",
+          description:
+            "Reproduces the pending records from HCS, publishes the verification report (decision, deduction, findings) and returns the EIP-712 VerificationStatement. The VVB signs it with its own secp256k1 key (eth_signTypedData_v4 or `yarn mrv:approve`). An approval is refused unless every record reproduces. Requires the MRV_API_KEY bearer token because it publishes.",
+          security: [{ mrvApiKey: [] }],
+          requestBody: body(prepareVerificationSchema),
+          responses: {
+            ...ok("{ status: awaiting-signature, report, reportHash, hcs, statement, typedData }"),
+            "401": { $ref: "#/components/responses/Error" },
+            "409": { $ref: "#/components/responses/Error" },
+          },
+        },
+      },
+      "/api/mrv/verification/submit": post({
+        operationId: "submit_verification",
+        tags: ["verification"],
+        summary: "Relay a VVB-signed VerificationStatement to verifyPeriod",
         description:
-          "Re-derives, from the readings and the step-1 anchor, the exact VerifierApproval typed data DmrvRegistry checks. The VVB signs it with its own secp256k1 key (eth_signTypedData_v4 or `yarn mrv:approve`).",
-        requestBody: body(attestRequestSchema),
-        responses: ok("{ approval, summary, report }"),
+          "Checks the signer holds VERIFIER_ROLE and is not the operator, meter or reporter, and that the statement matches the report at its HCS anchor, then relays verifyPeriod. An approval issues credits into the operator's custody; a rejection closes the run unissued. Anyone can send the same call from their own wallet; this endpoint uses the server's gas and so needs the bearer token.",
+        security: [{ mrvApiKey: [] }],
+        requestBody: body(submitVerificationSchema),
+        responses: {
+          ...ok("{ status: issued | rejected, issuanceId, unitsIssued, verifier, transaction }"),
+          "401": { $ref: "#/components/responses/Error" },
+          "409": { $ref: "#/components/responses/Error" },
+        },
       }),
       "/api/registry": get({
         operationId: "get_registry_overview",
@@ -212,14 +251,14 @@ export function buildOpenApi(origin: string) {
       "/api/registry/plants/{plantId}": get({
         operationId: "get_plant",
         tags: ["registry"],
-        summary: "One plant: design, ledger, lifetime totals and attestations",
+        summary: "One plant: design, ledger, totals, monitoring records and verifications",
         parameters: [path("plantId", "Plant id, e.g. HYDRO-DEMO-02")],
         responses: ok("Plant detail"),
       }),
       "/api/registry/attestations": get({
         operationId: "list_attestations",
         tags: ["registry"],
-        summary: "Attestations: monitored inputs, EG_PJ, BE, PE, LE, ER, credits, HCS anchors",
+        summary: "Monitoring records: monitored inputs, EG_PJ, BE, PE, LE, ER, hash chain, HCS anchors, status",
         parameters: [
           query("start", "First attestation id", { type: "integer", minimum: 0, default: 0 }),
           query("count", "Page size", { type: "integer", minimum: 1, maximum: 100, default: 20 }),
@@ -236,14 +275,17 @@ export function buildOpenApi(origin: string) {
       "/api/registry/attestations/{id}/reproduce": get({
         operationId: "reproduce_attestation",
         tags: ["evidence"],
-        summary: "Re-derive the issuance from the readings published to HCS",
+        summary: "Re-derive a monitoring record from the readings published to HCS",
         description:
-          "Audits the report, reassembles the data message, checks its hash, the registered design and the meter signature, re-runs the engine and compares every figure. Pass `registry=0x9cdB…` (the legacy HydroCreditRegistry) to reproduce pre-phase-1 evidence.",
-        parameters: [
-          path("id", "Attestation id", { type: "integer", minimum: 0 }),
-          query("registry", "Registry address (default: the active DmrvRegistry)", { type: "string" }),
-        ],
+          "Audits the report, reassembles the data message, checks its hash, the registered design and meter and the meter signature, re-runs the engine, compares every figure, and recomputes the record's hash-chain link.",
+        parameters: [path("id", "Attestation id", { type: "integer", minimum: 0 })],
         responses: ok("reproduced | diverged | no-data | not-auditable, with per-field checks"),
+      }),
+      "/api/registry/issuances": get({
+        operationId: "list_issuances",
+        tags: ["registry"],
+        summary: "Every VVB verification: records covered, decision, deduction, units issued, report",
+        responses: ok("{ issuances }"),
       }),
       "/api/registry/listings": get({
         operationId: "list_open_listings",

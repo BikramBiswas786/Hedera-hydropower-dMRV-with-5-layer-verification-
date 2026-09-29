@@ -1,0 +1,81 @@
+{
+  "plantId": "HYDRO-DEMO-02",
+  "summary": "HYDRO-DEMO-02 records 0-0: approve, monitored -2688998 g, deduction 0 g, issues 0 kg; report 0x9959f93c5dbdf6609e38594b91143fd1005ff8058e2e6192adb3a51f0478f0ff",
+  "statement": {
+    "firstRecord": 0,
+    "lastRecord": 0,
+    "recordsHash": "0x93741814889b1b273b9b8485acd88b6068da084d717a8b8701018c60704c8741",
+    "deductionG": "0",
+    "reportHash": "0x9959f93c5dbdf6609e38594b91143fd1005ff8058e2e6192adb3a51f0478f0ff",
+    "hcsTopicNum": "1",
+    "hcsSequence": "1",
+    "evidenceHash": "0x0000000000000000000000000000000000000000000000000000000000000000",
+    "decision": 1
+  },
+  "typedData": {
+    "domain": {
+      "name": "DmrvRegistry",
+      "version": "2",
+      "chainId": 31337,
+      "verifyingContract": "0x5FC8d32690cc91D4c39d9d3abcBD16989F875707"
+    },
+    "types": {
+      "VerificationStatement": [
+        {
+          "name": "projectId",
+          "type": "bytes32"
+        },
+        {
+          "name": "firstRecord",
+          "type": "uint32"
+        },
+        {
+          "name": "lastRecord",
+          "type": "uint32"
+        },
+        {
+          "name": "recordsHash",
+          "type": "bytes32"
+        },
+        {
+          "name": "deductionG",
+          "type": "uint64"
+        },
+        {
+          "name": "reportHash",
+          "type": "bytes32"
+        },
+        {
+          "name": "hcsTopicNum",
+          "type": "uint64"
+        },
+        {
+          "name": "hcsSequence",
+          "type": "uint64"
+        },
+        {
+          "name": "evidenceHash",
+          "type": "bytes32"
+        },
+        {
+          "name": "decision",
+          "type": "uint8"
+        }
+      ]
+    },
+    "primaryType": "VerificationStatement",
+    "message": {
+      "projectId": "0x485944524f2d44454d4f2d303200000000000000000000000000000000000000",
+      "firstRecord": 0,
+      "lastRecord": 0,
+      "recordsHash": "0x93741814889b1b273b9b8485acd88b6068da084d717a8b8701018c60704c8741",
+      "deductionG": "0",
+      "reportHash": "0x9959f93c5dbdf6609e38594b91143fd1005ff8058e2e6192adb3a51f0478f0ff",
+      "hcsTopicNum": "1",
+      "hcsSequence": "1",
+      "evidenceHash": "0x0000000000000000000000000000000000000000000000000000000000000000",
+      "decision": 1
+    }
+  },
+  "signature": "0xb32e5fa11cf8676d99cd375068620d94bd5a59177ff48cbee23b98f92387445222568db4a170d7867131742805cd25ff0e05380a2349e4037da98a9f23e5cd7d1c"
+}

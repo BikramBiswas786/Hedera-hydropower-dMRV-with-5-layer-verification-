@@ -1,12 +1,14 @@
+import { nextRecordsHash } from "./approval";
 import { auditAttestation, reproduceAttestation } from "./audit";
 import { DEMO_METERING, DEMO_PLANT } from "./demo";
 import type { VerificationReport } from "./engine";
 import type { MirrorTopicMessage } from "./mirror";
 import { prepareAnchors } from "./pipeline";
+import { encodeEnergy } from "./provenance";
 import { HCS_CHUNK_BYTES, buildHcsMessage, decodeMessage } from "./report";
 import { type ScenarioName, generateScenario } from "./scenarios";
 import type { AttestationView } from "./views";
-import type { Hex } from "viem";
+import { type Address, type Hex, zeroHash } from "viem";
 import { describe, expect, it } from "vitest";
 
 const TOPIC = "0.0.5005";
@@ -64,24 +66,33 @@ function onChain(report: VerificationReport, reportHash: Hex, hcsSequence: numbe
   return {
     id: 3,
     plantId: report.plantId,
+    sequence: report.ledger.before.attestations,
     periodStart: report.periodStart,
     periodEnd: report.periodEnd,
     netEnergyWh: report.monitored.netWh,
     grossEnergyWh: report.monitored.grossWh,
     fuelG: report.monitored.fuelG,
+    leakageInputG: report.monitored.leakageG,
+    creditingYear: 0,
     projectEnergyWh: e.egProjectWh,
     baselineG: e.baselineG,
     reservoirG: e.reservoirG,
     fossilFuelG: e.fossilFuelG,
     leakageG: e.leakageG,
     reductionG: e.reductionG,
-    unitsMinted: e.unitsMinted,
+    cumulativeG: e.reductionG,
+    unitsAtRecord: e.unitsMinted,
     completenessBps: report.completenessBps,
+    meter: "0x0000000000000000000000000000000000000001",
     reportHash,
+    readingsDigest: report.meterStatement.readingsDigest,
+    chainHash: zeroHash,
+    verified: encodeEnergy(report.monitored),
     hcsTopicId: TOPIC,
     hcsSequence,
-    verifier: "0x0000000000000000000000000000000000000001",
     timestamp: report.periodEnd + 60,
+    status: "monitored",
+    issuanceId: null,
   };
 }
 
@@ -108,17 +119,20 @@ describe("auditAttestation", () => {
     expect(result.hashscanUrl).toContain(`/topic/${TOPIC}/message/${attestation.hcsSequence}`);
   });
 
-  it("detects an attestation that minted more than its anchored report computed", async () => {
+  it("detects a record that claims more than its anchored report computed", async () => {
     const mirror = new FakeMirror();
     const { attestation } = anchor(mirror);
     const result = await auditAttestation(
-      { ...attestation, reductionG: attestation.reductionG * 2, unitsMinted: attestation.unitsMinted * 2 },
+      { ...attestation, reductionG: attestation.reductionG * 2, unitsAtRecord: attestation.unitsAtRecord * 2 },
       mirror.fetch,
     );
 
     expect(result.status).toBe("mismatch");
     if (result.status !== "mismatch") return;
-    expect(result.checks.filter(check => !check.ok).map(check => check.field)).toEqual(["ER (g)", "credits (kg)"]);
+    expect(result.checks.filter(check => !check.ok).map(check => check.field)).toEqual([
+      "ER (g)",
+      "units at record (kg)",
+    ]);
   });
 
   it("detects a report whose bytes differ from the on-chain hash", async () => {
@@ -163,6 +177,40 @@ describe("reproduceAttestation", () => {
     expect(result.recomputed).toEqual(report);
     expect(result.checks.every(check => check.ok)).toBe(true);
     expect(result.checks.some(check => check.field === "registered.efGridGPerMwh")).toBe(true);
+  });
+
+  it("recomputes the record's hash-chain link from the readings the meter signed", async () => {
+    const mirror = new FakeMirror();
+    const { attestation, data, report } = anchor(mirror);
+    const domain = JSON.parse(data.message).domain as { chainId: number; registry: Address };
+    const chainHash = nextRecordsHash(zeroHash, domain, {
+      plantId: attestation.plantId,
+      sequence: attestation.sequence,
+      statement: report.meterStatement,
+      verified: attestation.verified,
+      reportHash: attestation.reportHash,
+      hcsTopicNum: BigInt(TOPIC.replace("0.0.", "")),
+      hcsSequence: BigInt(attestation.hcsSequence),
+      reductionG: BigInt(attestation.reductionG),
+    });
+    const linked = { ...attestation, chainHash };
+
+    const result = await reproduceAttestation(linked, mirror.fetch, DEMO_PLANT.design, undefined, zeroHash);
+    expect(result.status).toBe("reproduced");
+    if (result.status !== "reproduced") return;
+    expect(result.checks.find(check => check.field === "record chain hash")?.ok).toBe(true);
+
+    // Another chain head before it (a record dropped or reordered) breaks the link.
+    const broken = await reproduceAttestation(
+      linked,
+      mirror.fetch,
+      DEMO_PLANT.design,
+      undefined,
+      `0x${"01".repeat(32)}`,
+    );
+    expect(broken.status).toBe("diverged");
+    if (broken.status !== "diverged") return;
+    expect(broken.checks.filter(check => !check.ok).map(check => check.field)).toEqual(["record chain hash"]);
   });
 
   it("catches readings quantified with a grid factor other than the registered one", async () => {

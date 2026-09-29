@@ -164,7 +164,10 @@ export function crossCheckMonitoringReport(subject: MonitoringReportSubject): Cr
   const design: RegisteredDesign = {
     projectType: PROJECT_TYPE_CODE.greenfield,
     methodology: METHODOLOGY_CODE.VMR0017,
+    // The comparison recomputes a reported figure; eligibility (host country, Table 1) is the policy's to check.
+    hostCountry: "",
     capacityKw,
+    authorizedCapacityKw: 0,
     baselineCapacityKw,
     reservoirAreaM2: areaM2,
     baselineReservoirAreaM2: baselineAreaM2,
@@ -174,6 +177,7 @@ export function crossCheckMonitoringReport(subject: MonitoringReportSubject): Cr
     baselineEndsAt: 0,
     creditingStart: 0,
     creditingEnd: 365 * 24 * 3_600,
+    registrationRequestedAt: 0,
   };
   // One report = one annual period; the ledger starts empty because the policy has no carried balance.
   const q = quantifyPeriod(design, EMPTY_LEDGER, {

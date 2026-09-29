@@ -159,13 +159,16 @@ describe("assessProject", () => {
     ).toBe(712_345);
   });
 
-  it("the demo plants are eligible and use the VT0011 hydro weights of their crediting period", () => {
+  it("the demo plants are eligible and re-weight Uganda's published margins with VT0011 hydro weights", () => {
     for (const assessment of DEMO_ASSESSMENTS) expect(assessment.failures).toEqual([]);
-    const [first, renewed] = DEMO_ASSESSMENTS;
-    expect(first.grid.tool07?.tool).toBe("VT0011");
-    expect(first.grid.tool07?.weights).toEqual({ operatingMargin: 0.4, buildMargin: 0.6 });
-    expect(renewed.grid.tool07?.weights).toEqual({ operatingMargin: 0.25, buildMargin: 0.75 });
-    expect(renewed.powerDensity.peHpGPerMwh).toBe(VMR0017_RESERVOIR_EF_G_PER_MWH);
+    const [runOfRiver, storage] = DEMO_ASSESSMENTS;
+    // ASB0054-2022: OM 0.2740, BM 0.00001; VT0011 ¶86 first period 0.4 × OM + 0.6 × BM = 0.109606 t/MWh.
+    for (const a of DEMO_ASSESSMENTS) {
+      expect(a.grid.efGPerMwh).toBe(109_606);
+      expect(a.grid.reference).toMatch(/ASB0054-2022.*VT0011 ¶86 weights 0.4\/0.6/);
+    }
+    expect(runOfRiver.powerDensity.peHpGPerMwh).toBe(0);
+    expect(storage.powerDensity.peHpGPerMwh).toBe(VMR0017_RESERVOIR_EF_G_PER_MWH);
     expect(DEMO_DESIGNS.map(d => d.plantId)).toEqual(["HYDRO-DEMO-01", "HYDRO-DEMO-02"]);
     expect(DEMO_ASSESSMENTS.map(a => a.registration.methodology)).toEqual([1, 1]);
   });
@@ -204,6 +207,11 @@ describe("VMR0017 v1.0 (with ACM0002 v22.0)", () => {
     noChange: true,
     remainingLifetimeBasis: "TOOL10: equipment remains in service past 2031",
   };
+  const safeguards = {
+    environmentalImpactAssessment: "EIA approved by the national environment authority, ref. 123",
+    stakeholderConsultation: "Local stakeholder consultation minutes, 2025",
+    noNetHarm: "No-net-harm assessment in the project description, section 4",
+  };
   const vmr = (overrides: Partial<ProjectDesign> = {}) =>
     assessProject(
       design({
@@ -211,6 +219,7 @@ describe("VMR0017 v1.0 (with ACM0002 v22.0)", () => {
         registrationRequest: "2026-01-01T00:00:00Z",
         hostCountry: "UG",
         additionality: evidence,
+        safeguards,
         grid: {
           source: "published",
           efTPerMwh: 0.6,
@@ -246,13 +255,19 @@ describe("VMR0017 v1.0 (with ACM0002 v22.0)", () => {
     expect(vmr({ capacityKw: 12_000, authorizedCapacityKw: 16_000 }).failures.join()).toMatch(/15 MW or less/);
   });
 
-  it("accepts Least Developed Countries only, as of the crediting start", () => {
+  it("accepts Least Developed Countries only, as of the registration request (as the module checks)", () => {
     expect(vmr({ hostCountry: "IN" }).failures.join()).toMatch(/LDC countries only; IN/);
     expect(vmr({ hostCountry: undefined }).failures.join()).toMatch(/host country is required/);
     // Nepal graduates on 24 November 2026.
     expect(vmr({ hostCountry: "NP" }).failures).toEqual([]);
     const afterGraduation = { start: "2026-12-01T00:00:00Z", years: 7 as const, period: 1 as const };
-    expect(vmr({ hostCountry: "NP", crediting: afterGraduation }).failures.join()).toMatch(/NP is not an LDC/);
+    expect(
+      vmr({
+        hostCountry: "NP",
+        crediting: afterGraduation,
+        registrationRequest: "2026-12-01T00:00:00Z",
+      }).failures.join(),
+    ).toMatch(/NP is not an LDC/);
   });
 
   it("requires complete, consistent VT0008 additionality evidence", () => {
@@ -417,6 +432,14 @@ describe("VMR0017 v1.0 (with ACM0002 v22.0)", () => {
     // Without OM and BM the VMR0017 path cannot apply VT0011.
     const cmOnly = { ...asb0054, omTPerMwh: undefined, bmTPerMwh: undefined };
     expect(vmr({ grid: cmOnly, crediting: start }).failures.join()).toMatch(/omTPerMwh, bmTPerMwh/);
+  });
+
+  it("requires the VCS safeguards (impact assessment, stakeholder consultation, no net harm) to be named", () => {
+    expect(vmr().failures).toEqual([]);
+    expect(vmr({ safeguards: undefined }).failures.join()).toMatch(/VCS Standard safeguards/);
+    expect(vmr({ safeguards: { ...safeguards, stakeholderConsultation: " " } }).failures.join()).toMatch(
+      /stakeholder consultation/,
+    );
   });
 
   it("requires the VT0008 sensitivity table, geographic area, capacity band and assessor", () => {

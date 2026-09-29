@@ -10,9 +10,10 @@ import { type Hex, keccak256, stringToBytes } from "viem";
 import { privateKeyToAddress } from "viem/accounts";
 
 /**
- * An ILLUSTRATIVE grid (not a real country) for the demo plants' TOOL07 calculation: coal, gas, oil, hydro, wind
- * and solar units with three years of data, some reported with fuel consumption (option A1) and some with
- * efficiency (option A2). Replace it with the host country's data, or use a DNA-published combined margin.
+ * An ILLUSTRATIVE grid (not a real country) that shows every TOOL07 / VT0011 step on per-unit data: coal, gas, oil,
+ * hydro, wind and solar units with three years of data, some reported with fuel consumption (option A1) and some
+ * with efficiency (option A2). The /methodology page and the tool tests use it. The demo plants do NOT: they sit in
+ * Uganda and use Uganda's published margins (`UGANDA_GRID`).
  */
 const GRID_YEARS = [2023, 2024, 2025] as const;
 
@@ -57,6 +58,26 @@ export const DEMO_GRID: Omit<Tool07Input, "projectKind" | "creditingPeriod"> = {
 };
 
 /**
+ * Uganda's national grid, from the CDM standardized baseline ASB0054-2022 v01.0 (TOOL07 v7.0, ex-ante vintage, 2017-
+ * 2019 data; in force 10 Aug 2022 to 9 Aug 2025): OM 0.2740 t CO2/MWh, BM 0.00001 t CO2/MWh (the most recent units
+ * are hydro and solar). Its hydro CM is TOOL07's 0.5/0.5 weighting, 0.1370; on the VMR0017 path the engine re-weights
+ * OM and BM with VT0011 ¶86 (0.4/0.6 for a first crediting period: 0.1096). The demo designs fix that ex-ante CM at
+ * validation (1 Jul 2025), inside the baseline's validity; a project validated later needs a VT0011 calculation on
+ * newer data, since this baseline has expired.
+ */
+export const UGANDA_GRID = {
+  source: "published",
+  efTPerMwh: 0.137,
+  omTPerMwh: 0.274,
+  bmTPerMwh: 0.00001,
+  reference:
+    "CDM standardized baseline ASB0054-2022 v01.0, national grid of Uganda (TOOL07 v7.0 ex-ante, 2017-2019 data)",
+  validFrom: "2022-08-10T00:00:00Z",
+  validTo: "2025-08-10T00:00:00Z",
+  fixedAt: "2025-07-01T00:00:00Z",
+} as const;
+
+/**
  * ILLUSTRATIVE VT0008 evidence, standing in for what a VVB validates from the investment analysis and common-practice
  * study. Real projects cite their validation report here.
  */
@@ -89,9 +110,20 @@ const DEMO_ADDITIONALITY: AdditionalityEvidence = {
   assessedBy: "none (illustrative demo data, not validated)",
 };
 
+/** ILLUSTRATIVE: no impact assessment or consultation took place for these demo plants. */
+const DEMO_SAFEGUARDS = {
+  environmentalImpactAssessment: "Illustrative: no EIA exists for this demo plant",
+  stakeholderConsultation: "Illustrative: no stakeholder consultation took place",
+  noNetHarm: "Illustrative: no no-net-harm assessment exists",
+};
+
 /**
- * Both demo plants use Verra VMR0017 v1.0 with ACM0002 v22.0. Its Table 1 limits hydro to 15 MW or less in Least
- * Developed Countries, so the host country is set to Uganda (an LDC); the grid data above stays illustrative.
+ * Both demo plants use Verra VMR0017 v1.0 with ACM0002 v22.0 (published 23 April 2026, so both registration requests
+ * are later). Its Table 1 limits hydro to 15 MW or less in Least Developed Countries, so the host is Uganda (an LDC)
+ * and the grid factor is Uganda's published one. The additionality figures stay illustrative and are labelled so.
+ *
+ * On Uganda's hydro-dominated grid the storage plant earns nothing: its reservoir (PD 6.67 W/m², PE_HP = 100 kg per
+ * MWh) plus embodied emissions (21 kg/MWh) exceed the 110 kg/MWh it displaces. The registry carries that deficit.
  */
 export const DEMO_DESIGNS: ProjectDesign[] = [
   {
@@ -100,6 +132,7 @@ export const DEMO_DESIGNS: ProjectDesign[] = [
     methodology: "VMR0017",
     hostCountry: "UG",
     additionality: DEMO_ADDITIONALITY,
+    safeguards: DEMO_SAFEGUARDS,
     projectType: "greenfield",
     capacityKw: 500,
     baselineCapacityKw: 0,
@@ -108,16 +141,17 @@ export const DEMO_DESIGNS: ProjectDesign[] = [
     equipmentTransferred: false,
     onSiteFuel: { fuel: "gas-diesel-oil" },
     crediting: { start: "2026-01-01T00:00:00Z", years: 7, period: 1 },
-    registrationRequest: "2026-01-01T00:00:00Z",
-    grid: { source: "tool07", input: DEMO_GRID },
+    registrationRequest: "2026-05-04T00:00:00Z",
+    grid: UGANDA_GRID,
     hydraulics: { maxFlowM3s: 1.6, maxHeadM: 45, minEfficiency: 0.7, maxEfficiency: 0.92 },
   },
   {
     plantId: "HYDRO-DEMO-02",
-    name: "Demo storage plant, renewed crediting period",
+    name: "Demo storage plant",
     methodology: "VMR0017",
     hostCountry: "UG",
     additionality: DEMO_ADDITIONALITY,
+    safeguards: DEMO_SAFEGUARDS,
     projectType: "greenfield",
     capacityKw: 12_000,
     baselineCapacityKw: 0,
@@ -126,14 +160,9 @@ export const DEMO_DESIGNS: ProjectDesign[] = [
     baselineReservoirAreaM2: 0,
     equipmentTransferred: false,
     onSiteFuel: { fuel: "gas-diesel-oil" },
-    crediting: { start: "2026-03-01T00:00:00Z", years: 7, period: 2 },
-    registrationRequest: "2026-03-01T00:00:00Z",
-    renewal: {
-      previousYears: 7,
-      baselineValidity: "illustrative TOOL11 reassessment, not a validation report",
-      regulatorySurplus: "illustrative: no new law requires the plant",
-    },
-    grid: { source: "tool07", input: DEMO_GRID },
+    crediting: { start: "2026-03-01T00:00:00Z", years: 7, period: 1 },
+    registrationRequest: "2026-05-04T00:00:00Z",
+    grid: UGANDA_GRID,
     hydraulics: { maxFlowM3s: 16, maxHeadM: 95, minEfficiency: 0.75, maxEfficiency: 0.93 },
   },
 ];

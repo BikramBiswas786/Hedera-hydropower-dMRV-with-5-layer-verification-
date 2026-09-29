@@ -1,4 +1,4 @@
-import { auditAttestation, reproduceAttestation } from "../audit";
+import { auditAttestation } from "../audit";
 import { DEMO_PLANTS, demoMeteringFor, findDemoPlant } from "../demo";
 import { ENGINE_VERSION } from "../engine";
 import { compareGuardianReport, compareReportSchema } from "../guardian/compare";
@@ -7,9 +7,12 @@ import { gridEmissionFactorRequestSchema, projectDesignSchema } from "../methodo
 import { HYDRO_CHAIN_ID } from "../network";
 import { prepareAnchors } from "../pipeline";
 import { PREVIEW_METER_DOMAIN, SCENARIOS, SCENARIO_NAMES, generateScenario } from "../scenarios";
-import { attestRequestSchema, verifyRequestSchema } from "../schema";
-import { plantIdToBytes32 } from "../views";
-import { attestReadings, prepareApproval } from "./attest";
+import {
+  prepareVerificationSchema,
+  recordRequestSchema,
+  submitVerificationSchema,
+  verifyRequestSchema,
+} from "../schema";
 import { listCheckoutListings, prepareCheckoutPurchase, prepareCheckoutPurchaseSchema } from "./checkout";
 import { readDexCheck } from "./dex";
 import { getEngine, listEngines, runEngine, verifyWithEngineSchema } from "./engines";
@@ -18,32 +21,31 @@ import { traceMint, verifyEvidence } from "./guardianBridge";
 import { getPlantDetail, getPortfolio, portfolioQuerySchema } from "./insights";
 import { getRetirementCertificate, preparePurchase, preparePurchaseSchema } from "./market";
 import { assessDesign, getProject, gridEmissionFactor } from "./methodology";
-import {
-  getAttestation,
-  getAttestations,
-  getOpenListings,
-  getPlant,
-  getRegistryOverview,
-  registryAt,
-} from "./registry";
+import { recordReadings } from "./monitoring";
+import { getAttestation, getAttestations, getIssuances, getOpenListings, getRegistryOverview } from "./registry";
+import { getPendingVerification, prepareVerification, reproduceRecord, submitVerification } from "./verification";
 import { McpServer } from "@modelcontextprotocol/server";
 import { z } from "zod";
 
 const INSTRUCTIONS = `Hydro dMRV: carbon-credit MRV for grid-connected hydropower on Hedera, following Verra VMR0017 v1.0 with
-ACM0002 v22.0 (demo plants; VT0011 grid factor, VT0008 additionality, embodied-emission leakage) or CDM AMS-I.D /
-ACM0002 (TOOL07 grid factor), with TOOL03 for fossil fuel. ER = BE - PE - LE, computed by the engine and recomputed on-chain.
-Design: assess_project (applicability, power density, baseline, TOOL07 or VT0011 combined margin, VT0008 additionality) -> registration integers.
-Monitoring: generate_sample_telemetry (or real readings) -> verify_telemetry (5 stages: applicability, QA/QC, physics,
-quantification, safeguards). Only APPROVED periods can be attested. Raw readings and reports live on HCS;
-reproduce_attestation re-runs the engine on the published data and compares every figure with the contract.
-Credits are HTS tokens (1 token = 1 t CO2e, 1 unit = 1 kg) priced in USD per tonne and settled in HBAR through
-Chainlink HBAR/USD with a Supra fallback. prepare_purchase reads the SaucerSwap pair stored on CreditMarket and
-returns no transaction if that pair is more than 3% from the oracle. The contract then swaps through the SaucerSwap
-router; if the swap fails, nothing is sold. Attestations need two signatures: the
-plant's meter (EIP-712 MeterStatement) and an accredited VVB (VerifierApproval); approve_attestation returns the typed
-data a VVB signs, and the server never holds the VVB key. Agents buy with
-their own wallet: get_dex_price -> list_open_listings -> prepare_purchase -> sign and send; retiring mints an HTS
-NFT certificate. get_plant and get_portfolio summarise a plant's issuance or a buyer's retirements for reporting.
+ACM0002 v22.0 (VT0011 grid factor, VT0008 additionality, embodied-emission leakage) or CDM AMS-I.D / ACM0002 (TOOL07
+grid factor), with TOOL03 for fossil fuel. ER = BE - PE - LE, computed by the engine and recomputed on-chain by the
+project's methodology module. DmrvRegistry runs the VCS order:
+1. Validation: a VVB signs a ValidationApproval over the design and params before the admin registers the project.
+2. Monitoring: each period's raw totals are signed by the plant's meter (EIP-712 MeterStatement) and recorded
+   (record_monitoring); the module quantifies ER; the record joins a hash chain. Nothing is issued.
+3. Verification: a VVB verifies a contiguous run of records. get_pending_verification reproduces each from HCS;
+   prepare_verification publishes the verification report and returns the VerificationStatement typed data, which the
+   VVB signs with its own key (this server never holds one); submit_verification relays it. Only an approval issues
+   HTS credits (1 token = 1 t CO2e, 1 unit = 1 kg) into the operator's custody.
+Design: assess_project (applicability, power density, baseline, TOOL07 or VT0011 combined margin, VT0008 additionality).
+Monitoring input: generate_sample_telemetry (or real readings) -> verify_telemetry (5 stages). Raw readings and
+reports live on HCS; reproduce_attestation re-runs the engine on the published data, checks the registered design,
+meter and hash-chain link, and compares every figure with the contract.
+Credits are priced in USD per tonne and settled in HBAR through Chainlink HBAR/USD with a Supra fallback;
+prepare_purchase returns no transaction if the SaucerSwap pair stored on CreditMarket is more than 3% from the oracle.
+Agents buy with their own wallet: get_dex_price -> list_open_listings -> prepare_purchase -> sign and send; retiring
+mints an HTS NFT certificate. get_plant and get_portfolio summarise a plant's issuance or a buyer's retirements.
 Registry tools read chain ${HYDRO_CHAIN_ID}.`;
 
 function ok(data: unknown) {
@@ -68,13 +70,6 @@ async function run(action: () => unknown) {
 }
 
 const readOnly = { readOnlyHint: true, openWorldHint: true } as const;
-
-async function reproduce(attestationId: number, registryAddress?: string) {
-  const registry = registryAt(registryAddress);
-  const attestation = await getAttestation(attestationId, registry);
-  const plant = await getPlant(plantIdToBytes32(attestation.plantId), registry);
-  return { registry, ...(await reproduceAttestation(attestation, fetch, plant?.design, plant?.meter)) };
-}
 
 /** One server per request (stateless). `canWrite` is true only for requests carrying the MRV_API_KEY bearer token. */
 export function buildMcpServer({ canWrite }: { canWrite: boolean }): McpServer {
@@ -227,8 +222,9 @@ export function buildMcpServer({ canWrite }: { canWrite: boolean }): McpServer {
   server.registerTool(
     "list_attestations",
     {
-      title: "List attestations",
-      description: "Paginated on-chain attestations: monitored inputs, EG_PJ, BE, PE, LE, ER, credits and HCS anchors.",
+      title: "List monitoring records",
+      description:
+        "Paginated on-chain monitoring records (attestations): monitored inputs, EG_PJ, BE, PE, LE, ER, the record hash chain, HCS anchors, and status: monitored (awaiting a VVB), issued or rejected.",
       inputSchema: z.object({
         start: z.number().int().min(0).default(0),
         count: z.number().int().min(1).max(100).default(20),
@@ -243,7 +239,7 @@ export function buildMcpServer({ canWrite }: { canWrite: boolean }): McpServer {
     {
       title: "Audit attestation",
       description:
-        "Fetch the attestation's HCS report from the public mirror node, hash it and check every monitored input and computed emission figure against the on-chain record.",
+        "Fetch a monitoring record's HCS report from the public mirror node, hash it and check every monitored input and computed emission figure against the on-chain record.",
       inputSchema: z.object({ attestationId: z.number().int().min(0) }),
       annotations: readOnly,
     },
@@ -295,20 +291,39 @@ export function buildMcpServer({ canWrite }: { canWrite: boolean }): McpServer {
   server.registerTool(
     "reproduce_attestation",
     {
-      title: "Reproduce attestation",
+      title: "Reproduce a monitoring record",
       description:
-        "Strongest check available: audit the report, fetch the raw readings it commits to from HCS (reassembling chunks), verify their hash, confirm they were quantified with the registered design, re-run the engine and compare decision, coverage, EG_facility, TEG, fuel, EG_PJ, BE, PE, ER and credits. 'reproduced' means the issuance follows from public data alone.",
+        "Strongest check available: audit the report, fetch the raw readings it commits to from HCS (reassembling chunks), verify their hash, confirm they were quantified with the registered design and meter, re-run the engine, compare decision, coverage, EG_facility, TEG, fuel, EG_PJ, BE, PE, LE and ER, and recompute the record's hash-chain link from the readings. 'reproduced' means the record follows from public data alone.",
+      inputSchema: z.object({ attestationId: z.number().int().min(0) }),
+      annotations: readOnly,
+    },
+    async ({ attestationId }) => run(() => reproduceRecord(attestationId)),
+  );
+
+  server.registerTool(
+    "list_issuances",
+    {
+      title: "List verifications and issuances",
+      description:
+        "Every VVB verification on the registry: the run of records it covered, approve or reject, monitored ER, the VVB's deduction, units issued, the verifier and its HCS verification report.",
+      annotations: readOnly,
+    },
+    async () => run(getIssuances),
+  );
+
+  server.registerTool(
+    "get_pending_verification",
+    {
+      title: "Records awaiting verification",
+      description:
+        "The run of a plant's monitoring records a VVB verifies next (from the first unverified record), each reproduced from HCS with the registered design, meter and hash chain, plus the chain head the statement must sign, the monitored ER and what an approval would issue. Read-only.",
       inputSchema: z.object({
-        attestationId: z.number().int().min(0),
-        registry: z
-          .string()
-          .regex(/^0x[0-9a-fA-F]{40}$/)
-          .optional()
-          .describe("Registry address; pass the legacy HydroCreditRegistry to reproduce pre-phase-1 evidence"),
+        plantId: z.string().min(1).max(31),
+        lastRecord: z.number().int().min(0).optional(),
       }),
       annotations: readOnly,
     },
-    async ({ attestationId, registry }) => run(() => reproduce(attestationId, registry)),
+    async ({ plantId, lastRecord }) => run(() => getPendingVerification(plantId, lastRecord)),
   );
 
   server.registerTool(
@@ -427,34 +442,43 @@ export function buildMcpServer({ canWrite }: { canWrite: boolean }): McpServer {
     async query => run(() => getPortfolio(query)),
   );
 
-  server.registerTool(
-    "approve_attestation",
-    {
-      title: "Preview the VVB approval for an attestation",
-      description:
-        "For a VVB: re-derive, from the readings and the step-1 anchor (reportHash, hcsTopicNum, hcsSequence, dataSequence), the exact EIP-712 VerifierApproval that DmrvRegistry will check, plus the report it covers. Holds no key and writes nothing; sign the typed data with your own secp256k1 key and pass it to submit_attestation as verifierSignature.",
-      inputSchema: attestRequestSchema,
-      annotations: readOnly,
-    },
-    async request => run(() => prepareApproval(request)),
-  );
-
   if (canWrite) {
+    const write = { readOnlyHint: false, destructiveHint: false, idempotentHint: false, openWorldHint: true } as const;
+
     server.registerTool(
-      "submit_attestation",
+      "record_monitoring",
       {
-        title: "Verify, anchor and attest",
+        title: "Record a monitoring period",
         description:
-          "Two-step, two-signature attestation on DmrvRegistry. Without verifierSignature it refuses (409, nothing published) unless publishForApproval is true: then it verifies the readings against the registered design and on-chain ledger, checks the methodology module's preview() agrees, publishes readings and report to HCS and returns the VerifierApproval typed data and anchor. Call again with anchor + verifierSignature (from an accredited VVB) to relay submitAttestation and mint to the plant operator. Returns Hashscan links.",
-        inputSchema: attestRequestSchema,
-        annotations: {
-          readOnlyHint: false,
-          destructiveHint: false,
-          idempotentHint: false,
-          openWorldHint: true,
-        },
+          "Verify readings against the registered design and the module ledger, check the project's methodology module computes the same ER, dry-run recordMonitoring, then publish readings and report to HCS and record the period. Needs the plant's meter signature (or its server-held key) and a server key that is the plant's operator or reporter. Issues nothing: returns the record's sequence and chain hash for a VVB to verify.",
+        inputSchema: recordRequestSchema,
+        annotations: write,
       },
-      async request => run(() => attestReadings(request)),
+      async request => run(() => recordReadings(request)),
+    );
+
+    server.registerTool(
+      "prepare_verification",
+      {
+        title: "Publish a VVB verification report",
+        description:
+          "For a VVB: reproduce the plant's pending records from HCS, publish the verification report (decision, deduction, findings) on HCS and return the EIP-712 VerificationStatement to sign with the VVB's own secp256k1 key. An approval is refused unless every record reproduces. Nothing is issued until submit_verification.",
+        inputSchema: prepareVerificationSchema,
+        annotations: write,
+      },
+      async request => run(() => prepareVerification(request)),
+    );
+
+    server.registerTool(
+      "submit_verification",
+      {
+        title: "Relay a signed verification",
+        description:
+          "Relay a VVB's signed VerificationStatement to DmrvRegistry.verifyPeriod. Checks the signer holds VERIFIER_ROLE and is not a party, and that the statement matches the report published at its HCS anchor. An approval issues credits into the operator's custody; a rejection closes the run unissued.",
+        inputSchema: submitVerificationSchema,
+        annotations: write,
+      },
+      async request => run(() => submitVerification(request)),
     );
   }
 

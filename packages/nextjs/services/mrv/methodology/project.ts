@@ -88,6 +88,12 @@ export type GridEmissionFactorSource =
       reference: string;
       validFrom?: string;
       validTo?: string;
+      /**
+       * When the ex-ante combined margin was fixed: the project design's submission for validation (TOOL07 ex-ante
+       * vintage, kept for the crediting period). A standardized baseline must be in force on this date. Defaults to
+       * the crediting start.
+       */
+      fixedAt?: string;
     };
 
 export type Hydraulics = {
@@ -163,6 +169,12 @@ export type ProjectDesign = {
   authorizedCapacityKw?: number;
   /** VT0008 evidence; required under VMR0017. */
   additionality?: AdditionalityEvidence;
+  /**
+   * VCS Standard safeguards, which a VVB checks at validation: where the environmental and social impact assessment,
+   * the local stakeholder consultation and the no-net-harm assessment are recorded (document references or hashes).
+   * Required under VMR0017. The engine checks that each is named; judging their content is the VVB's job.
+   */
+  safeguards?: { environmentalImpactAssessment: string; stakeholderConsultation: string; noNetHarm: string };
   projectType: ProjectType;
   /** Cap_PJ and Cap_BL: installed capacity after and before the project (kW; 0 before a greenfield plant). */
   capacityKw: number;
@@ -227,12 +239,16 @@ export type ProjectDesign = {
   hydraulics: Hydraulics;
 };
 
-/** Integers stored by `HydroCreditRegistry.registerPlant`; the contract derives PE_HP and LE rates itself. */
+/** The design fields `HydroVmr0017Module` stores in a project's params; it derives PE_HP and LE rates itself. */
 export type RegisteredDesign = {
   projectType: number;
   /** `METHODOLOGY_CODE`: 0 = CDM (ACM0002 / AMS-I.D), 1 = VMR0017 v1.0. */
   methodology: number;
+  /** ISO 3166-1 alpha-2 host country; the module checks the UN LDC list for VMR0017 hydro. */
+  hostCountry: string;
   capacityKw: number;
+  /** Capacity in the activity approval (kW), 0 when none; VMR0017 Table 1 uses the higher of this and capacityKw. */
+  authorizedCapacityKw: number;
   baselineCapacityKw: number;
   reservoirAreaM2: number;
   baselineReservoirAreaM2: number;
@@ -242,8 +258,8 @@ export type RegisteredDesign = {
   baselineEndsAt: number;
   creditingStart: number;
   creditingEnd: number;
-  /** DmrvRegistry only (unix seconds); absent on the legacy registry. */
-  registrationRequestedAt?: number;
+  /** When the registration was requested (unix seconds); VCS v5 keys the crediting-period length off it. */
+  registrationRequestedAt: number;
 };
 
 export type PowerDensity = {
@@ -448,7 +464,7 @@ function gridFactor(
   failures: string[],
 ): ProjectAssessment["grid"] {
   if (design.grid.source === "published") {
-    const { reference, validFrom, validTo, omTPerMwh, bmTPerMwh } = design.grid;
+    const { reference, validFrom, validTo, omTPerMwh, bmTPerMwh, fixedAt } = design.grid;
     let { efTPerMwh } = design.grid;
     const period = design.crediting.period;
     const margins = omTPerMwh !== undefined && bmTPerMwh !== undefined;
@@ -483,8 +499,16 @@ function gridFactor(
     } else if (validFrom && validTo) {
       const from = toUnix(validFrom);
       const to = toUnix(validTo);
-      if (creditingStart < from || creditingStart >= to) {
-        failures.push("The crediting start is outside the published grid factor's validity window");
+      const fixed = fixedAt ? toUnix(fixedAt) : creditingStart;
+      if (fixed < from || fixed >= to) {
+        failures.push(
+          fixedAt
+            ? "The combined margin was fixed outside the published grid factor's validity window"
+            : "The crediting start is outside the published grid factor's validity window",
+        );
+      }
+      if (fixedAt && fixed > creditingStart) {
+        failures.push("An ex-ante combined margin is fixed at validation, before the crediting period starts");
       }
     }
     return {
@@ -575,7 +599,7 @@ function baselineOf(design: ProjectDesign, failures: string[]): ProjectAssessmen
 export function vcsScopeOf(
   design: Pick<ProjectDesign, "capacityKw" | "authorizedCapacityKw" | "hostCountry">,
   methodologyId: MethodologyId,
-  creditingStart: number,
+  registrationRequestedAt: number,
 ): { inScope: boolean; basis: string } {
   if (methodologyId !== "VMR0017") {
     return {
@@ -588,16 +612,16 @@ export function vcsScopeOf(
   if (capacityKw > VMR0017_MAX_HYDRO_KW) {
     return { inScope: false, basis: "Not VCS-eligible: large-scale grid hydro is excluded." };
   }
-  if (!design.hostCountry || !isLeastDevelopedCountry(design.hostCountry, creditingStart)) {
+  if (!design.hostCountry || !isLeastDevelopedCountry(design.hostCountry, registrationRequestedAt)) {
     return {
       inScope: false,
       basis:
-        "Not VCS-eligible: the host must be a UN Least Developed Country at the crediting start. The contract does not store the country. It is inside the design document whose hash is registered.",
+        "Not VCS-eligible: the host must be a UN Least Developed Country at the registration request. HydroVmr0017Module v2 stores the country and refuses a VMR0017 hydro project outside the UN LDC list.",
     };
   }
   return {
     inScope: true,
-    basis: `VCS scope: ${design.hostCountry}, ${capacityKw / 1_000} MW or less, under VMR0017. The host country is in the design hash, not its own contract field.`,
+    basis: `VCS scope: ${design.hostCountry}, ${capacityKw / 1_000} MW or less, under VMR0017. The module stores the country and checks the UN LDC list on-chain.`,
   };
 }
 
@@ -683,9 +707,18 @@ export function assessProject(design: ProjectDesign): ProjectAssessment {
     }
     if (!design.hostCountry) {
       failures.push("VMR0017 Table 1: the host country is required (hydroelectric: LDC countries only)");
-    } else if (!isLeastDevelopedCountry(design.hostCountry, creditingStart)) {
+    } else if (!isLeastDevelopedCountry(design.hostCountry, requestAt)) {
       failures.push(
-        `VMR0017 Table 1: hydroelectric projects are eligible in LDC countries only; ${design.hostCountry} is not an LDC at the crediting start`,
+        `VMR0017 Table 1: hydroelectric projects are eligible in LDC countries only; ${design.hostCountry} is not an LDC at the registration request (HydroVmr0017Module checks the same date)`,
+      );
+    }
+  }
+
+  if (vmr0017) {
+    const s = design.safeguards;
+    if (!s?.environmentalImpactAssessment.trim() || !s.stakeholderConsultation.trim() || !s.noNetHarm.trim()) {
+      failures.push(
+        "VCS Standard safeguards: name the environmental and social impact assessment, the local stakeholder consultation and the no-net-harm assessment",
       );
     }
   }
@@ -735,12 +768,14 @@ export function assessProject(design: ProjectDesign): ProjectAssessment {
     },
     leakage: { basis: leakageBasis, embodiedGPerMwh: embodiedEfGPerMwh(code) },
     additionality,
-    vcs: vcsScopeOf(design, methodologyId, creditingStart),
+    vcs: vcsScopeOf(design, methodologyId, requestAt),
     crediting: { start: creditingStart, end: creditingEnd, years, period },
     registration: {
       projectType: PROJECT_TYPE_CODE[design.projectType],
       methodology: code,
+      hostCountry: design.hostCountry ?? "",
       ...integers,
+      authorizedCapacityKw: design.authorizedCapacityKw ?? 0,
       efGridGPerMwh: grid.efGPerMwh,
       fuelCoefGPerTonne: fuel?.coefGPerTonne ?? 0,
       baselineWh: baseline.baselineWh,

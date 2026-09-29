@@ -1,16 +1,34 @@
-import { approvalDigest, approvalTypedDataJson, recoverApprover, signApproval } from "./approval";
+import {
+  DECISION_REJECTED,
+  VALIDATION_APPROVAL_TYPES,
+  type VerificationInput,
+  nextRecordsHash,
+  recoverVerifier,
+  signVerification,
+  verificationDigest,
+  verificationTypedDataJson,
+} from "./approval";
 import fixture from "./fixtures/eip712.json";
 import {
   type MeterDomain,
   type MeterStatement,
   checkProvenance,
+  dmrvDomain,
   meterStatementDigest,
   meterStatementOf,
   recoverDigest,
   signMeterStatement,
 } from "./provenance";
 import { generateScenario } from "./scenarios";
-import { type Address, type Hex, decodeAbiParameters, hexToString, verifyTypedData } from "viem";
+import {
+  type Address,
+  type Hex,
+  decodeAbiParameters,
+  hashTypedData,
+  hexToString,
+  verifyTypedData,
+  zeroHash,
+} from "viem";
 import { generatePrivateKey, privateKeyToAccount } from "viem/accounts";
 import { describe, expect, it } from "vitest";
 
@@ -21,11 +39,8 @@ const decodeEnergy = (bytes: string) => {
 };
 
 const s = fixture.submission;
-const domain: MeterDomain = {
-  chainId: fixture.domain.chainId,
-  registry: fixture.domain.verifyingContract as Address,
-  sequence: s.sequence,
-};
+const registry = { chainId: fixture.domain.chainId, registry: fixture.domain.verifyingContract as Address };
+const domain: MeterDomain = { ...registry, sequence: s.sequence };
 const plantId = hexToString(s.projectId as Hex, { size: 32 }).replace(/\0+$/, "");
 const metered = decodeEnergy(s.measurement.metered);
 const statement: MeterStatement = {
@@ -38,68 +53,87 @@ const statement: MeterStatement = {
   intervals: s.intervals,
   intervalSeconds: s.intervalSeconds,
 };
-const approval = {
-  domain,
+const v = fixture.verification;
+const verification: VerificationInput = {
   plantId,
-  statement,
-  verified: decodeEnergy(s.measurement.verified),
-  reportHash: s.reportHash as Hex,
-  hcsTopicNum: BigInt(s.hcsTopicNum),
-  hcsSequence: BigInt(s.hcsSequence),
-  evidenceHash: s.evidenceHash as Hex,
+  firstRecord: v.firstRecord,
+  lastRecord: v.lastRecord,
+  recordsHash: v.recordsHash as Hex,
+  deductionG: BigInt(v.deductionG),
+  reportHash: v.reportHash as Hex,
+  hcsTopicNum: BigInt(v.hcsTopicNum),
+  hcsSequence: BigInt(v.hcsSequence),
+  evidenceHash: v.evidenceHash as Hex,
+  decision: v.decision,
 };
 
-describe("EIP-712 parity with DmrvRegistry (fixture exported by the Hardhat suite)", () => {
+describe("EIP-712 parity with DmrvRegistry v2 (fixture exported by the Hardhat suite)", () => {
+  it("computes the contract's ValidationApproval digest and recovers the VVB", () => {
+    const { signature, digest, ...message } = fixture.validation;
+    const computed = hashTypedData({
+      domain: dmrvDomain(registry),
+      types: VALIDATION_APPROVAL_TYPES,
+      primaryType: "ValidationApproval",
+      message: message as never,
+    });
+    expect(computed).toBe(digest);
+    expect(recoverDigest(computed, signature as Hex)).toBe(fixture.verifierAddress);
+  });
+
   it("computes the contract's meterStatementDigest and recovers the meter", () => {
     const digest = meterStatementDigest(domain, plantId, statement);
     expect(digest).toBe(fixture.meterStatementDigest);
     expect(recoverDigest(digest, s.meterSignature as Hex)).toBe(fixture.meterAddress);
   });
 
-  it("computes the contract's approvalDigest and recovers the VVB", () => {
-    expect(approvalDigest(approval)).toBe(fixture.approvalDigest);
-    expect(recoverApprover(approval, s.verifierSignature as Hex)).toBe(fixture.verifierAddress);
+  it("recomputes the record hash chain exactly as recordMonitoring does", () => {
+    const head = nextRecordsHash(zeroHash, registry, {
+      plantId,
+      sequence: s.sequence,
+      statement,
+      verified: s.measurement.verified as Hex,
+      reportHash: s.reportHash as Hex,
+      hcsTopicNum: BigInt(s.hcsTopicNum),
+      hcsSequence: BigInt(s.hcsSequence),
+      reductionG: BigInt(fixture.reductionG),
+    });
+    expect(head).toBe(fixture.recordsHash);
+    expect(decodeEnergy(s.measurement.verified).netWh).toBeLessThan(metered.netWh);
   });
 
-  it("changes the approval digest when a verified figure, the report or the evidence changes", () => {
-    const base = approvalDigest(approval);
-    expect(
-      approvalDigest({ ...approval, verified: { ...approval.verified, netWh: approval.verified.netWh + 1 } }),
-    ).not.toBe(base);
-    expect(approvalDigest({ ...approval, reportHash: `0x${"11".repeat(32)}` })).not.toBe(base);
-    expect(approvalDigest({ ...approval, evidenceHash: `0x${"22".repeat(32)}` })).not.toBe(base);
-    expect(approvalDigest({ ...approval, hcsSequence: approval.hcsSequence + 1n })).not.toBe(base);
-    expect(approvalDigest(approval, 2)).not.toBe(base);
+  it("computes the contract's VerificationStatement digest and recovers the VVB", () => {
+    expect(recoverVerifier(registry, verification, v.signature as Hex)).toBe(fixture.verifierAddress);
+  });
+
+  it("changes the verification digest when the run, chain head, deduction, report, anchor or decision changes", () => {
+    const base = verificationDigest(registry, verification);
+    const variants: Partial<VerificationInput>[] = [
+      { lastRecord: 1 },
+      { recordsHash: `0x${"11".repeat(32)}` },
+      { deductionG: 1n },
+      { reportHash: `0x${"22".repeat(32)}` },
+      { hcsSequence: verification.hcsSequence + 1n },
+      { evidenceHash: zeroHash },
+      { decision: DECISION_REJECTED },
+    ];
+    for (const change of variants) expect(verificationDigest(registry, { ...verification, ...change })).not.toBe(base);
+    expect(verificationDigest({ ...registry, chainId: 296 }, verification)).not.toBe(base);
   });
 
   it("produces signatures that standard EIP-712 wallets verify", async () => {
     const key = generatePrivateKey();
     const vvb = privateKeyToAccount(key);
-    const signature = signApproval(key, approval);
-    const typed = approvalTypedDataJson(approval);
-    const walletSignature = await vvb.signTypedData({
-      ...typed,
-      domain: { ...typed.domain, verifyingContract: typed.domain.verifyingContract as Address },
-      message: {
-        ...typed.message,
-        hcsTopicNum: BigInt(typed.message.hcsTopicNum),
-        hcsSequence: BigInt(typed.message.hcsSequence),
-      },
-    });
+    const signature = signVerification(key, registry, verification);
+    const typed = verificationTypedDataJson(registry, verification);
+    const message = {
+      ...typed.message,
+      deductionG: BigInt(typed.message.deductionG),
+      hcsTopicNum: BigInt(typed.message.hcsTopicNum),
+      hcsSequence: BigInt(typed.message.hcsSequence),
+    };
+    const walletSignature = await vvb.signTypedData({ ...typed, message });
     expect(signature).toBe(walletSignature);
-    expect(
-      await verifyTypedData({
-        address: vvb.address,
-        ...typed,
-        domain: { ...typed.domain, verifyingContract: typed.domain.verifyingContract as Address },
-        message: {
-          ...typed.message,
-          hcsTopicNum: BigInt(typed.message.hcsTopicNum),
-          hcsSequence: BigInt(typed.message.hcsSequence),
-        },
-        signature,
-      }),
-    ).toBe(true);
+    expect(await verifyTypedData({ address: vvb.address, ...typed, message, signature })).toBe(true);
   });
 });
 
