@@ -53,6 +53,43 @@ describe("hydro monitoring report (VMR0017 §9 / ACM0002 §5.10, §6.1)", () => 
     expect(m.notApplied.map(n => n.symbol)).toEqual(["PE_GP,y", "PE_BESS,y", "PE_PSP,y", "PE_FSS,y"]);
   });
 
+  it("prints all six terms on the stage line, so a zero PE never hides LE (HYDRO-DEMO-01, VMR0017)", () => {
+    const { report } = prepareAnchors(generateScenario("healthy", { end: END, domain: PREVIEW_METER_DOMAIN }));
+    const e = report.emissions!;
+    const t = (g: number) => (g / 1e6).toFixed(3);
+    const summary = report.stages.find(s => s.stage === "quantification")!.summary;
+    // Run-of-river: PE_HP = PE_FF = PE = 0, and LE is VMR0017's embodied emissions (21 g CO2e/kWh), not zero.
+    expect(e.leakageG).toBe(Math.ceil((report.monitored.netWh * 21_000) / 1e6));
+    expect(report.monitored.leakageG).toBe(0);
+    for (const term of [
+      `BE ${t(e.baselineG)}`,
+      "PE 0.000",
+      "PE_HP 0.000",
+      "PE_FF 0.000",
+      `LE ${t(e.leakageG)}`,
+      `ER ${t(e.reductionG)}`,
+    ]) {
+      expect(summary).toContain(term);
+    }
+    expect(e.leakageG).toBeGreaterThan(0);
+    const peHp = report.equations.find(step => step.symbol === "PE_HP")!.expression;
+    expect(peHp).toContain("0 because A_PJ = A_BL");
+    expect(peHp).not.toContain("PD > 10");
+  });
+
+  it("shows reservoir emissions at 100 kg/MWh in the reservoir scenario (HYDRO-DEMO-02, VMR0017)", () => {
+    const { report } = prepareAnchors(generateScenario("reservoir", { end: END, domain: PREVIEW_METER_DOMAIN }));
+    expect(report.plantId).toBe("HYDRO-DEMO-02");
+    expect(report.decision).toBe("APPROVED");
+    const e = report.emissions!;
+    expect(e.reservoirG).toBe(Math.ceil((report.monitored.grossWh * 100_000) / 1e6));
+    expect(e.reservoirG).toBeGreaterThan(0);
+    expect(report.stages.find(s => s.stage === "quantification")!.summary).toContain(
+      `PE_HP ${(e.reservoirG / 1e6).toFixed(3)}`,
+    );
+    expect(report.equations.find(step => step.symbol === "PE_HP")!.expression).toContain("100 kg/MWh");
+  });
+
   it("cites a clause on every finding, including rejections", () => {
     const { report } = prepareAnchors(generateScenario("tampered", { end: END, domain: PREVIEW_METER_DOMAIN }));
     expect(report.decision).toBe("REJECTED");
@@ -85,10 +122,45 @@ describe("renewable engine (solar, wind, ocean)", () => {
     expect(report.emissions).toBeNull();
   });
 
-  it("refuses AMS-I.D above the 15 MW small-scale limit", () => {
+  it("prints BE, PE, LE and ER on the stage line with the embodied factor (SOLAR-DEMO-01)", () => {
+    const report = verifyRenewable(example());
+    const e = report.emissions!;
+    const t = (g: number) => (g / 1e6).toFixed(3);
+    const summary = report.stages.find(s => s.stage === "quantification")!.summary;
+    expect(e.leakageG).toBeGreaterThan(0);
+    for (const term of [`BE ${t(e.baselineG)}`, "PE 0.000", `LE ${t(e.leakageG)}`, `ER ${t(e.reductionG)}`]) {
+      expect(summary).toContain(term);
+    }
+    expect(summary).toContain("EF_embodied = 43 g CO2e/kWh");
+  });
+
+  it("accepts floating solar, wave and tidal in a high-income country (VMR0017 Table 1)", () => {
+    for (const technology of ["floating-solar", "wave", "tidal"] as const) {
+      const input: RenewableInput = example();
+      input.plant = { ...input.plant, technology, incomeGroup: "high" };
+      expect(verifyRenewable(input).findings.filter(f => f.stage === "applicability")).toEqual([]);
+    }
+  });
+
+  it("labels the income group as declared, not checked", () => {
+    const report = verifyRenewable(example());
+    expect(row(report.monitoring, "Income group")?.source).toContain("Declared by the registrant");
+    expect(row(report.monitoring, "EF_grid,CM,y")?.source).toContain("does not recompute");
+  });
+
+  it("refuses a battery until PE_BESS and PE_FSS are implemented", () => {
     const input = example();
-    input.plant = { ...input.plant, methodology: "AMS-I.D", capacityKw: 20_000 };
-    expect(verifyRenewable(input).findings.find(f => f.severity === "reject")?.clause).toContain("AMS-I.D");
+    input.plant = { ...input.plant, battery: true };
+    const report = verifyRenewable(input);
+    expect(report.decision).toBe("REJECTED");
+    expect(report.findings[0].clause).toContain("PE_BESS");
+    expect(report.emissions).toBeNull();
+  });
+
+  it("does not offer AMS-I.D: the module has no 15 MW cap to match", () => {
+    const input = { ...example(), plant: { ...example().plant, methodology: "AMS-I.D" } };
+    expect(() => verifyWithEngine("renewable-vmr0017", input)).toThrow();
+    expect(renewableEngine.documents).not.toContain("AMS-I.D v18.0");
   });
 
   it("excludes generation the measured irradiance cannot produce, and credits it as zero", () => {

@@ -4,8 +4,8 @@ import { G_PER_UNIT, type MonitoredQuantities, type PlantLedger, ceilDiv, floorD
 import { type Hex, encodeAbiParameters } from "viem";
 
 /**
- * TypeScript twin of `RenewableVmr0017Module.sol`: greenfield grid-connected solar, wind and ocean power under CDM
- * ACM0002 / AMS-I.D or Verra VMR0017 v1.0. Pure integer arithmetic; it must equal the module to the gram, which
+ * TypeScript twin of `RenewableVmr0017Module.sol` (version 2): greenfield grid-connected solar, wind and ocean power
+ * under CDM ACM0002 or Verra VMR0017 v1.0. Pure integer arithmetic; it must equal the module to the gram, which
  * `packages/hardhat/test/fixtures/renewableVectors.ts` pins for both.
  *
  *   BE_y = EG_PJ,y × EF_grid,CM,y                 ACM0002 eq. 1-2, rounded down (EG_PJ = EG_facility, greenfield)
@@ -14,9 +14,10 @@ import { type Hex, encodeAbiParameters } from "viem";
  *   ER_y = BE_y − PE_y − LE_y                     VMR0017 §8.4 eq. 17
  *
  * EF_embodied (VMR0017 §9.1, NREL 2021): solar PV 43, wind 13, ocean energy 8 g CO2e/kWh.
- * Applicability (VMR0017 §4 Table 1, superseding the VCS default eligibility): wind and solar at any capacity in
- * low-, lower-middle- and upper-middle-income countries; wave and tidal globally. Geothermal, BESS, retrofits and
- * capacity additions are not covered by this module.
+ * Applicability (VMR0017 §4 Table 1, superseding the VCS default eligibility): terrestrial solar PV and wind at any
+ * capacity in low-, lower-middle- and upper-middle-income countries; floating solar, wave and tidal globally. The
+ * income group is declared by the registrant, not looked up. Geothermal, battery storage (refused), retrofits and
+ * capacity additions are not covered by this module. AMS-I.D is not offered: the module has no 15 MW cap.
  */
 
 export const RENEWABLE_METHODOLOGY_ID = "renewable/acm0002+vmr0017";
@@ -32,6 +33,13 @@ export const TECHNOLOGY_CODE = {
 
 export const INCOME_GROUP_CODE = { low: 0, "lower-middle": 1, "upper-middle": 2, high: 3 } as const;
 
+/** VMR0017 Table 1 restricts these by income group; floating solar, wave and tidal apply in any country. */
+const INCOME_RESTRICTED: ReadonlySet<number> = new Set([
+  TECHNOLOGY_CODE["solar-pv"],
+  TECHNOLOGY_CODE["wind-onshore"],
+  TECHNOLOGY_CODE["wind-offshore"],
+]);
+
 const METHODOLOGY = { cdm: 0, vmr0017: 1 } as const;
 const MAX_GRID_EF_G_PER_MWH = 2_000_000;
 const WH_PER_MWH = 1_000_000n;
@@ -39,10 +47,13 @@ const G_PER_TONNE = 1_000_000n;
 const VCS_FIVE_YEAR_FROM = 1_798_761_600;
 
 export type RenewableDesign = {
-  /** 0 = CDM ACM0002 / AMS-I.D, 1 = VMR0017. */
+  /** 0 = CDM ACM0002, 1 = VMR0017. */
   methodology: number;
   technology: number;
+  /** World Bank income group of the host country as declared by the registrant (VMR0017 Table 1, footnote 1). */
   incomeGroup: number;
+  /** A battery energy storage system is part of the project. Refused: PE_BESS and PE_FSS are not implemented. */
+  battery: boolean;
   capacityKw: number;
   efGridGPerMwh: number;
   fuelCoefGPerTonne: number;
@@ -71,12 +82,17 @@ export function renewableDesignErrors(d: RenewableDesign, now: number): string[]
   if (d.efGridGPerMwh <= 0 || d.efGridGPerMwh > MAX_GRID_EF_G_PER_MWH) {
     errors.push(`Grid emission factor ${d.efGridGPerMwh} g/MWh is outside (0, 2 t/MWh]`);
   }
+  if (d.battery) {
+    errors.push("Battery storage is not supported: PE_BESS and PE_FSS (VMR0017 §8.2) are not implemented");
+  }
   if (
     d.methodology === METHODOLOGY.vmr0017 &&
-    d.technology <= TECHNOLOGY_CODE["wind-offshore"] &&
+    INCOME_RESTRICTED.has(d.technology) &&
     d.incomeGroup === INCOME_GROUP_CODE.high
   ) {
-    errors.push("VMR0017 Table 1: wind and solar are applicable in low- and middle-income countries only");
+    errors.push(
+      "VMR0017 Table 1: terrestrial solar PV and wind are applicable in low- and middle-income countries only",
+    );
   }
   if (d.registrationRequestedAt === 0) errors.push("The registration request date is required");
   else if (d.registrationRequestedAt > now) errors.push("The registration request is in the future");
@@ -158,6 +174,7 @@ const PARAMS_TUPLE = [
       { name: "methodology", type: "uint8" },
       { name: "technology", type: "uint8" },
       { name: "incomeGroup", type: "uint8" },
+      { name: "battery", type: "bool" },
       { name: "capacityKw", type: "uint32" },
       { name: "efGridGPerMwh", type: "uint32" },
       { name: "fuelCoefGPerTonne", type: "uint32" },

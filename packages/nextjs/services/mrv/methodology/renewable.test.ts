@@ -21,6 +21,7 @@ function design(overrides: Partial<RenewableDesign> = {}): RenewableDesign {
     methodology: 1,
     technology: TECHNOLOGY_CODE["solar-pv"],
     incomeGroup: INCOME_GROUP_CODE["lower-middle"],
+    battery: false,
     capacityKw: 5_000,
     efGridGPerMwh: 615_447,
     fuelCoefGPerTonne: 3_238_840,
@@ -72,13 +73,25 @@ describe("renewable module twin: rules", () => {
     expect(renewableEmbodiedGPerMwh(0, TECHNOLOGY_CODE["solar-pv"])).toBe(0);
   });
 
-  it("refuses VMR0017 wind and solar in a high-income country, but not tidal or the CDM", () => {
+  it("refuses VMR0017 terrestrial solar and wind in a high-income country, but not floating solar, ocean or the CDM", () => {
     const now = START + DAY;
-    expect(renewableDesignErrors(design({ incomeGroup: INCOME_GROUP_CODE.high }), now)).toContain(
-      "VMR0017 Table 1: wind and solar are applicable in low- and middle-income countries only",
-    );
-    expect(renewableDesignErrors(design({ incomeGroup: 3, technology: TECHNOLOGY_CODE.tidal }), now)).toEqual([]);
+    for (const technology of ["solar-pv", "wind-onshore", "wind-offshore"] as const) {
+      expect(renewableDesignErrors(design({ incomeGroup: 3, technology: TECHNOLOGY_CODE[technology] }), now)).toContain(
+        "VMR0017 Table 1: terrestrial solar PV and wind are applicable in low- and middle-income countries only",
+      );
+    }
+    for (const technology of ["floating-solar", "wave", "tidal"] as const) {
+      expect(renewableDesignErrors(design({ incomeGroup: 3, technology: TECHNOLOGY_CODE[technology] }), now)).toEqual(
+        [],
+      );
+    }
     expect(renewableDesignErrors(design({ incomeGroup: 3, methodology: 0 }), now)).toEqual([]);
+  });
+
+  it("refuses battery storage until PE_BESS and PE_FSS are implemented", () => {
+    expect(renewableDesignErrors(design({ battery: true }), START + DAY)).toContain(
+      "Battery storage is not supported: PE_BESS and PE_FSS (VMR0017 §8.2) are not implemented",
+    );
   });
 
   it("requires a 5-year period for VMR0017 registrations requested from 2027 and a past request date", () => {
@@ -115,6 +128,7 @@ describe("renewable module twin: rules", () => {
             { name: "methodology", type: "uint8" },
             { name: "technology", type: "uint8" },
             { name: "incomeGroup", type: "uint8" },
+            { name: "battery", type: "bool" },
             { name: "capacityKw", type: "uint32" },
             { name: "efGridGPerMwh", type: "uint32" },
             { name: "fuelCoefGPerTonne", type: "uint32" },
@@ -129,6 +143,7 @@ describe("renewable module twin: rules", () => {
       ],
       encodeRenewableParams(d),
     );
+    expect(decoded.battery).toBe(false);
     expect(decoded.efGridGPerMwh).toBe(615_447);
     expect(decoded.creditingEnd).toBe(BigInt(d.creditingEnd));
     expect(decoded.designHash).toBe(d.designHash);

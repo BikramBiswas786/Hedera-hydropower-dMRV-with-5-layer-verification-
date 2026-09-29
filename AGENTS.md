@@ -55,7 +55,7 @@ yarn market:keep-listing [--execute]  # keep a listing open on the testnet marke
 | --- | --- |
 | Core registry (attestation, custody, retirement, all HTS calls) | `packages/hardhat/contracts/DmrvRegistry.sol` |
 | Methodology module interface / hydro module (on-chain quantification) | `packages/hardhat/contracts/interfaces/IMethodology.sol`, `contracts/modules/HydroVmr0017Module.sol` |
-| Second module: greenfield solar, wind, ocean (VMR0017 / ACM0002 / AMS-I.D) and its TS twin | `contracts/modules/RenewableVmr0017Module.sol`, `services/mrv/methodology/renewable.ts`, vectors `test/fixtures/renewableVectors.ts`, deploy `deploy/04_*.ts` |
+| Second module: greenfield solar, wind, ocean (VMR0017 / CDM ACM0002; not on testnet yet) and its TS twin | `contracts/modules/RenewableVmr0017Module.sol`, `services/mrv/methodology/renewable.ts`, vectors `test/fixtures/renewableVectors.ts`, deploy `deploy/04_*.ts` |
 | USD settlement shared by both sale contracts (oracle price, SaucerSwap pool guard, swap to seller) | `packages/hardhat/contracts/settlement/UsdSettlement.sol`, `contracts/interfaces/ISaucerSwap.sol` |
 | Market for registry credits (listings in registry custody, `buyAndRetire`) | `packages/hardhat/contracts/CreditMarket.sol` |
 | Checkout for any HTS fungible token (escrow, USD price per whole token) | `packages/hardhat/contracts/UsdCheckout.sol`, deploy `deploy/02_*.ts`, testnet demo `scripts/checkoutTestnetDemo.ts` |
@@ -96,6 +96,13 @@ yarn market:keep-listing [--execute]  # keep a listing open on the testnet marke
   (4,791,542 g and 73,386,435 g) must keep reproducing through the module (`test/fixtures/liveAttestations.ts`).
 - **The registry is methodology-agnostic.** Rules live in an approved `IMethodology` module (stateless, no HTS, no
   storage writes); a project keeps its module for life. HTS calls happen only in `DmrvRegistry`.
+- **No methodology without its contract and vectors.** An engine in `services/mrv/engines/` ships in the same change
+  as its `IMethodology` module and a shared vector fixture that both the Hardhat and vitest suites assert. Hydro and
+  renewable meet that bar; nothing else is listed, named in docs, or offered as a report-only engine until it does.
+  A methodology the contract cannot recompute would be a claim the chain does not check.
+- **Zero terms print as numbers.** The quantification stage line shows BE, PE, PE_HP, PE_FF, LE and ER with three
+  decimals, and every zero PE term states why (`A_PJ = A_BL`, PD above 10 W/m², no fuel). `monitored.leakageG` is
+  measured leakage and stays 0; LE is computed (VMR0017 §8.3). `engines.test.ts` fails if LE drops off the line.
 - **Methodology is registered per plant.** The hydro params' `methodology` (0 = CDM, 1 = VMR0017) fixes EF_Res (90 or
   100 kg/MWh), EF_embodied (0 or 21 g/kWh) and VMR0017's 15 MW hydro limit in the contract; `methodology/project.ts`
   holds the same constants and the LDC and VT0008 checks. Change a factor in both, and add a vector.

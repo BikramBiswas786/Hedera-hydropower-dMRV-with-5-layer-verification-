@@ -279,7 +279,7 @@ Scenarios on the run-of-river demo plant (500 kW, day ending at midnight UTC):
 
 | Scenario | What it simulates | Outcome |
 | --- | --- | --- |
-| `healthy` | 24 h of normal operation, main and check meters agree | APPROVED · BE 4.973 t, LE 0.182 t, ER 4.791 t CO₂e |
+| `healthy` | 24 h of normal operation, main and check meters agree | APPROVED · BE 4.973 − PE 0.000 (PE_HP 0.000 + PE_FF 0.000) − LE 0.182 = ER 4.791 t CO₂e |
 | `diesel-backup` | 3 h grid outage, diesel generator for auxiliaries | APPROVED · PE_FF 0.240 t, ER 3.933 t |
 | `calibration-overdue` | main meter's calibration expired | APPROVED · export −0.2% (MPE), ER 4.782 t |
 | `meter-drift` | main meter reads 1.5% above the check meter for 6 h | FLAGGED · lower reading used |
@@ -290,9 +290,22 @@ Scenarios on the run-of-river demo plant (500 kW, day ending at midnight UTC):
 | `replay` | four hours re-submitted with duplicate timestamps | REJECTED |
 | `tampered` | main and check meter raised 1% in six hours *after* the meter signed: meters agree, physics is plausible | REJECTED (signature) |
 
-The storage demo plant (12 MW, new 1.8 km² reservoir, PD 6.67 W/m², second crediting period) shows reservoir
-emissions: under VMR0017 a healthy day is about 208 MWh net, BE 109.2 t, PE_HP 21.1 t (EF_Res 100 kg/MWh), LE 4.4 t
-(embodied emissions), ER 83.7 t.
+On the run-of-river plant PE is zero for a stated reason, not a missing one: PE_HP = 0 because A_PJ = A_BL (no new
+or enlarged reservoir, ACM0002 eq. 10), and PE_FF = 0 because no fuel was burned (TOOL03). LE is not zero: VMR0017
+§8.3 counts embodied emissions at EF_embodied = 21 g CO₂e/kWh of EG_facility (§9.1). The engine keeps
+`monitored.leakageG` at 0 because nothing is *measured* as leakage; LE is computed, and the quantification stage line
+prints all six terms so a zero PE never reads as "no emissions".
+
+The `reservoir` scenario runs the storage demo plant HYDRO-DEMO-02 (12 MW, new 1.8 km² reservoir, PD 6.67 W/m²,
+VMR0017, second crediting period), where 4 < PD ≤ 10 W/m² fires ACM0002 eq. (9) with VMR0017's EF_Res of 100 kg/MWh:
+
+| Scenario | Outcome (day ending at midnight UTC) | Clause that fired |
+| --- | --- | --- |
+| `reservoir` | APPROVED · BE 109.165 − PE 21.134 (PE_HP 21.134 + PE_FF 0.000) − LE 4.372 = ER 83.660 t CO₂e, from 208.170 MWh | PE_HP = EF_Res × TEG, ACM0002 eq. (9), EF_Res from VMR0017 §9.1; LE from VMR0017 §8.3 |
+
+The scenario is a quantification example, not an eligibility pass. The plant profile stores no host country, so the
+engine cannot check VMR0017's least-developed-country condition for hydro. The scenario adds no registration and
+mints nothing: it runs the design already in `utils/demoPlants.ts` through the engine only.
 
 ## One engine per methodology
 
@@ -305,12 +318,20 @@ the `/verify` page pick it up from the registry.
 | Engine | Methodology | Scope | On-chain module |
 | --- | --- | --- | --- |
 | `hydro-vmr0017` | VMR0017 v1.0 with ACM0002 v22.0, or CDM ACM0002 / AMS-I.D | greenfield, retrofit and capacity-addition hydro; VMR0017 only ≤ 15 MW in LDCs | `HydroVmr0017Module` |
-| `renewable-vmr0017` | the same documents | greenfield solar PV (terrestrial, floating), onshore and offshore wind, wave and tidal | `RenewableVmr0017Module` |
+| `renewable-vmr0017` | VMR0017 v1.0 with ACM0002 v22.0, or CDM ACM0002 (no AMS-I.D) | greenfield solar PV (terrestrial, floating), onshore and offshore wind, wave and tidal; no battery | `RenewableVmr0017Module` (not on testnet yet) |
 
 The solar, wind and ocean engine applies the same meter QA/QC (continuity, check meter, delayed calibration,
-completeness), VMR0017 Table 1's income-group rule, AMS-I.D's 15 MW limit, and resource cross-checks instead of the
-hydraulic one: PV output against plane-of-array irradiance, wind output outside the cut-in/cut-out speeds. Its
-quantities are the integers `RenewableVmr0017Module` recomputes.
+completeness), VMR0017 Table 1's income-group rule (terrestrial solar and wind only in low- and middle-income
+countries; floating solar, wave and tidal anywhere), and resource cross-checks instead of the hydraulic one: PV output
+against plane-of-array irradiance, wind output outside the cut-in/cut-out speeds. Its quantities are the integers
+`RenewableVmr0017Module` recomputes. On the example `SOLAR-DEMO-01` (5 MW, lower-middle income, EF_grid 0.600 t/MWh
+as registered) the stage line reads `BE 17.472 − PE 0.000 (PE_FF 0.000) − LE 1.252 = ER 16.220 t CO2e, from 29.120 MWh
+EG_PJ; EF_embodied = 43 g CO2e/kWh`.
+
+What it does not check, and says so in its monitoring report: the income group is declared by the registrant, not
+looked up; EF_grid,CM is the registered ex-ante value, not a VT0011 recomputation; a battery is refused rather than
+given PE_BESS = 0; AMS-I.D is not offered because the module has no 15 MW cap; geothermal is left out until PE_GP
+exists.
 
 `GET /api/mrv/engines` lists them, `GET /api/mrv/engines/{id}` returns an example period, and
 `POST /api/mrv/engines/{id}/verify` runs one (MCP: `list_methodology_engines`, `get_methodology_engine`,

@@ -47,8 +47,8 @@ What the tests pin down:
   23:59:59 UTC is still accepted), CDM renewals 5→5 and 7→7 only, VMR0017 renewals from 2027 5 years only (V5#101), metering rules, and parity: all 13 frozen outputs of the
   legacy `HydroCreditRegistry.quantify` reproduce, and a full greenfield flow on the new registry reproduces the legacy
   registry's 4 791 542 g and 73 386 435 g.
-- **RenewableVmr0017Module**: VMR0017 Table 1 (wind and solar refused in high-income countries, tidal accepted, CDM
-  unrestricted), the 2027 five-year rule, renewals, VVB-only-lowers metering rules, the four shared vectors in
+- **RenewableVmr0017Module**: VMR0017 Table 1 (terrestrial solar and wind refused in high-income countries; floating
+  solar, wave and tidal accepted; CDM unrestricted), a declared battery refused, the 2027 five-year rule, renewals, VVB-only-lowers metering rules, the four shared vectors in
   `fixtures/renewableVectors.ts` (also asserted by `renewable.test.ts`), and a two-signature solar mint through
   `DmrvRegistry` with no registry change.
 - **CreditMarket**: escrow in registry custody, oracle-priced settlement, refunds, buy-and-retire, and the

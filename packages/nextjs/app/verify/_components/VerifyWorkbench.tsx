@@ -85,6 +85,11 @@ export const VerifyWorkbench = () => {
               ))}
             </select>
           </label>
+          <p className="text-xs m-0 text-base-content/70">
+            HYDRO-DEMO-01 is run-of-river: no reservoir, so PE_HP = 0, and LE is VMR0017&apos;s embodied emissions.
+            HYDRO-DEMO-02 has a new 1.8 km² reservoir (PD 6.67 W/m²), so its report shows reservoir emissions PE_HP =
+            EF_Res × TEG. <strong>diesel-backup</strong> adds fuel emissions PE_FF.
+          </p>
           <div className="flex flex-wrap gap-2" role="radiogroup" aria-label="Sample scenario">
             {SCENARIO_NAMES.map(name => (
               <button
