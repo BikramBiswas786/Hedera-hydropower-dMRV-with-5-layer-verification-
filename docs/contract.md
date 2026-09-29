@@ -115,7 +115,11 @@ VerificationStatement(bytes32 projectId,uint32 firstRecord,uint32 lastRecord,byt
   are something else. The app and `yarn mrv:reproduce` read the message and refuse a mismatch
   (`verification.flow.test.ts`); a reader checks with `reproduce_attestation`.
 - **The calibration must be valid through the period end** (`CalibrationExpired`; the admin records a renewed
-  certificate with `setCalibrationValidUntil`).
+  certificate with `setCalibrationValidUntil`). The call rejects an empty `certificateHash` and emits it on
+  `CalibrationUpdated`, but `Project` stores only `calibrationValidUntil`. `getProject` therefore returns the date,
+  not the document hash: the hash is the latest `CalibrationUpdated` log for that project. Putting the hash in
+  storage would be a new registry. `DmrvRegistry` is already at 24,011 B of the 24,064 B gate, so this deployment
+  does not.
 
 TypeScript mirrors: `services/mrv/provenance.ts` (`meterStatementDigest`) and `services/mrv/approval.ts`
 (`validationTypedData`, `nextRecordsHash`, `verificationDigest`). `services/mrv/fixtures/eip712.json` is written by
