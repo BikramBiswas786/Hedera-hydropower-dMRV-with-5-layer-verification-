@@ -18,10 +18,13 @@ import {
 import { RENEWABLE_VECTORS } from "./fixtures/renewableVectors";
 
 const PARAMS_TYPE =
-  "tuple(uint8 methodology,uint8 technology,uint8 incomeGroup,uint32 capacityKw,uint32 efGridGPerMwh,uint32 fuelCoefGPerTonne,uint64 creditingStart,uint64 creditingEnd,uint64 registrationRequestedAt,uint64 calibrationValidUntil,bytes32 meteringHash,bytes32 designHash)";
+  "tuple(uint8 methodology,uint8 technology,uint8 incomeGroup,bool battery,uint32 capacityKw,uint32 efGridGPerMwh,uint32 fuelCoefGPerTonne,uint64 creditingStart,uint64 creditingEnd,uint64 registrationRequestedAt,uint64 calibrationValidUntil,bytes32 meteringHash,bytes32 designHash)";
 const BREAKDOWN = ["uint32", "int256", "int256", "uint256", "uint256", "uint256", "int256", "uint256", "int256"];
 const SOLAR_PV = 0;
+const FLOATING_SOLAR = 1;
 const WIND_ONSHORE = 2;
+const WIND_OFFSHORE = 3;
+const WAVE = 4;
 const TIDAL = 5;
 const HIGH_INCOME = 3;
 
@@ -29,6 +32,7 @@ type RenewableParams = {
   methodology: number;
   technology: number;
   incomeGroup: number;
+  battery: boolean;
   capacityKw: number;
   efGridGPerMwh: number;
   fuelCoefGPerTonne: number;
@@ -50,6 +54,7 @@ async function renewableParams(overrides: Partial<RenewableParams> = {}, started
     methodology: 1,
     technology: SOLAR_PV,
     incomeGroup: 1,
+    battery: false,
     capacityKw: 5_000,
     efGridGPerMwh: 1_000_000,
     fuelCoefGPerTonne: 3_238_840,
@@ -77,14 +82,14 @@ describe("RenewableVmr0017Module", function () {
     it("publishes its methodology id, version and schema hash", async function () {
       const module = await loadFixture(moduleOnly);
       expect(await module.methodologyId()).to.equal(ethers.id("renewable/acm0002+vmr0017"));
-      expect(await module.version()).to.equal(1);
+      expect(await module.version()).to.equal(2);
       expect(await module.schemaHash()).to.equal(
         ethers.id(
-          "RenewableParams(uint8,uint8,uint8,uint32,uint32,uint32,uint64,uint64,uint64,uint64,bytes32,bytes32)Energy(int64,uint64,uint64,uint64)",
+          "RenewableParams(uint8,uint8,uint8,bool,uint32,uint32,uint32,uint64,uint64,uint64,uint64,bytes32,bytes32)Energy(int64,uint64,uint64,uint64)",
         ),
       );
       expect(await module.describe(encode(await renewableParams()))).to.equal(
-        '{"id":"renewable/acm0002+vmr0017","version":1,"methodology":"VMR0017","technology":0,"capacityKw":5000,"efGridGPerMwh":1000000}',
+        '{"id":"renewable/acm0002+vmr0017","version":2,"methodology":"VMR0017","technology":0,"capacityKw":5000,"efGridGPerMwh":1000000}',
       );
     });
   });
@@ -100,19 +105,29 @@ describe("RenewableVmr0017Module", function () {
       expect(terms.registrationRequestedAt).to.equal(p.registrationRequestedAt);
     });
 
-    it("refuses VMR0017 wind and solar in a high-income country (Table 1)", async function () {
+    it("refuses VMR0017 terrestrial solar and wind in a high-income country (Table 1)", async function () {
       const module = await loadFixture(moduleOnly);
-      for (const technology of [SOLAR_PV, WIND_ONSHORE]) {
+      for (const technology of [SOLAR_PV, WIND_ONSHORE, WIND_OFFSHORE]) {
         await expect(module.validateProject(encode(await renewableParams({ technology, incomeGroup: HIGH_INCOME }))))
           .to.be.revertedWithCustomError(module, "NotApplicableInHighIncomeCountry")
           .withArgs(technology);
       }
     });
 
-    it("accepts tidal in a high-income country and CDM solar anywhere", async function () {
+    it("accepts floating solar, wave and tidal in a high-income country, and CDM solar anywhere", async function () {
       const module = await loadFixture(moduleOnly);
-      await module.validateProject(encode(await renewableParams({ technology: TIDAL, incomeGroup: HIGH_INCOME })));
+      // Table 1 lists floating solar, wave and tidal without a geographic restriction.
+      for (const technology of [FLOATING_SOLAR, WAVE, TIDAL]) {
+        await module.validateProject(encode(await renewableParams({ technology, incomeGroup: HIGH_INCOME })));
+      }
       await module.validateProject(encode(await renewableParams({ methodology: 0, incomeGroup: HIGH_INCOME })));
+    });
+
+    it("refuses a design with battery storage until PE_BESS and PE_FSS are implemented", async function () {
+      const module = await loadFixture(moduleOnly);
+      await expect(
+        module.validateProject(encode(await renewableParams({ battery: true }))),
+      ).to.be.revertedWithCustomError(module, "BatteryStorageNotSupported");
     });
 
     it("refuses unknown codes, zero capacity and an out-of-range grid factor", async function () {

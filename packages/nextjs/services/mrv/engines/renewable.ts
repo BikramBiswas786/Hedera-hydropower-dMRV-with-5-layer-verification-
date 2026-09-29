@@ -26,7 +26,7 @@ import { z } from "zod";
 
 /**
  * Engine for greenfield grid-connected solar, wind and ocean power under Verra VMR0017 v1.0 (revising ACM0002 v22.0)
- * or CDM ACM0002 / AMS-I.D. Its quantities are the integers `RenewableVmr0017Module` recomputes on-chain
+ * or CDM ACM0002. AMS-I.D is not offered: the module has no 15 MW small-scale cap to enforce it. Its quantities are the integers `RenewableVmr0017Module` recomputes on-chain
  * (`methodology/renewable.ts`, pinned by `test/fixtures/renewableVectors.ts`); this file adds the monitoring QA/QC
  * VMR0017 §9.2 asks for and reports the period as the methodology's data and parameters tables.
  *
@@ -68,10 +68,12 @@ export const renewableReadingSchema = z.object({
 export const renewablePlantSchema = z.object({
   plantId: z.string().min(1).max(31),
   name: z.string().max(80),
-  methodology: z.enum(["VMR0017", "ACM0002", "AMS-I.D"]),
+  methodology: z.enum(["VMR0017", "ACM0002"]),
   technology: z.enum(TECHNOLOGIES),
-  /** World Bank income group of the host country (VMR0017 Table 1). */
+  /** World Bank income group of the host country (VMR0017 Table 1), as declared by the registrant: not looked up. */
   incomeGroup: z.enum(INCOME_GROUPS),
+  /** A battery energy storage system is part of the project. Refused until PE_BESS and PE_FSS exist. */
+  battery: z.boolean().default(false),
   capacityKw: z.number().int().positive(),
   /** EF_grid,CM,y fixed ex-ante (VT0011 on the VMR0017 path, TOOL07 on the CDM path), g CO2/MWh. */
   efGridGPerMwh: z.number().int().positive().max(2_000_000),
@@ -117,11 +119,10 @@ export type RenewableReport = EngineReport & {
 
 const CLAUSE = {
   applicability: "VMR0017 §4 Table 1 (technology, capacity, geography)",
-  smallScale: "AMS-I.D v18.0 ¶6: 15 MW small-scale limit",
+  battery: "VMR0017 §8.2 (PE_BESS, ¶49) and §8.2.1 eq. (18) (PE_FSS): not implemented by this module",
   crediting: "VCS v5.0 crediting period (V5#101)",
   meter: "VMR0017 §9.2 EG_facility,y: direct measurement with meters at the grid interface",
   continuity: "VMR0017 §9.2 monitor continuously; ACM0002 v22.0 ¶82: 100% of data monitored",
-  hourly: "AMS-I.D v18.0 §6.1: continuous monitoring, hourly measurement",
   checkMeter: "VMR0017 §9.2 QA/QC: cross-check the meter (check meter, utility invoices)",
   calibration: "VMR0017 §9.2 QA/QC: test and calibrate meters per utility or national requirements",
   plausibility:
@@ -153,6 +154,7 @@ export function designOf(plant: RenewableInput["plant"], metering: RenewableInpu
     methodology: plant.methodology === "VMR0017" ? 1 : 0,
     technology: TECHNOLOGY_CODE[plant.technology],
     incomeGroup: INCOME_GROUP_CODE[plant.incomeGroup],
+    battery: plant.battery,
     capacityKw: plant.capacityKw,
     efGridGPerMwh: plant.efGridGPerMwh,
     fuelCoefGPerTonne: plant.fuelCoefGPerTonne,
@@ -212,9 +214,6 @@ export function verifyRenewable(input: RenewableInput): RenewableReport {
       );
     }
   }
-  if (plant.methodology === "AMS-I.D" && readings.some(r => r.intervalMinutes > 60)) {
-    add("integrity", "review", "AMS-I.D §6.1 requires hourly measurement; some intervals are longer", CLAUSE.hourly);
-  }
   const periodStartMs = Math.min(...spans.map(s => s.startMs));
   const periodEndMs = Math.max(...spans.map(s => s.endMs));
   const periodStart = Math.floor(periodStartMs / 1_000);
@@ -223,10 +222,12 @@ export function verifyRenewable(input: RenewableInput): RenewableReport {
   // ── Applicability ─────────────────────────────────────────────────────────
   const design = designOf(plant, metering);
   for (const error of renewableDesignErrors(design, periodEnd)) {
-    add("applicability", "reject", error, /VCS|crediting/i.test(error) ? CLAUSE.crediting : CLAUSE.applicability);
-  }
-  if (plant.methodology === "AMS-I.D" && plant.capacityKw > 15_000) {
-    add("applicability", "reject", `AMS-I.D is small-scale: ${plant.capacityKw} kW exceeds 15 MW`, CLAUSE.smallScale);
+    const clause = /battery/i.test(error)
+      ? CLAUSE.battery
+      : /VCS|crediting/i.test(error)
+        ? CLAUSE.crediting
+        : CLAUSE.applicability;
+    add("applicability", "reject", error, clause);
   }
 
   // ── Per interval: QA/QC adjustments and plausibility ─────────────────────
@@ -367,12 +368,7 @@ export function verifyRenewable(input: RenewableInput): RenewableReport {
   }
 
   const { decision, reasoning } = decide(findings, `${(completenessBps / 100).toFixed(1)}%`);
-  const methodology =
-    plant.methodology === "VMR0017"
-      ? "VMR0017 v1.0 with ACM0002 v22.0"
-      : plant.methodology === "AMS-I.D"
-        ? "AMS-I.D v18.0"
-        : "ACM0002 v22.0";
+  const methodology = plant.methodology === "VMR0017" ? "VMR0017 v1.0 with ACM0002 v22.0" : "ACM0002 v22.0";
   return {
     engine: renewableEngine.id,
     methodology,
@@ -392,6 +388,7 @@ export function verifyRenewable(input: RenewableInput): RenewableReport {
         gapMinutes,
         discrepancies,
         emissions,
+        embodiedGPerKwh: renewableEmbodiedGPerMwh(design.methodology, design.technology) / 1_000,
         readings: readings.length,
       }),
     })),
@@ -423,19 +420,22 @@ function stageSummary(
     gapMinutes: number;
     discrepancies: number;
     emissions: RenewableReport["emissions"];
+    embodiedGPerKwh: number;
     readings: number;
   },
 ): string {
+  const t3 = (grams: number) => (grams / 1e6).toFixed(3);
   switch (stage) {
     case "applicability":
-      return "Technology, capacity, host-country income group and crediting period against the registered design";
+      return "Technology, capacity, declared host-country income group, battery flag and crediting period against the registered design";
     case "integrity":
       return `${(s.completenessBps / 100).toFixed(1)}% of the period covered, ${s.gapMinutes} min of gaps, ${s.discrepancies} meter discrepancies`;
     case "plausibility":
       return `${s.readings} intervals against nameplate and the measured resource (irradiance or wind speed)`;
     case "quantification":
+      // PE = PE_FF: solar, wind and ocean have no reservoir or geothermal term, and a battery is refused.
       return s.emissions
-        ? `ER = ${(s.emissions.reductionG / 1e6).toFixed(3)} t CO2e from ${(s.emissions.egProjectWh / 1e6).toFixed(3)} MWh EG_PJ`
+        ? `BE ${t3(s.emissions.baselineG)} − PE ${t3(s.emissions.fossilFuelG)} (PE_FF ${t3(s.emissions.fossilFuelG)}) − LE ${t3(s.emissions.leakageG)} = ER ${t3(s.emissions.reductionG)} t CO2e, from ${t3(s.emissions.egProjectWh)} MWh EG_PJ; EF_embodied = ${s.embodiedGPerKwh} g CO2e/kWh`
         : "Not quantified";
   }
 }
@@ -465,7 +465,9 @@ function renewableMonitoringReport(
       unit: "t CO2/MWh",
       value: plant.efGridGPerMwh / 1e6,
       kind: "validation",
-      source: vmr ? "VT0011 (wind and solar weights ¶86)" : "TOOL07",
+      source: vmr
+        ? "Registered ex-ante by the project (VT0011 on the VMR0017 path); the engine uses the registered value and does not recompute VT0011's weights"
+        : "Registered ex-ante by the project (TOOL07); not recomputed by the engine",
       equation: "(11)",
       clause: vmr ? "VMR0017 §9.3 (VT0011, ex-ante option)" : `${acm} ¶83 (TOOL07)`,
     },
@@ -490,6 +492,15 @@ function renewableMonitoringReport(
       source: "TOOL03",
       equation: "TOOL03",
       clause: `TOOL03 via ${acm} ¶83`,
+    },
+    {
+      symbol: "Income group",
+      description: "World Bank income classification of the host country",
+      unit: "",
+      value: plant.incomeGroup,
+      kind: "validation",
+      source: "Declared by the registrant; not checked against the World Bank list",
+      clause: "VMR0017 §4 Table 1, footnote 1",
     },
     {
       symbol: "Cap_PJ",
@@ -591,7 +602,7 @@ function renewableMonitoringReport(
     },
   ];
   return {
-    methodology: vmr ? "VMR0017 v1.0 with ACM0002 v22.0" : plant.methodology === "AMS-I.D" ? "AMS-I.D v18.0" : acm,
+    methodology: vmr ? "VMR0017 v1.0 with ACM0002 v22.0" : acm,
     documents: vmr
       ? ["VMR0017 v1.0", "ACM0002 v22.0", "VT0011 v1.0", "TOOL03", "VCS Standard v5.0"]
       : [acm, "TOOL07", "TOOL03"],
@@ -602,7 +613,7 @@ function renewableMonitoringReport(
       {
         symbol: "PE_BESS,y",
         clause: vmr ? "VMR0017 §8.2, ¶49" : `${acm} §5.4.4`,
-        reason: "No battery storage registered",
+        reason: "Battery storage is refused at registration: PE_BESS is not implemented",
       },
       { symbol: "PE_PSP,y", clause: vmr ? "VMR0017 §8.2, ¶53" : `${acm} §5.4.5`, reason: "Not a pumped storage plant" },
       ...(vmr
@@ -642,6 +653,7 @@ function exampleInput(end: Date): RenewableInput {
       methodology: "VMR0017",
       technology: "solar-pv",
       incomeGroup: "lower-middle",
+      battery: false,
       capacityKw: 5_000,
       efGridGPerMwh: 600_000,
       fuelCoefGPerTonne: 3_238_840,
@@ -662,7 +674,7 @@ function exampleInput(end: Date): RenewableInput {
 export const renewableEngine: MethodologyEngine<RenewableInput> = {
   id: "renewable-vmr0017",
   title: "Grid-connected solar, wind and ocean power",
-  documents: ["VMR0017 v1.0", "ACM0002 v22.0", "AMS-I.D v18.0", "VT0011 v1.0", "TOOL03"],
+  documents: ["VMR0017 v1.0", "ACM0002 v22.0", "VT0011 v1.0", "TOOL03"],
   scope: "Greenfield solar PV (terrestrial and floating), onshore and offshore wind, wave and tidal plants",
   contract: "RenewableVmr0017Module",
   parse: input => renewableInputSchema.parse(input),

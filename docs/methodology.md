@@ -318,12 +318,20 @@ the `/verify` page pick it up from the registry.
 | Engine | Methodology | Scope | On-chain module |
 | --- | --- | --- | --- |
 | `hydro-vmr0017` | VMR0017 v1.0 with ACM0002 v22.0, or CDM ACM0002 / AMS-I.D | greenfield, retrofit and capacity-addition hydro; VMR0017 only ≤ 15 MW in LDCs | `HydroVmr0017Module` |
-| `renewable-vmr0017` | the same documents | greenfield solar PV (terrestrial, floating), onshore and offshore wind, wave and tidal | `RenewableVmr0017Module` |
+| `renewable-vmr0017` | VMR0017 v1.0 with ACM0002 v22.0, or CDM ACM0002 (no AMS-I.D) | greenfield solar PV (terrestrial, floating), onshore and offshore wind, wave and tidal; no battery | `RenewableVmr0017Module` (not on testnet yet) |
 
 The solar, wind and ocean engine applies the same meter QA/QC (continuity, check meter, delayed calibration,
-completeness), VMR0017 Table 1's income-group rule, AMS-I.D's 15 MW limit, and resource cross-checks instead of the
-hydraulic one: PV output against plane-of-array irradiance, wind output outside the cut-in/cut-out speeds. Its
-quantities are the integers `RenewableVmr0017Module` recomputes.
+completeness), VMR0017 Table 1's income-group rule (terrestrial solar and wind only in low- and middle-income
+countries; floating solar, wave and tidal anywhere), and resource cross-checks instead of the hydraulic one: PV output
+against plane-of-array irradiance, wind output outside the cut-in/cut-out speeds. Its quantities are the integers
+`RenewableVmr0017Module` recomputes. On the example `SOLAR-DEMO-01` (5 MW, lower-middle income, EF_grid 0.600 t/MWh
+as registered) the stage line reads `BE 17.472 − PE 0.000 (PE_FF 0.000) − LE 1.252 = ER 16.220 t CO2e, from 29.120 MWh
+EG_PJ; EF_embodied = 43 g CO2e/kWh`.
+
+What it does not check, and says so in its monitoring report: the income group is declared by the registrant, not
+looked up; EF_grid,CM is the registered ex-ante value, not a VT0011 recomputation; a battery is refused rather than
+given PE_BESS = 0; AMS-I.D is not offered because the module has no 15 MW cap; geothermal is left out until PE_GP
+exists.
 
 `GET /api/mrv/engines` lists them, `GET /api/mrv/engines/{id}` returns an example period, and
 `POST /api/mrv/engines/{id}/verify` runs one (MCP: `list_methodology_engines`, `get_methodology_engine`,

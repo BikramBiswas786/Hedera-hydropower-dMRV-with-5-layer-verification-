@@ -14,9 +14,11 @@ import { IMethodology, Measurement, ProjectTerms, QuantResult } from "../interfa
 ///   ER_y = BE_y − PE_y − LE_y                     (VMR0017 §8.4 eq. 17)
 ///
 /// EF_embodied (VMR0017 §9.1, NREL 2021): solar PV 43, wind 13, ocean energy 8 g CO2e/kWh.
-/// Applicability (VMR0017 §4, Table 1, which supersedes the VCS default eligibility): wind and solar at any capacity
-/// in low-, lower-middle- and upper-middle-income countries only; wave and tidal everywhere. Geothermal (PE_GP),
-/// BESS and capacity additions or retrofits are out of scope for this version.
+/// Applicability (VMR0017 §4, Table 1, which supersedes the VCS default eligibility): terrestrial solar PV and wind at
+/// any capacity in low-, lower-middle- and upper-middle-income countries only; floating solar, wave and tidal
+/// everywhere. The income group is declared by the registrant; nothing here reads the World Bank list. Geothermal
+/// (PE_GP), battery storage (PE_BESS, PE_FSS) and capacity additions or retrofits are out of scope: a design that
+/// declares a battery reverts rather than registering with those terms at zero.
 /// @dev Ledger word, big-endian: `uint32 creditingYear | int112 yearNetWh | int112 balanceG`, as in the hydro module.
 contract RenewableVmr0017Module is IMethodology {
     uint256 public constant CREDITING_YEAR = 365 days;
@@ -46,6 +48,7 @@ contract RenewableVmr0017Module is IMethodology {
         uint8 methodology;
         uint8 technology;
         uint8 incomeGroup;
+        bool battery;
         uint32 capacityKw;
         uint32 efGridGPerMwh;
         uint32 fuelCoefGPerTonne;
@@ -72,6 +75,7 @@ contract RenewableVmr0017Module is IMethodology {
     error GridEmissionFactorOutOfRange(uint32 ef);
     error InvalidCreditingPeriod(uint64 start, uint64 end);
     error NotApplicableInHighIncomeCountry(uint8 technology);
+    error BatteryStorageNotSupported();
     error NotRenewable();
     error RenewalOverlap();
     error RenewalSpan();
@@ -88,13 +92,13 @@ contract RenewableVmr0017Module is IMethodology {
     }
 
     function version() external pure returns (uint32) {
-        return 1;
+        return 2;
     }
 
     function schemaHash() external pure returns (bytes32) {
         return
             keccak256(
-                "RenewableParams(uint8,uint8,uint8,uint32,uint32,uint32,uint64,uint64,uint64,uint64,bytes32,bytes32)Energy(int64,uint64,uint64,uint64)"
+                "RenewableParams(uint8,uint8,uint8,bool,uint32,uint32,uint32,uint64,uint64,uint64,uint64,bytes32,bytes32)Energy(int64,uint64,uint64,uint64)"
             );
     }
 
@@ -198,7 +202,7 @@ contract RenewableVmr0017Module is IMethodology {
         RenewableParams memory p = abi.decode(params, (RenewableParams));
         return
             string.concat(
-                '{"id":"renewable/acm0002+vmr0017","version":1,"methodology":',
+                '{"id":"renewable/acm0002+vmr0017","version":2,"methodology":',
                 p.methodology == VMR ? '"VMR0017"' : '"CDM"',
                 ',"technology":',
                 _utoa(p.technology),
@@ -245,7 +249,12 @@ contract RenewableVmr0017Module is IMethodology {
         if (p.efGridGPerMwh == 0 || p.efGridGPerMwh > MAX_GRID_EF_G_PER_MWH) {
             revert GridEmissionFactorOutOfRange(p.efGridGPerMwh);
         }
-        if (p.methodology == VMR && p.technology <= WIND_OFFSHORE && p.incomeGroup == HIGH_INCOME) {
+        if (p.battery) revert BatteryStorageNotSupported();
+        // Table 1 restricts terrestrial solar PV and wind by income group; floating solar, wave and tidal are global.
+        bool incomeRestricted = p.technology == SOLAR_PV ||
+            p.technology == WIND_ONSHORE ||
+            p.technology == WIND_OFFSHORE;
+        if (p.methodology == VMR && incomeRestricted && p.incomeGroup == HIGH_INCOME) {
             revert NotApplicableInHighIncomeCountry(p.technology);
         }
     }

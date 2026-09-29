@@ -4,7 +4,7 @@ import { getDeployGasPrice } from "../utils/getDeployGasPrice";
 import { getHydroNetworkConfig, hashscanContract, hashscanTx } from "../utils/hydroNetworkConfig";
 
 /**
- * The second methodology, `RenewableVmr0017Module` (greenfield solar, wind and ocean power; CDM ACM0002 / AMS-I.D
+ * The second methodology, `RenewableVmr0017Module` (greenfield solar, wind and ocean power; CDM ACM0002
  * or VMR0017 v1.0), next to the hydro module on the same registry. Nothing else changes: projects registered under
  * it use the same meter and VVB signatures, HCS anchoring, market and retirement certificates.
  *

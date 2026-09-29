@@ -9,7 +9,7 @@ what is left to a VVB. Last checked against the documents on 28 Sep 2026. Clause
 | --- | --- | --- |
 | §2 | TOOL01→VT0008, TOOL02→VT0009, TOOL05→VT0010, TOOL07→VT0011; TOOL32 not eligible | `project.ts` (`additionalityOf`, `gridFactor`), `tool07.ts` |
 | §4 Table 1 | hydro ≤ 15 MW by the higher of rated and authorized capacity, UN LDCs only | `project.ts` (`authorizedCapacityKw`, `ldc.ts`); contract `MethodologyNotApplicable` on rated capacity |
-| §4 Table 1 | wind, terrestrial and floating solar in low- and middle-income countries; wave and tidal everywhere | `RenewableVmr0017Module` `NotApplicableInHighIncomeCountry`, `renewable.ts` |
+| §4 Table 1 | wind and terrestrial solar PV in low- and middle-income countries; floating solar, wave and tidal everywhere (income group as declared by the registrant) | `RenewableVmr0017Module` `NotApplicableInHighIncomeCountry`, `renewable.ts` |
 | §4 Table 1 | geothermal in low- and middle-income countries | not implemented (no PE_GP) |
 | §4 8(f), §8.2 eq. 18 | BESS co-location, PE_BESS, PE_PSP, PE_FSS | not implemented; the modules have no BESS |
 | §6 ¶30 | retrofit alternatives P1, P2, P3 (VT0009 Step 1) | `project.ts` `baselineAlternatives` |

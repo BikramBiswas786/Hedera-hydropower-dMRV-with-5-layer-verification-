@@ -55,7 +55,7 @@ yarn market:keep-listing [--execute]  # keep a listing open on the testnet marke
 | --- | --- |
 | Core registry (attestation, custody, retirement, all HTS calls) | `packages/hardhat/contracts/DmrvRegistry.sol` |
 | Methodology module interface / hydro module (on-chain quantification) | `packages/hardhat/contracts/interfaces/IMethodology.sol`, `contracts/modules/HydroVmr0017Module.sol` |
-| Second module: greenfield solar, wind, ocean (VMR0017 / ACM0002 / AMS-I.D) and its TS twin | `contracts/modules/RenewableVmr0017Module.sol`, `services/mrv/methodology/renewable.ts`, vectors `test/fixtures/renewableVectors.ts`, deploy `deploy/04_*.ts` |
+| Second module: greenfield solar, wind, ocean (VMR0017 / CDM ACM0002; not on testnet yet) and its TS twin | `contracts/modules/RenewableVmr0017Module.sol`, `services/mrv/methodology/renewable.ts`, vectors `test/fixtures/renewableVectors.ts`, deploy `deploy/04_*.ts` |
 | USD settlement shared by both sale contracts (oracle price, SaucerSwap pool guard, swap to seller) | `packages/hardhat/contracts/settlement/UsdSettlement.sol`, `contracts/interfaces/ISaucerSwap.sol` |
 | Market for registry credits (listings in registry custody, `buyAndRetire`) | `packages/hardhat/contracts/CreditMarket.sol` |
 | Checkout for any HTS fungible token (escrow, USD price per whole token) | `packages/hardhat/contracts/UsdCheckout.sol`, deploy `deploy/02_*.ts`, testnet demo `scripts/checkoutTestnetDemo.ts` |

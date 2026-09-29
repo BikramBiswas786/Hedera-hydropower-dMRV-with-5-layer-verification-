@@ -122,10 +122,45 @@ describe("renewable engine (solar, wind, ocean)", () => {
     expect(report.emissions).toBeNull();
   });
 
-  it("refuses AMS-I.D above the 15 MW small-scale limit", () => {
+  it("prints BE, PE, LE and ER on the stage line with the embodied factor (SOLAR-DEMO-01)", () => {
+    const report = verifyRenewable(example());
+    const e = report.emissions!;
+    const t = (g: number) => (g / 1e6).toFixed(3);
+    const summary = report.stages.find(s => s.stage === "quantification")!.summary;
+    expect(e.leakageG).toBeGreaterThan(0);
+    for (const term of [`BE ${t(e.baselineG)}`, "PE 0.000", `LE ${t(e.leakageG)}`, `ER ${t(e.reductionG)}`]) {
+      expect(summary).toContain(term);
+    }
+    expect(summary).toContain("EF_embodied = 43 g CO2e/kWh");
+  });
+
+  it("accepts floating solar, wave and tidal in a high-income country (VMR0017 Table 1)", () => {
+    for (const technology of ["floating-solar", "wave", "tidal"] as const) {
+      const input: RenewableInput = example();
+      input.plant = { ...input.plant, technology, incomeGroup: "high" };
+      expect(verifyRenewable(input).findings.filter(f => f.stage === "applicability")).toEqual([]);
+    }
+  });
+
+  it("labels the income group as declared, not checked", () => {
+    const report = verifyRenewable(example());
+    expect(row(report.monitoring, "Income group")?.source).toContain("Declared by the registrant");
+    expect(row(report.monitoring, "EF_grid,CM,y")?.source).toContain("does not recompute");
+  });
+
+  it("refuses a battery until PE_BESS and PE_FSS are implemented", () => {
     const input = example();
-    input.plant = { ...input.plant, methodology: "AMS-I.D", capacityKw: 20_000 };
-    expect(verifyRenewable(input).findings.find(f => f.severity === "reject")?.clause).toContain("AMS-I.D");
+    input.plant = { ...input.plant, battery: true };
+    const report = verifyRenewable(input);
+    expect(report.decision).toBe("REJECTED");
+    expect(report.findings[0].clause).toContain("PE_BESS");
+    expect(report.emissions).toBeNull();
+  });
+
+  it("does not offer AMS-I.D: the module has no 15 MW cap to match", () => {
+    const input = { ...example(), plant: { ...example().plant, methodology: "AMS-I.D" } };
+    expect(() => verifyWithEngine("renewable-vmr0017", input)).toThrow();
+    expect(renewableEngine.documents).not.toContain("AMS-I.D v18.0");
   });
 
   it("excludes generation the measured irradiance cannot produce, and credits it as zero", () => {

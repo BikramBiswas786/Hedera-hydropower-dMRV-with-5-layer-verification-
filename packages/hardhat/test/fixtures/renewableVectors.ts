@@ -12,7 +12,7 @@
  *     day 2: 2 000 000 Wh → BE 1 230 894, LE 86 000, ER 1 144 894 → balance 899 626 → 899 units, 626 g carried.
  *   Wind onshore, VMR0017 (EF 800 000, EF_embodied 13 g/kWh): 1 000 001 Wh → BE floor(800 000.8) = 800 000,
  *     LE ceil(13 000.013) = 13 001, ER 786 999 → 786 units, 999 g.
- *   Solar PV, CDM ACM0002 / AMS-I.D (no embodied leakage): BE 759 810 = ER → 759 units, 810 g.
+ *   Solar PV, CDM ACM0002 (no embodied leakage): BE 759 810 = ER → 759 units, 810 g.
  *   Tidal, VMR0017, high-income host (ocean energy is global; EF 500 000, EF_embodied 8 g/kWh): 3 333 333 Wh →
  *     BE floor(1 666 666.5) = 1 666 666, LE ceil(26 666.664) = 26 667, ER 1 639 999 → 1 639 units, 999 g.
  */
@@ -35,7 +35,7 @@ export type RenewableVectorPeriod = {
 export type RenewableVector = {
   name: string;
   design: {
-    /** 0 = CDM ACM0002 / AMS-I.D, 1 = VMR0017. */
+    /** 0 = CDM ACM0002, 1 = VMR0017. */
     methodology: number;
     /** 0 solar PV, 1 floating solar, 2 wind onshore, 3 wind offshore, 4 wave, 5 tidal. */
     technology: number;
@@ -117,7 +117,7 @@ export const RENEWABLE_VECTORS: RenewableVector[] = [
     ],
   },
   {
-    name: "CDM ACM0002 / AMS-I.D solar PV (no embodied leakage)",
+    name: "CDM ACM0002 solar PV (no embodied leakage)",
     design: {
       methodology: 0,
       technology: 0,
