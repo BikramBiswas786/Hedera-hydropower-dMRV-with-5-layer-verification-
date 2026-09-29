@@ -12,6 +12,7 @@ import { plantIdToBytes32 } from "../views";
 import { attestReadings, prepareApproval } from "./attest";
 import { listCheckoutListings, prepareCheckoutPurchase, prepareCheckoutPurchaseSchema } from "./checkout";
 import { readDexCheck } from "./dex";
+import { getEngine, listEngines, runEngine, verifyWithEngineSchema } from "./engines";
 import { ApiError } from "./errors";
 import { traceMint, verifyEvidence } from "./guardianBridge";
 import { getPlantDetail, getPortfolio, portfolioQuerySchema } from "./insights";
@@ -342,6 +343,41 @@ export function buildMcpServer({ canWrite }: { canWrite: boolean }): McpServer {
       annotations: readOnly,
     },
     async request => run(() => preparePurchase(request)),
+  );
+
+  server.registerTool(
+    "list_methodology_engines",
+    {
+      title: "List methodology engines",
+      description:
+        "The methodology engines this deployment runs (hydropower; solar, wind and ocean), each with the methodology and tool versions it implements and the IMethodology contract that recomputes its quantities on-chain. A new methodology is a new engine plus a new module; the registry, market and audit trail are shared.",
+      annotations: readOnly,
+    },
+    async () => run(listEngines),
+  );
+
+  server.registerTool(
+    "get_methodology_engine",
+    {
+      title: "Get a methodology engine and an example input",
+      description:
+        "One engine's documents, scope and on-chain module, with a ready-to-verify example monitoring period for verify_with_engine.",
+      inputSchema: z.object({ engine: z.string().min(1) }),
+      annotations: readOnly,
+    },
+    async ({ engine }) => run(() => getEngine(engine)),
+  );
+
+  server.registerTool(
+    "verify_with_engine",
+    {
+      title: "Verify a monitoring period with a methodology engine",
+      description:
+        "Runs one engine on a monitoring period and returns APPROVED / FLAGGED / REJECTED, each finding with the clause it enforces (e.g. VMR0017 §9.2), and the methodology's data and parameters table: every parameter's value, unit, source, QA/QC applied, equation and clause, plus the terms that do not apply to this project. Writes nothing.",
+      inputSchema: verifyWithEngineSchema,
+      annotations: readOnly,
+    },
+    async ({ engine, input }) => run(() => runEngine(engine, input)),
   );
 
   server.registerTool(

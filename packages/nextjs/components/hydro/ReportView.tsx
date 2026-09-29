@@ -1,3 +1,4 @@
+import { MonitoringTable } from "./MonitoringTable";
 import { DecisionBadge, formatPeriod } from "./ui";
 import type { StageResult, VerificationReport } from "~~/services/mrv/engine";
 import { formatGramsAsTonnes, formatWhAsMwh } from "~~/services/mrv/views";
@@ -81,6 +82,7 @@ export const ReportView = ({ report }: { report: VerificationReport }) => {
               <th>Stage</th>
               <th className="w-24">Status</th>
               <th>Finding</th>
+              <th>Clause</th>
             </tr>
           </thead>
           <tbody>
@@ -93,11 +95,21 @@ export const ReportView = ({ report }: { report: VerificationReport }) => {
                   <span className={`badge badge-sm ${STAGE_STYLE[stage.status]}`}>{stage.status}</span>
                 </td>
                 <td className="text-sm text-base-content/70">{stage.summary}</td>
+                <td className="text-xs text-base-content/60">{stage.clause}</td>
               </tr>
             ))}
           </tbody>
         </table>
       </div>
+
+      <details className="collapse collapse-arrow bg-base-200" open>
+        <summary className="collapse-title font-medium">
+          Monitoring report: data and parameters (VMR0017 §9, ACM0002 §5.10, §6.1)
+        </summary>
+        <div className="collapse-content">
+          <MonitoringTable monitoring={report.monitoring} />
+        </div>
+      </details>
 
       <details className="collapse collapse-arrow bg-base-200">
         <summary className="collapse-title font-medium">Equation trace</summary>
@@ -143,7 +155,8 @@ export const ReportView = ({ report }: { report: VerificationReport }) => {
               {findings.map((issue, i) => (
                 <li key={i}>
                   <span className={SEVERITY_STYLE[issue.severity]}>{issue.stage}</span>
-                  {issue.reading !== null && ` · interval #${issue.reading}`}: {issue.message}
+                  {issue.reading !== null && ` · interval #${issue.reading}`}: {issue.message}{" "}
+                  <span className="text-xs text-base-content/60">({issue.clause})</span>
                 </li>
               ))}
             </ul>

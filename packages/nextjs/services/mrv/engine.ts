@@ -1,3 +1,5 @@
+import { hydroMonitoringReport } from "./engines/hydroMonitoring";
+import type { MonitoringReport } from "./engines/types";
 import { MethodologyError } from "./methodology/errors";
 import {
   METHODOLOGIES,
@@ -77,6 +79,37 @@ export const STAGES = {
 } as const;
 
 export type Stage = keyof typeof STAGES;
+
+/**
+ * The clause each check enforces, from the documents themselves (VMR0017 v1.0, ACM0002 v22.0 EB 122, AMS-I.D v18.0,
+ * TOOL03, VCS v5.0). The physical cross-checks are not a methodology clause: they are the engine's plausibility test
+ * of the metered data, and like every adjustment here they only ever lower the credited quantity.
+ */
+export const CLAUSE = {
+  meter: "VMR0017 §9.2 EG_facility,y: direct measurement with meters at the grid interface",
+  continuity: "VMR0017 §9.2 monitor continuously; ACM0002 v22.0 ¶82: 100% of data monitored",
+  hourly: "AMS-I.D v18.0 §6.1: continuous monitoring, hourly measurement",
+  checkMeter: "VMR0017 §9.2 QA/QC: cross-check the meter (check meter, utility invoices)",
+  calibration: "VMR0017 §9.2 QA/QC: test and calibrate meters per utility or national requirements; ACM0002 ¶82",
+  calibrationError: "VMR0017 §9.2 QA/QC: use the error from the last calibration event",
+  gridSupply: "ACM0002 v22.0 §2.1 and AMS-I.D v18.0 ¶2–3: electricity supplied to the grid (captive use is AMS-I.F)",
+  physics: "Plausibility of metered data (engine check, conservative exclusion); VCS principle of conservativeness",
+  completeness: "ACM0002 v22.0 ¶82: 100% of data monitored; missing intervals credited as zero",
+  safeguards: "VCS v5.0 safeguards (V5#17): reported for the VVB, never changes the quantity",
+  registration: "Registered project design (VMR0017 §4 applicability)",
+  powerDensity: "ACM0002 v22.0 ¶9, eq. (7)–(8): PD > 4 W/m² for new or enlarged reservoirs",
+  crediting: "VCS v5.0 crediting period (V5#101) and the registered crediting year",
+  fuel: "TOOL03 via ACM0002 v22.0 §5.4.1 (PE_FF,y) and ¶83",
+  quantification: "VMR0017 §8.4 eq. (17): ER_y = BE_y − PE_y − LE_y",
+} as const;
+
+const STAGE_CLAUSE: Record<Stage, string> = {
+  applicability: "VMR0017 §4 Table 1; ACM0002 v22.0 §2.2",
+  integrity: "VMR0017 §9.2; ACM0002 v22.0 §6",
+  physics: CLAUSE.physics,
+  quantification: "VMR0017 §8; ACM0002 v22.0 §5.4–5.7",
+  safeguards: CLAUSE.safeguards,
+};
 export type Severity = "info" | "review" | "reject";
 export type Decision = "APPROVED" | "FLAGGED" | "REJECTED";
 
@@ -86,12 +119,15 @@ export type Issue = {
   reading: number | null;
   severity: Severity;
   message: string;
+  /** The methodology, tool or programme clause this finding enforces (`CLAUSE`). */
+  clause: string;
 };
 
 export type StageResult = {
   stage: Stage;
   title: string;
   status: "PASS" | "REVIEW" | "FAIL";
+  clause: string;
   summary: string;
 };
 
@@ -154,6 +190,8 @@ export type VerificationReport = {
   emissions: Emissions | null;
   ledger: { before: LedgerJson; after: LedgerJson | null };
   equations: EquationStep[];
+  /** The period as the methodology's data and parameters tables (ACM0002 §5.10 and §6.1, VMR0017 §9). */
+  monitoring: MonitoringReport;
 };
 
 export const toLedger = (json: LedgerJson): PlantLedger => ({
@@ -218,8 +256,13 @@ export function verifyReadings(
 
   const { design, hydraulics } = plant;
   const issues: Issue[] = [];
-  const add = (stage: Stage, severity: Severity, message: string, reading: number | null = null) =>
-    issues.push({ stage, reading, severity, message });
+  const add = (
+    stage: Stage,
+    severity: Severity,
+    message: string,
+    reading: number | null = null,
+    clause: string = STAGE_CLAUSE[stage],
+  ) => issues.push({ stage, reading, severity, message, clause });
 
   // ── 2. Monitoring data QA/QC: source ──────────────────────────────────────
   const provenance = checkProvenance(
@@ -232,20 +275,34 @@ export function verifyReadings(
   const meterStatement = meterStatementOf(plant.plantId, readings);
   switch (provenance.status) {
     case "unregistered":
-      add("integrity", "info", "No meter key in the metering record: the batch cannot be traced to its source");
+      add(
+        "integrity",
+        "info",
+        "No meter key in the metering record: the batch cannot be traced to its source",
+        null,
+        CLAUSE.meter,
+      );
       break;
     case "missing":
-      add("integrity", "reject", `The batch is not signed by the registered meter ${provenance.device}`);
+      add(
+        "integrity",
+        "reject",
+        `The batch is not signed by the registered meter ${provenance.device}`,
+        null,
+        CLAUSE.meter,
+      );
       break;
     case "invalid":
       add(
         "integrity",
         "reject",
         `The meter signature does not match these readings: they changed after ${provenance.device} signed them, or another key signed`,
+        null,
+        CLAUSE.meter,
       );
       break;
     case "signed":
-      add("integrity", "info", `Signed at the source by the registered meter ${provenance.device}`);
+      add("integrity", "info", `Signed at the source by the registered meter ${provenance.device}`, null, CLAUSE.meter);
       break;
   }
 
@@ -259,13 +316,31 @@ export function verifyReadings(
     const previous = spans[i - 1];
     const current = spans[i];
     if (current.endMs <= previous.endMs) {
-      add("integrity", "reject", "Duplicate or out-of-order timestamp: the interval would be counted twice", i);
+      add(
+        "integrity",
+        "reject",
+        "Duplicate or out-of-order timestamp: the interval would be counted twice",
+        i,
+        CLAUSE.continuity,
+      );
     } else if (current.startMs < previous.endMs) {
-      add("integrity", "reject", "Interval overlaps the previous one: energy would be counted twice", i);
+      add(
+        "integrity",
+        "reject",
+        "Interval overlaps the previous one: energy would be counted twice",
+        i,
+        CLAUSE.continuity,
+      );
     } else if (current.startMs > previous.endMs) {
       const minutes = (current.startMs - previous.endMs) / 60_000;
       gapMinutes += minutes;
-      add("integrity", "info", `Data gap of ${fmt(minutes, 0)} min before this interval: credited as zero`, i);
+      add(
+        "integrity",
+        "info",
+        `Data gap of ${fmt(minutes, 0)} min before this interval: credited as zero`,
+        i,
+        CLAUSE.continuity,
+      );
     }
   }
   // AMS-I.D v18 §6.1 (EG_PJ,facility,y): continuous monitoring, hourly measurement. ACM0002 and VMR0017 §9.2 only
@@ -276,6 +351,8 @@ export function verifyReadings(
       "integrity",
       "review",
       `AMS-I.D §6.1 requires hourly measurement, but ${coarse} interval(s) are longer than 60 min`,
+      null,
+      CLAUSE.hourly,
     );
   }
   const periodStartMs = Math.min(...spans.map(s => s.startMs));
@@ -313,7 +390,7 @@ export function verifyReadings(
       exclusions.push(`export ${fmt(r.exportKwh)} kWh exceeds generation ${fmt(generation)} kWh`);
     }
     if (r.flowRateM3s > hydraulics.maxFlowM3s || r.headM > hydraulics.maxHeadM * 1.05) {
-      add("physics", "review", "Flow or head above the turbine design envelope: check the sensors", i);
+      add("physics", "review", "Flow or head above the turbine design envelope: check the sensors", i, CLAUSE.physics);
     }
 
     let exportKwh = r.exportKwh;
@@ -343,7 +420,7 @@ export function verifyReadings(
 
     const excluded = exclusions.length > 0;
     if (excluded) {
-      add("physics", "review", `Excluded (credited as zero): ${exclusions.join("; ")}`, i);
+      add("physics", "review", `Excluded (credited as zero): ${exclusions.join("; ")}`, i, CLAUSE.physics);
       deductions.excluded += exportKwh;
       exportKwh = 0;
     }
@@ -367,6 +444,8 @@ export function verifyReadings(
       "integrity",
       "review",
       `Main and check meters disagree beyond their combined accuracy in ${checkMeterDiscrepancies} interval(s); the lower reading was used`,
+      null,
+      CLAUSE.checkMeter,
     );
   }
   if (calibrationIntervals) {
@@ -374,12 +453,16 @@ export function verifyReadings(
       "integrity",
       "info",
       `Main meter calibration expired: export reduced and import increased by its ±${metering.mainMeterAccuracyPct}% maximum permissible error in ${calibrationIntervals} interval(s)`,
+      null,
+      CLAUSE.calibration,
     );
   } else if (!metering.calibrationCertificateSha256) {
     add(
       "integrity",
       "info",
       "The main meter's calibration is in date, but the record has no calibration-certificate hash",
+      null,
+      CLAUSE.calibration,
     );
   }
   if (
@@ -390,6 +473,8 @@ export function verifyReadings(
       "integrity",
       "info",
       `The last calibration expanded uncertainty (±${metering.lastCalibrationUncertaintyPct}%) is wider than the meter class (±${metering.mainMeterAccuracyPct}%)`,
+      null,
+      CLAUSE.calibrationError,
     );
   }
 
@@ -401,6 +486,8 @@ export function verifyReadings(
         "integrity",
         "reject",
         `ACM0002, AMS-I.D and VMR0017 apply when more than half the electricity is delivered to the grid. This period exports ${fmt(exported)} kWh and supplies ${fmt(captive)} kWh to a captive user`,
+        null,
+        CLAUSE.gridSupply,
       );
     }
   }
@@ -411,6 +498,8 @@ export function verifyReadings(
       "physics",
       "reject",
       `${excludedIntervals.length}/${intervals.length} intervals report energy the plant cannot physically produce: systematic over-reporting`,
+      null,
+      CLAUSE.physics,
     );
   }
 
@@ -429,6 +518,7 @@ export function verifyReadings(
           "review",
           `Water-to-wire efficiency ${pct(value)} is an outlier against the period median ${pct(med)} (modified z = ${Number.isFinite(z) ? z.toFixed(1) : "∞"})`,
           interval.index,
+          CLAUSE.physics,
         );
       } else if (value < hydraulics.minEfficiency) {
         add(
@@ -436,6 +526,7 @@ export function verifyReadings(
           "info",
           `Efficiency ${pct(value)} below the design minimum: check the flow meter`,
           interval.index,
+          CLAUSE.physics,
         );
       }
     }
@@ -449,6 +540,8 @@ export function verifyReadings(
       "integrity",
       "review",
       `Only ${(completenessBps / 100).toFixed(1)}% of the period has accepted data (minimum ${DECISION_RULES.minCompletenessBps / 100}%)`,
+      null,
+      CLAUSE.completeness,
     );
   }
 
@@ -462,6 +555,8 @@ export function verifyReadings(
         "safeguards",
         "review",
         `${label} outside ${range[0]}–${range[1]} in ${outside.length} interval(s) (${Math.min(...outside)}–${Math.max(...outside)}): environmental review, quantity unchanged`,
+        null,
+        CLAUSE.safeguards,
       );
     }
   }
@@ -482,13 +577,21 @@ export function verifyReadings(
       "applicability",
       "reject",
       `The plant profile says ${plant.methodology} but the registered design uses another methodology`,
+      null,
+      CLAUSE.registration,
     );
   }
-  if (!pd.eligible) add("applicability", "reject", pd.basis);
+  if (!pd.eligible) add("applicability", "reject", pd.basis, null, CLAUSE.powerDensity);
   const periodViolation = creditingPeriodViolation(design, periodStart, periodEnd);
-  if (periodViolation) add("applicability", "reject", periodViolation);
+  if (periodViolation) add("applicability", "reject", periodViolation, null, CLAUSE.crediting);
   if (fuelG > 0 && design.fuelCoefGPerTonne === 0) {
-    add("applicability", "reject", "Fossil fuel was burnt on site but no fuel is registered for TOOL03");
+    add(
+      "applicability",
+      "reject",
+      "Fossil fuel was burnt on site but no fuel is registered for TOOL03",
+      null,
+      CLAUSE.fuel,
+    );
   }
 
   // ── 4. Quantification ─────────────────────────────────────────────────────
@@ -506,7 +609,7 @@ export function verifyReadings(
       });
     } catch (error) {
       if (!(error instanceof MethodologyError)) throw error;
-      add("applicability", "reject", error.message);
+      add("applicability", "reject", error.message, null, CLAUSE.quantification);
     }
   }
   const emissions: Emissions | null = quantification && {
@@ -528,6 +631,8 @@ export function verifyReadings(
       emissions.egProjectWh <= 0
         ? "No generation above the baseline in this period: nothing to credit"
         : "Project emissions exceed baseline emissions: the deficit is carried forward",
+      null,
+      CLAUSE.quantification,
     );
   }
 
@@ -584,6 +689,18 @@ export function verifyReadings(
     emissions,
     ledger: { before: ledgerJson, after: quantification && toLedgerJson(quantification.ledger) },
     equations: equationsFor(plant, netWh, grossWh, fuelG, emissions, reservoirGPerMwh),
+    monitoring: hydroMonitoringReport(plant, metering, {
+      netWh,
+      grossWh,
+      fuelG,
+      completenessBps,
+      checkMeterDiscrepancies,
+      calibrationIntervals,
+      gapMinutes,
+      signed: provenance.status === "signed",
+      device: "device" in provenance ? provenance.device : null,
+      emissions,
+    }),
   };
 }
 
@@ -599,7 +716,7 @@ function stageResult(stage: Stage, issues: Issue[], summary: string): StageResul
     : own.some(i => i.severity === "review")
       ? "REVIEW"
       : "PASS";
-  return { stage, title: STAGES[stage], status, summary };
+  return { stage, title: STAGES[stage], status, clause: STAGE_CLAUSE[stage], summary };
 }
 
 function decide(issues: Issue[], completenessBps: number): { decision: Decision; reasoning: string } {

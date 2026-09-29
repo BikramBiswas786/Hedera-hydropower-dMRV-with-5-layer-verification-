@@ -1,4 +1,5 @@
 import { ENGINE_VERSION } from "../engine";
+import { describeEngines } from "../engines";
 import { compareReportSchema } from "../guardian/compare";
 import { gridEmissionFactorRequestSchema, projectDesignSchema } from "../methodology/schema";
 import { HYDRO_CHAIN_ID } from "../network";
@@ -140,6 +141,29 @@ export function buildOpenApi(origin: string) {
           query("plant", "Demo plant id", { type: "string", default: "HYDRO-DEMO-01" }),
         ],
         responses: ok("{ plant, metering, readings, signature }"),
+      }),
+      "/api/mrv/engines": get({
+        operationId: "list_methodology_engines",
+        tags: ["monitoring"],
+        summary: "Methodology engines: documents implemented and the on-chain IMethodology module of each",
+        responses: ok("{ engines: [{ id, title, documents, scope, contract }] }"),
+      }),
+      "/api/mrv/engines/{id}": get({
+        operationId: "get_methodology_engine",
+        tags: ["monitoring"],
+        summary: "One engine and a ready-to-verify example monitoring period",
+        parameters: [path("id", "Engine id", { type: "string", enum: describeEngines().map(e => e.id) })],
+        responses: ok("{ id, title, documents, scope, contract, example }"),
+      }),
+      "/api/mrv/engines/{id}/verify": post({
+        operationId: "verify_with_engine",
+        tags: ["monitoring"],
+        summary: "Verify with one engine: decision, findings with clauses, the methodology's data and parameters table",
+        parameters: [path("id", "Engine id", { type: "string", enum: describeEngines().map(e => e.id) })],
+        requestBody: { required: true, content: json() },
+        responses: ok(
+          "{ engine, methodology, decision, reasoning, stages[], findings[], reductionG, unitsMinted, monitoring }",
+        ),
       }),
       "/api/mrv/verify": post({
         operationId: "verify_telemetry",

@@ -27,6 +27,7 @@ buyer's key: purchases are returned as unsigned transactions. The REST API is de
 - Endpoint: `/api/mcp` (streamable HTTP, stateless; MCP 2025-06-18 and 2026-07-28)
 - Design: `assess_project` (applicability, power density, baseline, TOOL07 CM, TOOL03 COEF → registration integers
   and designHash), `calculate_grid_emission_factor` (TOOL07 OM / BM sample / CM), `get_project_design`
+- Methodology engines: `list_methodology_engines`, `get_methodology_engine`, `verify_with_engine` (one engine per methodology; findings cite clauses; the methodology's data and parameters table)
 - Monitoring: `list_scenarios`, `generate_sample_telemetry`, `verify_telemetry` (decision, 5 stages, EG_PJ, BE, PE,
   LE, ER with an equation trace, the exact HCS report)
 - Registry: `get_registry_overview` (totals in kg CO2e, plants with design and ledger, tokens, both oracle sources),
@@ -87,6 +88,9 @@ seller.
 - `GET  /api/methodology/projects/{plantId}?raw=1` — the exact bytes whose SHA-256 is the on-chain designHash
 - `GET  /api/mrv/scenarios` — scenarios, demo plant profiles and metering
 - `GET  /api/mrv/scenarios/{name}?hours=24&plant=HYDRO-DEMO-01` — a ready `/api/mrv/verify` body
+- `GET  /api/mrv/engines` — methodology engines (hydro; solar, wind, ocean), each with its documents and on-chain module
+- `GET  /api/mrv/engines/{id}` — one engine and a ready-to-verify example period
+- `POST /api/mrv/engines/{id}/verify` — the engine's input → decision, findings with clauses, data and parameters table
 - `POST /api/mrv/verify` — body `{ readings, plant?, metering?, ledger?, signature? }` → report, HCS report message, reportHash,
   dataHash, dataChunks
 - `GET  /api/registry` — on-chain totals, plants (design + ledger), credit token, oracle status
