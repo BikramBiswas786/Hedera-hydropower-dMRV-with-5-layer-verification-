@@ -46,6 +46,22 @@ export function amountOut(amountIn: bigint, reserveIn: bigint, reserveOut: bigin
   return (inWithFee * reserveOut) / (reserveIn * 10_000n + inWithFee);
 }
 
+/** Tinybar the buyer must send to take `amountOut` of the other reserve, after the 30 bps fee. Inverse of `amountOut`. */
+export function amountIn(amountOutWanted: bigint, reserveIn: bigint, reserveOut: bigint, feeBps = 30n): bigint {
+  if (amountOutWanted <= 0n || reserveIn <= 0n || amountOutWanted >= reserveOut) {
+    throw new RangeError("amountIn: insufficient liquidity");
+  }
+  const numerator = reserveIn * amountOutWanted * 10_000n;
+  const denominator = (reserveOut - amountOutWanted) * (10_000n - feeBps);
+  return numerator / denominator + 1n;
+}
+
+/** Spot tinybar per tonne (1 000 kg) from a WHBAR (8 decimals) / credit (kg) pool. */
+export function tinybarPerTonne(reserveWhbar: bigint, reserveCreditKg: bigint): bigint {
+  if (reserveCreditKg <= 0n) return 0n;
+  return (reserveWhbar * 1_000n) / reserveCreditKg;
+}
+
 export type RebalanceTrade =
   | { side: "none"; deviationBps: bigint }
   /** The pair prices HBAR below the oracle: sell `amountIn` USD-token units for HBAR. */

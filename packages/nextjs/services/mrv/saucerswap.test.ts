@@ -1,4 +1,13 @@
-import { amountOut, deviationBps, dexAccepted, hbarUsd8FromReserves, isqrt, rebalanceTrade } from "./saucerswap";
+import {
+  amountIn,
+  amountOut,
+  deviationBps,
+  dexAccepted,
+  hbarUsd8FromReserves,
+  isqrt,
+  rebalanceTrade,
+  tinybarPerTonne,
+} from "./saucerswap";
 import { describe, expect, it } from "vitest";
 
 describe("SaucerSwap WHBAR/USDC spot", () => {
@@ -46,5 +55,21 @@ describe("keeping a seeded pair at the oracle price", () => {
     expect(isqrt(15n)).toBe(3n);
     expect(isqrt(16n)).toBe(4n);
     expect(isqrt(10n ** 30n)).toBe(10n ** 15n);
+  });
+});
+
+describe("credit-pool amountIn", () => {
+  it("is the inverse of amountOut, plus the +1 rounding", () => {
+    const reserveIn = 27_000_000n;
+    const reserveOut = 2_000n;
+    const want = 10n;
+    const pay = amountIn(want, reserveIn, reserveOut);
+    expect(amountOut(pay, reserveIn, reserveOut)).toBeGreaterThanOrEqual(want);
+    expect(amountOut(pay - 1n, reserveIn, reserveOut)).toBeLessThan(want);
+  });
+
+  it("prices a tonne from WHBAR/kg reserves", () => {
+    expect(tinybarPerTonne(27_016_595_21n, 200n)).toBe((27_016_595_21n * 1_000n) / 200n);
+    expect(tinybarPerTonne(1n, 0n)).toBe(0n);
   });
 });

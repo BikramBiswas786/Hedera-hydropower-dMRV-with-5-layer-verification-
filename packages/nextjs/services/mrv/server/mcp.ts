@@ -14,6 +14,7 @@ import {
   verifyRequestSchema,
 } from "../schema";
 import { listCheckoutListings, prepareCheckoutPurchase, prepareCheckoutPurchaseSchema } from "./checkout";
+import { prepareDexRetire, prepareDexRetireSchema, readCreditPool } from "./creditPool";
 import { readDexCheck } from "./dex";
 import { getEngine, listEngines, runEngine, verifyWithEngineSchema } from "./engines";
 import { ApiError } from "./errors";
@@ -45,7 +46,9 @@ meter and hash-chain link, and compares every figure with the contract.
 Credits are priced in USD per tonne and settled in HBAR through Chainlink HBAR/USD with a Supra fallback;
 prepare_purchase returns no transaction if the SaucerSwap pair stored on CreditMarket is more than 3% from the oracle.
 Agents buy with their own wallet: get_dex_price -> list_open_listings -> prepare_purchase -> sign and send; retiring
-mints an HTS NFT certificate. get_plant and get_portfolio summarise a plant's issuance or a buyer's retirements.
+mints an HTS NFT certificate. Credits that have left custody trade in a SaucerSwap WHBAR/credit pool:
+get_credit_pool -> prepare_dex_retire { amountKg, buyer, beneficiary } -> sign each step (swap, approve, deposit, retire).
+get_plant and get_portfolio summarise a plant's issuance or a buyer's retirements.
 Registry tools read chain ${HYDRO_CHAIN_ID}.`;
 
 function ok(data: unknown) {
@@ -346,6 +349,29 @@ export function buildMcpServer({ canWrite }: { canWrite: boolean }): McpServer {
       annotations: readOnly,
     },
     async () => run(readDexCheck),
+  );
+
+  server.registerTool(
+    "get_credit_pool",
+    {
+      title: "SaucerSwap credit pool",
+      description:
+        "The SaucerSwap V1 WHBAR/credit pair for this registry, if one exists: reserves in kg and HBAR, spot HBAR and USD per tonne. Reading needs no key. exists is false until the operator seeds the pool.",
+      annotations: readOnly,
+    },
+    async () => run(readCreditPool),
+  );
+
+  server.registerTool(
+    "prepare_dex_retire",
+    {
+      title: "Prepare a SaucerSwap buy-and-retire",
+      description:
+        "Build unsigned transactions that swap HBAR for exactly amountKg of credits on SaucerSwap, deposit them into registry custody and retire them, minting an HTS NFT certificate. Returns steps (to, data, value, gas) to sign in order with your own wallet. 409 if no pool exists or the pool cannot fill the order. The server never holds your key.",
+      inputSchema: prepareDexRetireSchema,
+      annotations: readOnly,
+    },
+    async request => run(() => prepareDexRetire(request)),
   );
 
   server.registerTool(

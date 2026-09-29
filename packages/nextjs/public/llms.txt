@@ -48,7 +48,7 @@ buyer's key: purchases are returned as unsigned transactions. The REST API is de
 - Checkout (any HTS token, e.g. a Guardian-minted one): `list_checkout_listings` (each listing with its token's Guardian
   verdict: backed, none, not-backed, incomplete) → `prepare_checkout_purchase { listingId, amount }` (unsigned
   UsdCheckout.buy; refused when the token cites a Guardian record that is not backed). Associate with the token first.
-- Market: `get_dex_price`, `list_open_listings`, `prepare_purchase` (unsigned buy / buyAndRetire for your own wallet),
+- Market: `get_dex_price`, `list_open_listings`, `prepare_purchase` (unsigned buy / buyAndRetire for your own wallet), `get_credit_pool`, `prepare_dex_retire` (unsigned swap + deposit + retire on the WHBAR/credit pool),
   `get_retirement_certificate`, `get_portfolio` (retirements by an account or on behalf of a beneficiary)
 - Guardian figures: `compare_guardian_report` (recompute a Guardian VMR0017 monitoring report's BE, PE, LE and ER:
   MATCH, MISMATCH or NOT_COMPARABLE)
@@ -58,7 +58,7 @@ buyer's key: purchases are returned as unsigned transactions. The REST API is de
   approval issues). The VVB signs with its own key; the server never holds one
 - Resource: `hydro-dmrv://methodology` (equations, QA/QC rules, IPCC bounds, what is not implemented)
 
-Buying as an agent: `get_dex_price` → `list_open_listings` → `prepare_purchase { listingId, amountKg, beneficiary }` → sign and send `{ to, data, value }` with your wallet on `chainId` → `get_retirement_certificate`. `prepare_purchase` returns nothing if the SaucerSwap WHBAR/USDC spot is more than 3% from the settlement price. The server never holds your key.
+Buying as an agent: `get_dex_price` → `list_open_listings` → `prepare_purchase { listingId, amountKg, beneficiary }` → sign and send `{ to, data, value }` with your wallet on `chainId` → `get_retirement_certificate`. `prepare_purchase` returns nothing if the SaucerSwap WHBAR/USDC spot is more than 3% from the settlement price. Credits that have left custody: `get_credit_pool` → `prepare_dex_retire { amountKg, buyer, beneficiary }` → sign each `steps[]` in order. The server never holds your key.
 
 ## Hedera facts (each proven by a test or workflow in the repo)
 

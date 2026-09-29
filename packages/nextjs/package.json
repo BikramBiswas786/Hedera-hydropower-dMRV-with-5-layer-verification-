@@ -28,6 +28,7 @@
     "guardian:trace": "tsx scripts/traceGuardianMint.ts",
     "live:smoke": "tsx scripts/liveSmoke.ts",
     "market:keep-listing": "tsx scripts/keepListingOpen.ts",
+    "market:credit-pool": "tsx scripts/creditPool.ts",
     "mainnet:checkout": "tsx scripts/mainnetCheckout.ts",
     "pair:rebalance": "tsx scripts/rebalanceTestnetPair.ts"
   },
