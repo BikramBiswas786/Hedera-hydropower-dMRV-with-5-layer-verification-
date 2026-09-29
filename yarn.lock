@@ -6689,10 +6689,17 @@ __metadata:
   languageName: node
   linkType: hard
 
-"async-function@npm:^1.0.0":
+"async-function@npm:1.0.0":
   version: 1.0.0
   resolution: "async-function@npm:1.0.0"
   checksum: 9102e246d1ed9b37ac36f57f0a6ca55226876553251a31fc80677e71471f463a54c872dc78d5d7f80740c8ba624395cccbe8b60f7b690c4418f487d8e9fd1106
+  languageName: node
+  linkType: hard
+
+"async-function@patch:async-function@npm%3A1.0.0#./.yarn/patches/async-function-npm-1.0.0-a81667ebcd.patch::locator=hydro-dmrv%40workspace%3A.":
+  version: 1.0.0
+  resolution: "async-function@patch:async-function@npm%3A1.0.0#./.yarn/patches/async-function-npm-1.0.0-a81667ebcd.patch::version=1.0.0&hash=bff9ac&locator=hydro-dmrv%40workspace%3A."
+  checksum: 8a4bda11ddad8252fe978f5084d7cf83cd508ef1cd7a23c892f418e6b2e5ccb629368a0b55e6f95523fddb3bf69c40f6e38182bba31f5ff95f292da7e234e824
   languageName: node
   linkType: hard
 
@@ -10401,7 +10408,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"has-tostringtag@npm:^1.0.2":
+"has-tostringtag@npm:^1.0.0, has-tostringtag@npm:^1.0.2":
   version: 1.0.2
   resolution: "has-tostringtag@npm:1.0.2"
   dependencies:
@@ -10780,16 +10787,12 @@ __metadata:
   languageName: node
   linkType: hard
 
-"is-async-function@npm:^2.0.0":
-  version: 2.1.1
-  resolution: "is-async-function@npm:2.1.1"
+"is-async-function@npm:2.0.0":
+  version: 2.0.0
+  resolution: "is-async-function@npm:2.0.0"
   dependencies:
-    async-function: ^1.0.0
-    call-bound: ^1.0.3
-    get-proto: ^1.0.1
-    has-tostringtag: ^1.0.2
-    safe-regex-test: ^1.1.0
-  checksum: 9bece45133da26636488ca127d7686b85ad3ca18927e2850cff1937a650059e90be1c71a48623f8791646bb7a241b0cabf602a0b9252dcfa5ab273f2399000e6
+    has-tostringtag: ^1.0.0
+  checksum: e3471d95e6c014bf37cad8a93f2f4b6aac962178e0a5041e8903147166964fdc1c5c1d2ef87e86d77322c370ca18f2ea004fa7420581fa747bcaf7c223069dbd
   languageName: node
   linkType: hard
 
