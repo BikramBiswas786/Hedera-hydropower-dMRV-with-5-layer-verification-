@@ -1,6 +1,6 @@
 {
   "name": "hydro-dmrv",
-  "description": "The on-chain half of a Hedera Guardian workflow: carbon credits whose supply a contract enforces. DmrvRegistry holds the HTS supply key and mints only with the meter's and a VVB's EIP-712 signatures, and only the tonnes its IMethodology module recomputes (ER = BE − PE − LE); raw readings and reports are on HCS so anyone can re-derive a mint. CreditMarket prices in USD from Chainlink with a Supra fallback and settles through a SaucerSwap pool within 3%; retirement mints an HTS NFT certificate. An MCP server lets agents reproduce, buy and retire with their own wallets. Worked example: hydropower under Verra VMR0017 v1.0 with ACM0002 v22.0.",
+  "description": "The on-chain half of a Hedera Guardian workflow. DmrvRegistry holds the HTS supply key. A meter-signed monitoring period is quantified by an IMethodology module (ER = BE − PE − LE) and recorded; nothing is issued until a VVB signs a verification of that record chain. Readings and reports are on HCS. CreditMarket and UsdCheckout price any listed HTS token in USD from Chainlink with a Supra fallback and settle through SaucerSwap. Retirement mints an HTS NFT certificate. Worked example: hydropower under Verra VMR0017 v1.0 with ACM0002 v22.0. Not a Verra VCU.",
   "version": "2.1.0",
   "create-scaffold-hbar": {
     "capabilities": {

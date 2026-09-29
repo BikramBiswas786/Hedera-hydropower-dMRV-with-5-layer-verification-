@@ -1,15 +1,77 @@
 # Hydro dMRV
 
-**Guardian decides what a credit is. This template makes the token prove it on-chain.**
+One command gives you a local market where you can buy and retire a carbon credit. No Hedera account is required for that.
 
-[Hedera Guardian](https://github.com/hashgraph/guardian) runs methodology policies, roles and verifiable credentials, and its library already ships the hydro methodologies. It leaves two things off-chain: a Guardian mint is whatever number a policy rule computed, and a minted credit has no price, no market and no contract another dApp can call. This Scaffold-HBAR template is that on-chain half:
+The contract decides how many tonnes exist. A validator signs the plant design before it can be registered. The plant's meter signs each monitoring period, and that signature does not mint anything. A second signature, over a run of those periods, is what issues tonnes, and it can only lower the figure. The sale prices HBAR from Chainlink, uses Supra if Chainlink is stale, and reverts unless the HBAR is swapped through SaucerSwap. The readings are on HCS, so anyone can recompute the number.
 
-- **The VCS project cycle, enforced by a contract.** `DmrvRegistry` holds the HTS supply key and follows Verra's order: a project is registered only with a VVB's validation signature; each monitoring period is signed by the plant's meter, quantified on-chain by the methodology module (`ER = BE − PE − LE`) and recorded in a hash chain, **without issuing anything**; credits are issued only when a VVB verifies a run of records, signing the chain head and its report on HCS, and it may only lower the figures. Readings and reports go to HCS, so anyone can re-derive every record.
-- **A dollar price, paid through SaucerSwap.** `UsdSettlement` prices HBAR from Chainlink (Supra fallback) and swaps the buyer's HBAR to the seller through SaucerSwap, reverting while the pool is more than 3% from the oracle. Remove the router and there is no sale. `CreditMarket` uses it for credits, `UsdCheckout` for **any** HTS token.
-- **One engine per methodology, reported the way Verra writes it.** Each methodology is a plug-in engine (`services/mrv/engines/`) paired with an `IMethodology` contract behind the same registry: hydropower (VMR0017 v1.0 / ACM0002 v22.0 / AMS-I.D) and solar, wind and ocean power (VMR0017 v1.0 / ACM0002 v22.0). The solar, wind and ocean module is deployed and approved on the testnet registry; no solar, wind or ocean project is registered there yet. Every finding cites the clause it enforces (VMR0017 §9.2, ACM0002 ¶82, …) and every report carries the methodology's data and parameters table: EF_grid,CM, EF_Res, EF_embodied, EG_facility, TEG, PE_HP, PE_FF, LE, ER, each with its value, source, QA/QC, equation and clause.
-- **A buyer's check on Guardian tokens, in the purchase path.** `trace_guardian_mint` follows a Guardian mint to its signed VP through the mirror node and CID-checked IPFS, with no Guardian login. The checkout builds no purchase for a token whose Guardian record does not check out.
+## Prerequisites
 
-Hedera services in play: HTS (a credit token and a certificate NFT whose treasury and supply keys are the registry contract), HCS (readings and reports), smart contracts with the HTS system contract at `0x167`, the Schedule Service (2-of-3 admin calls, `yarn admin:exec`), and the mirror node for every read-back.
+- Node.js 20.18.3 or newer
+- Git
+- Yarn, from Corepack: `corepack enable`
+
+That is enough for the quick start. A funded ECDSA testnet account is required only in [Deploy to Hedera testnet](#deploy-to-hedera-testnet).
+
+## Quick start: a working market in five minutes, no Hedera account
+
+```bash
+npm create scaffold-hbar@latest -- hydro-dmrv \
+  --template BikramBiswas786/Hedera-hydropower-dMRV-with-5-layer-verification-
+cd hydro-dmrv
+
+# cloned this repo instead? run `yarn install` first
+yarn chain:offline                 # terminal 1: local chain
+yarn deploy --network localhost    # terminal 2: contracts, stand-ins, a validated plant, one verified record, one listing
+yarn start                         # terminal 3: http://localhost:3000
+```
+
+The deploy installs local stand-ins for HTS, Chainlink, Supra and SaucerSwap, registers two demo plants with a local VVB's validation, records one hour of `HYDRO-DEMO-01` signed by its demo meter key, has the local VVB verify it (which issues the credits), and lists them at $15/t. `yarn start` sees the local deploy and targets it. Open `/market`, press **100 local HBAR** in the footer to fund the burner wallet, then **Buy & retire**; the retirement and its certificate appear in `/portfolio`. All keys on a local chain are public demo keys; the deploy refuses them on Hedera.
+
+Then:
+
+- `/verify` runs the five-stage engine: `healthy` passes, `inflated` and `tampered` do not.
+- `yarn test` runs 145 contract tests and 373 app tests, including the Solidity and TypeScript quantification agreeing on the same integers.
+
+## Architecture
+
+| Package | What it owns |
+| --- | --- |
+| `packages/hardhat` | `DmrvRegistry` (validation, monitoring, verification, issuance, and every HTS call), `HydroVmr0017Module` and `RenewableVmr0017Module` (the maths), `CreditMarket` and `UsdCheckout` (a USD price settled on SaucerSwap), `ResilientHbarUsdFeed` (Chainlink, then Supra) |
+| `packages/nextjs` | The same maths in TypeScript, the pages, REST, and the MCP server |
+
+The registry holds the credit token's supply key. A methodology module is called with `staticcall` and cannot mint. `UsdCheckout` sells any HTS fungible token with the same price and swap, so a developer can keep the market and delete the hydro methodology. The file tree is in [docs/operations.md](docs/operations.md#project-structure).
+
+What the hydro path adds, and what it does not: Guardian still runs the policy, the roles and the verifiable credentials. This template is the on-chain half Guardian does not ship. A project is registered only with a validation signature. Each period is quantified on-chain (`ER = BE − PE − LE`) and recorded in a hash chain. Credits are issued only when a verifier signs that chain head and a report on HCS. `trace_guardian_mint` checks a Guardian mint from public data before `UsdCheckout` will build a purchase of that token. The check is in the purchase builder, not in the contract. Hedera services in play: HTS, HCS, the HTS system contract at `0x167`, and the Schedule Service for a 2-of-3 admin.
+
+## Environment variables
+
+Nothing is required to run the local quick start or to browse the app. Copy the `.env.example` beside each package when you leave localhost.
+
+| Variable (`packages/nextjs/.env.local`) | Needed for |
+| --- | --- |
+| `HEDERA_OPERATOR_ID`, `HEDERA_OPERATOR_KEY`, `HCS_TOPIC_ID` | publishing readings and reports to HCS |
+| `MRV_API_KEY` | the record and verification APIs and MCP write tools (unset: writes are off) |
+| `NEXT_PUBLIC_TARGET_NETWORK` | `local` or `testnet`, to override the automatic choice |
+
+`packages/hardhat/.env` takes `VERIFIER_ADDRESS` (the VVB, which must sign each plant's validation before it is registered) and `ADMIN_ADDRESS` (a 2-of-3 threshold account). Every variable is in [docs/operations.md](docs/operations.md).
+
+| Market: oracle price, SaucerSwap check, listing | Verify: the five-stage engine on a day of readings |
+| --- | --- |
+| ![Credit market](docs/images/market.png) | ![Verify and quantify](docs/images/verify.png) |
+
+## Deploy to Hedera testnet
+
+```bash
+yarn hardhat:account:import                            # an ECDSA testnet account from portal.hedera.com
+yarn hardhat:meter-keys --network hederaTestnet        # one meter key per plant (.secrets/, gitignored)
+yarn deploy --network hederaTestnet                    # creates the HTS token and NFT collection
+yarn mrv:create-topic                                  # the HCS audit topic
+yarn mrv:record healthy HYDRO-DEMO-01                  # monitoring: verify, publish to HCS, record (issues nothing)
+yarn mrv:verify HYDRO-DEMO-01                          # the VVB's report on HCS; writes verification-HYDRO-DEMO-01-0-0.json
+VVB_PRIVATE_KEY=0x… yarn mrv:approve verification-HYDRO-DEMO-01-0-0.json   # the VVB signs on its own machine
+yarn mrv:submit verification-HYDRO-DEMO-01-0-0.json    # relay it; the approval issues the credits
+yarn mrv:reproduce                                     # anyone: re-derive every record from HCS
+```
 
 ## Check it on testnet
 
@@ -39,54 +101,6 @@ Every step after the deploy was run by the [Testnet evidence](.github/workflows/
 - The meter uncertainty `U(BE_y)` (VMR0017 §9.2) is reported with each record, not deducted from the tonnes. The conservative QA/QC (lower of two meters, MPE after calibration expiry) is deducted.
 
 > **Disclaimer.** Contracts, app and tooling are experimental and not audited. The engine implements published equations; it is not a certification body.
-
-## Quick start: a working market in five minutes, no Hedera account
-
-Prerequisites: Node.js ≥ 20.18.3, Git, Yarn via Corepack (`corepack enable`).
-
-```bash
-npm create scaffold-hbar@latest -- hydro-dmrv \
-  --template BikramBiswas786/Hedera-hydropower-dMRV-with-5-layer-verification-
-cd hydro-dmrv
-
-# cloned this repo instead? run `yarn install` first
-yarn chain:offline                 # terminal 1: local chain
-yarn deploy --network localhost    # terminal 2: contracts, stand-ins, a validated plant, one verified record, one listing
-yarn start                         # terminal 3: http://localhost:3000
-```
-
-The deploy installs local stand-ins for HTS, Chainlink, Supra and SaucerSwap, registers two demo plants with a local VVB's validation, records one hour of `HYDRO-DEMO-01` signed by its demo meter key, has the local VVB verify it (which issues the credits), and lists them at $15/t. `yarn start` sees the local deploy and targets it. Open `/market`, press **100 local HBAR** in the footer to fund the burner wallet, then **Buy & retire**; the retirement and its certificate appear in `/portfolio`. All keys on a local chain are public demo keys; the deploy refuses them on Hedera.
-
-Then:
-
-- `/verify` runs the five-stage engine: `healthy` passes, `inflated` and `tampered` do not.
-- `yarn test` runs 145 contract tests and 373 app tests, including the Solidity and TypeScript quantification agreeing on the same integers.
-
-## Deploy to Hedera testnet
-
-```bash
-yarn hardhat:account:import                            # an ECDSA testnet account from portal.hedera.com
-yarn hardhat:meter-keys --network hederaTestnet        # one meter key per plant (.secrets/, gitignored)
-yarn deploy --network hederaTestnet                    # creates the HTS token and NFT collection
-yarn mrv:create-topic                                  # the HCS audit topic
-yarn mrv:record healthy HYDRO-DEMO-01                  # monitoring: verify, publish to HCS, record (issues nothing)
-yarn mrv:verify HYDRO-DEMO-01                          # the VVB's report on HCS; writes verification-HYDRO-DEMO-01-0-0.json
-VVB_PRIVATE_KEY=0x… yarn mrv:approve verification-HYDRO-DEMO-01-0-0.json   # the VVB signs on its own machine
-yarn mrv:submit verification-HYDRO-DEMO-01-0-0.json    # relay it; the approval issues the credits
-yarn mrv:reproduce                                     # anyone: re-derive every record from HCS
-```
-
-| Variable (`packages/nextjs/.env.local`) | Needed for |
-| --- | --- |
-| `HEDERA_OPERATOR_ID`, `HEDERA_OPERATOR_KEY`, `HCS_TOPIC_ID` | publishing readings and reports to HCS |
-| `MRV_API_KEY` | the record and verification APIs and MCP write tools (unset: writes are off) |
-| `NEXT_PUBLIC_TARGET_NETWORK` | `local` or `testnet`, to override the automatic choice |
-
-`packages/hardhat/.env` takes `VERIFIER_ADDRESS` (the VVB, which must sign each plant's validation before it is registered) and `ADMIN_ADDRESS` (a 2-of-3 threshold account). Every variable is in [docs/operations.md](docs/operations.md).
-
-| Market: oracle price, SaucerSwap check, listing | Verify: the five-stage engine on a day of readings |
-| --- | --- |
-| ![Credit market](docs/images/market.png) | ![Verify and quantify](docs/images/verify.png) |
 
 ## Use it without carbon
 
