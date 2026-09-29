@@ -61,9 +61,9 @@ export const DEMO_GRID: Omit<Tool07Input, "projectKind" | "creditingPeriod"> = {
  * Uganda's national grid, from the CDM standardized baseline ASB0054-2022 v01.0 (TOOL07 v7.0, ex-ante vintage, 2017-
  * 2019 data; in force 10 Aug 2022 to 9 Aug 2025): OM 0.2740 t CO2/MWh, BM 0.00001 t CO2/MWh (the most recent units
  * are hydro and solar). Its hydro CM is TOOL07's 0.5/0.5 weighting, 0.1370; on the VMR0017 path the engine re-weights
- * OM and BM with VT0011 ¶86 (0.4/0.6 for a first crediting period: 0.1096). The demo designs fix that ex-ante CM at
- * validation (1 Jul 2025), inside the baseline's validity; a project validated later needs a VT0011 calculation on
- * newer data, since this baseline has expired.
+ * OM and BM with VT0011 ¶86 (0.4/0.6 for a first crediting period: 0.1096). The demo designs date the ex-ante CM to
+ * 1 Jul 2025, inside the baseline's validity, but the demo plants were registered in 2026, after it expired: the
+ * figures illustrate the arithmetic, not a current grid. A real project needs a new VT0011 calculation.
  */
 export const UGANDA_GRID = {
   source: "published",
