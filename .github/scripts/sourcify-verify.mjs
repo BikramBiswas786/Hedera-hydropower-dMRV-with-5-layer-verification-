@@ -10,7 +10,31 @@ import { join } from "node:path";
 const [hardhatDir, chainId, ...targets] = process.argv.slice(2);
 const API = "https://sourcify.dev/server";
 const buildInfoDir = join(hardhatDir, "artifacts", "build-info");
-const buildInfos = readdirSync(buildInfoDir).map(f => JSON.parse(readFileSync(join(buildInfoDir, f), "utf8")));
+const buildInfos = readdirSync(buildInfoDir).map(f => ({
+  file: f,
+  ...JSON.parse(readFileSync(join(buildInfoDir, f), "utf8")),
+}));
+
+/**
+ * The build the artifact itself came from. A contract with a compiler-settings override (DmrvRegistry's viaIR build)
+ * is also compiled with the default settings wherever another file imports it, so the first build that mentions the
+ * name can be the wrong one.
+ */
+function buildInfoOf(name) {
+  const candidates = buildInfos.filter(b =>
+    Object.values(b.output.contracts ?? {}).some(contracts => name in contracts),
+  );
+  for (const b of candidates) {
+    const source = Object.keys(b.output.contracts).find(s => name in b.output.contracts[s]);
+    try {
+      const dbg = JSON.parse(readFileSync(join(hardhatDir, "artifacts", source, `${name}.dbg.json`), "utf8"));
+      if (dbg.buildInfo.endsWith(b.file)) return b;
+    } catch {
+      // artifacts of this commit may predate .dbg.json; fall back below
+    }
+  }
+  return candidates[0];
+}
 
 async function json(url, init) {
   const response = await fetch(url, init);
@@ -30,9 +54,7 @@ for (const target of targets) {
     console.log(`${name} ${address}: already verified (${existing.body.match})`);
     continue;
   }
-  const info = buildInfos.find(b =>
-    Object.entries(b.output.contracts ?? {}).some(([, contracts]) => name in contracts),
-  );
+  const info = buildInfoOf(name);
   if (!info) {
     console.log(`${name}: not in this commit's build`);
     failed++;

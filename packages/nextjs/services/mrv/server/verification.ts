@@ -254,14 +254,14 @@ export async function prepareVerification(request: VerificationRequest) {
 async function readPublishedReport(topicId: string, sequence: number): Promise<{ hash: Hex; body: unknown }> {
   let lastError: unknown;
   // The mirror node trails consensus by a few seconds.
-  for (let attempt = 0; attempt < 5; attempt++) {
+  for (let attempt = 0; attempt < 10; attempt++) {
     try {
       const message = await fetchTopicMessage(topicId, sequence);
       const { text, hash } = decodeMessage(base64ToBytes(message.message));
       return { hash, body: JSON.parse(text) };
     } catch (error) {
       lastError = error;
-      await new Promise(resolve => setTimeout(resolve, 2_000));
+      await new Promise(resolve => setTimeout(resolve, 3_000));
     }
   }
   throw new ApiError(

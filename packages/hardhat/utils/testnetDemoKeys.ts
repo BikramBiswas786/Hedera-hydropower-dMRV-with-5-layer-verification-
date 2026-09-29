@@ -13,3 +13,5 @@ function derive(deployerKey: string, label: string): Wallet {
 
 export const testnetMeter = (deployerKey: string, plantId: string) => derive(deployerKey, `meter ${plantId}`);
 export const testnetVvb = (deployerKey: string) => derive(deployerKey, "demo vvb");
+/** A separate buyer, so the testnet purchase is not the seller buying from itself. */
+export const testnetBuyer = (deployerKey: string) => derive(deployerKey, "demo buyer");

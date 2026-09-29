@@ -2,9 +2,10 @@
  * Command-line access to the same pipeline the app, REST API and MCP tools use.
  *
  *   yarn mrv:create-topic          create the HCS audit topic (prints HCS_TOPIC_ID)
- *   yarn mrv:record [scenario] [plantId]
- *                                  monitoring: verify sample data, publish readings and report to HCS and record the
- *                                  period on DmrvRegistry with the meter's signature. Issues nothing.
+ *   yarn mrv:record [scenario] [plantId] [endIso]
+ *                                  monitoring: verify sample data (up to 24 h ending at the last whole hour, or at
+ *                                  endIso), publish readings and report to HCS and record the period on DmrvRegistry
+ *                                  with the meter's signature. Issues nothing.
  *   yarn mrv:verify <plantId> [approve|reject] [deductionTonnes] [findings]
  *                                  verification, step 1: reproduce the plant's pending records from HCS, publish the
  *                                  verification report and write verification-<plant>-<first>-<last>.json for the VVB
@@ -103,7 +104,7 @@ type VerificationFile = {
 };
 
 /** Monitoring. Starts where the last record ended so repeated runs never overlap on-chain. */
-async function record(scenario: ScenarioName, plantId: string) {
+async function record(scenario: ScenarioName, plantId: string, endIso?: string) {
   const { recordReadings, readMeterKey } = await import("~~/services/mrv/server/monitoring");
   const { getProject, requireDeployment } = await import("~~/services/mrv/server/registry");
   const { plantIdToBytes32 } = await import("~~/services/mrv/views");
@@ -115,7 +116,8 @@ async function record(scenario: ScenarioName, plantId: string) {
   if (!plant) throw new Error(`${plantId} is not registered. Run \`yarn deploy\` first.`);
   const { address } = requireDeployment();
 
-  const end = lastWholeHour();
+  const end = endIso ? new Date(endIso) : lastWholeHour();
+  if (Number.isNaN(end.getTime())) throw new Error(`Not an ISO date: ${endIso}`);
   const available = Math.floor((end.getTime() / 1_000 - plant.lastPeriodEnd) / HOUR_S);
   // With no unrecorded hours left an APPROVED batch will be refused as overlapping; other decisions still print.
   const hours = available >= 1 ? Math.min(MAX_HOURS, available) : MAX_HOURS;
@@ -280,10 +282,10 @@ async function main() {
     const scenario = (arg ?? "healthy") as ScenarioName;
     if (!SCENARIO_NAMES.includes(scenario))
       throw new Error(`Unknown scenario. Use one of: ${SCENARIO_NAMES.join(", ")}`);
-    return record(scenario, plantArg ?? DEMO_PLANTS[0].plantId);
+    return record(scenario, plantArg ?? DEMO_PLANTS[0].plantId, rest[0]);
   }
   console.log(
-    "Usage: mrv.ts create-topic | record [scenario] [plantId] | verify <plantId> [approve|reject] [deductionTonnes] [findings] | approve <verification.json> | submit <verification.json> | meter-key | sign <request.json>",
+    "Usage: mrv.ts create-topic | record [scenario] [plantId] [endIso] | verify <plantId> [approve|reject] [deductionTonnes] [findings] | approve <verification.json> | submit <verification.json> | meter-key | sign <request.json>",
   );
   process.exitCode = 1;
 }

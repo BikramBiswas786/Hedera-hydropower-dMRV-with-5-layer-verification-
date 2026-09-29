@@ -18,6 +18,7 @@
     "mrv:sign": "tsx scripts/mrv.ts sign",
     "mrv:approve": "tsx scripts/mrv.ts approve",
     "mrv:submit": "tsx scripts/mrv.ts submit",
+    "market:agent-buy": "tsx scripts/agentBuy.ts",
     "admin:threshold": "tsx scripts/createThresholdAdmin.ts",
     "admin:exec": "tsx scripts/adminExec.ts",
     "admin:demo": "tsx scripts/thresholdAdminDemo.ts",

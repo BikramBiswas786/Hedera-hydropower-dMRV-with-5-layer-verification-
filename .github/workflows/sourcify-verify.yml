@@ -4,15 +4,21 @@ name: Sourcify verify (testnet)
 # contracts were deployed from; Sourcify reads the constructor arguments from the creation transaction.
 on:
   workflow_dispatch:
+  push:
+    branches: ["claude/**"]
 
 jobs:
   verify:
+    if: github.event_name == 'workflow_dispatch' || contains(github.event.head_commit.message, '[sourcify]')
     runs-on: ubuntu-latest
     timeout-minutes: 20
     strategy:
       fail-fast: false
       matrix:
         include:
+          # Registry v2 (VCS order), deployed by the Testnet deploy workflow on 29 Sep 2026.
+          - ref: 3bbc4cd1c61965a8ff3fb25fecaf77e8eb7d1df5
+            targets: DmrvRegistry@0x4EB517694CBac7b59a26B188eFEBa35aAb5Fd48e HydroVmr0017Module@0xe9f234753775AE6371819366472A84717ddb57eb ResilientHbarUsdFeed@0x59AFbF3a3BA4587179d8E3aD49Bf7061fABa1e17 DmrvAnnotations@0x2F5EC1b43414f97ae905808A69CE7040Ebb25E9F CreditMarket@0x48F5056EdaD0B16c97a54085512b48417bC40F04 RenewableVmr0017Module@0x2A6FEc6Bf13FD1EdCa25F46943BEEfadDb75433a
           - ref: 06a6278cd49a14c7536e0cafd4ce85fa878ec8cf
             targets: DmrvRegistry@0xaf9C76B48B317cee770ED6AE038D516b269E0129 HydroVmr0017Module@0x8D57432792aD39Ef2d2e104904e31b157846261d ResilientHbarUsdFeed@0x9529A0189654834949cf78f9ce25336be59F8AbB
           - ref: 61aba8a47db4752ee3d2db4f45f4d9ce09964919
