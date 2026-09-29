@@ -53,17 +53,41 @@ describe("hydro monitoring report (VMR0017 §9 / ACM0002 §5.10, §6.1)", () => 
     expect(m.notApplied.map(n => n.symbol)).toEqual(["PE_GP,y", "PE_BESS,y", "PE_PSP,y", "PE_FSS,y"]);
   });
 
-  it("states BE − PE − LE in the stage line and the exact reason PE_HP is zero", () => {
+  it("prints all six terms on the stage line, so a zero PE never hides LE (HYDRO-DEMO-01, VMR0017)", () => {
     const { report } = prepareAnchors(generateScenario("healthy", { end: END, domain: PREVIEW_METER_DOMAIN }));
     const e = report.emissions!;
+    const t = (g: number) => (g / 1e6).toFixed(3);
     const summary = report.stages.find(s => s.stage === "quantification")!.summary;
-    // Run-of-river: PE = 0, and LE is VMR0017's embodied emissions (21 g CO2e/kWh), not zero.
+    // Run-of-river: PE_HP = PE_FF = PE = 0, and LE is VMR0017's embodied emissions (21 g CO2e/kWh), not zero.
+    expect(e.leakageG).toBe(Math.ceil((report.monitored.netWh * 21_000) / 1e6));
+    expect(report.monitored.leakageG).toBe(0);
+    for (const term of [
+      `BE ${t(e.baselineG)}`,
+      "PE 0.000",
+      "PE_HP 0.000",
+      "PE_FF 0.000",
+      `LE ${t(e.leakageG)}`,
+      `ER ${t(e.reductionG)}`,
+    ]) {
+      expect(summary).toContain(term);
+    }
     expect(e.leakageG).toBeGreaterThan(0);
-    expect(summary).toContain(`− ${(e.leakageG / 1e6).toFixed(3)} =`);
     const peHp = report.equations.find(step => step.symbol === "PE_HP")!.expression;
-    expect(peHp).toContain("ACM0002 eq. (10)");
-    expect(peHp).toContain("No new or enlarged reservoir");
+    expect(peHp).toContain("0 because A_PJ = A_BL");
     expect(peHp).not.toContain("PD > 10");
+  });
+
+  it("shows reservoir emissions at 100 kg/MWh in the reservoir scenario (HYDRO-DEMO-02, VMR0017)", () => {
+    const { report } = prepareAnchors(generateScenario("reservoir", { end: END, domain: PREVIEW_METER_DOMAIN }));
+    expect(report.plantId).toBe("HYDRO-DEMO-02");
+    expect(report.decision).toBe("APPROVED");
+    const e = report.emissions!;
+    expect(e.reservoirG).toBe(Math.ceil((report.monitored.grossWh * 100_000) / 1e6));
+    expect(e.reservoirG).toBeGreaterThan(0);
+    expect(report.stages.find(s => s.stage === "quantification")!.summary).toContain(
+      `PE_HP ${(e.reservoirG / 1e6).toFixed(3)}`,
+    );
+    expect(report.equations.find(step => step.symbol === "PE_HP")!.expression).toContain("100 kg/MWh");
   });
 
   it("cites a clause on every finding, including rejections", () => {

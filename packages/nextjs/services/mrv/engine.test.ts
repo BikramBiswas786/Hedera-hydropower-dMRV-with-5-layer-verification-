@@ -1,4 +1,4 @@
-import { DEMO_METERING, DEMO_PLANT, DEMO_PLANTS } from "./demo";
+import { DEMO_METERING, DEMO_PLANT, DEMO_PLANTS, findDemoPlant } from "./demo";
 import { DECISION_RULES, type VerificationReport, verifyReadings } from "./engine";
 import { EMPTY_LEDGER, quantifyPeriod } from "./methodology/quantify";
 import { SCENARIO_NAMES, type ScenarioName, generateScenario } from "./scenarios";
@@ -27,6 +27,7 @@ describe("verifyReadings — decisions", () => {
   const expected: Record<ScenarioName, VerificationReport["decision"]> = {
     healthy: "APPROVED",
     "diesel-backup": "APPROVED",
+    reservoir: "APPROVED",
     "calibration-overdue": "APPROVED",
     "meter-drift": "FLAGGED",
     "data-gaps": "FLAGGED",
@@ -53,7 +54,9 @@ describe("verifyReadings — never more than the meter signed", () => {
       it(`${plant.plantId} ${name}: net ≤ metered, fuel ≥ metered, gross = metered capped at nameplate`, () => {
         const { report } = run(name, plant);
         const { meterStatement: metered, monitored } = report;
-        const capWh = Math.floor((plant.design.capacityKw * (report.periodEnd - report.periodStart) * 1_000) / 3_600);
+        // The reservoir scenario always runs on HYDRO-DEMO-02, whatever plant is passed in.
+        const design = findDemoPlant(report.plantId)!.design;
+        const capWh = Math.floor((design.capacityKw * (report.periodEnd - report.periodStart) * 1_000) / 3_600);
         expect(monitored.netWh).toBeLessThanOrEqual(metered.netWh);
         expect(monitored.fuelG).toBeGreaterThanOrEqual(metered.fuelG);
         expect(monitored.grossWh).toBe(Math.min(metered.grossWh, capWh));

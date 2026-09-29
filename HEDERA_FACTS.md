@@ -114,7 +114,7 @@ Proof: fork, the Mainnet fork workflow.
 ## Guardian
 
 **19. A Guardian mint is the number a policy's `mintDocumentBlock` rule reads from a document, minted by the Guardian
-service with the registry's keys.** Nothing on-chain recomputes it. In a VMR0015 policy on Managed Guardian
+service with the registry's keys.** Nothing on-chain recomputes it. In the policy that minted the traced token on Managed Guardian
 (topic 0.0.10718470) the rule is `totalToken`, which a `customLogicBlock` copies from the approved Monitoring Report's
 `emissionReductionsTotal` field.
 **20. Managed Guardian refuses every `httpRequestBlock`: `ALLOWED_PROTOCOLS` is unset and a tenant cannot set it.**

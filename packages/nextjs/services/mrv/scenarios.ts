@@ -1,4 +1,4 @@
-import { DEMO_PLANT, demoMeterKey, demoMeteringFor } from "./demo";
+import { DEMO_PLANT, demoMeterKey, demoMeteringFor, findDemoPlant } from "./demo";
 import { defaultMeterDomain } from "./network";
 import { type MeterDomain, signMeterStatement } from "./provenance";
 import type { Metering, PlantProfile, Reading } from "./schema";
@@ -12,6 +12,8 @@ export const PREVIEW_METER_DOMAIN: MeterDomain = {
 
 export const SCENARIOS = {
   healthy: "24 h of normal operation with main and check meters in agreement. Should be APPROVED.",
+  reservoir:
+    "The registered storage design HYDRO-DEMO-02 (12 MW, new 1.8 km² reservoir, PD 6.67 W/m²) on a normal day: 4 < PD ≤ 10, so PE_HP = EF_Res (100 kg/MWh under VMR0017) × TEG. A fixture of the on-chain design; no host country is stored, so this is not a VCS eligibility pass. Should be APPROVED.",
   "diesel-backup":
     "A 3-hour grid outage: the plant stops exporting and a diesel generator runs the auxiliaries, adding PE_FF via TOOL03. Should be APPROVED.",
   "calibration-overdue":
@@ -81,7 +83,8 @@ export type ScenarioRequest = {
  * that happen at the meter are signed and must be caught by QA/QC and physics, while `tampered` edits after signing.
  */
 export function generateScenario(scenario: ScenarioName, options: GenerateOptions = {}): ScenarioRequest {
-  const plant = options.plant ?? DEMO_PLANT;
+  // `reservoir` always runs on the storage plant: it is the demo design with a new reservoir.
+  const plant = scenario === "reservoir" ? findDemoPlant("HYDRO-DEMO-02")! : (options.plant ?? DEMO_PLANT);
   const point = OPERATING_POINT[plant.plantId] ?? OPERATING_POINT[DEMO_PLANT.plantId];
   const hours = options.hours ?? 24;
   const end = (options.end ?? lastWholeHour()).getTime();
@@ -114,6 +117,7 @@ export function generateScenario(scenario: ScenarioName, options: GenerateOption
 
   switch (scenario) {
     case "healthy":
+    case "reservoir":
       break;
     case "diesel-backup":
       // Grid outage: no export, the plant trips, auxiliaries run on a diesel generator (~25 kg/h).

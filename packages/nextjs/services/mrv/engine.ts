@@ -214,6 +214,8 @@ export const toLedgerJson = (ledger: PlantLedger): LedgerJson => ({
 
 const pct = (value: number, digits = 1) => `${(value * 100).toFixed(digits)}%`;
 const fmt = (value: number, digits = 1) => Number(value.toFixed(digits)).toLocaleString("en-US");
+// Grams as tonnes with all three decimals, so a zero term still reads as a number on the stage line.
+const t3 = (grams: number) => (grams / 1e6).toFixed(3);
 
 function median(values: number[]): number {
   const sorted = [...values].sort((a, b) => a - b);
@@ -645,7 +647,7 @@ export function verifyReadings(
     integrity: `${PROVENANCE_SUMMARY[provenance.status]}; ${(completenessBps / 100).toFixed(1)}% of the period covered, ${fmt(gapMinutes, 0)} min of gaps, ${checkMeterDiscrepancies} meter discrepancies`,
     physics: `${intervals.length - excludedIntervals.length}/${intervals.length} intervals within nameplate and ρ·g·Q·H·η_max`,
     quantification: emissions
-      ? `ER = BE − PE − LE = ${fmt(emissions.baselineG / 1e6, 3)} − ${fmt(emissions.projectG / 1e6, 3)} − ${fmt(emissions.leakageG / 1e6, 3)} = ${fmt(emissions.reductionG / 1e6, 3)} t CO2e from ${fmt(emissions.egProjectWh / 1e6, 3)} MWh EG_PJ`
+      ? `BE ${t3(emissions.baselineG)} − PE ${t3(emissions.projectG)} (PE_HP ${t3(emissions.reservoirG)} + PE_FF ${t3(emissions.fossilFuelG)}) − LE ${t3(emissions.leakageG)} = ER ${t3(emissions.reductionG)} t CO2e, from ${fmt(emissions.egProjectWh / 1e6, 3)} MWh EG_PJ`
       : "Not quantified",
     safeguards: "Water quality is monitored for review only; it never changes the credited quantity",
   };
@@ -692,7 +694,7 @@ export function verifyReadings(
     },
     emissions,
     ledger: { before: ledgerJson, after: quantification && toLedgerJson(quantification.ledger) },
-    equations: equationsFor(plant, netWh, grossWh, fuelG, emissions, reservoirGPerMwh, pd.basis),
+    equations: equationsFor(plant, netWh, grossWh, fuelG, emissions, reservoirGPerMwh, pd.wPerM2),
     monitoring: hydroMonitoringReport(plant, metering, {
       netWh,
       grossWh,
@@ -749,8 +751,8 @@ function equationsFor(
   fuelG: number,
   emissions: Emissions | null,
   reservoirGPerMwh: number,
-  /** Which ACM0002 §5.4.3 case applies (VMR0017 keeps the power-density bands and changes only EF_Res). */
-  reservoirBasis: string,
+  /** PD in W/m², `null` when A_PJ = A_BL. VMR0017 keeps ACM0002 §5.4.3's bands and changes only EF_Res. */
+  powerDensityWPerM2: number | null,
 ): EquationStep[] {
   const { design } = plant;
   const steps: EquationStep[] = [
@@ -780,7 +782,9 @@ function equationsFor(
       symbol: "PE_HP",
       expression: reservoirGPerMwh
         ? `EF_Res (${reservoirGPerMwh / 1_000} kg/MWh) × TEG, ACM0002 eq. (9)`
-        : `0, ACM0002 eq. (10): ${reservoirBasis}`,
+        : powerDensityWPerM2 === null
+          ? "0 because A_PJ = A_BL: no new or enlarged reservoir, ACM0002 eq. (10)"
+          : `0 because PD = ${powerDensityWPerM2.toFixed(2)} W/m² > 10, ACM0002 eq. (10)`,
       value: emissions.reservoirG / 1e6,
       unit: "t CO2e",
     },

@@ -279,7 +279,7 @@ Scenarios on the run-of-river demo plant (500 kW, day ending at midnight UTC):
 
 | Scenario | What it simulates | Outcome |
 | --- | --- | --- |
-| `healthy` | 24 h of normal operation, main and check meters agree | APPROVED · BE 4.973 t, LE 0.182 t, ER 4.791 t CO₂e |
+| `healthy` | 24 h of normal operation, main and check meters agree | APPROVED · BE 4.973 − PE 0.000 (PE_HP 0.000 + PE_FF 0.000) − LE 0.182 = ER 4.791 t CO₂e |
 | `diesel-backup` | 3 h grid outage, diesel generator for auxiliaries | APPROVED · PE_FF 0.240 t, ER 3.933 t |
 | `calibration-overdue` | main meter's calibration expired | APPROVED · export −0.2% (MPE), ER 4.782 t |
 | `meter-drift` | main meter reads 1.5% above the check meter for 6 h | FLAGGED · lower reading used |
@@ -290,9 +290,22 @@ Scenarios on the run-of-river demo plant (500 kW, day ending at midnight UTC):
 | `replay` | four hours re-submitted with duplicate timestamps | REJECTED |
 | `tampered` | main and check meter raised 1% in six hours *after* the meter signed: meters agree, physics is plausible | REJECTED (signature) |
 
-The storage demo plant (12 MW, new 1.8 km² reservoir, PD 6.67 W/m², second crediting period) shows reservoir
-emissions: under VMR0017 a healthy day is about 208 MWh net, BE 109.2 t, PE_HP 21.1 t (EF_Res 100 kg/MWh), LE 4.4 t
-(embodied emissions), ER 83.7 t.
+On the run-of-river plant PE is zero for a stated reason, not a missing one: PE_HP = 0 because A_PJ = A_BL (no new
+or enlarged reservoir, ACM0002 eq. 10), and PE_FF = 0 because no fuel was burned (TOOL03). LE is not zero: VMR0017
+§8.3 counts embodied emissions at EF_embodied = 21 g CO₂e/kWh of EG_facility (§9.1). The engine keeps
+`monitored.leakageG` at 0 because nothing is *measured* as leakage; LE is computed, and the quantification stage line
+prints all six terms so a zero PE never reads as "no emissions".
+
+The `reservoir` scenario runs the storage demo plant HYDRO-DEMO-02 (12 MW, new 1.8 km² reservoir, PD 6.67 W/m²,
+VMR0017, second crediting period), where 4 < PD ≤ 10 W/m² fires ACM0002 eq. (9) with VMR0017's EF_Res of 100 kg/MWh:
+
+| Scenario | Outcome (day ending at midnight UTC) | Clause that fired |
+| --- | --- | --- |
+| `reservoir` | APPROVED · BE 109.165 − PE 21.134 (PE_HP 21.134 + PE_FF 0.000) − LE 4.372 = ER 83.660 t CO₂e, from 208.170 MWh | PE_HP = EF_Res × TEG, ACM0002 eq. (9), EF_Res from VMR0017 §9.1; LE from VMR0017 §8.3 |
+
+The scenario is a quantification example, not an eligibility pass. The plant profile stores no host country, so the
+engine cannot check VMR0017's least-developed-country condition for hydro. The scenario adds no registration and
+mints nothing: it runs the design already in `utils/demoPlants.ts` through the engine only.
 
 ## One engine per methodology
 
