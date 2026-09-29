@@ -196,7 +196,7 @@ export const PlantDetailView = ({ detail }: { detail: PlantDetail }) => {
                     <td className="text-right">{formatGramsAsTonnes(a.leakageG)} t</td>
                     <td className="text-right font-semibold">{formatGramsAsTonnes(a.reductionG)} t</td>
                     <td className="whitespace-nowrap text-xs">
-                      {a.status === "monitored" ? "awaiting VVB" : a.status === "issued" ? "verified" : "rejected"}
+                      {a.status === "monitored" ? "awaiting VVB" : a.status === "verified" ? "verified" : "rejected"}
                       {a.issuanceId !== null && ` (#${a.issuanceId})`}
                     </td>
                     <td className="text-right">{(a.completenessBps / 100).toFixed(1)}%</td>

@@ -338,7 +338,7 @@ export async function submitVerification(request: z.input<typeof submitVerificat
   if (receipt.status !== "success") throw new ApiError(`verifyPeriod transaction ${hash} reverted`, 502);
   const [event] = parseEventLogs({ abi, logs: receipt.logs, eventName: "PeriodVerified" });
   return {
-    status: event.args.decision === 1 ? ("issued" as const) : ("rejected" as const),
+    status: event.args.decision === 1 ? ("approved" as const) : ("rejected" as const),
     issuanceId: Number(event.args.issuanceId),
     records: { first: event.args.firstRecord, last: event.args.lastRecord },
     monitoredG: Number(event.args.monitoredG),

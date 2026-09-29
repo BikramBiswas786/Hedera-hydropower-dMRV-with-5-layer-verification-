@@ -37,6 +37,8 @@ export function hydroMonitoringReport(plant: PlantProfile, metering: Metering, p
   const e = p.emissions;
   const acm = "ACM0002 v22.0";
   const calculated = (value: number | undefined, unit = 1) => (e && value !== undefined ? value / unit : null);
+  // VMR0017 §9.2: for direct measurement use the error from the last calibration, else the manufacturer's accuracy.
+  const meterUncertaintyPct = metering.lastCalibrationUncertaintyPct ?? metering.mainMeterAccuracyPct;
 
   const parameters: MonitoringParameter[] = [
     // ── Fixed at validation (ACM0002 §5.10, VMR0017 §9.1) ──────────────────
@@ -222,6 +224,23 @@ export function hydroMonitoringReport(plant: PlantProfile, metering: Metering, p
       source: "EG_PJ,y × EF_grid,CM,y, rounded down",
       equation: "(11)",
       clause: vmr ? "VMR0017 §8.1 (ACM0002 unchanged); ACM0002 §5.5" : `${acm} §5.5`,
+    },
+    {
+      symbol: "U(BE_y)",
+      description:
+        "Uncertainty of baseline emissions, propagated from the metering uncertainty (relative uncertainties of a product add in quadrature)",
+      unit: "%",
+      value: e ? Number(meterUncertaintyPct.toFixed(3)) : null,
+      kind: "calculated",
+      source: `EG_facility,y by direct measurement: ±${meterUncertaintyPct}% (${
+        metering.lastCalibrationUncertaintyPct !== undefined
+          ? "error from the last calibration"
+          : "the meter's accuracy class, no calibration error recorded"
+      }); EF_grid,CM fixed ex-ante from IPCC lower bounds, a conservative estimate, so 0%${
+        e ? `. ±${((Math.abs(e.baselineG) * meterUncertaintyPct) / 100 / T).toFixed(3)} t on this period's BE` : ""
+      }. Reported, not deducted: the conservative QA/QC above (lower of two meters, MPE after calibration expiry) already applies`,
+      equation: "U(BE)² = U(EG_facility)² + U(EF_grid,CM)²",
+      clause: vmr ? "VMR0017 §9.2 (QA/QC: propagate uncertainty)" : `${acm} §6.1`,
     },
     {
       symbol: "PE_HP,y",

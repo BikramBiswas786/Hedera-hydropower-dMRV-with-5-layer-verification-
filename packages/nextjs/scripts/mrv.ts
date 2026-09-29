@@ -15,6 +15,8 @@
  *   yarn mrv:submit <verification.json>
  *                                  step 2: relay the signed statement to DmrvRegistry.verifyPeriod; an approval issues
  *                                  credits into the operator's custody
+ *   yarn mrv:reproduce [plantId…]  anyone, no key: re-derive every monitoring record from HCS (engine, registered design,
+ *                                  meter, record hash chain) and compare it with the chain
  *   yarn mrv:meter-key             generate a key for a plant's data logger (its address is registered with the plant)
  *   yarn mrv:sign <request.json>   sign the batch's EIP-712 meter statement with METER_PRIVATE_KEY, as the meter
  *                                  would, for this app's registry at the request ledger's sequence (or `domain`)
@@ -237,13 +239,33 @@ async function submit(file: string | undefined) {
     signature: content.signature,
   });
   console.log(
-    outcome.status === "issued"
+    outcome.status === "approved"
       ? outcome.unitsIssued > 0
         ? `Verification #${outcome.issuanceId} issued ${outcome.unitsIssued / 1_000} t CO2e (VVB ${outcome.verifier})`
         : `Verification #${outcome.issuanceId} approved records ${outcome.records.first}-${outcome.records.last}; nothing to issue, the ER deficit or sub-tonne remainder carries forward (VVB ${outcome.verifier})`
       : `Verification #${outcome.issuanceId} rejected records ${outcome.records.first}-${outcome.records.last} (VVB ${outcome.verifier})`,
   );
   console.log(`Contract call: ${outcome.transaction.url ?? outcome.transaction.hash}`);
+}
+
+/** Anyone, no key: re-derive every monitoring record of the plants from HCS, including the record hash chain. */
+async function reproduce(plantIds: string[]) {
+  const { getProjectRecords, reproduceRecord } = await import("~~/services/mrv/server/verification");
+  let failed = 0;
+  for (const plantId of plantIds.length ? plantIds : DEMO_PLANTS.map(p => p.plantId)) {
+    for (const record of await getProjectRecords(plantId)) {
+      const result = await reproduceRecord(record.id);
+      const bad =
+        result.status === "reproduced" || result.status === "diverged"
+          ? result.checks.filter(c => !c.ok).map(c => c.field)
+          : [];
+      console.log(
+        `${plantId} record ${record.sequence} (#${record.id}, ${record.status}): ${result.status}${bad.length ? ` [${bad.join(", ")}]` : ""}`,
+      );
+      if (result.status !== "reproduced") failed++;
+    }
+  }
+  if (failed) throw new Error(`${failed} record(s) did not reproduce`);
 }
 
 function meterKey() {
@@ -278,6 +300,7 @@ async function main() {
   if (command === "approve") return approve(arg);
   if (command === "submit") return submit(arg);
   if (command === "verify") return verify(arg, plantArg, rest[0], rest[1]);
+  if (command === "reproduce") return reproduce([arg, plantArg, ...rest].filter(Boolean));
   if (command === "record") {
     const scenario = (arg ?? "healthy") as ScenarioName;
     if (!SCENARIO_NAMES.includes(scenario))
@@ -285,7 +308,7 @@ async function main() {
     return record(scenario, plantArg ?? DEMO_PLANTS[0].plantId, rest[0]);
   }
   console.log(
-    "Usage: mrv.ts create-topic | record [scenario] [plantId] [endIso] | verify <plantId> [approve|reject] [deductionTonnes] [findings] | approve <verification.json> | submit <verification.json> | meter-key | sign <request.json>",
+    "Usage: mrv.ts create-topic | record [scenario] [plantId] [endIso] | verify <plantId> [approve|reject] [deductionTonnes] [findings] | approve <verification.json> | submit <verification.json> | reproduce [plantId…] | meter-key | sign <request.json>",
   );
   process.exitCode = 1;
 }

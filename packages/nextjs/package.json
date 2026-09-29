@@ -14,6 +14,7 @@
     "mrv:create-topic": "tsx scripts/mrv.ts create-topic",
     "mrv:record": "tsx scripts/mrv.ts record",
     "mrv:verify": "tsx scripts/mrv.ts verify",
+    "mrv:reproduce": "tsx scripts/mrv.ts reproduce",
     "mrv:meter-key": "tsx scripts/mrv.ts meter-key",
     "mrv:sign": "tsx scripts/mrv.ts sign",
     "mrv:approve": "tsx scripts/mrv.ts approve",

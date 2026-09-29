@@ -19,7 +19,7 @@ type Prepared = {
 };
 
 type Submitted = {
-  status: "issued" | "rejected";
+  status: "approved" | "rejected";
   issuanceId: number;
   unitsIssued: number;
   transaction: { url: string | null; hash: string };
@@ -260,9 +260,11 @@ export const VerificationPanel = ({ plantId }: { plantId: string }) => {
         <div role="status" className="alert alert-success text-sm flex flex-col items-start gap-1">
           <span>
             Verification #{submitted.issuanceId}:{" "}
-            {submitted.status === "issued"
-              ? `issued ${formatTonnes(submitted.unitsIssued)} t CO₂e into the operator's custody.`
-              : "rejected; the run is closed unissued."}
+            {submitted.status === "rejected"
+              ? "rejected; the run is closed unissued."
+              : submitted.unitsIssued > 0
+                ? `approved; issued ${formatTonnes(submitted.unitsIssued)} t CO₂e into the operator's custody.`
+                : "approved; nothing to issue, the deficit or sub-tonne remainder carries forward."}
           </span>
           {submitted.transaction.url && (
             <ExternalLink href={submitted.transaction.url}>Contract transaction</ExternalLink>

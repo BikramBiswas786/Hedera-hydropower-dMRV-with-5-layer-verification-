@@ -30,7 +30,7 @@ const attestation = (overrides: Partial<AttestationView>): AttestationView => ({
   hcsTopicId: "0.0.5005",
   hcsSequence: 4,
   timestamp: 86_460,
-  status: "issued",
+  status: "verified",
   issuanceId: 0,
   ...overrides,
 });

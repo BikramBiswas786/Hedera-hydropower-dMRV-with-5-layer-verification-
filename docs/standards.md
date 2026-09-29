@@ -1,14 +1,14 @@
 # Standards crosswalk
 
 Each methodology, tool and program document the template implements: the clause, where the code applies it, and
-what is left to a VVB. Last checked against the documents on 28 Sep 2026. Clause numbers are the documents' own.
+what is left to a VVB. Last checked against the documents on 29 Sep 2026. Clause numbers are the documents' own.
 
 ## VMR0017 v1.0 (23 Apr 2026), revision of ACM0002 v22.0
 
 | Clause | Rule | Where |
 | --- | --- | --- |
 | §2 | TOOL01→VT0008, TOOL02→VT0009, TOOL05→VT0010, TOOL07→VT0011; TOOL32 not eligible | `project.ts` (`additionalityOf`, `gridFactor`), `tool07.ts` |
-| §4 Table 1 | hydro ≤ 15 MW by the higher of rated and authorized capacity, UN LDCs only | `project.ts` (`authorizedCapacityKw`, `ldc.ts`); contract `MethodologyNotApplicable` on rated capacity |
+| §4 Table 1 | hydro ≤ 15 MW by the higher of rated and authorized capacity, UN LDCs only | `project.ts` (`authorizedCapacityKw`, `ldc.ts`); `HydroVmr0017Module` stores both capacities and the host country and reverts `MethodologyNotApplicable` or `NotLeastDevelopedCountry` (UN list with graduation dates, at the registration request) |
 | §4 Table 1 | wind and terrestrial solar PV in low- and middle-income countries; floating solar, wave and tidal everywhere (income group as declared by the registrant) | `RenewableVmr0017Module` `NotApplicableInHighIncomeCountry`, `renewable.ts` |
 | §4 Table 1 | geothermal in low- and middle-income countries | not implemented (no PE_GP) |
 | §4 8(f), §8.2 eq. 18 | BESS co-location, PE_BESS, PE_PSP, PE_FSS | not implemented; the modules have no BESS |
@@ -75,7 +75,8 @@ what is left to a VVB. Last checked against the documents on 28 Sep 2026. Clause
 | VCS v5.0, V5#101 | E&I registrations requested from 1 Jan 2027: 5-year periods | both modules `_checkSpan`, `project.ts` |
 | VCS v5.0, V5#101 | registered 7-year projects move to 5-year periods at a renewal requested from 1 Jan 2027 | both modules `validateRenewal` (block time as the request date), `project.ts` `renewal.requestedAt` |
 | VCS v5.0, V5#02 | regulatory surplus at validation, renewal and baseline reassessment | `regulatorySurplus`, `renewal.regulatorySurplus` |
-| VCS v5.0, V5#14, #16, #17, #58 | right to operate, stakeholder engagement, safeguards, benefit sharing | the proponent's and VVB's job; not modelled |
+| VCS v5.0, V5#14, #16, #17, #58 | right to operate, stakeholder engagement, safeguards, benefit sharing | `project.ts` requires the environmental and social impact assessment, the stakeholder consultation and the no-net-harm assessment to be named under VMR0017 (the demo plants say they have none); judging them is the VVB's job, and its `ValidationApproval` on-chain is where it signs off |
+| VCS v5.0 project cycle | validation before registration; monitoring reports; verification before issuance | `DmrvRegistry`: `registerProject` needs a VVB's `ValidationApproval`; `recordMonitoring` records monitoring (issues nothing); `verifyPeriod` issues only on a VVB's `VerificationStatement` over the record chain and its report on HCS |
 | VCS v4 scope revision | grid hydro only small scale in LDCs | `vcsScopeOf` |
 | Grievance Redress Policy v1.2 | complaints and appeals to Verra | out of scope: a process, not a quantity |
 

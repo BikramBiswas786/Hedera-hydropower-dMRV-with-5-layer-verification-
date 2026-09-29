@@ -79,8 +79,17 @@ export const CertificateView = ({ retirementId }: { retirementId: bigint }) => {
         </p>
         <p className="m-0 text-sm text-base-content/70">
           The corresponding credit tokens were burned on the Hedera Token Service. Each was issued by the registry
-          contract from ER = BE − PE − LE under CDM AMS-I.D / ACM0002, from monitoring data anchored on the Hedera
-          Consensus Service, and can be reproduced from public data on the Audit page.
+          contract only after an accredited VVB verified the plant&apos;s meter-signed monitoring records, with ER = BE
+          − PE − LE recomputed on-chain under the methodology the plant registered (Verra VMR0017 v1.0 with ACM0002
+          v22.0 for the demo plants). The monitoring data and reports are on the Hedera Consensus Service and can be
+          reproduced from public data on the Audit page.
+        </p>
+        <p className="m-0 text-xs text-base-content/60">
+          These are verified emission reductions issued by this registry, not Verra VCUs, and this retirement is
+          recorded on Hedera only. A claim based on it should say so, and the same reductions must not also be claimed
+          through another instrument (a VCU, a renewable energy certificate).
+          {targetNetwork.testnet &&
+            " Testnet: demo plants with illustrative data and a labelled demo VVB key; these credits have no value."}
         </p>
 
         <dl className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-left text-sm m-0">

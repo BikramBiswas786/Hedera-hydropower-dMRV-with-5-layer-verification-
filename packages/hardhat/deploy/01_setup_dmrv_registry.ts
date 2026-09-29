@@ -29,7 +29,9 @@ function evmAddress(value: string): string {
  *   4. Demo projects, each with its own meter address and a VVB's `ValidationApproval` (VCS: validation precedes
  *      registration). On Hedera networks the meters come from METER_ADDRESSES or `.secrets/meters.<network>.json`
  *      (the public demo derivation is refused) and the validating key from VALIDATOR_PRIVATE_KEY, a labelled demo
- *      VVB key; without it the plants are left for `yarn mrv:validate`. Local chains use the public LOCAL_VVB.
+ *      VVB key; without it the plants stay unregistered until the admin calls registerProject with a VVB's
+ *      ValidationApproval signature (typed data: `utils/attestation.ts` `signValidation`). Local chains use the public
+ *      LOCAL_VVB.
  *   5. SaucerSwap pool guard on the market (always enforced; `setPoolGuardEnabled(false)` reverts).
  *   6. Key split: VERIFIER_ADDRESS (the VVB's ECDSA signing key) gets VERIFIER_ROLE. ADMIN_ADDRESS (a 2-of-3
  *      Hedera threshold account, 0.0.<num>) gets DEFAULT_ADMIN_ROLE on both contracts and the deployer renounces.
@@ -144,7 +146,7 @@ const setupDmrv: DeployFunction = async function (hre: HardhatRuntimeEnvironment
     : [];
   if (pending.length && !validator) {
     console.warn(
-      `No VALIDATOR_PRIVATE_KEY: ${pending.map(p => p.plantId).join(", ")} need a VVB's ValidationApproval (yarn mrv:validate).`,
+      `No VALIDATOR_PRIVATE_KEY: ${pending.map(p => p.plantId).join(", ")} need a VVB's ValidationApproval before registerProject; they were not registered.`,
     );
   }
   if (pending.length && validator) {

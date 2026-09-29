@@ -104,17 +104,4 @@ jobs:
 
       - name: Reproduce every record from HCS
         working-directory: packages/nextjs
-        run: |
-          yarn tsx -e "
-            import('./services/mrv/server/verification').then(async ({ getProjectRecords, reproduceRecord }) => {
-              let failed = 0;
-              for (const plant of ['HYDRO-DEMO-01', 'HYDRO-DEMO-02']) {
-                for (const r of await getProjectRecords(plant)) {
-                  const result = await reproduceRecord(r.id);
-                  console.log(plant + ' record ' + r.sequence + ' (#' + r.id + '): ' + result.status + ', ' + r.status);
-                  if (result.status !== 'reproduced') failed++;
-                }
-              }
-              if (failed) process.exit(1);
-            });
-          "
+        run: yarn mrv:reproduce

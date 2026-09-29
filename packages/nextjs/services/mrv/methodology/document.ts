@@ -28,8 +28,8 @@ Each plant is registered on-chain under one of two rule sets:
 - **CDM ${METHODOLOGIES["AMS-I.D"].id} v${METHODOLOGIES["AMS-I.D"].version}** (up to ${SMALL_SCALE_LIMIT_KW / 1_000} MW) and **${METHODOLOGIES.ACM0002.id} v${METHODOLOGIES.ACM0002.version}** (above).
 
 Both use **TOOL03** for fossil fuel combustion. The grid emission factor follows TOOL07 v7.0 for CDM plants and
-Verra's VT0011 v1.0 revision of it for VMR0017 plants. The contract \`HydroCreditRegistry\` recomputes every figure below from the registered design and methodology,
-so a verifier cannot mint more than the equations allow. 1 credit = 1 t CO2e; 1 token base unit = 1 kg CO2e.
+Verra's VT0011 v1.0 revision of it for VMR0017 plants. The contract \`HydroVmr0017Module\` recomputes every figure below from the registered design and methodology,
+so nobody can credit more than the equations allow. 1 credit = 1 t CO2e; 1 token base unit = 1 kg CO2e.
 
 ## Emission reductions
 
@@ -112,8 +112,18 @@ so a verifier cannot mint more than the equations allow. 1 credit = 1 t CO2e; 1 
 | Fuel | burnt on site with no registered fuel → REJECTED (PE_FF cannot be computed) |
 | Water quality | pH, turbidity, temperature out of range → FLAGGED for environmental review; quantity unchanged |
 
-Only APPROVED periods can be attested. Every attestation publishes the raw readings, metering data and ledger state to
-HCS, then the report, so anyone can re-run the engine and compare every figure with the contract.
+Only APPROVED periods can be recorded. Every monitoring record publishes the raw readings, metering data and ledger
+state to HCS, then the report, so anyone can re-run the engine and compare every figure with the contract.
+
+## VCS project cycle on-chain
+
+\`DmrvRegistry\` registers a project only with a VVB's EIP-712 ValidationApproval over the design, the module parameters
+and its validation report. Each monitoring period is signed by the plant's meter and recorded (\`recordMonitoring\`):
+the module quantifies ER and the record joins a hash chain, but nothing is issued. Credits are issued only by
+\`verifyPeriod\`, when a VVB (VERIFIER_ROLE, not the operator, meter or reporter) signs a VerificationStatement over a
+contiguous run of records, their chain head, a deduction and its verification report on HCS. An approval issues
+⌊(balance + Σ ER − deduction) / 1000⌋ kg to the operator's custody; a rejection closes the run. Units are verified
+emission reductions under the registered methodology, not Verra VCUs.
 
 ## Fuels (IPCC 2006 Vol. 2 Ch. 1, NCV GJ/t and CO2 kg/TJ: default, lower, upper)
 
@@ -126,6 +136,7 @@ ${Object.values(FUELS)
 VT0011 ¶72 option 2 (annual BM update), battery and pumped storage and BESS fire suppression (VMR0017 PE_BESS, PE_PSP, PE_FSS),
 TOOL07 option B and dispatch-data OM, ex-post OM vintage, off-grid plants and imports in the grid factor, integrated
 hydro projects (several reservoirs), battery storage and geothermal emission sources, TOOL05 for grid electricity
-consumed by the project (net metering covers imports at the plant). A VVB must still validate the design and verify
-the monitoring plan; this is a digital implementation of the equations, not a certification.
+consumed by the project (net metering covers imports at the plant). The VVB's validation and verification are
+signatures the contract requires, but their judgement (site visit, safeguards, data authenticity) is the VVB's; this is
+a digital implementation of the equations and the cycle, not a certification.
 `;

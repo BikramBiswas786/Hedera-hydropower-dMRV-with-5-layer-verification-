@@ -88,7 +88,7 @@ type ReadPreviousHash = (record: AttestationView) => Promise<Hex | undefined>;
 
 const STATUS: Record<AttestationView["status"], { label: string; tone: string }> = {
   monitored: { label: "monitored, awaiting VVB", tone: "badge-warning" },
-  issued: { label: "verified, issued", tone: "badge-success" },
+  verified: { label: "verified by VVB", tone: "badge-success" },
   rejected: { label: "rejected by VVB", tone: "badge-error" },
 };
 

@@ -138,8 +138,11 @@ export function registeredDesignOf(p: HydroParams): RegisteredDesign {
   };
 }
 
-/** Where a monitoring record stands: awaiting verification, or closed by an approving or rejecting verification. */
-export type RecordStatus = "monitored" | "issued" | "rejected";
+/**
+ * Where a monitoring record stands: awaiting verification, or closed by an approving or rejecting verification. An
+ * approved run issues whole tonnes of its ER; a deficit or remainder carries (see its `IssuanceView`).
+ */
+export type RecordStatus = "monitored" | "verified" | "rejected";
 
 /**
  * One monitoring record (`DmrvRegistry.Attestation`): a meter-signed period the module quantified. It issues nothing
@@ -253,7 +256,7 @@ export function toDmrvAttestationView(
     hcsTopicId: topicIdFromNum(auditTopic),
     hcsSequence: Number(raw.hcsSequence),
     timestamp: Number(raw.timestamp),
-    status: !closed ? "monitored" : closed.decision === 1 ? "issued" : "rejected",
+    status: !closed ? "monitored" : closed.decision === 1 ? "verified" : "rejected",
     issuanceId: closed?.issuanceId ?? null,
   };
 }
