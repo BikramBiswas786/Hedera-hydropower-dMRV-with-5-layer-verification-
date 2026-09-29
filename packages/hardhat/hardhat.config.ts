@@ -109,7 +109,8 @@ const config: HardhatUserConfig = {
 // Extend the deploy task to also generate TypeScript ABIs after deployment.
 task("deploy").setAction(async (args, hre, runSuper) => {
   await runSuper(args);
-  await generateTsAbis(hre);
+  // A deploy on a fork of mainnet is a rehearsal: its addresses exist nowhere, so the app must not read them.
+  if (process.env.HEDERA_FORK_NETWORK !== "mainnet") await generateTsAbis(hre);
 });
 
 // Extend the verify task to show HashScan link after Sourcify verification.
