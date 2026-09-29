@@ -177,9 +177,6 @@ export const verificationDigest = (registry: Registry, v: VerificationInput): He
 export const signVerification = (privateKey: Hex, registry: Registry, v: VerificationInput): Hex =>
   signDigest(privateKey, verificationDigest(registry, v));
 
-export const signValidation = (privateKey: Hex, registry: Registry, v: ValidationInput): Hex =>
-  signDigest(privateKey, validationDigest(registry, v));
-
 /** The VVB behind a verification signature, or null when the signature is malformed. */
 export const recoverVerifier = (registry: Registry, v: VerificationInput, signature: Hex): Address | null =>
   recoverDigest(verificationDigest(registry, v), signature);
