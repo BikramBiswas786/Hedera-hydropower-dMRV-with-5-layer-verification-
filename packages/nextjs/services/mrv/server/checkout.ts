@@ -27,8 +27,8 @@ import { z } from "zod";
  * record makes no such claim and is sold as what it is.
  */
 
-/** The testnet checkout (docs/evidence.md), deployed by scripts/checkoutTestnetDemo.ts. `CHECKOUT_ADDRESS` overrides. */
-const TESTNET_CHECKOUT = "0x455eFbF07B2b5d5137AEc3601c43549593741898";
+/** Gated testnet checkout. `CHECKOUT_ADDRESS` overrides. The earlier contract `0x455eFbF0…` has no `buyTraced`. */
+const TESTNET_CHECKOUT = "0xa42B11B322a6Dd1B638abe69Aa6671A45C85Ab75";
 
 const CHECKOUT_ABI = parseAbi([
   "struct Listing { address seller; address token; uint64 available; uint64 priceUsdCentsPerToken; uint8 tokenDecimals; bool active; }",
