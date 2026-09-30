@@ -20,7 +20,7 @@
       "packageManager": "yarn"
     },
     "requirements": {
-      "node": ">=20.18.3"
+      "node": ">=20.18.3 <23"
     },
     "outro": {
       "sections": [
