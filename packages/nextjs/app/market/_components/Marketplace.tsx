@@ -24,7 +24,11 @@ export const Marketplace = () => {
     contractName: "CreditMarket",
     functionName: "listingCount",
   });
-  const { data: listings } = useScaffoldReadContract({
+  const {
+    data: listings,
+    isLoading: listingsLoading,
+    error: listingsError,
+  } = useScaffoldReadContract({
     contractName: "CreditMarket",
     functionName: "getListings",
     args: [0n, listingCount ?? 0n],
@@ -57,6 +61,7 @@ export const Marketplace = () => {
 
   const rawListings: readonly RawListing[] = listings ?? [];
   const open = rawListings.map(toListingView).filter(listing => listing.active);
+  const waiting = isLoading || listingCount === undefined || (listingCount > 0n && listingsLoading && !listings);
 
   return (
     <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-start">
@@ -83,7 +88,13 @@ export const Marketplace = () => {
             Chainlink. Buy is not built until it is inside {dex.publicMainnet.maxDeviationBps}.
           </p>
         )}
-        {open.length === 0 && (
+        {waiting && <p className="m-0 text-sm">Reading on-chain listings…</p>}
+        {listingsError && (
+          <p className="m-0 text-sm text-error">
+            Could not read the credit listings. {(listingsError as Error).message?.split("\n")[0]}
+          </p>
+        )}
+        {!waiting && open.length === 0 && (
           <p className="m-0 text-base-content/60">
             No open listings. Plant operators receive credits when an attestation is minted and can list them from their
             account panel.

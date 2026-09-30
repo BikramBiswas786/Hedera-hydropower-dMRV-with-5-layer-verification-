@@ -5,7 +5,18 @@ import { formatHbar, quoteToTxValue } from "../pricing";
 import { ApiError, revertReason } from "./errors";
 import { readGuardianSources } from "./guardianBridge";
 import { publicClient } from "./registry";
-import { type Address, type Hex, encodeFunctionData, getAddress, parseAbi } from "viem";
+import {
+  type Address,
+  type Hex,
+  encodeAbiParameters,
+  encodeFunctionData,
+  getAddress,
+  keccak256,
+  parseAbi,
+  parseAbiParameters,
+  toBytes,
+} from "viem";
+import { privateKeyToAccount } from "viem/accounts";
 import { hederaTestnet } from "viem/chains";
 import { z } from "zod";
 
@@ -26,6 +37,9 @@ const CHECKOUT_ABI = parseAbi([
   "function quote(uint256 listingId, uint64 amount) view returns (uint256)",
   "function NATIVE_UNITS_PER_HBAR() view returns (uint256)",
   "function buy(uint256 listingId, uint64 amount) payable",
+  "function buyTraced(uint256 listingId, uint64 amount, bytes32 recordHash, uint64 validUntil, bytes signature) payable",
+  "function traceRequired(address token) view returns (bool)",
+  "error TraceRequired(address token)",
   "error InvalidListing(uint256 listingId)",
   "error InsufficientListingAmount(uint64 requested, uint64 available)",
   "error ZeroAmount()",
@@ -206,15 +220,80 @@ export async function prepareCheckoutPurchase(
   });
   const exactCostHbar = formatHbar(quote, nativeUnitsPerHbar);
   const units = `${amount} base units of ${listing.token.symbol || listing.token.id}`;
+  const required = await readTraceRequired(address, listing.token.address);
+  if (required && guardian.verdict !== "backed") {
+    throw new ApiError(
+      `Listing ${listingId} sells ${listing.token.id}, which the checkout will not sell without a backed Guardian trace (it is ${guardian.verdict}). No purchase transaction was built.`,
+      409,
+    );
+  }
+  const data = required
+    ? await tracedBuyData(address, listingId, listing, amount, guardian.verdict === "backed" ? guardian.ref : "")
+    : encodeFunctionData({ abi: CHECKOUT_ABI, functionName: "buy", args: [BigInt(listingId), BigInt(amount)] });
   return {
     chainId: client.chain.id,
     to: address,
-    data: encodeFunctionData({ abi: CHECKOUT_ABI, functionName: "buy", args: [BigInt(listingId), BigInt(amount)] }),
+    data,
     value: quoteToTxValue(quote, nativeUnitsPerHbar).toString(),
     exactCostHbar,
     summary:
       `Buy ${units} from checkout listing #${listingId} for ${exactCostHbar} HBAR` +
-      (guardian.verdict === "backed" ? `; Guardian record ${guardian.ref} is backed` : "; not a Guardian token"),
+      (guardian.verdict === "backed" ? `; Guardian record ${guardian.ref} is backed` : "; not a Guardian token") +
+      (required ? "; the checkout requires the trace signature" : ""),
     listing,
   };
+}
+
+/** A checkout deployed before `traceRequired` reverts the call. Those tokens still sell through `buy`. */
+async function readTraceRequired(checkout: Address, token: Address): Promise<boolean> {
+  try {
+    return await publicClient().readContract({
+      address: checkout,
+      abi: CHECKOUT_ABI,
+      functionName: "traceRequired",
+      args: [token],
+    });
+  } catch {
+    return false;
+  }
+}
+
+const TRACE_TYPES = parseAbiParameters(
+  "uint256 chainId, address checkout, uint256 listingId, address token, address seller, uint64 amount, bytes32 recordHash, uint64 validUntil",
+);
+
+/** Ten minutes. The contract rejects a purchase after this, so a signed quote cannot be reused later. */
+const TRACE_TTL_SECONDS = 600n;
+
+async function tracedBuyData(
+  checkout: Address,
+  listingId: number,
+  listing: CheckoutListing,
+  amount: number,
+  ref: string,
+): Promise<Hex> {
+  const key = process.env.TRACE_SIGNER_KEY;
+  if (!key) {
+    throw new ApiError("This token needs a Guardian trace signature, and TRACE_SIGNER_KEY is not set.", 503);
+  }
+  const recordHash = keccak256(toBytes(ref));
+  const validUntil = BigInt(Math.floor(Date.now() / 1000)) + TRACE_TTL_SECONDS;
+  const inner = keccak256(
+    encodeAbiParameters(TRACE_TYPES, [
+      BigInt(publicClient().chain.id),
+      checkout,
+      BigInt(listingId),
+      listing.token.address,
+      listing.seller,
+      BigInt(amount),
+      recordHash,
+      validUntil,
+    ]),
+  );
+  const signature = await privateKeyToAccount(key as Hex).signMessage({ message: { raw: inner } });
+  return encodeFunctionData({
+    abi: CHECKOUT_ABI,
+    functionName: "buyTraced",
+    args: [BigInt(listingId), BigInt(amount), recordHash, validUntil, signature],
+  });
 }

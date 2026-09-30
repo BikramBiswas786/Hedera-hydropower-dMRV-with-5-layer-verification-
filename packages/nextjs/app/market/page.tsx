@@ -1,3 +1,4 @@
+import { CheckoutOffers } from "./_components/CheckoutOffers";
 import { Marketplace } from "./_components/Marketplace";
 import type { NextPage } from "next";
 import { PageHeader } from "~~/components/hydro/ui";
@@ -21,6 +22,7 @@ const MarketPage: NextPage = () => (
         ED25519 account cannot sign. Retiring burns the credits and mints an HTS NFT to the buyer.
       </p>
     </PageHeader>
+    <CheckoutOffers />
     <Marketplace />
   </div>
 );

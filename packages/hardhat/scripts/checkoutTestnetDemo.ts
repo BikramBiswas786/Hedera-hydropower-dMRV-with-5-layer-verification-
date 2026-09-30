@@ -106,10 +106,43 @@ async function main() {
 
   const quote = await checkout.quote(listingId, BUY_UNITS);
   const value = ((quote * 101n) / 100n) * WEIBAR_PER_TINYBAR; // 1% headroom; the contract refunds the excess
-  await send(
-    `Buy ${BUY_UNITS} units for ${Number(quote) / 1e8} HBAR (seller paid in the pair's USD token)`,
-    checkout.buy(listingId, BUY_UNITS, { value, gasLimit: 2_000_000, gasPrice }),
-  );
+  if (process.env.TRACE_GATE === "1") {
+    await send("Name the trace signer", checkout.setTraceSigner(signer.address, { gasLimit: 200_000, gasPrice }));
+    await send(
+      "Mark the token so buy() reverts",
+      checkout.setTraceRequired(tokenAddress, true, { gasLimit: 200_000, gasPrice }),
+    );
+    await checkout.buy.staticCall(listingId, BUY_UNITS, { value }).then(
+      () => {
+        throw new Error("buy() succeeded on a marked token");
+      },
+      () => console.log("buy() reverted, as required for a marked token"),
+    );
+    const record = process.env.TRACE_RECORD || `ft:${TOKEN_ID ?? "registry"}:${await signer.getAddress()}`;
+    const recordHash = hre.ethers.id(record);
+    const latest = await hre.ethers.provider.getBlock("latest");
+    const validUntil = BigInt(latest!.timestamp) + 600n;
+    const inner = hre.ethers.keccak256(
+      hre.ethers.AbiCoder.defaultAbiCoder().encode(
+        ["uint256", "address", "uint256", "address", "address", "uint64", "bytes32", "uint64"],
+        [296, checkoutAddress, listingId, tokenAddress, signer.address, BUY_UNITS, recordHash, validUntil],
+      ),
+    );
+    const signature = await signer.signMessage(hre.ethers.getBytes(inner));
+    await send(
+      `buyTraced ${BUY_UNITS} units (signature over ${record})`,
+      checkout.buyTraced(listingId, BUY_UNITS, recordHash, validUntil, signature, {
+        value,
+        gasLimit: 2_000_000,
+        gasPrice,
+      }),
+    );
+  } else {
+    await send(
+      `Buy ${BUY_UNITS} units for ${Number(quote) / 1e8} HBAR (seller paid in the pair's USD token)`,
+      checkout.buy(listingId, BUY_UNITS, { value, gasLimit: 2_000_000, gasPrice }),
+    );
+  }
   console.log(`Listing ${listingId}: ${(await checkout.getListing(listingId)).available} units left`);
 }
 
