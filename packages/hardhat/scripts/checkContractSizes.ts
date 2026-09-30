@@ -11,6 +11,8 @@ import { join, relative } from "path";
 
 const FAIL = Number(process.env.SIZE_FAIL_BYTES ?? 24_064);
 const WARN = Number(process.env.SIZE_WARN_BYTES ?? 21_504);
+/** Soft fail when remaining headroom under FAIL is this small (default 256 B). */
+const MARGIN = Number(process.env.SIZE_MARGIN_BYTES ?? 256);
 const ROOT = join(__dirname, "..", "artifacts", "contracts");
 const SKIP = [/^mocks\//, /^legacy\//, /^interfaces\//];
 
@@ -40,14 +42,24 @@ export function contractSizes(): { name: string; source: string; bytes: number }
 if (require.main === module) {
   const sizes = contractSizes().sort((a, b) => b.bytes - a.bytes);
   let failed = false;
+  let tight = false;
   for (const { name, bytes } of sizes) {
-    const status = bytes > FAIL ? "FAIL" : bytes > WARN ? "warn" : "ok";
+    const headroom = FAIL - bytes;
+    const status =
+      bytes > FAIL ? "FAIL" : headroom < MARGIN ? "tight" : bytes > WARN ? "warn" : "ok";
     if (bytes > FAIL) failed = true;
-    console.log(`${status.padEnd(4)}  ${name.padEnd(28)} ${bytes.toLocaleString("en-US").padStart(7)} B`);
+    if (status === "tight") tight = true;
+    const extra = status === "tight" || status === "FAIL" ? `  (${headroom} B under limit)` : "";
+    console.log(`${status.padEnd(5)} ${name.padEnd(28)} ${bytes.toLocaleString("en-US").padStart(7)} B${extra}`);
   }
   console.log(
-    `limit ${FAIL.toLocaleString("en-US")} B (EIP-170 is 24,576 B); warn above ${WARN.toLocaleString("en-US")} B`,
+    `limit ${FAIL.toLocaleString("en-US")} B (EIP-170 is 24,576 B); warn above ${WARN.toLocaleString("en-US")} B; tight when < ${MARGIN} B headroom`,
   );
+  if (tight && !failed) {
+    console.warn(
+      "Contract size headroom is under the soft margin. Prefer shrinking before adding features to that contract.",
+    );
+  }
   if (failed) {
     console.error("Contract size guard failed.");
     process.exit(1);
