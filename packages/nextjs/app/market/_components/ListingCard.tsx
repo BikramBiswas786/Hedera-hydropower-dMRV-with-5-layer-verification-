@@ -25,7 +25,13 @@ type Prepared = {
   data: `0x${string}`;
   value: string;
   error?: string;
+  summary?: string;
+  valueHbar?: string;
+  exactCostHbar?: string;
 };
+
+const CONNECT =
+  "Unsigned purchase is ready. Connect MetaMask, HashPack, or Keplr in the header, then press Sign. HashPack must be an ECDSA account. An ED25519 account cannot sign.";
 
 type Props = { listing: ListingView; isOwn: boolean; nativeUnitsPerHbar: bigint; dex: DexGate | null };
 
@@ -36,6 +42,7 @@ export const ListingCard = ({ listing, isOwn, nativeUnitsPerHbar, dex }: Props) 
   const [beneficiary, setBeneficiary] = useState("");
   const [sending, setSending] = useState(false);
   const [gateError, setGateError] = useState<string | null>(null);
+  const [prepared, setPrepared] = useState<Prepared | null>(null);
   const units = tonnesToUnits(amount);
   const tooMuch = units !== null && units > BigInt(listing.unitsAvailable);
 
@@ -53,7 +60,7 @@ export const ListingCard = ({ listing, isOwn, nativeUnitsPerHbar, dex }: Props) 
   const canBuy = units !== null && !tooMuch && quote !== undefined && !isMining && !sending && poolOk;
 
   const buy = async (retire: boolean) => {
-    if (!canBuy || !address || units === null) return;
+    if (!canBuy || units === null) return;
     setSending(true);
     setGateError(null);
     let built = false;
@@ -74,6 +81,11 @@ export const ListingCard = ({ listing, isOwn, nativeUnitsPerHbar, dex }: Props) 
         return;
       }
       built = true;
+      setPrepared(body);
+      if (!address) {
+        setGateError(CONNECT);
+        return;
+      }
       await writeTx({
         account: address,
         to: body.to,
@@ -146,12 +158,21 @@ export const ListingCard = ({ listing, isOwn, nativeUnitsPerHbar, dex }: Props) 
               : ""}
             {gateError}
           </p>
+          {prepared?.summary && (
+            <div className="text-sm bg-base-200 rounded-xl p-3 flex flex-col gap-1">
+              <p className="m-0 font-medium">{prepared.summary}</p>
+              <p className="m-0 text-base-content/70">
+                The wallet sends {prepared.valueHbar} HBAR. The contract refunds anything above the oracle cost of{" "}
+                {prepared.exactCostHbar} HBAR. SaucerSwap pays the seller.
+              </p>
+            </div>
+          )}
           <div className="flex gap-2">
             <button className="btn btn-primary btn-sm grow" disabled={!canBuy} onClick={() => buy(true)}>
-              Buy & retire
+              {address ? "Sign and retire" : "Preview the purchase"}
             </button>
-            <button className="btn btn-outline btn-sm" disabled={!canBuy} onClick={() => buy(false)}>
-              Buy
+            <button className="btn btn-outline btn-sm" disabled={!canBuy || !address} onClick={() => buy(false)}>
+              Buy only
             </button>
           </div>
         </>

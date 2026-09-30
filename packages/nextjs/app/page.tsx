@@ -17,7 +17,7 @@ const STEPS = [
   {
     title: "Buy",
     service: "Optional",
-    body: "Connect MetaMask, HashPack, or Keplr. HashPack must be an ECDSA account. An ED25519 account cannot sign the purchase.",
+    body: "On the market, press Preview the purchase with no wallet. Connect MetaMask, HashPack, or Keplr only to sign. HashPack must be an ECDSA account.",
   },
 ];
 
