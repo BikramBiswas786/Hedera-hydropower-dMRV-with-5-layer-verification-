@@ -1,5 +1,8 @@
+import { SourceError } from "../guardian/hedera";
 import type { GuardianTrace } from "../guardian/trace";
 import { prepareCheckoutPurchase } from "./checkout";
+import { decodeFunctionData, parseAbi } from "viem";
+import { generatePrivateKey } from "viem/accounts";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 /**
@@ -15,6 +18,8 @@ const { readContract, traceGuardianMint } = vi.hoisted(() => ({
   readContract: vi.fn(),
   traceGuardianMint: vi.fn(),
 }));
+
+let tokenNeedsTrace = false;
 
 vi.mock("./registry", () => ({ publicClient: () => ({ chain: { id: 296 }, readContract }) }));
 vi.mock("./guardianBridge", () => ({
@@ -34,6 +39,8 @@ const trace = (verdict: GuardianTrace["verdict"], ok: boolean) =>
 
 beforeEach(() => {
   process.env.CHECKOUT_ADDRESS = CHECKOUT;
+  delete process.env.TRACE_SIGNER_KEY;
+  tokenNeedsTrace = false;
   readContract.mockReset();
   traceGuardianMint.mockReset();
   readContract.mockImplementation(async ({ functionName }: { functionName: string }) => {
@@ -55,6 +62,8 @@ beforeEach(() => {
         return 100_000_000n;
       case "NATIVE_UNITS_PER_HBAR":
         return 100_000_000n;
+      case "traceRequired":
+        return tokenNeedsTrace;
     }
     throw new Error(`unexpected call ${functionName}`);
   });
@@ -82,4 +91,37 @@ describe("prepareCheckoutPurchase fails closed on the Guardian trace", () => {
       expect(quoted()).toBe(false);
     });
   }
+
+  it("builds buyTraced only after a backed trace when the checkout marks the token", async () => {
+    tokenNeedsTrace = true;
+    process.env.TRACE_SIGNER_KEY = generatePrivateKey();
+    traceGuardianMint.mockResolvedValue(trace("backed", true));
+    const prepared = await prepareCheckoutPurchase({ listingId: 0, amount: 1_000 });
+    const decoded = decodeFunctionData({
+      abi: parseAbi([
+        "function buyTraced(uint256 listingId, uint64 amount, bytes32 recordHash, uint64 validUntil, bytes signature)",
+      ]),
+      data: prepared.data,
+    });
+    expect(decoded.functionName).toBe("buyTraced");
+    expect(decoded.args[1]).toBe(1_000n);
+    expect(prepared.summary).toContain("requires the trace signature");
+  });
+
+  it("builds nothing for a marked token that has no Guardian record", async () => {
+    tokenNeedsTrace = true;
+    traceGuardianMint.mockRejectedValue(new SourceError("No Guardian transfer"));
+    await expect(prepareCheckoutPurchase({ listingId: 0, amount: 1_000 })).rejects.toMatchObject({
+      httpStatus: 409,
+    });
+  });
+
+  it("refuses a marked token when the signer key is unset", async () => {
+    tokenNeedsTrace = true;
+    traceGuardianMint.mockResolvedValue(trace("backed", true));
+    await expect(prepareCheckoutPurchase({ listingId: 0, amount: 1_000 })).rejects.toMatchObject({
+      httpStatus: 503,
+      message: expect.stringContaining("TRACE_SIGNER_KEY"),
+    });
+  });
 });

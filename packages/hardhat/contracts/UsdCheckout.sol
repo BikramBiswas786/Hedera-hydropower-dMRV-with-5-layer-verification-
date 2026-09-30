@@ -2,6 +2,7 @@
 pragma solidity ^0.8.28;
 
 import { IERC20Metadata } from "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
+import { ECDSA } from "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
 import { AggregatorV3Interface } from "./interfaces/AggregatorV3Interface.sol";
 import { HederaTokenLib } from "./lib/HederaTokenLib.sol";
 import { UsdSettlement } from "./settlement/UsdSettlement.sol";
@@ -34,11 +35,24 @@ contract UsdCheckout is UsdSettlement {
     );
     event ListingCancelled(uint256 indexed listingId, uint64 amountReturned);
     event Purchased(uint256 indexed listingId, address indexed buyer, uint64 amount, uint256 nativePaid);
+    event TraceSignerSet(address indexed signer);
+    event TraceRequiredSet(address indexed token, bool required);
 
     error InvalidListing(uint256 listingId);
     error NotSeller(uint256 listingId);
     error InsufficientListingAmount(uint64 requested, uint64 available);
     error UnsupportedDecimals(uint8 decimals);
+    /// @notice `buy` was called for a token that only `buyTraced` may sell.
+    error TraceRequired(address token);
+    error TraceNotRequired(address token);
+    error EmptyTrace();
+    error TraceExpired(uint64 validUntil);
+    error BadTrace(address signer);
+
+    /// @notice Signs `traceDigest` for tokens in `traceRequired`. Unset until the admin names one.
+    address public traceSigner;
+    /// @notice When true, `buy` reverts and only `buyTraced` can sell this token.
+    mapping(address token => bool) public traceRequired;
 
     constructor(
         address admin,
@@ -86,16 +100,77 @@ contract UsdCheckout is UsdSettlement {
 
     /// @notice Buys `amount` base units. Send at least `quote(listingId, amount)`; the excess is refunded. The buyer
     /// must be associated with the token, or HTS refuses the transfer and the purchase reverts.
+    /// @dev Reverts for a token the admin marked with `setTraceRequired`. Those sales go through `buyTraced`.
     function buy(uint256 listingId, uint64 amount) external payable nonReentrant {
         Listing storage listing = _activeListing(listingId);
-        uint256 cost = quote(listingId, amount);
-        uint256 minOut = minUsdOut(listingId, amount);
-        listing.available -= amount;
-        if (listing.available == 0) listing.active = false;
-        uint256 refund = _settle(listing.seller, cost, minOut);
-        HederaTokenLib.transferFromSelf(listing.token, msg.sender, amount);
-        emit Purchased(listingId, msg.sender, amount, cost);
-        _sendNative(msg.sender, refund);
+        if (traceRequired[listing.token]) revert TraceRequired(listing.token);
+        _purchase(listing, listingId, amount);
+    }
+
+    /// @notice Buys a token marked `traceRequired`. `signature` is the trace signer's over `traceDigest`.
+    /// The server produces that signature only after a Guardian trace of this token comes back backed.
+    function buyTraced(
+        uint256 listingId,
+        uint64 amount,
+        bytes32 recordHash,
+        uint64 validUntil,
+        bytes calldata signature
+    ) external payable nonReentrant {
+        Listing storage listing = _activeListing(listingId);
+        if (!traceRequired[listing.token]) revert TraceNotRequired(listing.token);
+        if (recordHash == bytes32(0)) revert EmptyTrace();
+        if (block.timestamp > validUntil) revert TraceExpired(validUntil);
+        address signer = ECDSA.recover(
+            traceDigest(listingId, listing.token, listing.seller, amount, recordHash, validUntil),
+            signature
+        );
+        if (signer != traceSigner) revert BadTrace(signer);
+        _purchase(listing, listingId, amount);
+    }
+
+    /// @notice Hash the trace signer signs. Binds the checkout, the listing, the token, the seller, the amount and
+    /// the Guardian record hash, and expires at `validUntil`.
+    function traceDigest(
+        uint256 listingId,
+        address token,
+        address seller,
+        uint64 amount,
+        bytes32 recordHash,
+        uint64 validUntil
+    ) public view returns (bytes32) {
+        return
+            keccak256(
+                abi.encodePacked(
+                    "\x19Ethereum Signed Message:\n32",
+                    keccak256(
+                        abi.encode(
+                            block.chainid,
+                            address(this),
+                            listingId,
+                            token,
+                            seller,
+                            amount,
+                            recordHash,
+                            validUntil
+                        )
+                    )
+                )
+            );
+    }
+
+    /// @notice The key whose signature `buyTraced` accepts.
+    function setTraceSigner(address signer) external onlyRole(DEFAULT_ADMIN_ROLE) {
+        if (signer == address(0)) revert ZeroAddress();
+        traceSigner = signer;
+        emit TraceSignerSet(signer);
+    }
+
+    /// @notice Marks `token` so `buy` reverts and `buyTraced` is required. The signer must already be set.
+    function setTraceRequired(address token, bool required) external onlyRole(DEFAULT_ADMIN_ROLE) {
+        if (token == address(0)) revert ZeroAddress();
+        if (required && traceSigner == address(0)) revert ZeroAddress();
+        traceRequired[token] = required;
+        emit TraceRequiredSet(token, required);
     }
 
     // ─── Pricing ─────────────────────────────────────────────────────────────
@@ -135,5 +210,16 @@ contract UsdCheckout is UsdSettlement {
         if (listingId >= _listings.length) revert InvalidListing(listingId);
         listing = _listings[listingId];
         if (!listing.active) revert InvalidListing(listingId);
+    }
+
+    function _purchase(Listing storage listing, uint256 listingId, uint64 amount) private {
+        uint256 cost = quote(listingId, amount);
+        uint256 minOut = minUsdOut(listingId, amount);
+        listing.available -= amount;
+        if (listing.available == 0) listing.active = false;
+        uint256 refund = _settle(listing.seller, cost, minOut);
+        HederaTokenLib.transferFromSelf(listing.token, msg.sender, amount);
+        emit Purchased(listingId, msg.sender, amount, cost);
+        _sendNative(msg.sender, refund);
     }
 }

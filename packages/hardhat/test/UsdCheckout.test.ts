@@ -239,6 +239,120 @@ describe("UsdCheckout", function () {
     });
   });
 
+  describe("guardian trace gate", function () {
+    async function marked() {
+      const ctx = await loadFixture(listed);
+      await ctx.checkout.connect(ctx.admin).setTraceSigner(ctx.admin.address);
+      await ctx.checkout.connect(ctx.admin).setTraceRequired(ctx.tokenAddress, true);
+      return ctx;
+    }
+
+    async function signatureFor(
+      checkout: Awaited<ReturnType<typeof listed>>["checkout"],
+      signer: Awaited<ReturnType<typeof listed>>["admin"],
+      token: string,
+      seller: string,
+      amount: bigint,
+      recordHash: string,
+      validUntil: bigint,
+    ) {
+      const inner = ethers.keccak256(
+        ethers.AbiCoder.defaultAbiCoder().encode(
+          ["uint256", "address", "uint256", "address", "address", "uint64", "bytes32", "uint64"],
+          [
+            (await ethers.provider.getNetwork()).chainId,
+            await checkout.getAddress(),
+            0,
+            token,
+            seller,
+            amount,
+            recordHash,
+            validUntil,
+          ],
+        ),
+      );
+      return signer.signMessage(ethers.getBytes(inner));
+    }
+
+    it("refuses buy() for a marked token, and refuses to mark one before a signer is set", async function () {
+      const { checkout, buyer, tokenAddress, stranger } = await loadFixture(listed);
+      await expect(checkout.setTraceRequired(tokenAddress, true)).to.be.revertedWithCustomError(
+        checkout,
+        "ZeroAddress",
+      );
+      await expect(checkout.connect(stranger).setTraceSigner(stranger.address)).to.be.revertedWithCustomError(
+        checkout,
+        "AccessControlUnauthorizedAccount",
+      );
+      const { checkout: gated } = await loadFixture(marked);
+      const cost = await gated.quote(0, 100n);
+      await expect(gated.connect(buyer).buy(0, 100n, { value: cost })).to.be.revertedWithCustomError(
+        gated,
+        "TraceRequired",
+      );
+    });
+
+    it("sells when the trace signer signs this listing, amount and record", async function () {
+      const { checkout, admin, buyer, tokenAddress, seller, token } = await loadFixture(marked);
+      const amount = 100n;
+      const recordHash = ethers.id("guardian-record");
+      const validUntil = BigInt(await time.latest()) + 600n;
+      const signature = await signatureFor(
+        checkout,
+        admin,
+        tokenAddress,
+        seller.address,
+        amount,
+        recordHash,
+        validUntil,
+      );
+      const cost = await checkout.quote(0, amount);
+      await expect(
+        checkout.connect(buyer).buyTraced(0, amount, recordHash, validUntil, signature, { value: cost }),
+      ).to.emit(checkout, "Purchased");
+      expect(await token.balanceOf(buyer.address)).to.equal(amount);
+    });
+
+    it("refuses another signer's signature, an expired one, and buyTraced on an unmarked token", async function () {
+      const { checkout, stranger, buyer, tokenAddress, seller } = await loadFixture(marked);
+      const amount = 100n;
+      const recordHash = ethers.id("guardian-record");
+      const cost = await checkout.quote(0, amount);
+      const expired = BigInt(await time.latest()) - 1n;
+      const stale = await signatureFor(checkout, stranger, tokenAddress, seller.address, amount, recordHash, expired);
+      await expect(
+        checkout.connect(buyer).buyTraced(0, amount, recordHash, expired, stale, { value: cost }),
+      ).to.be.revertedWithCustomError(checkout, "TraceExpired");
+      const validUntil = BigInt(await time.latest()) + 600n;
+      const wrong = await signatureFor(
+        checkout,
+        stranger,
+        tokenAddress,
+        seller.address,
+        amount,
+        recordHash,
+        validUntil,
+      );
+      await expect(
+        checkout.connect(buyer).buyTraced(0, amount, recordHash, validUntil, wrong, { value: cost }),
+      ).to.be.revertedWithCustomError(checkout, "BadTrace");
+
+      const open = await loadFixture(listed);
+      const ok = await signatureFor(
+        open.checkout,
+        open.admin,
+        open.tokenAddress,
+        open.seller.address,
+        amount,
+        recordHash,
+        validUntil,
+      );
+      await expect(
+        open.checkout.connect(open.buyer).buyTraced(0, amount, recordHash, validUntil, ok, { value: cost }),
+      ).to.be.revertedWithCustomError(open.checkout, "TraceNotRequired");
+    });
+  });
+
   describe("admin", function () {
     it("cannot turn the pool check off or configure it without the admin role", async function () {
       const { checkout, pair, stranger } = await loadFixture(listed);
