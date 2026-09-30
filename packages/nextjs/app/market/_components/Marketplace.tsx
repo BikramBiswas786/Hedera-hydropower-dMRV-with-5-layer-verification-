@@ -66,6 +66,11 @@ export const Marketplace = () => {
       </aside>
       <section className="lg:col-span-2 flex flex-col gap-4">
         <h2 className="font-semibold text-lg m-0">Open listings ({open.length})</h2>
+        <ol className="m-0 pl-5 text-sm text-base-content/80 flex flex-col gap-1">
+          <li>Enter tonnes and who the retirement is for.</li>
+          <li>Press Preview the purchase. That builds the SaucerSwap swap. It does not send it.</li>
+          <li>Connect an ECDSA wallet and press Sign and retire. The HTS certificate is minted to that account.</li>
+        </ol>
         {dex && !dex.accepted && (
           <p className="m-0 text-error">
             SaucerSwap settlement pair is {dex.deviationBps} bps from the oracle. Buy is not built until it is inside{" "}

@@ -17,7 +17,7 @@ const STEPS = [
   {
     title: "Buy",
     service: "Optional",
-    body: "Use MetaMask with a Hedera testnet ECDSA account. HashPack shows “malicious dapp” on the shared WalletConnect id, and an ED25519 account cannot sign.",
+    body: "On the market, press Preview the purchase with no wallet. Connect MetaMask, HashPack, or Keplr only to sign. HashPack must be an ECDSA account.",
   },
 ];
 

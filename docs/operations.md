@@ -21,7 +21,7 @@ Nothing is required to browse the app or use the engine. Copy the `.env.example`
 | `FILEBASE_IPFS_RPC_TOKEN` | bridge DID script | Only for `yarn guardian:publish-did --send`, which pins the DID document. |
 | `NEXT_PUBLIC_HEDERA_TESTNET_RPC_URL` / `…MAINNET…` | optional | JSON-RPC relay; defaults to Hashio. |
 | `NEXT_PUBLIC_MIRROR_NODE_URL` | optional | Defaults to the public mirror node of the first target network. |
-| `NEXT_PUBLIC_WALLET_CONNECT_PROJECT_ID` | optional | Your own Reown / WalletConnect project id. Leave it empty. The scaffold default is what HashPack labels a malicious dapp, so WalletConnect stays off unless this is a different id. Buyers use MetaMask with an ECDSA account. |
+| `NEXT_PUBLIC_WALLET_CONNECT_PROJECT_ID` | optional | Reown project id for the HashPack and Keplr WalletConnect fallback. Unset uses the scaffold id, which HashPack's verify list can label a malicious dapp. The three connect buttons (MetaMask, HashPack, Keplr) are always shown. An extension connection does not use this id. |
 | `NEXT_PUBLIC_TARGET_NETWORK` | optional | `local` or `testnet`. Unset: `yarn start` targets the local chain once `yarn deploy --network localhost` has written it to `deployedContracts.ts`, and Hedera testnet otherwise. Production builds keep Hedera first. |
 
 `packages/hardhat/.env`

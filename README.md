@@ -194,7 +194,7 @@ Writing Hedera code with an agent? [`HEDERA_FACTS.md`](HEDERA_FACTS.md) lists 24
 | `StalePrice` | No oracle answer is newer than the market's maximum price age | Retry later; `/api/market/dex` shows each feed's age |
 | `yarn deploy` changes nothing you can see | Without `--network` it deploys to an in-process chain that exits | Start `yarn chain:offline`, then `yarn deploy --network localhost` |
 | A testnet deploy stops at the meter keys | Live networks refuse the public demo meter keys | `yarn hardhat:meter-keys --network hederaTestnet` |
-| HashPack says the site is a malicious dapp, or “No applicable ECDSA accounts” | The shared WalletConnect project id is blocklisted, and an ED25519 account cannot sign an EVM purchase | Use MetaMask with a Hedera testnet ECDSA key. WalletConnect stays off unless `NEXT_PUBLIC_WALLET_CONNECT_PROJECT_ID` is your own id |
+| HashPack says the site is a malicious dapp, or “No applicable ECDSA accounts” | WalletConnect verify flags the shared scaffold project id, and an ED25519 account cannot sign | Choose HashPack’s ECDSA account (menu, add account, advanced, ECDSA), or MetaMask. A private Reown id in `NEXT_PUBLIC_WALLET_CONNECT_PROJECT_ID` clears the warning. The HashPack extension does not use that check |
 
 Each of these has a test or workflow behind it in [`HEDERA_FACTS.md`](HEDERA_FACTS.md).
 
