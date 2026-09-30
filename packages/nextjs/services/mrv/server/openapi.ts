@@ -316,7 +316,7 @@ export function buildOpenApi(origin: string) {
       "/api/market/prepare-dex-retire": post({
         operationId: "prepare_dex_retire",
         tags: ["market"],
-        summary: "Unsigned steps: swap HBAR for credits on SaucerSwap, deposit, retire",
+        summary: "Unsigned swap, deposit and retire; refused when the oracle or either pool is outside 3%",
         requestBody: body(prepareDexRetireSchema),
         responses: ok("{ chainId, summary, swapCostHbar, steps[], buyer, pool }"),
       }),

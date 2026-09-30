@@ -7,6 +7,8 @@
  *        WHBAR/credit pair if it does not exist, and seeds it at $15 per tonne at the oracle's HBAR price.
  *   yarn market:credit-pool buy 10 [beneficiary]
  *        a buyer (BUYER_PRIVATE_KEY) runs prepare_dex_retire and signs each step.
+ *        Refused when the oracle is paused, the settlement pair is disabled or not V1, a 3% check fails,
+ *        or the credit pool is more than 3% from the cheapest open listing.
  *
  * Seeding uses two calls, not the router's one-call new-pool path: the pair creation fee is priced in tinycents
  * at consensus, and whatever the one-call path overpays would land in the pool and skew its opening price.

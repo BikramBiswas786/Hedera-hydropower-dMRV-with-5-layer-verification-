@@ -58,7 +58,7 @@ buyer's key: purchases are returned as unsigned transactions. The REST API is de
   approval issues). The VVB signs with its own key; the server never holds one
 - Resource: `hydro-dmrv://methodology` (equations, QA/QC rules, IPCC bounds, what is not implemented)
 
-Buying as an agent: `get_dex_price` → `list_open_listings` → `prepare_purchase { listingId, amountKg, beneficiary }` → sign and send `{ to, data, value }` with your wallet on `chainId` → `get_retirement_certificate`. `prepare_purchase` returns nothing if the SaucerSwap WHBAR/USDC spot is more than 3% from the settlement price. Credits that have left custody: `get_credit_pool` → `prepare_dex_retire { amountKg, buyer, beneficiary }` → sign each `steps[]` in order. The server never holds your key.
+Buying as an agent: `get_dex_price` → `list_open_listings` → `prepare_purchase { listingId, amountKg, beneficiary }` → sign and send `{ to, data, value }` with your wallet on `chainId` → `get_retirement_certificate`. `prepare_purchase` returns nothing if the SaucerSwap WHBAR/USDC spot is more than 3% from the settlement price. Credits that have left custody: `get_credit_pool` → `prepare_dex_retire { amountKg, buyer, beneficiary }` → sign each `steps[]` in order. `prepare_dex_retire` returns nothing when the settlement oracle is paused, the settlement pair is disabled or not V1, either price check is outside 3%, or the credit pool is more than 3% from the cheapest open listing. The server never holds your key.
 
 ## Hedera facts (each proven by a test or workflow in the repo)
 

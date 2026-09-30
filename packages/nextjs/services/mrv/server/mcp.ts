@@ -48,6 +48,7 @@ prepare_purchase returns no transaction if the SaucerSwap pair stored on CreditM
 Agents buy with their own wallet: get_dex_price -> list_open_listings -> prepare_purchase -> sign and send; retiring
 mints an HTS NFT certificate. Credits that have left custody trade in a SaucerSwap WHBAR/credit pool:
 get_credit_pool -> prepare_dex_retire { amountKg, buyer, beneficiary } -> sign each step (swap, approve, deposit, retire).
+prepare_dex_retire returns no steps when the settlement oracle is paused, the settlement pair is disabled or not a V1 WHBAR pair, that pair or the public mainnet WHBAR/USDC pair is more than 3% from its oracle, or the credit pool is more than 3% from the cheapest open listing.
 get_plant and get_portfolio summarise a plant's issuance or a buyer's retirements.
 Registry tools read chain ${HYDRO_CHAIN_ID}.`;
 
@@ -367,7 +368,7 @@ export function buildMcpServer({ canWrite }: { canWrite: boolean }): McpServer {
     {
       title: "Prepare a SaucerSwap buy-and-retire",
       description:
-        "Build unsigned transactions that swap HBAR for exactly amountKg of credits on SaucerSwap, deposit them into registry custody and retire them, minting an HTS NFT certificate. Returns steps (to, data, value, gas) to sign in order with your own wallet. 409 if no pool exists or the pool cannot fill the order. The server never holds your key.",
+        "Build unsigned transactions that swap HBAR for exactly amountKg of credits on SaucerSwap, deposit them into registry custody and retire them, minting an HTS NFT certificate. Refuses when the settlement oracle is paused, the settlement pair is disabled or not a V1 WHBAR pair, that pair or the public mainnet WHBAR/USDC pair (0.0.1462797) is more than 3% from its oracle, or the credit pool is more than 3% from the cheapest open listing. Returns steps (to, data, value, gas) to sign in order with your own wallet. The server never holds your key.",
       inputSchema: prepareDexRetireSchema,
       annotations: readOnly,
     },
