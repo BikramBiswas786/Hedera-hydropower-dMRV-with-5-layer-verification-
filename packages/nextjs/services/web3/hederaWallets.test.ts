@@ -1,6 +1,18 @@
 import { hashPackProvider, hashPackWallet, keplrProvider, keplrWallet } from "./hederaWallets";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
+// RainbowKit pulls @vanilla-extract, which Vitest cannot import as ESM. The wallet
+// objects only need the connector factories, so the real packages stay out of this file.
+vi.mock("@rainbow-me/rainbowkit", () => ({
+  getWalletConnectConnector: () => () => ({ id: "walletConnect" }),
+}));
+vi.mock("wagmi", () => ({
+  createConnector: (factory: (config: unknown) => unknown) => factory,
+}));
+vi.mock("wagmi/connectors", () => ({
+  injected: () => () => ({ id: "injected" }),
+}));
+
 afterEach(() => {
   vi.unstubAllGlobals();
 });
