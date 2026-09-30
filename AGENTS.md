@@ -51,7 +51,7 @@ yarn market:agent-buy [kg] [beneficiary]  # the agent purchase flow with BUYER_P
 yarn mainnet:checkout plan|prepare|buy    # mainnet settlement exhibit: a test token sold through UsdCheckout on pair 0.0.1462797
 ```
 
-`yarn deploy` without `--network` targets the in-process `hardhat` network, not a running node. A deploy rewrites only the chain it just deployed in `deployedContracts.ts` and keeps every other chain. `deployments/` is gitignored, so a local deploy must not be allowed to drop the committed testnet addresses.
+`yarn deploy` without `--network` targets the in-process `hardhat` network, not a running node. A localhost deploy writes chain 31337 to gitignored `packages/nextjs/contracts/deployedContracts.local.ts` and does not rewrite `deployedContracts.ts`. A Hedera deploy rewrites only that chain and keeps every other one. `yarn test` ignores the local file, so a deploy and a test run can share one checkout. `yarn reset:local` restores both files. `yarn demo` is the one-command local pass (chain, deploy, healthy/inflated/tampered, one buy).
 
 ## Where things live
 
@@ -86,7 +86,7 @@ yarn mainnet:checkout plan|prepare|buy    # mainnet settlement exhibit: a test t
 | Pages | `packages/nextjs/app/{methodology,verify,plants,market,portfolio,audit,certificate/[id]}/` with components in `_components/` |
 | Checkout listings and purchases for any HTS token, gated on the token's Guardian trace (server) | `packages/nextjs/services/mrv/server/checkout.ts`, REST `app/api/checkout/`, UI `app/check/_components/GuardianCheckout.tsx` |
 | Plant detail, portfolios, CSV export (server) | `packages/nextjs/services/mrv/server/insights.ts` |
-| Generated ABIs + addresses | `packages/nextjs/contracts/deployedContracts.ts` (never edit by hand) |
+| Generated ABIs + addresses | `packages/nextjs/contracts/deployedContracts.ts` (never edit by hand). Localhost chain 31337 is gitignored `deployedContracts.local.ts`; `yarn test` does not read it. |
 
 ## Invariants — keep these true
 

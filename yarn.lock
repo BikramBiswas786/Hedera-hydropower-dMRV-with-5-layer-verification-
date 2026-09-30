@@ -6703,10 +6703,17 @@ __metadata:
   languageName: node
   linkType: hard
 
-"async-generator-function@npm:^1.0.0":
+"async-generator-function@npm:1.0.0":
   version: 1.0.0
   resolution: "async-generator-function@npm:1.0.0"
   checksum: 74a71a4a2dd7afd06ebb612f6d612c7f4766a351bedffde466023bf6dae629e46b0d2cd38786239e0fbf245de0c7df76035465e16d1213774a0efb22fec0d713
+  languageName: node
+  linkType: hard
+
+"async-generator-function@patch:async-generator-function@npm%3A1.0.0#./.yarn/patches/async-generator-function-npm-1.0.0-14cf981d13.patch::locator=hydro-dmrv%40workspace%3A.":
+  version: 1.0.0
+  resolution: "async-generator-function@patch:async-generator-function@npm%3A1.0.0#./.yarn/patches/async-generator-function-npm-1.0.0-14cf981d13.patch::version=1.0.0&hash=81ffc1&locator=hydro-dmrv%40workspace%3A."
+  checksum: cfda9c40e7cb0b6d6477ddface111ae9563a9a268f9264f063c130a89b7897a68f4701fcb7707b03f5d1513277e56efa09f6e776e76348170f972808b25d3791
   languageName: node
   linkType: hard
 
@@ -9897,10 +9904,17 @@ __metadata:
   languageName: node
   linkType: hard
 
-"generator-function@npm:^2.0.0":
+"generator-function@npm:2.0.1":
   version: 2.0.1
   resolution: "generator-function@npm:2.0.1"
   checksum: 3bf87f7b0230de5d74529677e6c3ceb3b7b5d9618b5a22d92b45ce3876defbaf5a77791b25a61b0fa7d13f95675b5ff67a7769f3b9af33f096e34653519e873d
+  languageName: node
+  linkType: hard
+
+"generator-function@patch:generator-function@npm%3A2.0.1#./.yarn/patches/generator-function-npm-2.0.1-aed34a724a.patch::locator=hydro-dmrv%40workspace%3A.":
+  version: 2.0.1
+  resolution: "generator-function@patch:generator-function@npm%3A2.0.1#./.yarn/patches/generator-function-npm-2.0.1-aed34a724a.patch::version=2.0.1&hash=b26dc4&locator=hydro-dmrv%40workspace%3A."
+  checksum: c60613656c24b5a277dead0a4afd69cca5b468fddc5ce7bae0ffcdc1600ed86c29214c1fe8949e5ccc618bf8addf4abebab04972b5e52c5440f462cf482bd951
   languageName: node
   linkType: hard
 

@@ -1,0 +1,23 @@
+diff --git a/package.json b/package.json
+index c3e8b2d17e46da2fa48d820e157d3ee0e6bb430b..32d6ae7f88c31e0bd3d8ddf04000593e1155161a 100644
+--- a/package.json
++++ b/package.json
+@@ -6,14 +6,10 @@
+ 	"jsnext:main": "./index.mjs",
+ 	"module": "./index.mjs",
+ 	"exports": {
+-		".": [
+-			{
+-				"module-sync": "./require.mjs",
+-				"import": "./index.mjs",
+-				"default": "./index.js"
+-			},
+-			"./index.js"
+-		],
++		".": {
++			"import": "./index.mjs",
++			"default": "./index.js"
++		},
+ 		"./package.json": "./package.json"
+ 	},
+ 	"scripts": {

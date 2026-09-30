@@ -24,7 +24,7 @@ Nothing is required to browse the app or use the engine. Copy the `.env.example`
 | `NEXT_PUBLIC_HEDERA_TESTNET_RPC_URL` / `…MAINNET…` | optional | JSON-RPC relay; defaults to Hashio. |
 | `NEXT_PUBLIC_MIRROR_NODE_URL` | optional | Defaults to the public mirror node of the first target network. |
 | `NEXT_PUBLIC_WALLET_CONNECT_PROJECT_ID` | optional | Reown project id for the HashPack and Keplr WalletConnect fallback. Unset uses the scaffold id, which HashPack's verify list can label a malicious dapp. The three connect buttons (MetaMask, HashPack, Keplr) are always shown. An extension connection does not use this id. |
-| `NEXT_PUBLIC_TARGET_NETWORK` | optional | `local` or `testnet`. Unset: `yarn start` targets the local chain once `yarn deploy --network localhost` has written it to `deployedContracts.ts`, and Hedera testnet otherwise. Production builds keep Hedera first. |
+| `NEXT_PUBLIC_TARGET_NETWORK` | optional | `local` or `testnet`. Unset: `yarn start` targets the local chain once `yarn deploy --network localhost` has written gitignored `deployedContracts.local.ts`, and Hedera testnet otherwise. Production builds and `yarn test` keep Hedera first. |
 
 `packages/hardhat/.env`
 
@@ -171,7 +171,8 @@ contains `[deploy-testnet]`, with the `TESTNET_REBALANCER_KEY` secret and demo k
    the generated meters and a validation signature, stores the SaucerSwap testnet pool with the check on, names the
    market once (`setMarket`), grants `VERIFIER_ROLE`, and hands admin to the threshold account. It regenerates
    `packages/nextjs/contracts/deployedContracts.ts` for the network just deployed, and keeps every other chain
-   already in that file. A localhost deploy therefore does not delete the testnet addresses.
+   already in that file. A localhost deploy does not write that file. It writes gitignored
+   `deployedContracts.local.ts`, which `yarn test` ignores.
 5. **Verify.** `yarn verify:sourcify hederaTestnet` in `packages/hardhat` (Sourcify v2 API, shown on HashScan), then
    check the roles: `hasRole(VERIFIER_ROLE, VVB)`, `hasRole(DEFAULT_ADMIN_ROLE, threshold)`, and no admin role left on
    the deployer.
