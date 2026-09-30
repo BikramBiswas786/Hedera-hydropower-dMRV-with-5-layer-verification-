@@ -1,7 +1,7 @@
 import type { MeterDomain } from "./provenance";
 import { zeroAddress } from "viem";
 import { hedera, hederaTestnet } from "viem/chains";
-import deployedContracts from "~~/contracts/deployedContracts";
+import deployedContracts from "~~/contracts/withLocal";
 import scaffoldConfig from "~~/scaffold.config";
 import type { GenericContractsDeclaration } from "~~/utils/scaffold-hbar/contract";
 

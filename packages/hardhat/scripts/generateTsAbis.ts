@@ -110,9 +110,9 @@ function getContractDataFromDeployments() {
 
 /**
  * Top-level `chainId: { ... }` blocks already in deployedContracts.ts.
- * `deployments/` is gitignored, so a localhost deploy has no folder for chain 296. Dropping that
- * block would erase the committed testnet addresses. Chains present on disk are not returned here;
- * the caller overwrites those from the deployment artifacts.
+ * Chain 31337 is not one of them: a localhost deploy writes that chain to
+ * deployedContracts.local.ts. Every other chain with no deployment folder on
+ * this machine stays, because `deployments/` is gitignored.
  */
 export function preservedChainBlocks(source: string, chainsOnDisk: ReadonlySet<string>): Record<string, string> {
   const marker = "const deployedContracts = {";
@@ -158,15 +158,38 @@ export function preservedChainBlocks(source: string, chainsOnDisk: ReadonlySet<s
   return blocks;
 }
 
-/** Deployment artifacts first, then any chain already in the file that this machine did not deploy. */
+/** Hardhat's chain. It must not be written into the committed address file. */
+export const LOCAL_CHAIN_ID = "31337";
+
+export function partitionDeployments(all: Record<string, unknown>): {
+  local: Record<string, unknown>;
+  live: Record<string, unknown>;
+} {
+  const local: Record<string, unknown> = {};
+  const live: Record<string, unknown> = {};
+  for (const [chainId, contracts] of Object.entries(all)) {
+    if (chainId === LOCAL_CHAIN_ID) local[chainId] = contracts;
+    else live[chainId] = contracts;
+  }
+  return { local, live };
+}
+
+/** True when the committed file already has a top-level block for `chainId`. */
+export function hasTopLevelChain(source: string, chainId: string): boolean {
+  return Object.prototype.hasOwnProperty.call(preservedChainBlocks(source, new Set()), chainId);
+}
+
+/** Live chains only. Chain 31337 is dropped, including a copy already in the file. */
 export function contractFileBody(
   fromDeployments: Record<string, unknown>,
   existingSource: string,
 ): { body: string; kept: string[] } {
-  const onDisk = new Set(Object.keys(fromDeployments));
+  const { live } = partitionDeployments(fromDeployments);
+  const onDisk = new Set(Object.keys(live));
+  onDisk.add(LOCAL_CHAIN_ID);
   const kept = preservedChainBlocks(existingSource, onDisk);
   let body = "";
-  for (const [chainId, chainConfig] of Object.entries(fromDeployments)) {
+  for (const [chainId, chainConfig] of Object.entries(live)) {
     body += `${chainId}:${JSON.stringify(chainConfig, null, 2)},`;
   }
   const keptIds = Object.keys(kept).sort((a, b) => Number(a) - Number(b));
@@ -176,6 +199,20 @@ export function contractFileBody(
   return { body, kept: keptIds };
 }
 
+function contractModule(constName: string, body: string): string {
+  return `${generatedContractComment} import type { GenericContractsDeclaration } from "~~/utils/scaffold-hbar/contract"; \n\n
+ const ${constName} = {${body}} as const; \n\n export default ${constName} satisfies GenericContractsDeclaration`;
+}
+
+async function writeContractModule(filePath: string, constName: string, body: string) {
+  fs.writeFileSync(
+    filePath,
+    await prettier.format(contractModule(constName, body), {
+      parser: "typescript",
+    }),
+  );
+}
+
 /**
  * Generates the TypeScript contract definition file based on the json output of the contract deployment scripts
  * This script should be run last.
@@ -183,23 +220,36 @@ export function contractFileBody(
 const generateTsAbis: DeployFunction = async function () {
   const TARGET_DIR = "../nextjs/contracts/";
   const filePath = `${TARGET_DIR}deployedContracts.ts`;
+  const localPath = `${TARGET_DIR}deployedContracts.local.ts`;
   const allContractsData = getContractDataFromDeployments();
+  const { local, live } = partitionDeployments(allContractsData);
   const existingSource = fs.existsSync(filePath) ? fs.readFileSync(filePath, "utf8") : "";
-  const { body, kept } = contractFileBody(allContractsData, existingSource);
 
   if (!fs.existsSync(TARGET_DIR)) {
     fs.mkdirSync(TARGET_DIR);
   }
-  fs.writeFileSync(
-    filePath,
-    await prettier.format(
-      `${generatedContractComment} import type { GenericContractsDeclaration } from "~~/utils/scaffold-hbar/contract"; \n\n
- const deployedContracts = {${body}} as const; \n\n export default deployedContracts satisfies GenericContractsDeclaration`,
-      {
-        parser: "typescript",
-      },
-    ),
-  );
+
+  if (Object.keys(local).length > 0) {
+    const localBody = Object.entries(local)
+      .map(([chainId, chainConfig]) => `${chainId}:${JSON.stringify(chainConfig, null, 2)},`)
+      .join("");
+    await writeContractModule(localPath, "localDeployedContracts", localBody);
+    console.log("📝 Local chain 31337 written to deployedContracts.local.ts (gitignored). yarn test does not read it.");
+  }
+
+  if (Object.keys(live).length === 0) {
+    if (hasTopLevelChain(existingSource, LOCAL_CHAIN_ID)) {
+      const { body } = contractFileBody({}, existingSource);
+      await writeContractModule(filePath, "deployedContracts", body);
+      console.log("📝 Removed chain 31337 from deployedContracts.ts. The committed testnet addresses stay.");
+    } else {
+      console.log("📝 Committed deployedContracts.ts was not touched.");
+    }
+    return;
+  }
+
+  const { body, kept } = contractFileBody(live, existingSource);
+  await writeContractModule(filePath, "deployedContracts", body);
 
   console.log(`📝 Updated TypeScript contract definition file on ${TARGET_DIR}deployedContracts.ts`);
   if (kept.length > 0) {

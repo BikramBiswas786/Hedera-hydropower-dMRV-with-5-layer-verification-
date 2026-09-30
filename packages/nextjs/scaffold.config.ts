@@ -1,5 +1,6 @@
 import * as chains from "viem/chains";
-import deployedContracts from "~~/contracts/deployedContracts";
+import deployedContracts from "~~/contracts/withLocal";
+import type { GenericContractsDeclaration } from "~~/utils/scaffold-hbar/contract";
 
 export type ScaffoldConfig = {
   targetNetworks: readonly [chains.Chain, ...chains.Chain[]];
@@ -37,12 +38,12 @@ const hederaFirst = [chains.hederaTestnet, chains.hedera, hederaLocalFork] as co
   ...chains.Chain[],
 ];
 
-// `yarn deploy --network localhost` adds the local chain to deployedContracts.ts, and `yarn start` then targets it with
-// no edit here. NEXT_PUBLIC_TARGET_NETWORK=local|testnet overrides that; production builds keep Hedera first.
+// `yarn deploy --network localhost` writes chain 31337 to the gitignored deployedContracts.local.ts.
+// `yarn start` merges it and targets it. Tests and production builds do not. NEXT_PUBLIC_TARGET_NETWORK
+// overrides that.
 const requested = process.env.NEXT_PUBLIC_TARGET_NETWORK;
-const localFirst = requested
-  ? requested === "local"
-  : process.env.NODE_ENV !== "production" && hederaLocalFork.id in deployedContracts;
+const hasLocalDeploy = (deployedContracts as GenericContractsDeclaration)[hederaLocalFork.id] !== undefined;
+const localFirst = requested ? requested === "local" : process.env.NODE_ENV !== "production" && hasLocalDeploy;
 
 // Contract types are keyed on the Hedera-first order, so the local order keeps that type.
 const targetNetworks = (

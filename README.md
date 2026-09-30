@@ -36,7 +36,9 @@ yarn deploy --network localhost    # terminal 2: contracts, stand-ins, a validat
 yarn start                         # terminal 3: http://localhost:3000
 ```
 
-The deploy installs local stand-ins for HTS, Chainlink, Supra and SaucerSwap. It registers two demo plants, records one hour of `HYDRO-DEMO-01` signed by its demo meter, has the local verifier issue the credits, and lists them at $15/t. It adds the local chain to `deployedContracts.ts` and leaves the committed testnet addresses in place. `yarn start` then targets that local chain. Open `/market`, connect the **Burner Wallet**, press **100 local HBAR** in the footer, then **Buy & retire**. The certificate is on `/portfolio`.
+The deploy installs local stand-ins for HTS, Chainlink, Supra and SaucerSwap. It registers two demo plants, records one hour of `HYDRO-DEMO-01` signed by its demo meter, has the local verifier issue the credits, and lists them at $15/t. The local chain is written to gitignored `deployedContracts.local.ts`. The committed testnet addresses are not rewritten, so `yarn test` still passes in that same checkout. `yarn start` then targets that local chain. Open `/market`. A burner wallet connects on its own. Press **100 local HBAR** in the footer, then **Buy & retire**. The certificate is on `/portfolio`.
+
+`yarn demo` does the same deploy, checks that `healthy` is approved and that `inflated` and `tampered` are rejected, and buys 10 kg. Then `yarn start`.
 
 `/verify` runs the five-stage engine. The `healthy` case passes. `inflated` and `tampered` do not. `yarn test` runs 148 contract tests and 407 app tests. The Solidity and TypeScript quantification must agree on the same integers.
 
@@ -195,6 +197,8 @@ claude mcp add --transport http hydro-dmrv https://hydro-dmrv.vercel.app/api/mcp
 | `PoolPriceDeviation`, or [`/api/market/dex`](https://hydro-dmrv.vercel.app/api/market/dex) shows `accepted: false` | The testnet pair drifted more than 3% from the oracle | Wait for the keeper, or run `yarn pair:rebalance --execute` |
 | `StalePrice` | No oracle answer is newer than the market's maximum price age | Retry later. `/api/market/dex` shows each feed's age |
 | `yarn deploy` changes nothing you can see | Without `--network` it deploys to an in-process chain that exits | Start `yarn chain:offline`, then `yarn deploy --network localhost` |
+| `yarn test` fails after a local deploy, or `deployedContracts.ts` contains chain 31337 | An older deploy wrote the local chain into the committed file | `yarn reset:local`, then deploy again. A current deploy writes gitignored `deployedContracts.local.ts` and leaves the committed file alone |
+| `yarn lint` fails inside `generator-function/require.mjs` on Node 22 | That package's `module-sync` export is ESM, and Node 22.13 loads it from CommonJS ESLint | This repo patches it to the CommonJS entry. CI uses Node 20.18.3. Do not delete the patch under `.yarn/patches` |
 | `yarn start` restarts, saying the server is approaching its memory threshold | The first compile is large. An older config also made webpack snapshot `node_modules` | Restart `yarn start`. Do not set a Node heap bigger than about half the machine's RAM |
 | A testnet deploy stops at the meter keys | Live networks refuse the public demo meter keys | `yarn hardhat:meter-keys --network hederaTestnet` |
 | HashPack says the site is a malicious dapp, or "No applicable ECDSA accounts" | WalletConnect's shared project id is flagged, and an ED25519 account cannot sign | Use HashPack's ECDSA account, or MetaMask. `NEXT_PUBLIC_WALLET_CONNECT_PROJECT_ID` clears the warning. The HashPack extension does not use that check |

@@ -33,5 +33,8 @@ dist
 .harness-skills/
 .harness-context/
 
+# Local Hardhat addresses. Created by postinstall, overwritten by `yarn deploy --network localhost`.
+packages/nextjs/contracts/deployedContracts.local.ts
+
 # Per-plant meter keys and other local-only key material (never commit)
 .secrets/
