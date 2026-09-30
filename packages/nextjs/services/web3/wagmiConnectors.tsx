@@ -1,13 +1,13 @@
 import { connectorsForWallets } from "@rainbow-me/rainbowkit";
-import { injectedWallet, metaMaskWallet, walletConnectWallet } from "@rainbow-me/rainbowkit/wallets";
+import { metaMaskWallet } from "@rainbow-me/rainbowkit/wallets";
 import { rainbowkitBurnerWallet } from "burner-connector";
 import * as chains from "viem/chains";
-import scaffoldConfig, { walletConnectEnabled } from "~~/scaffold.config";
+import scaffoldConfig from "~~/scaffold.config";
+import { hashPackWallet, keplrWallet } from "~~/services/web3/hederaWallets";
 
-// The shared scaffold project id is on HashPack's malicious-dapp list. Until this deployment sets its own
-// NEXT_PUBLIC_WALLET_CONNECT_PROJECT_ID, offer only the injected browser wallet (MetaMask). That path never
-// opens WalletConnect, so HashPack's blacklist screen does not appear.
-const wallets = walletConnectEnabled ? [metaMaskWallet, walletConnectWallet] : [injectedWallet];
+// MetaMask (extension), HashPack (extension, or WalletConnect if it is not injected), Keplr (window.keplr.ethereum,
+// or WalletConnect if that provider is missing). The burner is local-only.
+const wallets = [metaMaskWallet, hashPackWallet, keplrWallet];
 
 const DEV_CHAIN_IDS = new Set<number>([chains.hardhat.id, chains.foundry.id]);
 
@@ -39,7 +39,6 @@ export const wagmiConnectors = () => {
     appDescription: "Hydropower carbon credits on Hedera testnet. A demo, not a carbon registry.",
     appUrl: window.location.origin,
     appIcon: `${window.location.origin}/favicon.png`,
-    // Ignored by the injected wallet. A real id is required only when WalletConnect is enabled.
-    projectId: walletConnectEnabled ? scaffoldConfig.walletConnectProjectId : "hydro-dmrv-injected-only",
+    projectId: scaffoldConfig.walletConnectProjectId,
   });
 };

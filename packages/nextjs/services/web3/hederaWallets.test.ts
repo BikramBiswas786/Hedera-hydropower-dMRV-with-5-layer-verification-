@@ -1,0 +1,31 @@
+import { hashPackProvider, hashPackWallet, keplrProvider, keplrWallet } from "./hederaWallets";
+import { afterEach, describe, expect, it, vi } from "vitest";
+
+afterEach(() => {
+  vi.unstubAllGlobals();
+});
+
+describe("hedera wallets", () => {
+  it("offers HashPack and Keplr by WalletConnect when neither extension is injected", () => {
+    const hashpack = hashPackWallet({ projectId: "test-project" });
+    const keplr = keplrWallet({ projectId: "test-project" });
+    expect(hashpack.name).toBe("HashPack");
+    expect(keplr.name).toBe("Keplr");
+    expect(hashpack.qrCode?.getUri("wc:abc")).toBe("wc:abc");
+    expect(keplr.qrCode?.getUri("wc:abc")).toBe("wc:abc");
+    expect(hashPackProvider()).toBeUndefined();
+    expect(keplrProvider()).toBeUndefined();
+  });
+
+  it("uses the injected provider and does not open a QR", () => {
+    const request = async () => [];
+    vi.stubGlobal("window", {
+      hashpack: { ethereum: { request } },
+      keplr: { ethereum: { request } },
+    });
+    expect(hashPackProvider()?.request).toBe(request);
+    expect(keplrProvider()?.request).toBe(request);
+    expect(hashPackWallet({ projectId: "test-project" }).qrCode).toBeUndefined();
+    expect(keplrWallet({ projectId: "test-project" }).installed).toBe(true);
+  });
+});

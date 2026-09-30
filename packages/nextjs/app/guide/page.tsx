@@ -65,10 +65,11 @@ const GuidePage: NextPage = async () => {
             Open <Link href="/audit">Audit</Link> and press <strong>Check evidence</strong>.
           </li>
           <li>
-            Buying is optional. Use <strong>MetaMask</strong> with a Hedera testnet <strong>ECDSA</strong> account
-            (portal.hedera.com → create ECDSA, then import that key into MetaMask and add Hedera testnet). HashPack
-            marks the shared WalletConnect id as a malicious dapp, and an ED25519-only HashPack account says &ldquo;No
-            applicable ECDSA accounts&rdquo;. WalletConnect is off until you set your own project id.
+            Buying is optional. Connect <strong>MetaMask</strong>, <strong>HashPack</strong>, or <strong>Keplr</strong>.
+            HashPack signs only with an <strong>ECDSA</strong> account (menu, add account, create new, advanced, ECDSA).
+            An ED25519 account shows &ldquo;No applicable ECDSA accounts&rdquo;. If HashPack warns that the site is a
+            malicious dapp, that is the shared WalletConnect id; set <code>NEXT_PUBLIC_WALLET_CONNECT_PROJECT_ID</code>{" "}
+            to your own Reown project id, or use the HashPack extension, which does not go through that check.
           </li>
         </ol>
         <nav className="flex flex-wrap gap-2 mt-2" aria-label="Pick your path">
