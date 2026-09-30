@@ -83,8 +83,10 @@ export const ListingCard = ({ listing, isOwn, nativeUnitsPerHbar, dex }: Props) 
     } catch (error) {
       const message = error instanceof Error ? error.message : "";
       if (!built) setGateError("No purchase transaction was built.");
-      else if (/unsupported method|wallet_sendTransaction|ed25519/i.test(message)) {
-        setGateError("This wallet cannot sign an Ethereum-style purchase. Use MetaMask with an ECDSA testnet account.");
+      else if (/unsupported method|wallet_sendTransaction|ed25519|ecdsa|malicious/i.test(message)) {
+        setGateError(
+          "This wallet cannot sign the purchase. Use MetaMask with a Hedera testnet ECDSA account. An ED25519 HashPack account cannot.",
+        );
       } else if (message) setGateError(message);
     } finally {
       setSending(false);

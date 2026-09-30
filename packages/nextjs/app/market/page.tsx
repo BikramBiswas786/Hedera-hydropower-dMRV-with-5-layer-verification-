@@ -16,7 +16,9 @@ const MarketPage: NextPage = () => (
         verified monitoring data. Sellers price credits in USD per tonne. A purchase sends the HBAR amount, from{" "}
         <strong>Chainlink HBAR/USD</strong> with <strong>Supra</strong> as fallback, to the SaucerSwap router. The
         seller is paid by that swap. If the settlement pair is more than 3% from the oracle, the contract reverts and
-        this page does not build the transaction. Retiring burns the credits and mints an HTS NFT to the buyer.
+        this page does not build the transaction. Retiring burns the credits and mints an HTS NFT to the buyer. Connect
+        with MetaMask and a Hedera testnet ECDSA account. HashPack labels that screen a malicious dapp. It is the shared
+        WalletConnect id, which this site does not use. An ED25519 account cannot sign either.
       </p>
     </PageHeader>
     <Marketplace />

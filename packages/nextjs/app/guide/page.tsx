@@ -65,8 +65,10 @@ const GuidePage: NextPage = async () => {
             Open <Link href="/audit">Audit</Link> and press <strong>Check evidence</strong>.
           </li>
           <li>
-            Buying is optional. Use <strong>MetaMask</strong> with a Hedera testnet <strong>ECDSA</strong> account.
-            HashPack over WalletConnect reports <code>wallet_sendTransaction</code> and cannot complete the purchase.
+            Buying is optional. Use <strong>MetaMask</strong> with a Hedera testnet <strong>ECDSA</strong> account
+            (portal.hedera.com → create ECDSA, then import that key into MetaMask and add Hedera testnet). HashPack
+            marks the shared WalletConnect id as a malicious dapp, and an ED25519-only HashPack account says &ldquo;No
+            applicable ECDSA accounts&rdquo;. WalletConnect is off until you set your own project id.
           </li>
         </ol>
         <nav className="flex flex-wrap gap-2 mt-2" aria-label="Pick your path">

@@ -10,6 +10,7 @@ import { Balance } from "@scaffold-hbar-ui/components";
 import { Address } from "viem";
 import { useNetworkColor } from "~~/hooks/scaffold-hbar";
 import { useTargetNetwork } from "~~/hooks/scaffold-hbar/useTargetNetwork";
+import { walletConnectEnabled } from "~~/scaffold.config";
 import { getBlockExplorerAddressLink } from "~~/utils/scaffold-hbar";
 
 /**
@@ -32,7 +33,16 @@ export const RainbowKitCustomConnectButton = () => {
             {(() => {
               if (!connected) {
                 return (
-                  <button className="btn btn-primary btn-sm" onClick={openConnectModal} type="button">
+                  <button
+                    className="btn btn-primary btn-sm"
+                    onClick={openConnectModal}
+                    type="button"
+                    title={
+                      walletConnectEnabled
+                        ? "Hedera testnet ECDSA account. An ED25519 HashPack account cannot sign."
+                        : "MetaMask, with a Hedera testnet ECDSA account. WalletConnect stays off until you set your own project id."
+                    }
+                  >
                     Connect Wallet
                   </button>
                 );
