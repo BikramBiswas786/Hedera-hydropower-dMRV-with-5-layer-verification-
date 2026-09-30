@@ -170,7 +170,8 @@ contains `[deploy-testnet]`, with the `TESTNET_REBALANCER_KEY` secret and demo k
    It deploys the modules, registry, annotations and market, creates new HTS tokens, registers both demo plants with
    the generated meters and a validation signature, stores the SaucerSwap testnet pool with the check on, names the
    market once (`setMarket`), grants `VERIFIER_ROLE`, and hands admin to the threshold account. It regenerates
-   `packages/nextjs/contracts/deployedContracts.ts`.
+   `packages/nextjs/contracts/deployedContracts.ts` for the network just deployed, and keeps every other chain
+   already in that file. A localhost deploy therefore does not delete the testnet addresses.
 5. **Verify.** `yarn verify:sourcify hederaTestnet` in `packages/hardhat` (Sourcify v2 API, shown on HashScan), then
    check the roles: `hasRole(VERIFIER_ROLE, VVB)`, `hasRole(DEFAULT_ADMIN_ROLE, threshold)`, and no admin role left on
    the deployer.

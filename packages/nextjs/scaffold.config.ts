@@ -64,4 +64,7 @@ const scaffoldConfig = {
   walletConnectProjectId: walletConnectEnabled ? configuredWalletConnectProjectId : SHARED_WALLET_CONNECT_PROJECT_ID,
 } as const satisfies ScaffoldConfig;
 
+// The `as typeof hederaFirst` cast above hides the local chain from the type, so compare through number.
+export const localChainIsDefault = (targetNetworks[0].id as number) === hederaLocalFork.id;
+
 export default scaffoldConfig;
