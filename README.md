@@ -38,7 +38,7 @@ yarn start                         # terminal 3: http://localhost:3000
 
 The deploy installs local stand-ins for HTS, Chainlink, Supra and SaucerSwap. It registers two demo plants, records one hour of `HYDRO-DEMO-01` signed by its demo meter, has the local verifier issue the credits, and lists them at $15/t. Open `/market`, press **100 local HBAR** in the footer, then **Buy & retire**. The certificate is on `/portfolio`.
 
-`/verify` runs the five-stage engine. The `healthy` case passes. `inflated` and `tampered` do not. `yarn test` runs 145 contract tests and 373 app tests. The Solidity and TypeScript quantification must agree on the same integers.
+`/verify` runs the five-stage engine. The `healthy` case passes. `inflated` and `tampered` do not. `yarn test` runs 148 contract tests and 407 app tests. The Solidity and TypeScript quantification must agree on the same integers.
 
 All keys on a local chain are public demo keys. The deploy refuses those keys on Hedera.
 
