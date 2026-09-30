@@ -43,7 +43,7 @@
               "command": "{run:deploy} --network localhost"
             },
             {
-              "label": "Start the app (it targets the local chain after a local deploy); fund the burner wallet from the footer and buy on /market",
+              "label": "Start the app (it targets the local chain after a local deploy). It connects a burner wallet; fund it from the footer and buy on /market",
               "command": "{run:start}"
             },
             {

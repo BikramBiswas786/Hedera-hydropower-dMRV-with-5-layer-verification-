@@ -103,9 +103,77 @@ function getContractDataFromDeployments() {
       const inheritedFunctions = metadata ? getInheritedFunctions(JSON.parse(metadata).sources, contractName) : {};
       contracts[contractName] = { address, abi, inheritedFunctions, deployedOnBlock: receipt?.blockNumber };
     }
-    output[chainId] = contracts;
+    output[String(parseInt(chainId, 10))] = contracts;
   }
   return output;
+}
+
+/**
+ * Top-level `chainId: { ... }` blocks already in deployedContracts.ts.
+ * `deployments/` is gitignored, so a localhost deploy has no folder for chain 296. Dropping that
+ * block would erase the committed testnet addresses. Chains present on disk are not returned here;
+ * the caller overwrites those from the deployment artifacts.
+ */
+export function preservedChainBlocks(source: string, chainsOnDisk: ReadonlySet<string>): Record<string, string> {
+  const marker = "const deployedContracts = {";
+  const start = source.indexOf(marker);
+  if (start < 0) return {};
+  let i = start + marker.length;
+  const blocks: Record<string, string> = {};
+  while (i < source.length) {
+    while (i < source.length && /[\s,]/.test(source[i])) i++;
+    if (source[i] === "}") break;
+    const keyMatch = /^(\d+)\s*:/.exec(source.slice(i));
+    if (!keyMatch) break;
+    const key = keyMatch[1];
+    i += keyMatch[0].length;
+    while (i < source.length && /\s/.test(source[i])) i++;
+    if (source[i] !== "{") break;
+    const objStart = i;
+    let depth = 0;
+    for (; i < source.length; i++) {
+      const c = source[i];
+      if (c === "{") depth++;
+      else if (c === "}") {
+        depth--;
+        if (depth === 0) {
+          i++;
+          break;
+        }
+      } else if (c === '"' || c === "'" || c === "`") {
+        const quote = c;
+        i++;
+        while (i < source.length) {
+          if (source[i] === "\\") {
+            i += 2;
+            continue;
+          }
+          if (source[i] === quote) break;
+          i++;
+        }
+      }
+    }
+    if (!chainsOnDisk.has(key)) blocks[key] = source.slice(objStart, i);
+  }
+  return blocks;
+}
+
+/** Deployment artifacts first, then any chain already in the file that this machine did not deploy. */
+export function contractFileBody(
+  fromDeployments: Record<string, unknown>,
+  existingSource: string,
+): { body: string; kept: string[] } {
+  const onDisk = new Set(Object.keys(fromDeployments));
+  const kept = preservedChainBlocks(existingSource, onDisk);
+  let body = "";
+  for (const [chainId, chainConfig] of Object.entries(fromDeployments)) {
+    body += `${chainId}:${JSON.stringify(chainConfig, null, 2)},`;
+  }
+  const keptIds = Object.keys(kept).sort((a, b) => Number(a) - Number(b));
+  for (const chainId of keptIds) {
+    body += `${chainId}:${kept[chainId]},`;
+  }
+  return { body, kept: keptIds };
 }
 
 /**
@@ -114,20 +182,19 @@ function getContractDataFromDeployments() {
  */
 const generateTsAbis: DeployFunction = async function () {
   const TARGET_DIR = "../nextjs/contracts/";
+  const filePath = `${TARGET_DIR}deployedContracts.ts`;
   const allContractsData = getContractDataFromDeployments();
-
-  const fileContent = Object.entries(allContractsData).reduce((content, [chainId, chainConfig]) => {
-    return `${content}${parseInt(chainId).toFixed(0)}:${JSON.stringify(chainConfig, null, 2)},`;
-  }, "");
+  const existingSource = fs.existsSync(filePath) ? fs.readFileSync(filePath, "utf8") : "";
+  const { body, kept } = contractFileBody(allContractsData, existingSource);
 
   if (!fs.existsSync(TARGET_DIR)) {
     fs.mkdirSync(TARGET_DIR);
   }
   fs.writeFileSync(
-    `${TARGET_DIR}deployedContracts.ts`,
+    filePath,
     await prettier.format(
       `${generatedContractComment} import type { GenericContractsDeclaration } from "~~/utils/scaffold-hbar/contract"; \n\n
- const deployedContracts = {${fileContent}} as const; \n\n export default deployedContracts satisfies GenericContractsDeclaration`,
+ const deployedContracts = {${body}} as const; \n\n export default deployedContracts satisfies GenericContractsDeclaration`,
       {
         parser: "typescript",
       },
@@ -135,6 +202,11 @@ const generateTsAbis: DeployFunction = async function () {
   );
 
   console.log(`📝 Updated TypeScript contract definition file on ${TARGET_DIR}deployedContracts.ts`);
+  if (kept.length > 0) {
+    console.log(
+      `Kept chain ${kept.join(", ")} (no deployment folder on this machine, so the committed addresses stay).`,
+    );
+  }
 };
 
 export default generateTsAbis;

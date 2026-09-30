@@ -31,10 +31,12 @@ const nextConfig: NextConfig = {
     config.resolve.fallback = { fs: false, net: false, tls: false };
     config.externals.push("pino-pretty", "lokijs", "encoding");
     if (dev) {
+      // Follow workspace symlinks, but do not snapshot node_modules. Clearing managedPaths makes
+      // webpack hash every installed package and the dev server runs out of memory on a laptop.
       config.watchOptions = {
         followSymlinks: true,
+        ignored: ["**/.git/**", "**/node_modules/**", "**/.next/**"],
       };
-      config.snapshot = { ...(config.snapshot as object), managedPaths: [] };
     }
     return config;
   },

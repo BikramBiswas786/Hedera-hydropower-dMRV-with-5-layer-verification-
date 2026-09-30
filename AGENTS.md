@@ -51,7 +51,7 @@ yarn market:agent-buy [kg] [beneficiary]  # the agent purchase flow with BUYER_P
 yarn mainnet:checkout plan|prepare|buy    # mainnet settlement exhibit: a test token sold through UsdCheckout on pair 0.0.1462797
 ```
 
-`yarn deploy` without `--network` targets the in-process `hardhat` network, not a running node.
+`yarn deploy` without `--network` targets the in-process `hardhat` network, not a running node. A deploy rewrites only the chain it just deployed in `deployedContracts.ts` and keeps every other chain. `deployments/` is gitignored, so a local deploy must not be allowed to drop the committed testnet addresses.
 
 ## Where things live
 

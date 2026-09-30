@@ -40,7 +40,7 @@ const PATHS = [
   ["#look", "Just looking", "5 min, no wallet"],
   ["#buy", "Buying credits", "10 min, testnet wallet"],
   ["#operate", "Running a plant", "an afternoon"],
-  ["#build", "Building on it", "follow Quick start; local chain has no faucet"],
+  ["#build", "Building on it", "follow Quick start"],
   ["#agents", "AI agents", "1 command"],
 ] as const;
 
@@ -194,7 +194,7 @@ const GuidePage: NextPage = async () => {
         </p>
       </Path>
 
-      <Path id="build" who="Building on it" time="follow Quick start; local chain has no faucet">
+      <Path id="build" who="Building on it" time="follow Quick start">
         <p className="m-0 text-base-content/80">
           Hydro dMRV is a Scaffold-HBAR template: one command gives you the contracts, this app, the API and the MCP
           server, ready to change.
@@ -202,7 +202,8 @@ const GuidePage: NextPage = async () => {
         <Code>{`npm create scaffold-hbar@latest --template BikramBiswas786/Hedera-hydropower-dMRV-with-5-layer-verification-
 yarn chain:offline               # terminal 1: local chain, no internet
 yarn deploy --network localhost  # terminal 2: contracts, tokens, two demo plants
-yarn start                       # terminal 3: http://localhost:3000`}</Code>
+yarn start                       # terminal 3: http://localhost:3000
+# /market connects a burner wallet. Press "100 local HBAR", then Buy & retire.`}</Code>
         <p className="m-0 text-sm text-base-content/75">
           Then deploy to testnet with <code>yarn deploy --network hederaTestnet</code>. The{" "}
           <ExternalLink href="https://github.com/BikramBiswas786/Hedera-hydropower-dMRV-with-5-layer-verification-#readme">
