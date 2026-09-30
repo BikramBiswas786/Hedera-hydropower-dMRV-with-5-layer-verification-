@@ -107,6 +107,8 @@ Nothing is required to run the local quick start or to browse the app. Copy the 
 | --- | --- |
 | `HEDERA_OPERATOR_ID`, `HEDERA_OPERATOR_KEY`, `HCS_TOPIC_ID` | publishing readings and reports to HCS |
 | `MRV_API_KEY` | the record and verification APIs and MCP write tools (unset: writes are off) |
+| `CHECKOUT_ADDRESS` | the `UsdCheckout` the server reads. Production is `0xa42B11B322a6Dd1B638abe69Aa6671A45C85Ab75`, where a marked token cannot use `buy`. Unset: the checkout written by the last deploy |
+| `TRACE_SIGNER_KEY` | the ECDSA key that signs `buyTraced` after a Guardian trace is backed. Without it the server will not build a purchase of a marked token. Never commit it |
 | `NEXT_PUBLIC_TARGET_NETWORK` | `local` or `testnet`, to override the automatic choice |
 
 `packages/hardhat/.env` takes `VERIFIER_ADDRESS` (the VVB, which must sign each plant's validation before it is registered) and `ADMIN_ADDRESS` (a 2-of-3 threshold account). Every variable is in [docs/operations.md](docs/operations.md).
@@ -140,7 +142,7 @@ yarn mrv:reproduce                                     # anyone: re-derive every
 | An agent's `buyAndRetire` through SaucerSwap on [`CreditMarket`](https://hashscan.io/testnet/contract/0x48F5056EdaD0B16c97a54085512b48417bC40F04), from a separate buyer | [0x180f3a7c…](https://hashscan.io/testnet/transaction/0x180f3a7c2d0285a6a2ee0841c417232058a615093143c0a24489d396546178c0) · [would a sale settle now?](https://hydro-dmrv.vercel.app/api/market/dex) |
 | A Managed Guardian mint traced `backed` (signatures, token, amount, treasury), then sold through `UsdCheckout` | [trace](https://hydro-dmrv.vercel.app/api/guardian/v1/trace?ref=0.0.10238177-1790602426-400520522) · [buy 0x01886451…](https://hashscan.io/testnet/transaction/0x0188645163e1bf1aa3cfac7ca72a0c31b9c4cc655938c9edde6746be9cbc0bfe) |
 | Negative: the same holder with a wrong token id finds no Guardian record (HTTP 422), never `backed`; the builder answers 409 for `not-backed` or `incomplete`, and its test fails if the trace call is removed | [trace, wrong token](https://hydro-dmrv.vercel.app/api/guardian/v1/trace?ref=ft:0.0.10760320:0.0.10721162) · [`checkout.purchase.test.ts`](packages/nextjs/services/mrv/server/checkout.purchase.test.ts) |
-| The same settlement against SaucerSwap's public mainnet WHBAR/USDC pair `0.0.1462797` and mainnet Chainlink | [Mainnet fork](https://github.com/BikramBiswas786/Hedera-hydropower-dMRV-with-5-layer-verification-/actions/workflows/mainnet-fork.yml) (every push) · `publicMainnet` in [`/api/market/dex`](https://hydro-dmrv.vercel.app/api/market/dex) |
+| SaucerSwap's public mainnet WHBAR/USDC pair `0.0.1462797`: the factory returns it, the 3% guard accepts it, and the router quotes 1 HBAR through it. The swap is not executed on the fork | [Mainnet fork](https://github.com/BikramBiswas786/Hedera-hydropower-dMRV-with-5-layer-verification-/actions/workflows/mainnet-fork.yml) (every push) · `publicMainnet` in [`/api/market/dex`](https://hydro-dmrv.vercel.app/api/market/dex) |
 | A 2-of-3 admin call that waited for a second signature (Schedule Service) | [schedule 0.0.10764799](https://hashscan.io/testnet/schedule/0.0.10764799) |
 
 Every step after the deploy was run by the [Testnet evidence](.github/workflows/testnet-evidence.yml) workflow with the same CLI an operator and a VVB use, and `yarn mrv:reproduce` re-derives every record from public data. The six testnet contracts are Sourcify-verified (exact match). Every address and transaction: [docs/evidence.md](docs/evidence.md).

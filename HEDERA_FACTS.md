@@ -99,7 +99,7 @@ mainnet factory.
 **15. SaucerSwap V1 on Hedera: testnet factory 0.0.9959, router 0.0.19264; mainnet factory 0.0.1062784, router
 0.0.3045981, WHBAR/USDC pair 0.0.1462797.** The router's `swapExactETHForTokens` takes `msg.value` in tinybar
 from a contract.
-Proof: fork, `getPair(WHBAR, USDC)` equals 0.0.1462797; live, the keeper's swaps on router 0.0.19264.
+Proof: fork, `getPair(WHBAR, USDC)` equals 0.0.1462797 and `getAmountsOut` for 1 HBAR on that path is within 3% of Chainlink; live, the keeper's swaps on router 0.0.19264.
 
 ## Forking Hedera locally
 

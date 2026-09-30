@@ -12,6 +12,8 @@ Nothing is required to browse the app or use the engine. Copy the `.env.example`
 | `HEDERA_OPERATOR_KEY` | publishing | Hex or DER. If ECDSA, it is also the relayer's EVM key. To record monitoring that address must be the plant's operator or the reporter it named (`setReporter`); relaying a verification needs no role. |
 | `HCS_TOPIC_ID` | publishing | The registry's audit topic (`yarn mrv:create-topic`); the server refuses to publish to any other. |
 | `MRV_API_KEY` | publishing | Bearer token for `POST /api/mrv/record`, `/api/mrv/verification`, `/api/mrv/verification/submit` and the MCP write tools. Unset disables writes. |
+| `CHECKOUT_ADDRESS` | checkout purchases | `UsdCheckout` the server reads. Production is `0xa42B11B322a6Dd1B638abe69Aa6671A45C85Ab75`. Unset uses the checkout in `deployedContracts.ts`. |
+| `TRACE_SIGNER_KEY` | marked-token purchases | ECDSA hex key that signs `buyTraced` after a Guardian trace is backed. The account must be `traceSigner` on that checkout. Unset: a marked token gets no transaction. Never commit it. |
 | `RELAYER_PRIVATE_KEY` | optional | Overrides the relayer EVM key (ED25519 operators, local chains). It is **not** a VVB key. |
 | `METER_PRIVATE_KEYS` | server-side meter signing | JSON `{ "<plantId>": "<hex key>" }`, from `yarn hardhat:meter-keys`. Used only when a request has no meter signature. Software keys standing in for logger hardware; the public demo derivation is refused on Hedera chain ids. |
 | `BRIDGE_ED25519_PRIVATE_KEY` / `BRIDGE_DID` | Guardian bridge | Ed25519 key and its published `did:hedera` DID (`yarn guardian:publish-did`). The cross-check route answers 503 until both are set and match. |
@@ -176,8 +178,8 @@ contains `[deploy-testnet]`, with the `TESTNET_REBALANCER_KEY` secret and demo k
    `verification-HYDRO-DEMO-01-<first>-<last>.json`), `VVB_PRIVATE_KEY=… yarn mrv:approve verification-….json` on the
    VVB's machine and `yarn mrv:submit verification-….json`. Then `yarn market:keep-listing --execute` and
    `BUYER_PRIVATE_KEY=… yarn market:agent-buy`, and record the links in [evidence.md](evidence.md).
-7. **Vercel env.** `HEDERA_OPERATOR_*`, `HCS_TOPIC_ID`, `MRV_API_KEY`, `METER_PRIVATE_KEYS` if the site should record
-   the demo plants. Redeploy the app.
+7. **Vercel env.** `HEDERA_OPERATOR_*`, `HCS_TOPIC_ID`, `MRV_API_KEY`, `CHECKOUT_ADDRESS`, `TRACE_SIGNER_KEY` (the checkout's `traceSigner`, not the operator), and `METER_PRIVATE_KEYS` if the site should record
+   the demo plants. Redeploy the app. New variables are picked up only on a redeploy.
 
 Admin changes after the handover go through the threshold account:
 `yarn admin:exec schedule <CreditMarket 0x…> "setPoolGuardEnabled(bool)" true` by one holder, then
