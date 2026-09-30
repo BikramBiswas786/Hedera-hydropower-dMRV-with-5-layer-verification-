@@ -46,6 +46,7 @@ yarn live:smoke                   # click through the deployed app (Live smoke w
 yarn guardian:trace <ref>         # is a Guardian-minted token backed? nft:<token>:<serial> | ft:<token>:<account> | tx id
 yarn pair:rebalance [--execute]   # hold the testnet SaucerSwap pair at the oracle (Testnet pair keeper)
 yarn market:keep-listing [--execute]  # keep a listing open on the testnet market
+yarn market:credit-pool [seed kg|--usd|buy]  # WHBAR/credit pool: show, seed, or buy-and-retire
 yarn market:agent-buy [kg] [beneficiary]  # the agent purchase flow with BUYER_PRIVATE_KEY (buyAndRetire)
 yarn mainnet:checkout plan|prepare|buy    # mainnet settlement exhibit: a test token sold through UsdCheckout on pair 0.0.1462797
 ```
@@ -223,6 +224,7 @@ await writeTx({
 
 `ListingCard.tsx` is the reference. Agents use the same flow without a browser:
 `get_dex_price` → `list_open_listings` → `prepare_purchase` → sign and send.
+Credits that have left custody trade in a SaucerSwap WHBAR/credit pool: `get_credit_pool` → `prepare_dex_retire` → sign each step (swap, approve, deposit, retire). `prepare_dex_retire` uses the same oracle and settlement-pool gate as `prepare_purchase`, and it also refuses a credit pool more than 3% from the cheapest open listing.
 
 Monitoring and verification from an operator server or agent (bearer token required for each write):
 

@@ -11,6 +11,7 @@ import {
   verifyRequestSchema,
 } from "../schema";
 import { prepareCheckoutPurchaseSchema } from "./checkout";
+import { prepareDexRetireSchema } from "./creditPool";
 import { portfolioQuerySchema } from "./insights";
 import { preparePurchaseSchema } from "./market";
 import { z } from "zod";
@@ -305,6 +306,19 @@ export function buildOpenApi(origin: string) {
         summary: "Unsigned buy / buyAndRetire transaction for your own wallet",
         requestBody: body(preparePurchaseSchema),
         responses: ok("{ chainId, to, data, value (weibar, 1% refundable buffer), summary }"),
+      }),
+      "/api/market/credit-pool": get({
+        operationId: "get_credit_pool",
+        tags: ["market"],
+        summary: "SaucerSwap V1 WHBAR/credit pool for this registry, if it exists",
+        responses: ok("{ exists, reserves, hbarPerTonne, usdPerTonne } or { exists: false, reason }"),
+      }),
+      "/api/market/prepare-dex-retire": post({
+        operationId: "prepare_dex_retire",
+        tags: ["market"],
+        summary: "Unsigned swap, deposit and retire; refused when the oracle or either pool is outside 3%",
+        requestBody: body(prepareDexRetireSchema),
+        responses: ok("{ chainId, summary, swapCostHbar, steps[], buyer, pool }"),
       }),
       "/api/checkout/listings": get({
         operationId: "list_checkout_listings",
