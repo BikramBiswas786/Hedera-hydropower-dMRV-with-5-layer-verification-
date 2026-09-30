@@ -32,6 +32,7 @@ jobs:
 
       # The deploy the Mainnet checkout workflow sends to mainnet, rehearsed on the fork: the feed on mainnet Chainlink
       # and Supra, UsdCheckout, and setPoolGuard, which asks SaucerSwap's real factory for pair 0.0.1462797.
+      # MainnetFork.test.ts also quotes that pair with the router's getAmountsOut. It does not send the swap.
       - name: Rehearse the mainnet UsdCheckout deploy
         env:
           HEDERA_FORK_NETWORK: mainnet

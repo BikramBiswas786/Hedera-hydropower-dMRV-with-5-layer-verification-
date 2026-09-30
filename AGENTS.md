@@ -172,7 +172,7 @@ yarn mainnet:checkout plan|prepare|buy    # mainnet settlement exhibit: a test t
   `registrationRequestedAt` and the 2027 five-year rule, renewal span), crediting year, non-overlapping periods,
   calibration validity, nameplate ceiling, net ≤ gross, minimum completeness (from the meter-signed interval count)
   and registered fuel are enforced by the contracts. Changing a threshold in one place means reviewing the other.
-- **Secrets stay server-side.** Anything reading `HEDERA_OPERATOR_KEY`, `RELAYER_PRIVATE_KEY`, `METER_PRIVATE_KEYS` or `MRV_API_KEY`
+- **Secrets stay server-side.** Anything reading `HEDERA_OPERATOR_KEY`, `RELAYER_PRIVATE_KEY`, `METER_PRIVATE_KEYS`, `MRV_API_KEY` or `TRACE_SIGNER_KEY`
   lives under `services/mrv/server/` and is imported only by route handlers and `scripts/`. Client components may
   import server *types* only (`import type`).
 - **Writes are authenticated; purchases are not the server's.** Server-signed writes (recording, publishing and relaying a verification) must check

@@ -9,6 +9,7 @@ import { ethers, network } from "hardhat";
  *
  * The swap itself is not run here: it needs HTS emulation, and the forking plugin (0.1.2) reads SaucerSwap's
  * long-zero contracts as empty and does not honour a contract supply key on a token created in the fork.
+ * `getAmountsOut` is a view on the real router, so the public pair can be quoted without a swap.
  */
 const FORKED = process.env.HEDERA_FORK_NETWORK === "mainnet";
 
@@ -17,6 +18,7 @@ const SAUCER_FACTORY = "0x0000000000000000000000000000000000103780"; // 0.0.1062
 const WHBAR = "0x0000000000000000000000000000000000163B5a"; // 0.0.1456986
 const USDC = "0x000000000000000000000000000000000006f89a"; // 0.0.456858
 const PAIR = "0xdB34c1Ef944883f0e5A2fC18B6C1978B088bD31d"; // 0.0.1462797
+const ROUTER = "0x00000000000000000000000000000000002e7a5d"; // 0.0.3045981
 const MAX_DEVIATION_BPS = 300;
 const TWO_DAYS = 2 * 86_400;
 
@@ -25,6 +27,7 @@ const FEED_ABI = [
   "function decimals() view returns (uint8)",
 ];
 const FACTORY_ABI = ["function getPair(address, address) view returns (address)"];
+const ROUTER_ABI = ["function getAmountsOut(uint256 amountIn, address[] path) view returns (uint256[] amounts)"];
 
 (FORKED ? describe : describe.skip)("Mainnet fork: SaucerSwap and Chainlink settle the sale", function () {
   this.timeout(600_000);
@@ -52,6 +55,24 @@ const FACTORY_ABI = ["function getPair(address, address) view returns (address)"
   it("finds the public WHBAR/USDC pair in SaucerSwap's factory", async function () {
     const factory = await ethers.getContractAt(FACTORY_ABI, SAUCER_FACTORY);
     expect((await factory.getPair(WHBAR, USDC)).toLowerCase()).to.equal(PAIR.toLowerCase());
+  });
+
+  it("quotes 1 HBAR on SaucerSwap's router for pair 0.0.1462797, and a path that is not that pair reverts", async function () {
+    const router = await ethers.getContractAt(ROUTER_ABI, ROUTER);
+    const oneHbar = 10n ** 8n;
+    const amounts = await router.getAmountsOut(oneHbar, [WHBAR, USDC]);
+    expect(amounts[0]).to.equal(oneHbar);
+    expect(amounts[1]).to.be.gt(0n);
+
+    const feed = await ethers.getContractAt(FEED_ABI, CHAINLINK_HBAR_USD);
+    const [, answer] = await feed.latestRoundData();
+    const decimals = Number(await feed.decimals());
+    const expectedUsdc = (answer * 10n ** 6n) / 10n ** BigInt(decimals);
+    const got = amounts[1];
+    const deviationBps = ((got > expectedUsdc ? got - expectedUsdc : expectedUsdc - got) * 10_000n) / expectedUsdc;
+    expect(deviationBps).to.be.lte(BigInt(MAX_DEVIATION_BPS));
+
+    await expect(router.getAmountsOut(oneHbar, [WHBAR, ethers.ZeroAddress])).to.be.reverted;
   });
 
   it("settles at mainnet Chainlink only while that pair agrees within 3%", async function () {
