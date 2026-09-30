@@ -9,6 +9,15 @@ export type ScaffoldConfig = {
   walletConnectProjectId: string;
 };
 
+/** Shared scaffold-eth id. HashPack's WalletConnect verify marks every site that reuses it as a malicious dapp. */
+export const SHARED_WALLET_CONNECT_PROJECT_ID = "3a8170812b534d0ff9d794f19a901d64";
+
+const configuredWalletConnectProjectId = process.env.NEXT_PUBLIC_WALLET_CONNECT_PROJECT_ID?.trim() ?? "";
+
+/** True only when the deployment sets its own WalletConnect project id. */
+export const walletConnectEnabled =
+  configuredWalletConnectProjectId.length > 0 && configuredWalletConnectProjectId !== SHARED_WALLET_CONNECT_PROJECT_ID;
+
 const hederaLocalFork = {
   ...chains.hardhat,
   name: "Hedera Local Fork",
@@ -52,7 +61,7 @@ const scaffoldConfig = {
     [chains.hederaTestnet.id]: process.env.NEXT_PUBLIC_HEDERA_TESTNET_RPC_URL || "https://testnet.hashio.io/api",
   },
 
-  walletConnectProjectId: process.env.NEXT_PUBLIC_WALLET_CONNECT_PROJECT_ID || "3a8170812b534d0ff9d794f19a901d64",
+  walletConnectProjectId: walletConnectEnabled ? configuredWalletConnectProjectId : SHARED_WALLET_CONNECT_PROJECT_ID,
 } as const satisfies ScaffoldConfig;
 
 export default scaffoldConfig;

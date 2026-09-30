@@ -224,6 +224,86 @@ describe("prepare_dex_retire", () => {
     await expect(prepareDexRetire({ amountKg: 10, buyer: BUYER })).rejects.toThrow(/cheapest open listing/);
   });
 
+  it("refuses when the public mainnet pair is outside its band", async () => {
+    readDexCheck.mockResolvedValue({
+      deviationBps: 10,
+      maxDeviationBps: 300,
+      accepted: true,
+      publicMainnet: { deviationBps: 400, maxDeviationBps: 300, accepted: false },
+    });
+    await expect(prepareDexRetire({ amountKg: 10, buyer: BUYER })).rejects.toThrow(/0\.0\.1462797/);
+  });
+
+  it("refuses a disabled settlement pool", async () => {
+    readDexCheck.mockRejectedValue(
+      new ApiError("CreditMarket has no SaucerSwap pool. No purchase transaction was built.", 409),
+    );
+    await expect(prepareDexRetire({ amountKg: 10, buyer: BUYER })).rejects.toThrow(/no SaucerSwap pool/);
+  });
+
+  it("refuses when the market has no settlement pool address", async () => {
+    readContract.mockImplementation(async ({ functionName }: { functionName: string }) => {
+      if (functionName === "SAUCER_FACTORY") return FACTORY;
+      if (functionName === "ROUTER") return ROUTER;
+      if (functionName === "poolGuard") return [zeroAddress, false, false, true, 8, 6, 300, 0n];
+      if (functionName === "creditToken") return CREDIT;
+      throw new Error(functionName);
+    });
+    await expect(prepareDexRetire({ amountKg: 10, buyer: BUYER })).rejects.toThrow(/no SaucerSwap pool configured/);
+  });
+
+  it("refuses a credit pair that is not WHBAR against the credit token", async () => {
+    const notWhbar = "0x00000000000000000000000000000000000000bb";
+    readContract.mockImplementation(async ({ functionName, address }: { functionName: string; address?: string }) => {
+      if (functionName === "SAUCER_FACTORY") return FACTORY;
+      if (functionName === "ROUTER") return ROUTER;
+      if (functionName === "poolGuard") return [SETTLEMENT, false, false, true, 8, 6, 300, 0n];
+      if (functionName === "creditToken") return CREDIT;
+      if (functionName === "token0") return address?.toLowerCase() === SETTLEMENT.toLowerCase() ? WHBAR : CREDIT;
+      if (functionName === "token1") return address?.toLowerCase() === PAIR.toLowerCase() ? notWhbar : WHBAR;
+      if (functionName === "getPair") return PAIR;
+      if (functionName === "getReserves") return [2_000n, 18_181_818n, 0];
+      if (functionName === "listingCount") return 1n;
+      if (functionName === "getListing") return ["0x0000000000000000000000000000000000000003", 1_000n, 1n, true];
+      throw new Error(functionName);
+    });
+    await expect(prepareDexRetire({ amountKg: 10, buyer: BUYER })).rejects.toThrow(/WHBAR\/credit pair/);
+  });
+
+  it("refuses empty credit-pool reserves", async () => {
+    readContract.mockImplementation(async ({ functionName, address }: { functionName: string; address?: string }) => {
+      if (functionName === "SAUCER_FACTORY") return FACTORY;
+      if (functionName === "ROUTER") return ROUTER;
+      if (functionName === "poolGuard") return [SETTLEMENT, false, false, true, 8, 6, 300, 0n];
+      if (functionName === "creditToken") return CREDIT;
+      if (functionName === "token0") return address?.toLowerCase() === SETTLEMENT.toLowerCase() ? WHBAR : CREDIT;
+      if (functionName === "token1") return WHBAR;
+      if (functionName === "getPair") return PAIR;
+      if (functionName === "getReserves") return [0n, 0n, 0];
+      if (functionName === "listingCount") return 1n;
+      if (functionName === "getListing") return ["0x0000000000000000000000000000000000000003", 1_000n, 1n, true];
+      throw new Error(functionName);
+    });
+    await expect(prepareDexRetire({ amountKg: 10, buyer: BUYER })).rejects.toThrow(/cannot sell/);
+  });
+
+  it("refuses a credit pool with credits but no WHBAR", async () => {
+    readContract.mockImplementation(async ({ functionName, address }: { functionName: string; address?: string }) => {
+      if (functionName === "SAUCER_FACTORY") return FACTORY;
+      if (functionName === "ROUTER") return ROUTER;
+      if (functionName === "poolGuard") return [SETTLEMENT, false, false, true, 8, 6, 300, 0n];
+      if (functionName === "creditToken") return CREDIT;
+      if (functionName === "token0") return address?.toLowerCase() === SETTLEMENT.toLowerCase() ? WHBAR : CREDIT;
+      if (functionName === "token1") return WHBAR;
+      if (functionName === "getPair") return PAIR;
+      if (functionName === "getReserves") return [2_000n, 0n, 0];
+      if (functionName === "listingCount") return 1n;
+      if (functionName === "getListing") return ["0x0000000000000000000000000000000000000003", 1_000n, 1n, true];
+      throw new Error(functionName);
+    });
+    await expect(prepareDexRetire({ amountKg: 10, buyer: BUYER })).rejects.toThrow(/cheapest open listing/);
+  });
+
   it("refuses when there is no open listing to price the pool against", async () => {
     readContract.mockImplementation(async ({ functionName, address }: { functionName: string; address?: string }) => {
       if (functionName === "SAUCER_FACTORY") return FACTORY;
