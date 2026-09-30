@@ -96,3 +96,7 @@ credentials), or `yarn harness:run` to have an agent build a feature against the
 (`.github/workflows/ci.yaml`) runs every check on Node 20.18.3 and scaffolds with the Quick start command from the
 README (`npm create scaffold-hbar@latest -- hydro-dmrv --template BikramBiswas786/Hedera-hydropower-dMRV-with-5-layer-verification- --ci --package-manager yarn --solidity-framework hardhat --skip-hedera-skills`).
 The checkout under test is supplied with `CREATE_SCAFFOLD_HBAR_TEMPLATE_DIR`.
+
+## Local deploy vs the test suite
+
+`yarn deploy --network localhost` writes chain `31337` into `packages/nextjs/contracts/deployedContracts.ts`. In development the app then prefers that local chain. Run `yarn reset:local` (or rely on the `node scripts/restoreDeployedContracts.mjs` step that now precedes `yarn test`) before expecting the committed testnet addresses in tests.
