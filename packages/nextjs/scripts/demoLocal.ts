@@ -6,6 +6,7 @@
  *
  * Chain 31337 is written to the gitignored local file. The committed testnet addresses stay.
  */
+import { assertDemoEngines } from "./engineCheck";
 import { spawn } from "node:child_process";
 import fs, { openSync } from "node:fs";
 import net from "node:net";
@@ -14,17 +15,9 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { type Address, createPublicClient, createWalletClient, http } from "viem";
 import { hardhat } from "viem/chains";
-import { prepareAnchors } from "~~/services/mrv/pipeline";
-import { PREVIEW_METER_DOMAIN, generateScenario } from "~~/services/mrv/scenarios";
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../../..");
 const RPC = "http://127.0.0.1:8545";
-const END = new Date("2026-09-28T12:00:00Z");
-const EXPECTED: Record<"healthy" | "inflated" | "tampered", string> = {
-  healthy: "APPROVED",
-  inflated: "REJECTED",
-  tampered: "REJECTED",
-};
 
 function yarnCommand(): string {
   return process.platform === "win32" ? "yarn.cmd" : "yarn";
@@ -87,15 +80,6 @@ function yarnSync(args: string[]): Promise<void> {
       else reject(new Error(`yarn ${args.join(" ")} exited ${code}`));
     });
   });
-}
-
-function checkEngines(): void {
-  for (const name of Object.keys(EXPECTED) as (keyof typeof EXPECTED)[]) {
-    const { report } = prepareAnchors(generateScenario(name, { end: END, domain: PREVIEW_METER_DOMAIN }));
-    const ok = report.decision === EXPECTED[name];
-    console.log(`${name} ${report.decision}${ok ? "" : ` (expected ${EXPECTED[name]})`}`);
-    if (!ok) throw new Error(`${name} was ${report.decision}, expected ${EXPECTED[name]}`);
-  }
 }
 
 const marketAbi = [
@@ -179,7 +163,8 @@ async function main(): Promise<void> {
   }
 
   await yarnSync(["deploy", "--network", "localhost"]);
-  checkEngines();
+  assertDemoEngines();
+  console.log("healthy APPROVED, inflated REJECTED, tampered REJECTED (yarn verify prints the reasons)");
   await buyTenKg();
   console.log(
     "The contract stores each HCS report's hash and sequence. It cannot read the message. yarn mrv:reproduce refuses a mismatch.",

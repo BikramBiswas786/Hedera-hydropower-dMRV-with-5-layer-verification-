@@ -11,7 +11,7 @@ The on-chain half is five contracts plus a second methodology module:
 | `CreditMarket.sol` | Listings, oracle quote, SaucerSwap router swap, pool guard | 9,044 B |
 | `ResilientHbarUsdFeed.sol` | Chainlink HBAR/USD with a Supra fallback | 2,534 B |
 
-CI fails any contract above 24,064 B (512 B under EIP-170). `DmrvRegistry` gets there with a per-file compiler
+CI fails any contract above 24,064 B (512 B under EIP-170). `yarn hardhat:size` prints `tight` when a contract is under 256 B of that limit. `tight` does not fail the gate. `DmrvRegistry` is in that band (53 B left): a new registry function needs an equal cut. It gets there with a per-file compiler
 override (`viaIR`, 1 optimizer run) in `hardhat.config.ts`, and by keeping unenforced records in `DmrvAnnotations`.
 The deployed price age is 25 hours (`MAX_PRICE_AGE_SECONDS`, default 90000); two days is only the upper bound
 `CreditMarket` accepts (`MAX_PRICE_AGE`).

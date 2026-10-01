@@ -39,8 +39,8 @@ const Code = ({ children }: { children: string }) => (
 const PATHS = [
   ["#look", "Just looking", "5 min, no wallet"],
   ["#buy", "Buying credits", "10 min, testnet wallet"],
-  ["#operate", "Running a plant", "an afternoon"],
-  ["#build", "Building on it", "follow Quick start"],
+  ["#operate", "Running a plant", "one command locally"],
+  ["#build", "Building on it", "yarn verify, then yarn demo"],
   ["#agents", "AI agents", "1 command"],
 ] as const;
 
@@ -154,58 +154,63 @@ const GuidePage: NextPage = async () => {
           </Step>
         </ol>
         <p className="text-sm text-base-content/60 m-0">
-          No listing yet? Credits appear on the market once a plant operator lists them (next section).
+          On this site, a listing appears after an operator lists credits. A local <code>yarn deploy</code> already
+          lists one batch, so you can buy without the VVB steps.
         </p>
       </Path>
 
-      <Path id="operate" who="Running a plant" time="an afternoon">
+      <Path id="operate" who="Running a plant" time="one command locally">
         <ol className="flex flex-col gap-4 m-0 p-0 list-none">
-          <Step n={1} title="Check the project qualifies">
-            Describe the plant (capacity, reservoir area, start date, grid data) and post it to{" "}
-            <code>/api/methodology/assess</code>, or ask an agent to call <code>assess_project</code>. You get the
-            methodology. VMR0017, which the demo plants use, applies ACM0002 v22.0, limits hydro to 15 MW, and only in a
-            least developed country. CDM uses AMS-I.D up to 15 MW and ACM0002 above. You also get the grid emission
-            factor, reservoir rules and the exact numbers to register on-chain.
+          <Step n={1} title="See a decision, with no chain and no key">
+            <code>yarn verify</code> prints every sample day. <em>healthy</em> is APPROVED. <em>inflated</em> and{" "}
+            <em>tampered</em> are REJECTED, and the line says why. The same three buttons are on{" "}
+            <Link href="/verify" className="link link-primary">
+              Verify
+            </Link>
+            . Nothing is deployed and nothing is signed.
           </Step>
-          <Step n={2} title="Register it">
-            The registry admin records the validated design on-chain (<code>registerProject</code>, done for the demo
-            plants by <code>yarn deploy</code>). From then on the contract refuses anything that breaks it.
-          </Step>
-          <Step n={3} title="Give the meter a key">
-            <code>yarn mrv:meter-key</code> creates a key for the data logger; its address is registered with the plant.
-            The logger signs every batch&apos;s totals (<code>yarn mrv:sign</code> or any Ethereum library), and the
-            contract never credits more than the meter signed.
-          </Step>
-          <Step n={4} title="Record, get verified, sell">
-            <code>yarn mrv:record</code> (or <code>POST /api/mrv/record</code> with your API key) verifies a period,
-            publishes it to HCS and records it on-chain. Nothing is issued yet: your VVB reviews the pending records (
-            <code>yarn mrv:verify</code>), signs the verification with its own key, and only its approval issues the
-            credits to you. Then open{" "}
+          <Step n={2} title="Buy the credit a local deploy already issued">
+            <code>yarn demo</code> starts the local chain if it is down, deploys, runs those three checks, and buys 10
+            kg. The deploy already registered the plants, recorded one hour, and had the local verifier issue a listing
+            at $15/t. You do not run the VVB commands for that. Then <code>yarn start</code>, open{" "}
             <Link href="/market" className="link link-primary">
               Market
             </Link>
-            , choose <strong>List for sale</strong> and set a price in US dollars per tonne. Each sale is swapped
-            through SaucerSwap and paid to you in the settlement pair&apos;s USD token.
+            , press <strong>100 local HBAR</strong>, and <strong>Buy &amp; retire</strong>.
+          </Step>
+          <Step n={3} title="On testnet, monitoring and issuance stay separate">
+            <code>yarn mrv:record</code> quantifies a period and issues nothing. <code>yarn mrv:verify</code> writes the
+            VVB&apos;s report and does not sign it. The VVB signs on its own machine with <code>yarn mrv:approve</code>{" "}
+            (<code>VVB_PRIVATE_KEY</code>). <code>yarn mrv:submit</code> relays that signature, and only an approval
+            issues credits. This server never holds the VVB key. The contract stores the report hash and a non-zero HCS
+            sequence. It cannot read the message. <code>yarn mrv:reproduce</code> refuses a mismatch.
           </Step>
         </ol>
         <p className="text-sm text-base-content/60 m-0">
           A real project also needs an accredited validation/verification body (VVB) and a carbon standard; this system
-          makes their checks reproducible, it does not replace them.
+          makes their checks reproducible, it does not replace them. Local demo credits are not Verra credits.
         </p>
       </Path>
 
-      <Path id="build" who="Building on it" time="follow Quick start">
+      <Path id="build" who="Building on it" time="yarn verify, then yarn demo">
         <p className="m-0 text-base-content/80">
           Hydro dMRV is a Scaffold-HBAR template: one command gives you the contracts, this app, the API and the MCP
           server, ready to change.
         </p>
-        <Code>{`npm create scaffold-hbar@latest --template BikramBiswas786/Hedera-hydropower-dMRV-with-5-layer-verification-
-yarn chain:offline               # terminal 1: local chain, no internet
-yarn deploy --network localhost  # terminal 2: contracts, tokens, two demo plants
-yarn start                       # terminal 3: http://localhost:3000
-# /market connects a burner wallet. Press "100 local HBAR", then Buy & retire.`}</Code>
+        <Code>{`yarn verify
+# engine only. healthy APPROVED. inflated and tampered REJECTED. No chain, no wallet.
+
+yarn demo
+# chain if it is down, deploy, those three checks, buy 10 kg.
+# localhost addresses go to gitignored deployedContracts.local.ts. yarn test still passes.
+
+yarn start
+# http://localhost:3000 — /verify needs no wallet. /market connects a burner.
+# Press "100 local HBAR", then Buy & retire.`}</Code>
         <p className="m-0 text-sm text-base-content/75">
-          Then deploy to testnet with <code>yarn deploy --network hederaTestnet</code>. The{" "}
+          A local deploy does not rewrite the committed testnet addresses. <code>yarn reset:local</code> drops the
+          gitignored file if you want a clean checkout. Testnet is <code>yarn deploy --network hederaTestnet</code>,
+          then the four commands in the README (record, verify, the VVB signs, submit). The{" "}
           <ExternalLink href="https://github.com/BikramBiswas786/Hedera-hydropower-dMRV-with-5-layer-verification-#readme">
             README
           </ExternalLink>{" "}

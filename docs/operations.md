@@ -59,9 +59,11 @@ Nothing is required to browse the app or use the engine. Copy the `.env.example`
 
 | Command | What it does |
 | --- | --- |
+| `yarn verify` | Engine only: healthy is approved, inflated and tampered are rejected, with the reason. No chain and no VVB key |
+| `yarn demo` | Local chain if it is down, deploy, those three checks, buy 10 kg. Skips the app when under 6 GB is free |
 | `yarn chain:offline` · `yarn deploy --network localhost` · `yarn start` | Local chain, contracts and demo batch, app |
 | `yarn test` · `yarn lint` · `yarn next:build` | Contract and app tests, lint, production build |
-| `yarn hardhat:size` | Contract-size gate (24,064 B) |
+| `yarn hardhat:size` | Contract-size gate (24,064 B). `tight` means under 256 B of that limit and does not fail |
 | `yarn mrv:record` | Monitoring: verify, publish to HCS, `recordMonitoring` (issues nothing) |
 | `yarn mrv:verify` · `yarn mrv:approve` · `yarn mrv:submit` | Verification: publish the VVB's report, the VVB signs on its own machine, relay `verifyPeriod` |
 | `yarn mrv:reproduce [plantId…]` | Anyone, no key: re-derive every record from HCS, hash chain included |
