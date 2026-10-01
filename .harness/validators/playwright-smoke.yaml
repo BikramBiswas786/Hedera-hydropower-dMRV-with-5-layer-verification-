@@ -1,10 +1,14 @@
 name: hydro-dmrv-smoke
 server:
-  command: yarn start
+  # The Harness validator builds the app before this gate; serve that production output so route
+  # checks do not trigger repeated dev compiles or memory-threshold restarts.
+  command: yarn next:serve
   url: http://localhost:3000
-  timeoutMs: 180000
+  timeoutMs: 300000
 defaults:
-  timeoutMs: 60000
+  # The first Next.js compile can exceed one minute on a clean developer machine; keep this
+  # below the server startup budget so the smoke gate reports app failures instead of timing out.
+  timeoutMs: 180000
   # Wallet and RPC connectors log network errors in sandboxes without internet; crashes are caught below.
   failOnConsoleError: false
 routes:

@@ -45,8 +45,7 @@ if (require.main === module) {
   let tight = false;
   for (const { name, bytes } of sizes) {
     const headroom = FAIL - bytes;
-    const status =
-      bytes > FAIL ? "FAIL" : headroom < MARGIN ? "tight" : bytes > WARN ? "warn" : "ok";
+    const status = bytes > FAIL ? "FAIL" : headroom < MARGIN ? "tight" : bytes > WARN ? "warn" : "ok";
     if (bytes > FAIL) failed = true;
     if (status === "tight") tight = true;
     const extra = status === "tight" || status === "FAIL" ? `  (${headroom} B under limit)` : "";

@@ -3,6 +3,7 @@ import path from "path";
 
 const nextConfig: NextConfig = {
   outputFileTracingRoot: path.join(__dirname, "../.."),
+  distDir: process.env.NEXT_DIST_DIR ?? ".next",
   reactStrictMode: true,
   devIndicators: false,
   typescript: {
