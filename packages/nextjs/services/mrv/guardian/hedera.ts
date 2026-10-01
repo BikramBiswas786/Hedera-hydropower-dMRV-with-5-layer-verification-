@@ -1,3 +1,4 @@
+import { fetchUpstream, isUpstreamTimeout, upstreamTimeoutMs } from "../upstream";
 import { parseHederaDid } from "./did";
 import { CidError, readVerifiedFile } from "./ipfs";
 import type { Resolver } from "./vc";
@@ -20,14 +21,12 @@ export type GuardianSources = {
   ipfsTimeoutMs?: number;
 };
 
-const IPFS_TIMEOUT_MS = 12_000;
-
-export class SourceError extends Error {}
-
 const TIMESTAMP = /^\d{1,12}\.\d{1,9}$/;
 const CID = /^(Qm[1-9A-HJ-NP-Za-km-z]{44}|b[a-z2-7]{50,100})$/;
 const MAX_IPFS_BYTES = 5 * 1024 * 1024;
 const MAX_TOPIC_PAGES = 20;
+
+export class SourceError extends Error {}
 
 export const isConsensusTimestamp = (value: string) => TIMESTAMP.test(value);
 export const isCid = (value: string) => CID.test(value);
@@ -47,10 +46,17 @@ type MirrorMessage = {
 };
 
 async function getJson<T>(sources: GuardianSources, path: string): Promise<T> {
-  const response = await sources.fetch(`${sources.mirrorNodeUrl.replace(/\/$/, "")}${path}`, {
-    headers: { accept: "application/json" },
-    redirect: "error",
-  });
+  const url = `${sources.mirrorNodeUrl.replace(/\/$/, "")}${path}`;
+  let response: Response;
+  try {
+    response = await fetchUpstream(sources.fetch, url, {
+      headers: { accept: "application/json" },
+      redirect: "error",
+    });
+  } catch (error) {
+    if (isUpstreamTimeout(error)) throw new SourceError(`Mirror node timed out for ${path}`);
+    throw error;
+  }
   if (!response.ok) throw new SourceError(`Mirror node returned ${response.status} for ${path}`);
   return (await response.json()) as T;
 }
@@ -143,7 +149,7 @@ async function fetchBlock(sources: GuardianSources, cid: string): Promise<Uint8A
       const response = await sources.fetch(`${url}${url.includes("?") ? "&" : "?"}format=raw`, {
         headers: { accept: "application/vnd.ipld.raw" },
         redirect: "follow",
-        signal: AbortSignal.timeout(sources.ipfsTimeoutMs ?? IPFS_TIMEOUT_MS),
+        signal: AbortSignal.timeout(sources.ipfsTimeoutMs ?? upstreamTimeoutMs()),
       });
       if (!response.ok) {
         failures.push(`${new URL(url).host} ${response.status}`);

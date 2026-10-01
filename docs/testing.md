@@ -11,7 +11,7 @@ yarn hardhat:test:fork # same suite against Hedera's HTS emulation (HEDERA_FORKI
 HEDERA_FORK_NETWORK=mainnet HEDERA_RPC_URL=https://mainnet.hashio.io/api \
   yarn workspace @sh/hardhat hardhat test test/MainnetFork.test.ts  # real SaucerSwap + Chainlink on a mainnet fork
 yarn hardhat:test:gas  # with a gas report
-yarn next:test         # 410 vitest tests
+yarn next:test         # 416 vitest tests
 yarn hardhat:size      # runtime bytecode; fails above 24,064 B; prints tight when under 256 B of that (does not fail)
 yarn lint && yarn next:build
 ```
@@ -108,3 +108,5 @@ The checkout under test is supplied with `CREATE_SCAFFOLD_HBAR_TEMPLATE_DIR`.
 On testnet, monitoring and issuance are four commands (`yarn mrv:record`, `yarn mrv:verify`, `yarn mrv:approve`, `yarn mrv:submit`). `yarn mrv:verify` publishes the VVB's report and does not sign. The VVB key stays on the VVB's machine. The contract stores each report's hash and a non-zero sequence on HCS topic `0.0.10729650`. It cannot read the message. `yarn mrv:reproduce` refuses a hash mismatch. A direct `verifyPeriod` call can still cite a sequence whose bytes are something else.
 
 `yarn hardhat:size` prints `tight` when a contract is under 256 B of the 24,064 B fail limit. `tight` does not fail CI. `DmrvRegistry` is in that band. Do not add a registry function without an equal cut.
+
+`yarn mrv` prints the local path and the four testnet commands. `yarn verify` is the engine. `yarn mrv:verify` publishes a VVB report and does not sign. A mirror node or IPFS gateway that stays silent fails that read after 12 seconds (`UPSTREAM_TIMEOUT_MS`). `/api/*` returns 429 after 300 calls in a minute on one instance; instances do not share the counter.

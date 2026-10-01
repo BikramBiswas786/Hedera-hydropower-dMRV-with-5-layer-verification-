@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { isUpstreamTimeout, upstreamTimeoutMs } from "~~/services/mrv/upstream";
 
 const MIRROR_BASE: Record<string, string> = {
   testnet: process.env.HEDERA_MIRROR_TESTNET_URL ?? "https://testnet.mirrornode.hedera.com",
@@ -20,7 +21,7 @@ export async function GET(req: Request) {
   const url = `${base}/api/v1/accounts/${evm}`;
 
   try {
-    const res = await fetch(url, { next: { revalidate: 60 } });
+    const res = await fetch(url, { next: { revalidate: 60 }, signal: AbortSignal.timeout(upstreamTimeoutMs()) });
 
     if (!res.ok) {
       if (res.status === 404) {
@@ -33,6 +34,9 @@ export async function GET(req: Request) {
     const accountId = typeof data.account === "string" ? data.account : null;
     return NextResponse.json({ accountId });
   } catch (e) {
+    if (isUpstreamTimeout(e)) {
+      return NextResponse.json({ error: "Mirror node timed out" }, { status: 504 });
+    }
     console.error("[api/hedera/account]", e);
     return NextResponse.json({ error: "Resolution failed" }, { status: 502 });
   }

@@ -60,6 +60,7 @@ Nothing is required to browse the app or use the engine. Copy the `.env.example`
 | Command | What it does |
 | --- | --- |
 | `yarn verify` | Engine only: healthy is approved, inflated and tampered are rejected, with the reason. No chain and no VVB key |
+| `yarn mrv` | Prints that path, then the four testnet issuance commands. `yarn mrv:verify` is not `yarn verify` |
 | `yarn demo` | Local chain if it is down, deploy, those three checks, buy 10 kg. Skips the app when under 6 GB is free |
 | `yarn chain:offline` · `yarn deploy --network localhost` · `yarn start` | Local chain, contracts and demo batch, app |
 | `yarn test` · `yarn lint` · `yarn next:build` | Contract and app tests, lint, production build |
@@ -244,7 +245,10 @@ the pair logged the swap and the seller received 0.981 QUSD (at least 0.97 requi
 - **Nobody shares a private key.** Buyers and agents sign with their own wallets (`prepare_purchase` returns unsigned
   transactions); the public deployment holds no server keys; the burner wallet is offered only on a local chain.
 - **Public API.** Read and verify endpoints are unauthenticated and bounded by input limits (2 000 readings per
-  batch); put a rate limit in front of a public deployment (e.g. a Vercel Firewall rule on `/api/*`).
+  batch). Each server instance refuses a client after 300 calls in 60 seconds (`429`, `Retry-After`). Instances do
+  not share that counter, so a public deployment should still put a rate limit in front (a Vercel Firewall rule on
+  `/api/*`). Guardian bridge routes keep their own 60 per minute. A mirror node or IPFS gateway that stays silent
+  fails the read after 12 seconds (`UPSTREAM_TIMEOUT_MS`) instead of hanging reproduce, a trace, or a purchase quote.
 - **Not a certification.** This implements the equations of VMR0017 v1.0 with ACM0002 v22.0, AMS-I.D, VT0011,
   TOOL07 and TOOL03 as described above, and the order of the VCS project cycle. It records VT0008 additionality
   evidence and the safeguards references and checks them for completeness, but the determination, stakeholder

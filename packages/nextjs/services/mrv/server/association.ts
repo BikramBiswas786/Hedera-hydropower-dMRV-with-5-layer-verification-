@@ -1,4 +1,5 @@
 import { MIRROR_NODE_URL } from "../network";
+import { fetchUpstream, isUpstreamTimeout } from "../upstream";
 import { type Address, getAddress } from "viem";
 
 /**
@@ -43,7 +44,13 @@ export async function readSellerReadiness(
   if (!tokenId) return { status: "unknown", reason: `${usdToken} is not an HTS token address` };
   try {
     const get = async <T>(path: string): Promise<T> => {
-      const response = await fetchImpl(`${MIRROR_NODE_URL}${path}`);
+      let response: Response;
+      try {
+        response = await fetchUpstream(fetchImpl, `${MIRROR_NODE_URL}${path}`);
+      } catch (error) {
+        if (isUpstreamTimeout(error)) throw new Error("Mirror node timed out");
+        throw error;
+      }
       if (!response.ok) throw new Error(`mirror node returned ${response.status}`);
       return (await response.json()) as T;
     };

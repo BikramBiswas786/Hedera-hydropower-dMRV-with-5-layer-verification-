@@ -1,5 +1,6 @@
 import { MIRROR_NODE_URL } from "./network";
 import { HCS_MAX_CHUNKS, base64ToBytes } from "./report";
+import { fetchUpstream, isUpstreamTimeout } from "./upstream";
 
 type ChunkInfo = {
   initial_transaction_id: { account_id: string; transaction_valid_start: string; nonce: number };
@@ -17,7 +18,13 @@ export type MirrorTopicMessage = {
 export class MirrorError extends Error {}
 
 async function getJson<T>(url: string, fetchImpl: typeof fetch): Promise<T> {
-  const response = await fetchImpl(url);
+  let response: Response;
+  try {
+    response = await fetchUpstream(fetchImpl, url);
+  } catch (error) {
+    if (isUpstreamTimeout(error)) throw new MirrorError(`Mirror node timed out for ${url}`);
+    throw error;
+  }
   if (!response.ok) throw new MirrorError(`Mirror node returned ${response.status}`);
   return (await response.json()) as T;
 }

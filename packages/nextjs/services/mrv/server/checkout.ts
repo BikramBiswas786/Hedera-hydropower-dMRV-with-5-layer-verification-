@@ -2,6 +2,7 @@ import { type GuardianSources, SourceError } from "../guardian/hedera";
 import { type TraceCheck, traceGuardianMint } from "../guardian/trace";
 import { HYDRO_CHAIN_ID, evmToEntityId } from "../network";
 import { formatHbar, quoteToTxValue } from "../pricing";
+import { fetchUpstream, isUpstreamTimeout } from "../upstream";
 import { ApiError, revertReason } from "./errors";
 import { readGuardianSources } from "./guardianBridge";
 import { publicClient } from "./registry";
@@ -78,9 +79,14 @@ export type ListingGuardian =
 async function accountIdOf(sources: GuardianSources, evmAddress: Address): Promise<string | null> {
   const long = evmToEntityId(evmAddress);
   if (long) return long;
-  const response = await sources.fetch(`${sources.mirrorNodeUrl}/api/v1/accounts/${evmAddress}`);
-  if (!response.ok) return null;
-  return ((await response.json()) as { account?: string }).account ?? null;
+  try {
+    const response = await fetchUpstream(sources.fetch, `${sources.mirrorNodeUrl}/api/v1/accounts/${evmAddress}`);
+    if (!response.ok) return null;
+    return ((await response.json()) as { account?: string }).account ?? null;
+  } catch (error) {
+    if (isUpstreamTimeout(error)) throw new SourceError("Mirror node timed out resolving the seller account");
+    throw error;
+  }
 }
 
 /** Traces the token through the seller's latest Guardian transfer of it. */
@@ -90,16 +96,20 @@ export async function guardianStatusOf(
   sources: GuardianSources = readGuardianSources(),
 ): Promise<ListingGuardian> {
   const tokenId = evmToEntityId(tokenAddress);
-  const account = await accountIdOf(sources, seller);
-  if (!tokenId || !account) return { verdict: "none", detail: "The token or seller has no Hedera account id" };
-  const ref = `ft:${tokenId}:${account}`;
+  let ref = `ft:${tokenId ?? tokenAddress}:${seller}`;
   try {
+    const account = await accountIdOf(sources, seller);
+    if (!tokenId || !account) return { verdict: "none", detail: "The token or seller has no Hedera account id" };
+    ref = `ft:${tokenId}:${account}`;
     const trace = await traceGuardianMint(sources, ref);
     const failed = trace.checks.filter(c => c.ok !== true).map(c => `${c.id}: ${c.detail}`);
     return { verdict: trace.verdict, ref, checks: trace.checks, failed };
   } catch (error) {
     if (error instanceof SourceError && /^No Guardian transfer/.test(error.message)) {
-      return { verdict: "none", detail: `${tokenId} reached the seller by no Guardian mint transfer` };
+      return {
+        verdict: "none",
+        detail: `${tokenId} reached the seller by no Guardian mint transfer`,
+      };
     }
     if (error instanceof SourceError) return { verdict: "incomplete", ref, checks: [], failed: [error.message] };
     throw error;
