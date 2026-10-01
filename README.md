@@ -10,6 +10,14 @@ The contract decides how many tonnes exist.
 - A sale prices HBAR from Chainlink, uses Supra when Chainlink is stale, and reverts unless the HBAR is swapped through SaucerSwap.
 - The readings are on HCS. Anyone can recompute the number.
 
+## Video
+
+One minute and 57 seconds. Recorded from the live site and the Hashscan sale, not a mock. Under the five-minute bounty limit.
+
+[Watch the demo](docs/demo/Hydro-dMRV-demo.mp4)
+
+The clip opens Verify (healthy approved, inflated and tampered rejected), Audit (Check evidence, reproduced from HCS), the market (Chainlink active, SaucerSwap pair inside 3%), then the completed testnet sale. The last card says these are not Verra credits, and that the testnet pool is a seeded pair.
+
 ## Read this in order
 
 | You are | Start here |
