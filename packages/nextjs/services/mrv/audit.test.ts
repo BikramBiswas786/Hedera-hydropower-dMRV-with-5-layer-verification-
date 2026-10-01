@@ -116,7 +116,7 @@ describe("auditAttestation", () => {
     expect(result.status).toBe("verified");
     if (result.status !== "verified") return;
     expect(result.computedHash).toBe(anchored.reportHash);
-    expect(result.hashscanUrl).toContain(`/topic/${TOPIC}/message/${attestation.hcsSequence}`);
+    expect(result.hashscanUrl).toContain(`/topic/${TOPIC}/messages#${attestation.hcsSequence}`);
   });
 
   it("detects a record that claims more than its anchored report computed", async () => {

@@ -21,7 +21,9 @@ export const hashscan = {
   token: (address: string) => `${HASHSCAN}/token/${evmToEntityId(address) ?? address}`,
   nft: (address: string, serial: number) => `${HASHSCAN}/token/${evmToEntityId(address) ?? address}/${serial}`,
   topic: (topicId: string) => `${HASHSCAN}/topic/${topicId}`,
-  topicMessage: (topicId: string, sequence: number | string) => `${HASHSCAN}/topic/${topicId}/message/${sequence}`,
+  // Hashscan v26 has no /topic/:id/message/:sequence route. That path is "Page Not Found".
+  // /messages lists every sequence, including the JSON body.
+  topicMessage: (topicId: string, sequence: number | string) => `${HASHSCAN}/topic/${topicId}/messages#${sequence}`,
 };
 
 /** HTS tokens and other Hedera entities use long-zero EVM addresses: 0x000…0<entity num>. */
