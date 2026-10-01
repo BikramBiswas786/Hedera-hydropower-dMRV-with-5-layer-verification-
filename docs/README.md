@@ -16,7 +16,7 @@ Read the [README](../README.md) first. This page is where to go after that.
 | Call it from an agent | README, "For AI agents" | [agents.md](agents.md) |
 | Change the code | [../AGENTS.md](../AGENTS.md) | [../HEDERA_FACTS.md](../HEDERA_FACTS.md) |
 | See what the tests lock | [testing.md](testing.md) | `yarn test` |
-| Watch the two-minute demo | [../README.md](../README.md) | [demo/Hydro-dMRV-demo.mp4](demo/Hydro-dMRV-demo.mp4) |
+| Watch the demo, GitHub through Vercel | [../README.md](../README.md) | [demo/Hydro-dMRV-demo.mp4](demo/Hydro-dMRV-demo.mp4) |
 
 ## What each file is
 

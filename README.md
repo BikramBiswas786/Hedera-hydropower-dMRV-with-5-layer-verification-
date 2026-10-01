@@ -12,11 +12,11 @@ The contract decides how many tonnes exist.
 
 ## Video
 
-One minute and 57 seconds. Recorded from the live site and the Hashscan sale, not a mock. Under the five-minute bounty limit.
+Three minutes and 42 seconds. Under the five-minute bounty limit. Recorded from the public GitHub repository, GitHub Actions, the live site, and the Hashscan sale. Not a mock.
 
 [Watch the demo](docs/demo/Hydro-dMRV-demo.mp4)
 
-The clip opens Verify (healthy approved, inflated and tampered rejected), Audit (Check evidence, reproduced from HCS), the market (Chainlink active, SaucerSwap pair inside 3%), then the completed testnet sale. The last card says these are not Verra credits, and that the testnet pool is a seeded pair.
+The clip follows the path in order. Scaffold from the README (`npm create scaffold-hbar`, then `yarn chain:offline`, `yarn deploy`, `yarn start`). Actions on commit `2f915c7`: checks, scaffold, and harness, plus the Vercel bot's live smoke and the mainnet fork. Then the deployed site: Verify (healthy approved, inflated and tampered rejected), Audit (Check evidence, reproduced from HCS topic `0.0.10729650`), the market (Chainlink active, SaucerSwap pair 3 bps, inside 3%), and the completed testnet sale. The last cards say these are not Verra credits, and that Vercel production for `hydro-dmrv` is ready at [hydro-dmrv.vercel.app](https://hydro-dmrv.vercel.app). The Vercel inspector is private, so that card is the deploy record, not a screenshot of the login page.
 
 ## Read this in order
 
