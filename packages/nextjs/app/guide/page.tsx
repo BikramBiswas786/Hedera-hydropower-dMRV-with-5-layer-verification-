@@ -183,7 +183,9 @@ const GuidePage: NextPage = async () => {
             VVB&apos;s report and does not sign it. The VVB signs on its own machine with <code>yarn mrv:approve</code>{" "}
             (<code>VVB_PRIVATE_KEY</code>). <code>yarn mrv:submit</code> relays that signature, and only an approval
             issues credits. This server never holds the VVB key. The contract stores the report hash and a non-zero HCS
-            sequence. It cannot read the message. <code>yarn mrv:reproduce</code> refuses a mismatch.
+            sequence. It cannot read the message. <code>yarn mrv:reproduce</code> refuses a mismatch. A mirror that
+            stays silent fails that check after 12 seconds. <code>yarn mrv</code> prints this path. It is not{" "}
+            <code>yarn verify</code>.
           </Step>
         </ol>
         <p className="text-sm text-base-content/60 m-0">

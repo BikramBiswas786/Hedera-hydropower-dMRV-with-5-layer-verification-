@@ -6,6 +6,7 @@ import {
   dexAccepted,
   hbarUsd8FromReserves,
 } from "../saucerswap";
+import { fetchUpstream, isUpstreamTimeout } from "../upstream";
 
 const MIRROR = "https://mainnet.mirrornode.hedera.com/api/v1/contracts/call";
 /** Chainlink HBAR/USD on Hedera mainnet. */
@@ -53,12 +54,18 @@ export function publicMainnetPoolFromCalls(reservesHex: string, roundHex: string
 }
 
 async function mirrorCall(to: string, data: string): Promise<string> {
-  const response = await fetch(MIRROR, {
-    method: "POST",
-    headers: { "content-type": "application/json" },
-    body: JSON.stringify({ to, data, estimate: false }),
-    cache: "no-store",
-  });
+  let response: Response;
+  try {
+    response = await fetchUpstream(fetch, MIRROR, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ to, data, estimate: false }),
+      cache: "no-store",
+    });
+  } catch (error) {
+    if (isUpstreamTimeout(error)) throw new Error("mirror timed out");
+    throw error;
+  }
   if (!response.ok) throw new Error(`mirror ${response.status}`);
   const body = (await response.json()) as { result?: string };
   if (!body.result || body.result === "0x") throw new Error("empty result");

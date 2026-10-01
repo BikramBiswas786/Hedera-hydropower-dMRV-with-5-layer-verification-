@@ -299,8 +299,26 @@ function sign(file: string | undefined) {
   );
 }
 
+const USAGE = `Local, no Hedera account
+  yarn verify          engine only. healthy APPROVED. inflated and tampered REJECTED. No chain, no key.
+  yarn demo            local chain if it is down, deploy, those three checks, buy 10 kg.
+  yarn start           http://localhost:3000 — press 100 local HBAR, then Buy & retire.
+
+Testnet issuance. This server never holds the VVB key. yarn mrv:verify is not yarn verify.
+  yarn mrv:record healthy HYDRO-DEMO-01     monitoring. Issues nothing.
+  yarn mrv:verify HYDRO-DEMO-01             publishes the VVB report. Does not sign.
+  yarn mrv:approve verification-….json      the VVB's machine. Needs VVB_PRIVATE_KEY.
+  yarn mrv:submit verification-….json       relays the signature. An approval issues credits.
+  yarn mrv:reproduce                        anyone. Refuses a hash mismatch.
+
+Also: create-topic | meter-key | sign <request.json>`;
+
 async function main() {
   const [command, arg, plantArg, ...rest] = process.argv.slice(2);
+  if (!command) {
+    console.log(USAGE);
+    return;
+  }
   if (command === "create-topic") return createTopic();
   if (command === "meter-key") return meterKey();
   if (command === "sign") return sign(arg);
@@ -314,9 +332,7 @@ async function main() {
       throw new Error(`Unknown scenario. Use one of: ${SCENARIO_NAMES.join(", ")}`);
     return record(scenario, plantArg ?? DEMO_PLANTS[0].plantId, rest[0]);
   }
-  console.log(
-    "Usage: mrv.ts create-topic | record [scenario] [plantId] [endIso] | verify <plantId> [approve|reject] [deductionTonnes] [findings] | approve <verification.json> | submit <verification.json> | reproduce [plantId…] | meter-key | sign <request.json>",
-  );
+  console.log(USAGE);
   process.exitCode = 1;
 }
 

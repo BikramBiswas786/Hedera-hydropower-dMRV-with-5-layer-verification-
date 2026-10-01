@@ -1,3 +1,4 @@
+import { fetchUpstream, isUpstreamTimeout } from "../upstream";
 import { parseHederaDid } from "./did";
 import {
   type GuardianSources,
@@ -95,10 +96,17 @@ const MAX_SOURCES = 12;
 const MAX_NFT_PAGES = 10;
 
 async function mirror<T>(sources: GuardianSources, path: string): Promise<T> {
-  const response = await sources.fetch(`${sources.mirrorNodeUrl.replace(/\/$/, "")}${path}`, {
-    headers: { accept: "application/json" },
-    redirect: "error",
-  });
+  const url = `${sources.mirrorNodeUrl.replace(/\/$/, "")}${path}`;
+  let response: Response;
+  try {
+    response = await fetchUpstream(sources.fetch, url, {
+      headers: { accept: "application/json" },
+      redirect: "error",
+    });
+  } catch (error) {
+    if (isUpstreamTimeout(error)) throw new SourceError(`Mirror node timed out for ${path}`);
+    throw error;
+  }
   if (!response.ok) throw new SourceError(`Mirror node returned ${response.status} for ${path}`);
   return (await response.json()) as T;
 }

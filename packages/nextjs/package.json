@@ -15,6 +15,7 @@
     "reset:local": "node scripts/ensureLocalContracts.mjs --reset",
     "demo": "tsx scripts/demoLocal.ts",
     "verify": "tsx scripts/engineCheck.ts",
+    "mrv": "tsx scripts/mrv.ts",
     "mrv:create-topic": "tsx scripts/mrv.ts create-topic",
     "mrv:record": "tsx scripts/mrv.ts record",
     "mrv:verify": "tsx scripts/mrv.ts verify",

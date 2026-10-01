@@ -16,6 +16,7 @@
 import { type Address, type Hex, createWalletClient, getAddress, http, parseAbi } from "viem";
 import { privateKeyToAccount } from "viem/accounts";
 import { hydroChain, publicClient, requireDeployment, requireMarket } from "~~/services/mrv/server/registry";
+import { fetchUpstream, isUpstreamTimeout } from "~~/services/mrv/upstream";
 
 const RPC = process.env.HEDERA_RPC_URL ?? "https://testnet.hashio.io/api";
 const MIRROR = process.env.MIRROR_NODE_URL ?? "https://testnet.mirrornode.hedera.com";
@@ -38,7 +39,14 @@ type Rate = { cent_equivalent: number; hbar_equivalent: number };
 async function pairCreateFeeTinybar(factory: Address): Promise<bigint> {
   const client = publicClient();
   const tinycents = await client.readContract({ address: factory, abi: FACTORY_ABI, functionName: "pairCreateFee" });
-  const rates = (await (await fetch(`${MIRROR}/api/v1/network/exchangerate`)).json()) as {
+  let response: Response;
+  try {
+    response = await fetchUpstream(fetch, `${MIRROR}/api/v1/network/exchangerate`);
+  } catch (error) {
+    if (isUpstreamTimeout(error)) throw new Error("Mirror node timed out reading the exchange rate");
+    throw error;
+  }
+  const rates = (await response.json()) as {
     current_rate: Rate;
     next_rate?: Rate;
   };

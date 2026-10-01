@@ -44,6 +44,7 @@ import {
 import { type PrivateKeyAccount, privateKeyToAccount } from "viem/accounts";
 import { hedera, hederaTestnet } from "viem/chains";
 import { deviationBps, hbarUsd8FromReserves } from "~~/services/mrv/saucerswap";
+import { fetchUpstream, isUpstreamTimeout } from "~~/services/mrv/upstream";
 
 const NETWORKS = {
   mainnet: {
@@ -114,7 +115,13 @@ const hex32 = (value: string) => `0x${value.trim().replace(/^0x/, "")}` as Hex;
 type MirrorAccount = { account: string; evm_address: string; balance: { balance: number } };
 
 async function mirror<T>(path: string): Promise<T | null> {
-  const response = await fetch(`${NET.mirror}${path}`);
+  let response: Response;
+  try {
+    response = await fetchUpstream(fetch, `${NET.mirror}${path}`);
+  } catch (error) {
+    if (isUpstreamTimeout(error)) throw new Error(`mirror ${path}: timed out`);
+    throw error;
+  }
   if (response.status === 404) return null;
   if (!response.ok) throw new Error(`mirror ${path}: HTTP ${response.status}`);
   return (await response.json()) as T;

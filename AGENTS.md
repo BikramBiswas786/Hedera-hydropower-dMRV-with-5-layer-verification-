@@ -38,6 +38,7 @@ yarn mrv:submit <verification.json>   # relay it to verifyPeriod; an approval is
 yarn mrv:meter-key                # key for a plant's data logger; METER_PRIVATE_KEY=… yarn mrv:sign file.json signs its statement
 yarn hardhat:meter-keys           # per-plant meter keys for a live deploy (.secrets/, gitignored)
 yarn verify                       # engine only: healthy / inflated / tampered. No chain, no VVB key.
+yarn mrv                          # prints verify/demo, then the four testnet issuance commands (mrv:verify does not sign)
 yarn demo                         # local chain, deploy, those three checks, one buy
 yarn hardhat:size                 # fails above 24,064 B; prints tight under 256 B of that (not a failure)
 yarn admin:threshold              # 2-of-3 threshold admin account (dry run unless --execute)
@@ -182,7 +183,9 @@ yarn mainnet:checkout plan|prepare|buy    # mainnet settlement exhibit: a test t
   (`prepare_purchase`) for their own wallet. Read-only MCP tools need `readOnlyHint: true`.
 - **Never trust an IPFS gateway.** Guardian documents are read as raw blocks and hashed against their CID
   (`guardian/ipfs.ts`); a source that cannot be read makes a trace `incomplete`, never `backed` and never a bad
-  signature.
+  signature. Mirror and IPFS reads go through `services/mrv/upstream.ts` (12 s, `UPSTREAM_TIMEOUT_MS`). Do not call
+  `fetch` on a mirror URL without that timeout. `/api/*` is capped at 300 requests a minute per instance
+  (`server/apiLimit.ts`, `middleware.ts`). That map is not shared across instances.
 - **Errors callers may see** are `ApiError(message, httpStatus)` from `services/mrv/server/errors.ts`; route handlers
   map them with `toErrorResponse`, MCP tools with `run()`.
 

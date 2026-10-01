@@ -1,6 +1,6 @@
 import type { GuardianSources } from "../guardian/hedera";
 import { guardianStatusOf } from "./checkout";
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 
 const TOKEN = "0x0000000000000000000000000000000000A430a7"; // 0.0.10760359
 const SELLER = "0xd7d4789b59ff215403519ba08da384f89c95da41"; // 0.0.10721162
@@ -19,6 +19,10 @@ function mirror(history: () => Response): GuardianSources & { paths: string[] } 
 }
 
 describe("the Guardian gate in front of a checkout purchase", () => {
+  afterEach(() => {
+    vi.unstubAllEnvs();
+  });
+
   it("looks for the seller's Guardian transfer of the token, and a token with none makes no claim", async () => {
     const sources = mirror(() => Response.json({ transactions: [], links: { next: null } }));
     expect(await guardianStatusOf(TOKEN, SELLER, sources)).toMatchObject({ verdict: "none" });
@@ -31,6 +35,24 @@ describe("the Guardian gate in front of a checkout purchase", () => {
     const sources = mirror(() => new Response("unavailable", { status: 503 }));
     const status = await guardianStatusOf(TOKEN, SELLER, sources);
     expect(status).toMatchObject({ verdict: "incomplete", ref: "ft:0.0.10760359:0.0.10721162" });
+  });
+
+  it("treats a mirror that never answers as incomplete, not as no claim", async () => {
+    vi.stubEnv("UPSTREAM_TIMEOUT_MS", "20");
+    const fetch = (async (_url: string, init?: RequestInit) =>
+      new Promise<Response>((_resolve, reject) => {
+        const signal = init?.signal;
+        if (!signal) return;
+        const fail = () => reject(signal.reason ?? Object.assign(new Error("aborted"), { name: "TimeoutError" }));
+        if (signal.aborted) fail();
+        else signal.addEventListener("abort", fail, { once: true });
+      })) as unknown as typeof globalThis.fetch;
+    const status = await guardianStatusOf(TOKEN, SELLER, {
+      mirrorNodeUrl: "https://mirror.test",
+      ipfsGateway: "https://ipfs.test/ipfs/{cid}",
+      fetch,
+    });
+    expect(status).toMatchObject({ verdict: "incomplete" });
   });
 
   it("follows a transfer that cites a Guardian record, and an unreadable record is incomplete", async () => {

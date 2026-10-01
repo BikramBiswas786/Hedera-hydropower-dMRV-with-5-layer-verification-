@@ -15,7 +15,7 @@ export async function fetchHbarPrice(): Promise<number> {
   }
 
   try {
-    const response = await fetch(HBAR_PRICE_URL);
+    const response = await fetch(HBAR_PRICE_URL, { signal: AbortSignal.timeout(8_000) });
     const data = await response.json();
     const price = data?.market_data?.current_price?.usd ?? 0;
     cache = { price, timestamp: now };

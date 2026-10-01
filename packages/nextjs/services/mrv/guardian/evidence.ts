@@ -1,3 +1,4 @@
+import { fetchUpstream, isUpstreamTimeout } from "../upstream";
 import { MappingError, REQUIRED_MR_FIELDS, crossCheckMonitoringReport } from "./crossCheck";
 import {
   type GuardianSources,
@@ -78,6 +79,15 @@ function mirrorTransactionId(id: string): string | null {
 
 const decode = (b64: string) => Buffer.from(b64, "base64").toString("utf8").trim();
 
+async function mirrorGet(sources: GuardianSources, url: string, label: string): Promise<Response> {
+  try {
+    return await fetchUpstream(sources.fetch, url, { redirect: "error" });
+  } catch (error) {
+    if (isUpstreamTimeout(error)) throw new SourceError(`Mirror node timed out for ${label}`);
+    throw error;
+  }
+}
+
 /**
  * Turns what a buyer holds into the VP's consensus timestamp: a timestamp as-is, a fungible mint transaction
  * (its memo), or `nft:<tokenId>:<serial>` (the serial's metadata), as Guardian writes them.
@@ -86,9 +96,11 @@ export async function resolveEvidenceTimestamp(sources: GuardianSources, ref: st
   if (isConsensusTimestamp(ref)) return ref;
   const nft = /^nft:(\d+\.\d+\.\d+):(\d+)$/.exec(ref);
   if (nft) {
-    const response = await sources.fetch(`${sources.mirrorNodeUrl}/api/v1/tokens/${nft[1]}/nfts/${nft[2]}`, {
-      redirect: "error",
-    });
+    const response = await mirrorGet(
+      sources,
+      `${sources.mirrorNodeUrl}/api/v1/tokens/${nft[1]}/nfts/${nft[2]}`,
+      `NFT ${nft[1]}/${nft[2]}`,
+    );
     if (!response.ok) throw new SourceError(`Mirror node returned ${response.status} for NFT ${nft[1]}/${nft[2]}`);
     const metadata = decode(((await response.json()) as { metadata?: string }).metadata ?? "");
     if (!isConsensusTimestamp(metadata))
@@ -97,7 +109,11 @@ export async function resolveEvidenceTimestamp(sources: GuardianSources, ref: st
   }
   const txId = mirrorTransactionId(ref);
   if (txId) {
-    const response = await sources.fetch(`${sources.mirrorNodeUrl}/api/v1/transactions/${txId}`, { redirect: "error" });
+    const response = await mirrorGet(
+      sources,
+      `${sources.mirrorNodeUrl}/api/v1/transactions/${txId}`,
+      `transaction ${ref}`,
+    );
     if (!response.ok) throw new SourceError(`Mirror node returned ${response.status} for transaction ${ref}`);
     const tx = (
       (await response.json()) as { transactions?: { name?: string; memo_base64?: string; result?: string }[] }
