@@ -3,14 +3,16 @@
 ## Testing
 
 ```bash
+yarn verify            # engine only: healthy APPROVED, inflated and tampered REJECTED, with the reason. No chain.
+yarn demo              # local chain, deploy, those three checks, buy 10 kg. Skips the app when under 6 GB is free.
 yarn test              # contracts + frontend unit tests
-yarn hardhat:test      # 145 contract tests (3 more run only on a fork), hermetic (HTS mock at 0x167, oracle and SaucerSwap mocks)
+yarn hardhat:test      # 152 passing (4 pending without a fork), hermetic (HTS mock at 0x167, oracle and SaucerSwap mocks)
 yarn hardhat:test:fork # same suite against Hedera's HTS emulation (HEDERA_FORKING, needs internet)
 HEDERA_FORK_NETWORK=mainnet HEDERA_RPC_URL=https://mainnet.hashio.io/api \
   yarn workspace @sh/hardhat hardhat test test/MainnetFork.test.ts  # real SaucerSwap + Chainlink on a mainnet fork
 yarn hardhat:test:gas  # with a gas report
-yarn next:test         # 373 vitest tests
-yarn hardhat:size      # runtime bytecode per contract; fails above 24,064 B (CI runs it)
+yarn next:test         # 410 vitest tests
+yarn hardhat:size      # runtime bytecode; fails above 24,064 B; prints tight when under 256 B of that (does not fail)
 yarn lint && yarn next:build
 ```
 
@@ -96,3 +98,13 @@ credentials), or `yarn harness:run` to have an agent build a feature against the
 (`.github/workflows/ci.yaml`) runs every check on Node 20.18.3 and scaffolds with the Quick start command from the
 README (`npm create scaffold-hbar@latest -- hydro-dmrv --template BikramBiswas786/Hedera-hydropower-dMRV-with-5-layer-verification- --ci --package-manager yarn --solidity-framework hardhat --skip-hedera-skills`).
 The checkout under test is supplied with `CREATE_SCAFFOLD_HBAR_TEMPLATE_DIR`.
+
+## First checks
+
+`yarn verify` is the checker. It does not deploy, publish, or sign. `/verify` is the same engine in the browser: press **healthy**, then **inflated**, then **tampered**.
+
+`yarn demo` is the market. It writes chain 31337 only to gitignored `packages/nextjs/contracts/deployedContracts.local.ts`. `yarn test` does not read that file, so a deploy and a test run can share one checkout. `yarn reset:local` deletes the local file and checks the committed address file back out.
+
+On testnet, monitoring and issuance are four commands (`yarn mrv:record`, `yarn mrv:verify`, `yarn mrv:approve`, `yarn mrv:submit`). `yarn mrv:verify` publishes the VVB's report and does not sign. The VVB key stays on the VVB's machine. The contract stores each report's hash and a non-zero sequence on HCS topic `0.0.10729650`. It cannot read the message. `yarn mrv:reproduce` refuses a hash mismatch. A direct `verifyPeriod` call can still cite a sequence whose bytes are something else.
+
+`yarn hardhat:size` prints `tight` when a contract is under 256 B of the 24,064 B fail limit. `tight` does not fail CI. `DmrvRegistry` is in that band. Do not add a registry function without an equal cut.

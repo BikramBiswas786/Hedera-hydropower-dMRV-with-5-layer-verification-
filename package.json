@@ -12,6 +12,7 @@
     "chain": "yarn hardhat:chain",
     "chain:offline": "yarn hardhat:chain:offline",
     "demo": "yarn workspace @sh/nextjs demo",
+    "verify": "yarn workspace @sh/nextjs verify",
     "deploy": "yarn hardhat:deploy",
     "reset:local": "git checkout -- packages/nextjs/contracts/deployedContracts.ts && yarn workspace @sh/nextjs reset:local",
     "format": "yarn next:format && yarn hardhat:format",

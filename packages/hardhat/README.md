@@ -19,7 +19,7 @@ package. Run commands from the repo root with the `hardhat:` prefix, or from thi
 | `contracts/mocks/` | `MockHederaTokenService` (installed at `0x167` on local chains and in tests), Chainlink, Supra and SaucerSwap mocks |
 
 `DmrvRegistry` is compiled with the IR pipeline and one optimizer run (a per-file override in `hardhat.config.ts`),
-which keeps it at 24,011 B, under the 24,064 B gate (`yarn hardhat:size`).
+which keeps it at 24,011 B, 53 B under the 24,064 B gate. `yarn hardhat:size` prints `tight` for that headroom and still exits 0.
 
 ## Local chain
 

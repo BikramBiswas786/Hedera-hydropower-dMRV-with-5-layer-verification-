@@ -37,7 +37,9 @@ yarn mrv:approve <verification.json>  # the VVB signs the EIP-712 VerificationSt
 yarn mrv:submit <verification.json>   # relay it to verifyPeriod; an approval issues credits
 yarn mrv:meter-key                # key for a plant's data logger; METER_PRIVATE_KEY=… yarn mrv:sign file.json signs its statement
 yarn hardhat:meter-keys           # per-plant meter keys for a live deploy (.secrets/, gitignored)
-yarn hardhat:size                 # contract-size gate (fails above 24,064 B); CI runs it
+yarn verify                       # engine only: healthy / inflated / tampered. No chain, no VVB key.
+yarn demo                         # local chain, deploy, those three checks, one buy
+yarn hardhat:size                 # fails above 24,064 B; prints tight under 256 B of that (not a failure)
 yarn admin:threshold              # 2-of-3 threshold admin account (dry run unless --execute)
 yarn admin:exec plan <contract> "<fn(types)>" [args]   # admin calls as scheduled transactions
 yarn admin:demo                   # the 2-of-3 path on testnet with throwaway keys (CONTRACT_ADDRESS, an admin operator)
@@ -51,7 +53,7 @@ yarn market:agent-buy [kg] [beneficiary]  # the agent purchase flow with BUYER_P
 yarn mainnet:checkout plan|prepare|buy    # mainnet settlement exhibit: a test token sold through UsdCheckout on pair 0.0.1462797
 ```
 
-`yarn deploy` without `--network` targets the in-process `hardhat` network, not a running node. A localhost deploy writes chain 31337 to gitignored `packages/nextjs/contracts/deployedContracts.local.ts` and does not rewrite `deployedContracts.ts`. A Hedera deploy rewrites only that chain and keeps every other one. `yarn test` ignores the local file, so a deploy and a test run can share one checkout. `yarn reset:local` restores both files. `yarn demo` is the one-command local pass (chain, deploy, healthy/inflated/tampered, one buy).
+`yarn deploy` without `--network` targets the in-process `hardhat` network, not a running node. A localhost deploy writes chain 31337 to gitignored `packages/nextjs/contracts/deployedContracts.local.ts` and does not rewrite `deployedContracts.ts`. A Hedera deploy rewrites only that chain and keeps every other one. `yarn test` ignores the local file, so a deploy and a test run can share one checkout. `yarn reset:local` restores both files. `yarn verify` is the engine with no chain. `yarn demo` is the one-command local pass (chain, deploy, healthy/inflated/tampered, one buy).
 
 ## Where things live
 

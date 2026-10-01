@@ -8,7 +8,9 @@
  *                                  with the meter's signature. Issues nothing.
  *   yarn mrv:verify <plantId> [approve|reject] [deductionTonnes] [findings]
  *                                  verification, step 1: reproduce the plant's pending records from HCS, publish the
- *                                  verification report and write verification-<plant>-<first>-<last>.json for the VVB
+ *                                  verification report and write verification-<plant>-<first>-<last>.json for the VVB.
+ *                                  This does not sign and does not issue. To see healthy / inflated / tampered with
+ *                                  no chain and no VVB key, run `yarn verify`.
  *   yarn mrv:approve <verification.json>
  *                                  the VVB signs the EIP-712 VerificationStatement with VVB_PRIVATE_KEY (secp256k1
  *                                  only), on its own machine, after reviewing the summary
@@ -156,7 +158,12 @@ async function record(scenario: ScenarioName, plantId: string, endIso?: string) 
 
 /** Verification step 1: the operator's server publishes the VVB's report and writes the statement to sign. */
 async function verify(plantId: string | undefined, decision = "approve", deductionT = "0", findings = "") {
-  if (!plantId) throw new Error("Usage: yarn mrv:verify <plantId> [approve|reject] [deductionTonnes] [findings]");
+  if (!plantId) {
+    throw new Error(
+      "Usage: yarn mrv:verify <plantId> [approve|reject] [deductionTonnes] [findings]\n" +
+        "That publishes a VVB report. It does not sign. For healthy / inflated / tampered with no chain, run yarn verify.",
+    );
+  }
   if (decision !== "approve" && decision !== "reject") throw new Error("The decision is approve or reject");
   const { prepareVerification } = await import("~~/services/mrv/server/verification");
   const prepared = await prepareVerification({

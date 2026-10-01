@@ -17,7 +17,7 @@ The contract decides how many tonnes exist. A validator signs the plant design b
 
 ## Prerequisites
 
-- Node.js 20.18.3 or newer
+- Node.js 20.18.3 or newer (CI uses 20.18.3, pinned in `.nvmrc`)
 - Git
 - Yarn, from Corepack: `corepack enable`
 
@@ -38,9 +38,9 @@ yarn start                         # terminal 3: http://localhost:3000
 
 The deploy installs local stand-ins for HTS, Chainlink, Supra and SaucerSwap. It registers two demo plants, records one hour of `HYDRO-DEMO-01` signed by its demo meter, has the local verifier issue the credits, and lists them at $15/t. The local chain is written to gitignored `deployedContracts.local.ts`. The committed testnet addresses are not rewritten, so `yarn test` still passes in that same checkout. `yarn start` then targets that local chain. Open `/market`. A burner wallet connects on its own. Press **100 local HBAR** in the footer, then **Buy & retire**. The certificate is on `/portfolio`.
 
-`yarn demo` does the same deploy, checks that `healthy` is approved and that `inflated` and `tampered` are rejected, and buys 10 kg. Then `yarn start`.
+`yarn verify` is only the engine. `healthy` is approved. `inflated` and `tampered` are rejected, and the line says why. No chain, no wallet, no VVB key. `yarn demo` does the deploy, runs those three checks, and buys 10 kg. Then `yarn start`. Issuing on testnet is still the four commands below. The server never holds the VVB key.
 
-`/verify` runs the five-stage engine. The `healthy` case passes. `inflated` and `tampered` do not. `yarn test` runs 148 contract tests and 407 app tests. The Solidity and TypeScript quantification must agree on the same integers.
+`/verify` runs the five-stage engine. The `healthy` case passes. `inflated` and `tampered` do not. `yarn test` runs 152 contract tests and 410 app tests. The Solidity and TypeScript quantification must agree on the same integers.
 
 All keys on a local chain are public demo keys. The deploy refuses those keys on Hedera.
 
@@ -200,6 +200,7 @@ claude mcp add --transport http hydro-dmrv https://hydro-dmrv.vercel.app/api/mcp
 | `yarn test` fails after a local deploy, or `deployedContracts.ts` contains chain 31337 | An older deploy wrote the local chain into the committed file | `yarn reset:local`, then deploy again. A current deploy writes gitignored `deployedContracts.local.ts` and leaves the committed file alone |
 | `yarn lint` fails inside `generator-function/require.mjs` on Node 22 | That package's `module-sync` export is ESM, and Node 22.13 loads it from CommonJS ESLint | This repo patches it to the CommonJS entry. CI uses Node 20.18.3. Do not delete the patch under `.yarn/patches` |
 | `yarn start` restarts, saying the server is approaching its memory threshold | The first compile is large. An older config also made webpack snapshot `node_modules` | Restart `yarn start`. Do not set a Node heap bigger than about half the machine's RAM |
+| I only want to see a rejection | The testnet VVB commands need an operator and a separate key | `yarn verify`, or open `/verify` and press **tampered**. A local listing is already issued by `yarn deploy` |
 | A testnet deploy stops at the meter keys | Live networks refuse the public demo meter keys | `yarn hardhat:meter-keys --network hederaTestnet` |
 | HashPack says the site is a malicious dapp, or "No applicable ECDSA accounts" | WalletConnect's shared project id is flagged, and an ED25519 account cannot sign | Use HashPack's ECDSA account, or MetaMask. `NEXT_PUBLIC_WALLET_CONNECT_PROJECT_ID` clears the warning. The HashPack extension does not use that check |
 

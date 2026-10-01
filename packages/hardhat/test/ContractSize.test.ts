@@ -1,5 +1,5 @@
 import { expect } from "chai";
-import { contractSizes } from "../scripts/checkContractSizes";
+import { contractSizes, sizeStatus } from "../scripts/checkContractSizes";
 
 /** The CI guard (`yarn hardhat:size`) fails above this; it is 512 B under Hedera's EIP-170 limit of 24,576 B. */
 const SIZE_FAIL_BYTES = 24_064;
@@ -18,5 +18,14 @@ describe("contract size", () => {
   it("the guard covers every deployable contract outside mocks/ and legacy/", () => {
     expect(sizes.map(s => s.source).some(s => s.includes("/mocks/") || s.includes("/legacy/"))).to.equal(false);
     for (const { name, bytes } of sizes) expect(bytes, name).to.be.at.most(SIZE_FAIL_BYTES);
+  });
+
+  it("calls out a contract within 256 B of the limit without treating that as a failure", () => {
+    expect(sizeStatus(24_065)).to.equal("FAIL");
+    expect(sizeStatus(24_064)).to.equal("tight");
+    expect(sizeStatus(24_011)).to.equal("tight");
+    expect(sizeStatus(24_064 - 256)).to.equal("warn");
+    expect(sizeStatus(22_000)).to.equal("warn");
+    expect(sizeStatus(10_000)).to.equal("ok");
   });
 });
