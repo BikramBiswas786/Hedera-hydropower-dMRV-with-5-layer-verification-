@@ -1,5 +1,7 @@
 # Operations
 
+Operator reference: environment, scripts, pages, and what the hosted app will not do. The five-minute path is the [README](../README.md). Addresses and Hashscan links are in [evidence.md](evidence.md).
+
 ## Environment variables
 
 Nothing is required to browse the app or use the engine. Copy the `.env.example` next to each package.

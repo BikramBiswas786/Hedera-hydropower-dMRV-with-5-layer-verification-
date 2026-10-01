@@ -1,6 +1,6 @@
 # Testing
 
-## Testing
+## Commands
 
 ```bash
 yarn verify            # engine only: healthy APPROVED, inflated and tampered REJECTED, with the reason. No chain.

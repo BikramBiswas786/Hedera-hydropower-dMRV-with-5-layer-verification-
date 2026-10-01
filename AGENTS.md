@@ -1,20 +1,12 @@
 # Agent instructions
 
-Briefing for coding agents working on this repository (Claude Code, Cursor, Codex). Claude Code loads it through
-`CLAUDE.md`. Agents that want to *use* a running instance should connect to its MCP server at `/api/mcp` instead;
-see the "For AI agents" section of `README.md`.
+Briefing for coding agents working on this repository (Claude Code, Cursor, Codex). Claude Code loads it through `CLAUDE.md`. An agent that wants to *use* a running instance should connect to the MCP server at `/api/mcp`. That path is in the README, under "For AI agents".
 
-This is **Hydro dMRV**, a Scaffold-HBAR template: Next.js App Router frontend and API in `packages/nextjs`, Hardhat
-contracts in `packages/hardhat`, Yarn 3 workspaces. It quantifies emission reductions of grid-connected hydropower
-under Verra VMR0017 v1.0 with ACM0002 v22.0 (VT0011 grid factor, VT0008 additionality), or CDM AMS-I.D / ACM0002 (TOOL07 grid factor), with TOOL03 for fuel, anchors readings and reports on HCS, and issues HTS
-carbon credits through `DmrvRegistry`, which runs the VCS project cycle: a VVB-validated registration, meter-signed
-monitoring records (quantified, not issued), and a VVB verification of a run of records, which alone issues. Its
-methodology module (`HydroVmr0017Module`) recomputes ER = BE − PE − LE on-chain from the plant's registered design. `CreditMarket` sells credits at the `ResilientHbarUsdFeed` price (Chainlink with a Supra fallback),
-and every sale is swapped through a SaucerSwap pool that must sit within 3% of that price. Every retirement mints an HTS NFT certificate. Raw readings are on HCS too, so anyone can reproduce every figure.
-The same settlement (`UsdSettlement`) also backs `UsdCheckout`, which sells any HTS fungible token at a USD price.
+This is **Hydro dMRV**, a Scaffold-HBAR template. The Next.js app is `packages/nextjs`. The Hardhat contracts are `packages/hardhat`. The package manager is Yarn 3.
 
-Read [`HEDERA_FACTS.md`](HEDERA_FACTS.md) before writing Hedera code: tinybar versus weibar, HTS response codes,
-association, the testnet USDC pair, forking limits. Each fact links the test or workflow that proves it.
+It quantifies emission reductions for grid-connected hydropower under Verra VMR0017 v1.0 with ACM0002 v22.0 (VT0011 grid factor, VT0008 additionality), or under CDM AMS-I.D / ACM0002 with TOOL07. TOOL03 prices fuel. Readings and reports are anchored on HCS. `DmrvRegistry` issues HTS credits only after a VVB-validated registration, meter-signed monitoring (quantified, not issued), and a VVB verification of a run of records. `HydroVmr0017Module` recomputes ER = BE − PE − LE on-chain from the registered design. `CreditMarket` sells at the `ResilientHbarUsdFeed` price (Chainlink, then Supra). Every sale swaps through a SaucerSwap pool that must sit within 3% of that price. Every retirement mints an HTS NFT certificate. The same settlement backs `UsdCheckout`, which sells any HTS fungible token at a USD price.
+
+Read [`HEDERA_FACTS.md`](HEDERA_FACTS.md) before writing Hedera code. It covers tinybar versus weibar, HTS response codes, association, the testnet USDC pair, and forking limits. Each fact links the test or workflow that proves it.
 
 ## Commands
 
