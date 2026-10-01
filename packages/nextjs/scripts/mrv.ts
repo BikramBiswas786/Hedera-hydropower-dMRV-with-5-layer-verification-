@@ -24,6 +24,7 @@
  *                                  would, for this app's registry at the request ledger's sequence (or `domain`)
  */
 import { existsSync, readFileSync, writeFileSync } from "fs";
+import { pathToFileURL } from "node:url";
 import { resolve } from "path";
 import { type Hex, hashTypedData } from "viem";
 import { generatePrivateKey, privateKeyToAddress } from "viem/accounts";
@@ -39,11 +40,36 @@ if (existsSync(".env.local")) process.loadEnvFile(".env.local");
 const HOUR_S = 3_600;
 const MAX_HOURS = 24;
 
+/** What `yarn mrv:record` and `yarn mrv:verify` are. The local market does not use them. */
+export const LOCAL_ALREADY_ISSUED =
+  "This command writes to Hedera testnet. It does not use the local chain from yarn demo. That market is already issued: yarn start, then Buy & retire. The engine with no chain is yarn verify.";
+
+export function missingTestnetMeterMessage(plantId: string): string {
+  return `Set METER_PRIVATE_KEYS with a key for ${plantId}. ${LOCAL_ALREADY_ISSUED} On testnet, run yarn hardhat:meter-keys --network hederaTestnet and put that key in METER_PRIVATE_KEYS.`;
+}
+
+export function plantNotOnChainMessage(plantId: string, chainId: number): string {
+  return `${plantId} is not registered on chain ${chainId}. ${LOCAL_ALREADY_ISSUED} Testnet registration is yarn hardhat:meter-keys --network hederaTestnet, then yarn deploy --network hederaTestnet. yarn deploy with no network exits with the process.`;
+}
+
+export function missingOperatorMessage(): string {
+  return `Set HEDERA_OPERATOR_ID and HEDERA_OPERATOR_KEY in packages/nextjs/.env.local. ${LOCAL_ALREADY_ISSUED}`;
+}
+
+/** A testnet command failed because the local path was the one they wanted. Say so once. */
+function withLocalHint(error: unknown): never {
+  const message = error instanceof Error ? error.message : String(error);
+  if (/awaiting verification|HEDERA_OPERATOR_ID|HCS_TOPIC_ID/.test(message) && !message.includes("yarn demo")) {
+    throw new Error(`${message}\n${LOCAL_ALREADY_ISSUED}`);
+  }
+  throw error instanceof Error ? error : new Error(message);
+}
+
 async function createTopic() {
   const { readOperatorConfig } = await import("~~/services/mrv/server/config");
   const { createAuditTopic } = await import("~~/services/mrv/server/hcs");
   const operator = readOperatorConfig();
-  if (!operator) throw new Error("Set HEDERA_OPERATOR_ID and HEDERA_OPERATOR_KEY in packages/nextjs/.env.local");
+  if (!operator) throw new Error(missingOperatorMessage());
   const topicId = await createAuditTopic(operator);
   console.log(`Created HCS topic ${topicId}\nAdd this to packages/nextjs/.env.local:\n\nHCS_TOPIC_ID=${topicId}`);
   await registerAuditTopic(topicId);
@@ -117,7 +143,7 @@ async function record(scenario: ScenarioName, plantId: string, endIso?: string) 
   const profile = findDemoPlant(plantId);
   if (!profile) throw new Error(`Unknown plant. Use one of: ${DEMO_PLANTS.map(p => p.plantId).join(", ")}`);
   const plant = await getProject(plantIdToBytes32(plantId));
-  if (!plant) throw new Error(`${plantId} is not registered. Run \`yarn deploy\` first.`);
+  if (!plant) throw new Error(plantNotOnChainMessage(plantId, HYDRO_CHAIN_ID));
   const { address } = requireDeployment();
 
   const end = endIso ? new Date(endIso) : lastWholeHour();
@@ -130,7 +156,7 @@ async function record(scenario: ScenarioName, plantId: string, endIso?: string) 
   // On Hedera the public demo meter key is never registered: the server signs with METER_PRIVATE_KEYS instead, so
   // the metering record must name that key's address (the plant's registered meter), not the demo derivation.
   const meterKey = readMeterKey(plantId);
-  if (isLiveHederaChain() && !meterKey) throw new Error(`Set METER_PRIVATE_KEYS with a key for ${plantId}`);
+  if (isLiveHederaChain() && !meterKey) throw new Error(missingTestnetMeterMessage(plantId));
   const request = meterKey
     ? {
         ...generated,
@@ -166,12 +192,17 @@ async function verify(plantId: string | undefined, decision = "approve", deducti
   }
   if (decision !== "approve" && decision !== "reject") throw new Error("The decision is approve or reject");
   const { prepareVerification } = await import("~~/services/mrv/server/verification");
-  const prepared = await prepareVerification({
-    plantId,
-    decision,
-    deductionG: Math.round(Number(deductionT) * 1e6),
-    findings,
-  });
+  let prepared: Awaited<ReturnType<typeof prepareVerification>>;
+  try {
+    prepared = await prepareVerification({
+      plantId,
+      decision,
+      deductionG: Math.round(Number(deductionT) * 1e6),
+      findings,
+    });
+  } catch (error) {
+    withLocalHint(error);
+  }
   const { pending, report } = prepared;
   for (const r of pending.records) {
     console.log(
@@ -336,7 +367,9 @@ async function main() {
   process.exitCode = 1;
 }
 
-main().catch(error => {
-  console.error(error instanceof Error ? error.message : error);
-  process.exitCode = 1;
-});
+if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
+  main().catch(error => {
+    console.error(error instanceof Error ? error.message : error);
+    process.exitCode = 1;
+  });
+}

@@ -40,7 +40,7 @@ The deploy installs local stand-ins for HTS, Chainlink, Supra and SaucerSwap. It
 
 `yarn verify` is only the engine. `healthy` is approved. `inflated` and `tampered` are rejected, and the line says why. No chain, no wallet, no VVB key. `yarn demo` does the deploy, runs those three checks, and buys 10 kg. Then `yarn start`. Issuing on testnet is still the four commands below. The server never holds the VVB key.
 
-`/verify` runs the five-stage engine. The `healthy` case passes. `inflated` and `tampered` do not. `yarn test` runs 152 contract tests and 416 app tests. The Solidity and TypeScript quantification must agree on the same integers.
+`/verify` runs the five-stage engine. The `healthy` case passes. `inflated` and `tampered` do not. `yarn test` runs 152 contract tests and 419 app tests. The Solidity and TypeScript quantification must agree on the same integers.
 
 All keys on a local chain are public demo keys. The deploy refuses those keys on Hedera.
 
@@ -202,6 +202,7 @@ claude mcp add --transport http hydro-dmrv https://hydro-dmrv.vercel.app/api/mcp
 | `yarn start` restarts, saying the server is approaching its memory threshold | The first compile is large. An older config also made webpack snapshot `node_modules` | Restart `yarn start`. Do not set a Node heap bigger than about half the machine's RAM |
 | Check evidence, a quote, or `yarn mrv:reproduce` sits there | The mirror node or an IPFS gateway did not answer | The read fails after 12 seconds (`UPSTREAM_TIMEOUT_MS`). Retry. The contract still cannot read the HCS message itself |
 | The API returns 429 | This instance saw 300 calls in a minute from one address | Wait for `Retry-After`. Instances do not share the counter, so a public site should also set a Vercel Firewall rule on `/api/*` |
+| `yarn mrv:record` asks for `METER_PRIVATE_KEYS` | That command records on testnet. `yarn demo` already issued the local listing and does not use this key | `yarn start`, then Buy & retire. Testnet meters are `yarn hardhat:meter-keys --network hederaTestnet`. Do not run `yarn deploy` with no network |
 | I only want to see a rejection | The testnet VVB commands need an operator and a separate key | `yarn verify`, or open `/verify` and press **tampered**. `yarn mrv` prints both paths. A local listing is already issued by `yarn deploy` |
 | A testnet deploy stops at the meter keys | Live networks refuse the public demo meter keys | `yarn hardhat:meter-keys --network hederaTestnet` |
 | HashPack says the site is a malicious dapp, or "No applicable ECDSA accounts" | WalletConnect's shared project id is flagged, and an ED25519 account cannot sign | Use HashPack's ECDSA account, or MetaMask. `NEXT_PUBLIC_WALLET_CONNECT_PROJECT_ID` clears the warning. The HashPack extension does not use that check |

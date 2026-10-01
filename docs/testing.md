@@ -11,7 +11,7 @@ yarn hardhat:test:fork # same suite against Hedera's HTS emulation (HEDERA_FORKI
 HEDERA_FORK_NETWORK=mainnet HEDERA_RPC_URL=https://mainnet.hashio.io/api \
   yarn workspace @sh/hardhat hardhat test test/MainnetFork.test.ts  # real SaucerSwap + Chainlink on a mainnet fork
 yarn hardhat:test:gas  # with a gas report
-yarn next:test         # 416 vitest tests
+yarn next:test         # 419 vitest tests
 yarn hardhat:size      # runtime bytecode; fails above 24,064 B; prints tight when under 256 B of that (does not fail)
 yarn lint && yarn next:build
 ```
@@ -105,7 +105,7 @@ The checkout under test is supplied with `CREATE_SCAFFOLD_HBAR_TEMPLATE_DIR`.
 
 `yarn demo` is the market. It writes chain 31337 only to gitignored `packages/nextjs/contracts/deployedContracts.local.ts`. `yarn test` does not read that file, so a deploy and a test run can share one checkout. `yarn reset:local` deletes the local file and checks the committed address file back out.
 
-On testnet, monitoring and issuance are four commands (`yarn mrv:record`, `yarn mrv:verify`, `yarn mrv:approve`, `yarn mrv:submit`). `yarn mrv:verify` publishes the VVB's report and does not sign. The VVB key stays on the VVB's machine. The contract stores each report's hash and a non-zero sequence on HCS topic `0.0.10729650`. It cannot read the message. `yarn mrv:reproduce` refuses a hash mismatch. A direct `verifyPeriod` call can still cite a sequence whose bytes are something else.
+On testnet, monitoring and issuance are four commands (`yarn mrv:record`, `yarn mrv:verify`, `yarn mrv:approve`, `yarn mrv:submit`). They do not use the local chain. `yarn demo` already issued that listing. `yarn mrv:record` without `METER_PRIVATE_KEYS` says so, and names `yarn hardhat:meter-keys --network hederaTestnet`. It does not say to run `yarn deploy` with no network. `yarn mrv:verify` publishes the VVB's report and does not sign. The VVB key stays on the VVB's machine. The contract stores each report's hash and a non-zero sequence on HCS topic `0.0.10729650`. It cannot read the message. `yarn mrv:reproduce` refuses a hash mismatch. A direct `verifyPeriod` call can still cite a sequence whose bytes are something else.
 
 `yarn hardhat:size` prints `tight` when a contract is under 256 B of the 24,064 B fail limit. `tight` does not fail CI. `DmrvRegistry` is in that band. Do not add a registry function without an equal cut.
 
