@@ -70,8 +70,9 @@ export function readMeterKey(plantId: string, chainId: number = HYDRO_CHAIN_ID):
   const hex = hex32(key);
   // The demo derivation is public (anyone can compute it), so it may only sign on a local chain.
   if (isLiveHederaChain(chainId) && hex.toLowerCase() === demoMeterKey(plantId).toLowerCase()) {
+    const network = chainId === 295 ? "hederaMainnet" : "hederaTestnet";
     throw new ApiError(
-      `METER_PRIVATE_KEYS holds the public demo meter key for ${plantId}; generate a real one with \`yarn hardhat:meter-keys\``,
+      `METER_PRIVATE_KEYS holds the public demo meter key for ${plantId}; generate a real one with \`yarn hardhat:meter-keys --network ${network}\``,
       503,
     );
   }

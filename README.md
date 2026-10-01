@@ -1,19 +1,27 @@
 # Hydro dMRV
 
-One command gives you a local market where you can buy and retire a carbon credit. No Hedera account is required for that.
+A Scaffold-HBAR template for hydropower credits on Hedera. One command starts a local market where you can buy and retire a credit. No Hedera account is required for that.
 
-The contract decides how many tonnes exist. A validator signs the plant design before it can be registered. The plant's meter signs each monitoring period, and that signature does not mint. A second signature, from a verifier over a run of those periods, is what issues tonnes, and it can only lower the figure. The sale prices HBAR from Chainlink, uses Supra when Chainlink is stale, and reverts unless the HBAR is swapped through SaucerSwap. The readings are on HCS, so anyone can recompute the number.
+The contract decides how many tonnes exist.
+
+- A validator signs the plant design before the plant can be registered.
+- The plant's meter signs each monitoring period. That signature does not mint.
+- A verifier signs a run of those periods. Only that signature issues tonnes, and it can only lower the figure.
+- A sale prices HBAR from Chainlink, uses Supra when Chainlink is stale, and reverts unless the HBAR is swapped through SaucerSwap.
+- The readings are on HCS. Anyone can recompute the number.
 
 ## Read this in order
 
-| You want | Go to |
+| You are | Start here |
 | --- | --- |
-| A market on your machine, in five minutes | [Quick start](#quick-start-a-working-market-in-five-minutes-no-hedera-account) |
-| What stops working if SaucerSwap or an oracle is removed | [Ecosystem integrations](#ecosystem-integrations-and-what-breaks-without-them) |
-| The transactions to open first | [Check it on testnet](#check-it-on-testnet) |
-| Every address, key and limit | [docs/evidence.md](docs/evidence.md) |
-| The equations, clause by clause | [docs/methodology.md](docs/methodology.md), then [docs/standards.md](docs/standards.md) |
-| An agent editing this repo | [AGENTS.md](AGENTS.md) and [HEDERA_FACTS.md](HEDERA_FACTS.md) |
+| New, and you want a market on your machine | [Quick start](#quick-start-a-working-market-in-five-minutes-no-hedera-account) |
+| Checking that the sale actually needs SaucerSwap and the oracles | [Ecosystem integrations](#ecosystem-integrations-and-what-breaks-without-them) |
+| Opening the testnet proof | [Check it on testnet](#check-it-on-testnet) |
+| Looking up an address, a key, or a limit | [docs/evidence.md](docs/evidence.md) |
+| Reading the equations | [docs/methodology.md](docs/methodology.md), then [docs/standards.md](docs/standards.md) |
+| Editing this repo | [AGENTS.md](AGENTS.md) and [HEDERA_FACTS.md](HEDERA_FACTS.md) |
+
+The full map is [docs/README.md](docs/README.md).
 
 ## Prerequisites
 
@@ -36,11 +44,17 @@ yarn deploy --network localhost    # terminal 2: contracts, stand-ins, a validat
 yarn start                         # terminal 3: http://localhost:3000
 ```
 
-The deploy installs local stand-ins for HTS, Chainlink, Supra and SaucerSwap. It registers two demo plants, records one hour of `HYDRO-DEMO-01` signed by its demo meter, has the local verifier issue the credits, and lists them at $15/t. The local chain is written to gitignored `deployedContracts.local.ts`. The committed testnet addresses are not rewritten, so `yarn test` still passes in that same checkout. `yarn start` then targets that local chain. Open `/market`. A burner wallet connects on its own. Press **100 local HBAR** in the footer, then **Buy & retire**. The certificate is on `/portfolio`.
+The deploy installs local stand-ins for HTS, Chainlink, Supra and SaucerSwap. It registers two demo plants, records one hour of `HYDRO-DEMO-01` signed by its demo meter, has the local verifier issue the credits, and lists them at $15/t.
 
-`yarn verify` is only the engine. `healthy` is approved. `inflated` and `tampered` are rejected, and the line says why. No chain, no wallet, no VVB key. `yarn demo` does the deploy, runs those three checks, and buys 10 kg. Then `yarn start`. Issuing on testnet is still the four commands below. The server never holds the VVB key.
+The local chain is written to gitignored `deployedContracts.local.ts`. The committed testnet addresses are not rewritten, so `yarn test` still passes in that same checkout. `yarn start` then targets that local chain. Open `/market`. A burner wallet connects on its own. Press **100 local HBAR** in the footer, then **Buy & retire**. The certificate is on `/portfolio`.
 
-`/verify` runs the five-stage engine. The `healthy` case passes. `inflated` and `tampered` do not. `yarn test` runs 152 contract tests and 416 app tests. The Solidity and TypeScript quantification must agree on the same integers.
+Three commands cover the rest of a first run:
+
+- `yarn verify` runs the engine only. `healthy` is approved. `inflated` and `tampered` are rejected, and the line says why. No chain, no wallet, no verifier key.
+- `yarn demo` starts the chain, deploys, runs those three checks, and buys 10 kg. Then run `yarn start`.
+- Issuing on testnet is still the four commands below. The server never holds the verifier key.
+
+`/verify` runs the same five-stage engine. `yarn test` runs 152 contract tests and 419 app tests. The Solidity and TypeScript quantification must agree on the same integers.
 
 All keys on a local chain are public demo keys. The deploy refuses those keys on Hedera.
 
@@ -202,6 +216,7 @@ claude mcp add --transport http hydro-dmrv https://hydro-dmrv.vercel.app/api/mcp
 | `yarn start` restarts, saying the server is approaching its memory threshold | The first compile is large. An older config also made webpack snapshot `node_modules` | Restart `yarn start`. Do not set a Node heap bigger than about half the machine's RAM |
 | Check evidence, a quote, or `yarn mrv:reproduce` sits there | The mirror node or an IPFS gateway did not answer | The read fails after 12 seconds (`UPSTREAM_TIMEOUT_MS`). Retry. The contract still cannot read the HCS message itself |
 | The API returns 429 | This instance saw 300 calls in a minute from one address | Wait for `Retry-After`. Instances do not share the counter, so a public site should also set a Vercel Firewall rule on `/api/*` |
+| `yarn mrv:record` asks for `METER_PRIVATE_KEYS` | That command records on testnet. `yarn demo` already issued the local listing and does not use this key | `yarn start`, then Buy & retire. Testnet meters are `yarn hardhat:meter-keys --network hederaTestnet`. Do not run `yarn deploy` with no network |
 | I only want to see a rejection | The testnet VVB commands need an operator and a separate key | `yarn verify`, or open `/verify` and press **tampered**. `yarn mrv` prints both paths. A local listing is already issued by `yarn deploy` |
 | A testnet deploy stops at the meter keys | Live networks refuse the public demo meter keys | `yarn hardhat:meter-keys --network hederaTestnet` |
 | HashPack says the site is a malicious dapp, or "No applicable ECDSA accounts" | WalletConnect's shared project id is flagged, and an ED25519 account cannot sign | Use HashPack's ECDSA account, or MetaMask. `NEXT_PUBLIC_WALLET_CONNECT_PROJECT_ID` clears the warning. The HashPack extension does not use that check |
@@ -220,7 +235,9 @@ Each row has a test or a workflow behind it, listed in [`HEDERA_FACTS.md`](HEDER
 
 ## Docs
 
-| | |
+The reading order is [docs/README.md](docs/README.md).
+
+| Document | What it covers |
 | --- | --- |
 | Every testnet address, transaction, key and limit | [docs/evidence.md](docs/evidence.md) |
 | Registry, module, market and checkout: functions, EIP-712 types, roles | [docs/contract.md](docs/contract.md) |
