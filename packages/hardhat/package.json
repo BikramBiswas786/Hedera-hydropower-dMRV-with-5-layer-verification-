@@ -6,7 +6,7 @@
     "account:generate": "hardhat run scripts/generateAccount.ts",
     "account:import": "hardhat run scripts/importAccount.ts",
     "account:reveal-pk": "hardhat run scripts/revealPK.ts",
-    "chain": "HEDERA_FORKING=true hardhat node --network hardhat --no-deploy",
+    "chain": "HEDERA_FORKING=true HARDHAT_DISABLE_TELEMETRY_PROMPT=true hardhat node --network hardhat --no-deploy",
     "check-types": "hardhat typechain && tsc --noEmit --incremental",
     "compile": "hardhat compile",
     "clean": "hardhat clean",
@@ -18,14 +18,14 @@
     "lint-staged": "eslint",
     "meter-keys": "ts-node scripts/generateMeterKeys.ts",
     "size": "hardhat compile && ts-node scripts/checkContractSizes.ts",
-    "test": "hardhat test",
+    "test": "HARDHAT_DISABLE_TELEMETRY_PROMPT=true hardhat test",
     "verify": "hardhat verify",
     "verify:testnet": "hardhat verify --network hederaTestnet",
     "verify:mainnet": "hardhat verify --network hederaMainnet",
     "verify:sourcify": "ts-node scripts/verifySourcify.ts",
     "test:fork": "HEDERA_FORKING=true hardhat test",
     "test:gas": "REPORT_GAS=true hardhat test",
-    "chain:offline": "hardhat node --network hardhat --no-deploy"
+    "chain:offline": "HARDHAT_DISABLE_TELEMETRY_PROMPT=true hardhat node --network hardhat --no-deploy"
   },
   "devDependencies": {
     "@ethersproject/abi": "~5.7.0",
