@@ -39,7 +39,7 @@ yarn admin:demo                   # the 2-of-3 path on testnet with throwaway ke
 yarn hardhat:test:fork            # contract tests against Hedera's HTS emulation
 yarn live:smoke                   # click through the deployed app (Live smoke workflow, every 6 h and after each deploy)
 yarn guardian:trace <ref>         # is a Guardian-minted token backed? nft:<token>:<serial> | ft:<token>:<account> | tx id
-yarn pair:rebalance [--execute]   # hold the testnet SaucerSwap pair at the oracle (Testnet pair keeper)
+yarn pair:rebalance              # read the testnet pair. --execute trades; this template does not schedule that
 yarn market:keep-listing [--execute]  # keep a listing open on the testnet market
 yarn market:credit-pool [seed kg|--usd|buy]  # WHBAR/credit pool: show, seed, or buy-and-retire
 yarn market:agent-buy [kg] [beneficiary]  # the agent purchase flow with BUYER_PRIVATE_KEY (buyAndRetire)

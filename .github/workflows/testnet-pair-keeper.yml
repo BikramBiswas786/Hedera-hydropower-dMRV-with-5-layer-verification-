@@ -1,20 +1,14 @@
-name: Testnet pair keeper
+name: Testnet pair read
 
-# Holds the seeded testnet SaucerSwap pair at the oracle price, so the live market can settle
-# (packages/nextjs/scripts/rebalanceTestnetPair.ts). Without the TESTNET_REBALANCER_KEY secret it only reads and
-# reports; with it, it makes the one swap that brings the pair back when it has drifted past 1%, then reopens a listing
-# from that account's registry custody when less than 0.1 t is for sale (scripts/keepListingOpen.ts), so /market
-# always has something to buy. TESTNET_LISTING_KEY overrides the account that lists.
+# Reads the seeded testnet pair and reports the drift. It does not swap and it does not relist.
+# The public testnet USDC pair prices HBAR near $2, so this repo seeded a pair for the recorded sale.
+# A keeper that trades the pair back to the oracle is not part of the template. When the pair is more
+# than 3% from the oracle, the sale reverts. Mainnet uses the public WHBAR/USDC pair, which needs no keeper.
 on:
   # GitHub runs schedules best-effort and dropped most hourly runs on 28 Sep; three slots an hour make a run likely.
   schedule:
     - cron: "11,31,51 * * * *"
   workflow_dispatch:
-    inputs:
-      deepen_hbar:
-        description: "Also add this many HBAR (and the matching USD token) of liquidity to the pair"
-        required: false
-        default: ""
   pull_request:
     paths:
       - packages/nextjs/scripts/rebalanceTestnetPair.ts
@@ -36,24 +30,8 @@ jobs:
 
       - run: yarn install --immutable
 
-      - name: Keep the pair at the oracle price
-        env:
-          REBALANCER_PRIVATE_KEY: ${{ secrets.TESTNET_REBALANCER_KEY }}
-          DEEPEN_HBAR: ${{ inputs.deepen_hbar }}
-        run: |
-          if [ "${{ github.event_name }}" != "pull_request" ] && [ -n "$REBALANCER_PRIVATE_KEY" ]; then
-            yarn workspace @sh/nextjs pair:rebalance --execute ${DEEPEN_HBAR:+--deepen $DEEPEN_HBAR}
-          else
-            echo "::notice::Reading only (no TESTNET_REBALANCER_KEY, or a pull request)"
-            yarn workspace @sh/nextjs pair:rebalance
-          fi
+      - name: Read the pair against the oracle
+        run: yarn workspace @sh/nextjs pair:rebalance
 
-      - name: Keep a listing open
-        env:
-          KEEPER_PRIVATE_KEY: ${{ secrets.TESTNET_LISTING_KEY || secrets.TESTNET_REBALANCER_KEY }}
-        run: |
-          if [ "${{ github.event_name }}" != "pull_request" ] && [ -n "$KEEPER_PRIVATE_KEY" ]; then
-            yarn workspace @sh/nextjs market:keep-listing --execute
-          else
-            yarn workspace @sh/nextjs market:keep-listing
-          fi
+      - name: Read whether a listing is open
+        run: yarn workspace @sh/nextjs market:keep-listing

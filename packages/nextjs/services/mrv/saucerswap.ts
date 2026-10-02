@@ -72,7 +72,7 @@ export type RebalanceTrade =
 /**
  * The one swap that brings a V1 WHBAR (8 decimals) / USD-token (6 decimals) pair to `oracle8`, the 8-decimal USD
  * price of one HBAR, holding the constant product and grossing the input up for the fee. None when the pair is
- * already within `withinBps`. Used by the testnet keeper that holds the seeded exhibit pair at the oracle price.
+ * already within `withinBps`. The testnet workflow only reads this. It does not send the swap.
  */
 export function rebalanceTrade(
   reserveUsd: bigint,

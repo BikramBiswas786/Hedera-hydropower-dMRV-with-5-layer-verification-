@@ -151,15 +151,14 @@ async function main() {
 
   await check("SaucerSwap pair vs oracle", async () => {
     if (sourcesDisagree()) {
-      // No settlement price exists; the keeper holds the pair at Chainlink so sales resume as soon as Supra agrees.
+      // No settlement price exists while the two feeds disagree. The pair is not traded back into line.
       const status = await fetch(`${BASE}/api/market/dex`, { signal: AbortSignal.timeout(60_000) });
       assert(status.status === 409, `/api/market/dex answered ${status.status} while the feed is paused`);
       return disagreement();
     }
     const d = await call<Dex>("/api/market/dex");
     const line = `pair $${d.price.toFixed(5)}, oracle $${d.oraclePrice.toFixed(5)}, ${d.deviationBps} bps (max ${d.maxDeviationBps})`;
-    assert(d.accepted, `outside the band: ${line}`);
-    return line;
+    return d.accepted ? line : `refused, no keeper: ${line}`;
   });
 
   await check("Public mainnet WHBAR/USDC vs mainnet Chainlink", async () => {

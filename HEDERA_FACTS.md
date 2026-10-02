@@ -18,12 +18,12 @@ overpays by 10¹⁰ or reverts for underpayment.
 Handled by: `NATIVE_UNITS_PER_HBAR` in [`UsdSettlement`](packages/hardhat/contracts/settlement/UsdSettlement.sol),
 set per network in [`hydroNetworkConfig.ts`](packages/hardhat/utils/hydroNetworkConfig.ts); `quoteToTxValue` in
 [`pricing.ts`](packages/nextjs/services/mrv/pricing.ts).
-Proof: test, `pricing.test.ts` "scales tinybar quotes to 18-decimal JSON-RPC value"; live, every keeper swap.
+Proof: test, `pricing.test.ts` "scales tinybar quotes to 18-decimal JSON-RPC value"; live, the recorded testnet swaps.
 
 **2. The Hashio relay rejects EIP-1559 fees below its minimum gas price. Send legacy transactions at `eth_gasPrice`.**
 Handled by: `gasPrice` from `getGasPrice()` in [`rebalanceTestnetPair.ts`](packages/nextjs/scripts/rebalanceTestnetPair.ts)
 and [`keepListingOpen.ts`](packages/nextjs/scripts/keepListingOpen.ts), and `getDeployGasPrice` for deploys.
-Proof: live, the Testnet pair keeper's swaps and listings.
+Proof: live, the recorded testnet swaps and listings. The scheduled pair workflow no longer sends them.
 
 **3. Contract bytecode is capped at 24,576 bytes (EIP-170), and Hedera enforces it.**
 Handled by: `viaIR` in `hardhat.config.ts`, and the split of issuance, methodology and market into separate contracts.
@@ -86,9 +86,8 @@ Proof: test, `ResilientHbarUsdFeed.test.ts` (fresh, stale, broken, disagreeing);
 Chainlink".
 
 **13. The public testnet WHBAR/USDC pair prices HBAR near $2, because testnet USDC is not a dollar.** Any check of
-an oracle against it fails. Seed your own testnet pair at the oracle price, or check against the mainnet pair.
-Handled by: the seeded pair `0xF98D0dF4…` plus the [keeper](.github/workflows/testnet-pair-keeper.yml) that holds it
-at the oracle price; the purchase builder also reads mainnet pair 0.0.1462797.
+an oracle against it fails. The recorded testnet sale used a pair this project seeded. This template does not
+trade that pair back to the oracle. The purchase builder also reads mainnet pair 0.0.1462797.
 Proof: live, Live smoke "SaucerSwap pair vs oracle" and "Public mainnet WHBAR/USDC vs mainnet Chainlink".
 
 **14. A SaucerSwap pool can lie about its own `factory()`.** Ask the factory's `getPair(token0, token1)` instead.
@@ -99,7 +98,7 @@ mainnet factory.
 **15. SaucerSwap V1 on Hedera: testnet factory 0.0.9959, router 0.0.19264; mainnet factory 0.0.1062784, router
 0.0.3045981, WHBAR/USDC pair 0.0.1462797.** The router's `swapExactETHForTokens` takes `msg.value` in tinybar
 from a contract.
-Proof: fork, `getPair(WHBAR, USDC)` equals 0.0.1462797 and `getAmountsOut` for 1 HBAR on that path is within 3% of Chainlink; live, the keeper's swaps on router 0.0.19264.
+Proof: fork, `getPair(WHBAR, USDC)` equals 0.0.1462797 and `getAmountsOut` for 1 HBAR on that path is within 3% of Chainlink; live, the recorded swaps on router 0.0.19264.
 
 ## Forking Hedera locally
 

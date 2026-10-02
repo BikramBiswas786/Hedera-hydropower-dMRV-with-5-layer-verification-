@@ -29,20 +29,5 @@ jobs:
 
       - run: yarn install --immutable
 
-      # GitHub runs scheduled workflows best-effort and skipped hours of the hourly pair keeper on 28 Sep while HBAR
-      # moved 24%, so the market (correctly) refused every sale. Do the keeper's work first; the checks below still
-      # fail if the pair cannot be brought back within 3% or no listing can be opened.
-      - name: Keep the testnet pair at the oracle and a listing open
-        env:
-          REBALANCER_PRIVATE_KEY: ${{ secrets.TESTNET_REBALANCER_KEY }}
-          KEEPER_PRIVATE_KEY: ${{ secrets.TESTNET_LISTING_KEY || secrets.TESTNET_REBALANCER_KEY }}
-        run: |
-          if [ -n "$REBALANCER_PRIVATE_KEY" ]; then
-            yarn workspace @sh/nextjs pair:rebalance --execute
-            yarn workspace @sh/nextjs market:keep-listing --execute
-          else
-            echo "::notice::No TESTNET_REBALANCER_KEY; checking without maintenance"
-          fi
-
       - name: Check the live deployment
         run: yarn live:smoke
