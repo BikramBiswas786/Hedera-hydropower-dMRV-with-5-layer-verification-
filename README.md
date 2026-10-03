@@ -10,6 +10,16 @@ The contract decides how many tonnes exist.
 - A sale prices HBAR from Chainlink, uses Supra when Chainlink is stale, and reverts unless the HBAR is swapped through SaucerSwap.
 - The readings are on HCS. Anyone can recompute the number.
 
+## Already available
+
+Use the other tool when it is the job.
+
+| You need | Use |
+| --- | --- |
+| A policy, a credential, and an issuance workflow that stores the number it was given | [Guardian](https://guardian.hedera.com). This contract will not accept that number unless it recomputes it, and a verifier can only lower it. |
+| A token or a topic, with no methodology | The [Hedera portal](https://portal.hedera.com) and the SDK. |
+| A local market, a public reproduction of an issuance, and a sale that reverts when the pool and the oracle disagree | This template. It does not replace Guardian, and it does not issue a Verra credit. |
+
 ## Judge note
 
 Read this before the rest.
