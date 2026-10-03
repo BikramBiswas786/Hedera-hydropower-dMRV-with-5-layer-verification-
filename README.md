@@ -18,7 +18,7 @@ The first line fetches this repo and selects Hardhat and Yarn from `template.jso
 
 ## 2. A fresh developer, end to end
 
-`yarn demo` is enough to see a sale. The three terminals are the same work, split, if you want to watch each step.
+`yarn demo` is enough to see a sale. If you cloned this repository instead of scaffolding it, run `yarn install` once first. The three terminals are the same work, split, if you want to watch each step.
 
 ```bash
 yarn chain:offline

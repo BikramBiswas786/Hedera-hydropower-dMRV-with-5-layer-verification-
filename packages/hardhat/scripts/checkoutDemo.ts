@@ -74,7 +74,7 @@ async function main() {
     ethers.provider,
   );
 
-  await token.connect(seller).approve(await checkout.getAddress(), LISTED);
+  await token.connect(seller).getFunction("approve")(await checkout.getAddress(), LISTED);
   await checkout.connect(seller).createListing(tokenAddress, LISTED, PRICE_CENTS);
   say("listed", {
     token: "TIX",
@@ -84,14 +84,14 @@ async function main() {
     registry: "not deployed",
   });
 
-  await token.connect(buyer).associate();
+  await token.connect(buyer).getFunction("associate")();
   const cost = await checkout.quote(0, ONE_TICKET);
   await checkout.connect(buyer).buy(0, ONE_TICKET, { value: cost });
   say("bought", {
     tickets: 1,
     hbar: ethers.formatEther(cost),
     sellerUsd: ethers.formatUnits(await router.paidUsd(seller.address), 6),
-    buyerTickets: Number((await token.balanceOf(buyer.address)) / ONE_TICKET),
+    buyerTickets: Number((await token.getFunction("balanceOf")(buyer.address)) / ONE_TICKET),
   });
 
   await pair.setReserves(240_000n * 10n ** 6n, 1_000_000n * 10n ** 8n);
