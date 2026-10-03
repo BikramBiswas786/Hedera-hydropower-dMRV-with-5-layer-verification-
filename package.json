@@ -12,6 +12,7 @@
     "chain": "yarn hardhat:chain",
     "chain:offline": "yarn hardhat:chain:offline",
     "demo": "yarn workspace @sh/nextjs demo",
+    "checkout:demo": "yarn workspace @sh/hardhat checkout:demo",
     "verify": "yarn workspace @sh/nextjs verify",
     "mrv": "yarn workspace @sh/nextjs mrv",
     "deploy": "yarn hardhat:deploy",

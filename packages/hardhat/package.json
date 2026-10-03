@@ -25,7 +25,8 @@
     "verify:sourcify": "ts-node scripts/verifySourcify.ts",
     "test:fork": "HEDERA_FORKING=true hardhat test",
     "test:gas": "REPORT_GAS=true hardhat test",
-    "chain:offline": "HARDHAT_DISABLE_TELEMETRY_PROMPT=true hardhat node --network hardhat --no-deploy"
+    "chain:offline": "HARDHAT_DISABLE_TELEMETRY_PROMPT=true hardhat node --network hardhat --no-deploy",
+    "checkout:demo": "HARDHAT_DISABLE_TELEMETRY_PROMPT=true hardhat run scripts/checkoutDemo.ts"
   },
   "devDependencies": {
     "@ethersproject/abi": "~5.7.0",

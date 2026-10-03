@@ -1,14 +1,14 @@
 # Hydro dMRV
 
-A Scaffold-HBAR template for hydropower credits on Hedera. One command starts a local market where you can buy and retire a credit. No Hedera account is required for that.
+Sell any HTS token at a dollar price. The buyer pays HBAR. The sale reverts unless Chainlink and Supra agree and SaucerSwap is within 3% of that price. Guardian does not settle a sale. The portal does not check a pool.
 
-The contract decides how many tonnes exist.
+The hydropower registry is the worked example of a token whose supply the contract recomputes. A verifier can only lower the tonnes. You do not need that registry to sell a token.
 
-- A validator signs the plant design before the plant can be registered.
-- The plant's meter signs each monitoring period. That signature does not mint.
-- A verifier signs a run of those periods. Only that signature issues tonnes, and it can only lower the figure.
-- A sale prices HBAR from Chainlink, uses Supra when Chainlink is stale, and reverts unless the HBAR is swapped through SaucerSwap.
-- The readings are on HCS. Anyone can recompute the number.
+```bash
+yarn checkout:demo
+```
+
+That command needs Node 20.18.3 and Yarn. No Hedera account. It lists local event tickets at $12.50, buys one, then shows `PoolPriceDeviation` and `StalePrice`. `DmrvRegistry` is not deployed.
 
 ## Already available
 
@@ -18,13 +18,13 @@ Use the other tool when it is the job.
 | --- | --- |
 | A policy, a credential, and an issuance workflow that stores the number it was given | [Guardian](https://guardian.hedera.com). This contract will not accept that number unless it recomputes it, and a verifier can only lower it. |
 | A token or a topic, with no methodology | The [Hedera portal](https://portal.hedera.com) and the SDK. |
-| A local market, a public reproduction of an issuance, and a sale that reverts when the pool and the oracle disagree | This template. It does not replace Guardian, and it does not issue a Verra credit. |
+| A dollar price on any HTS token, paid in HBAR, that reverts when the pool or the oracles disagree | This template. `yarn checkout:demo`. The registry is optional. |
 
 ## Judge note
 
 Read this before the rest.
 
-- `yarn demo` is the path with no Hedera account. It is not a testnet issuance.
+- `yarn checkout:demo` sells a token and does not deploy the registry. `yarn demo` is the local credit market. Neither is a testnet issuance.
 - Testnet issuance needs three separate keys: the operator, the plant meter, and the VVB. The demo VVB key in this repo is the author's test key.
 - These are HTS units issued by this registry. They are not Verra credits. The demo grid factor is ASB0054-2022, which expired on 9 August 2025. The tonnes illustrate the arithmetic.
 - `DmrvRegistry` is 23,958 bytes. The project gate is 24,064. That is 106 bytes of headroom, still inside the `tight` band. Do not add a function to that contract unless you cut at least as much.
@@ -44,6 +44,7 @@ The clip follows the path in order. Scaffold from the README (`npm create scaffo
 
 | You are | Start here |
 | --- | --- |
+| Selling any HTS token, and you do not want the carbon registry | `yarn checkout:demo`, then [Use it without carbon](#use-it-without-carbon) |
 | New, and you want a market on your machine | [Quick start](#quick-start-a-working-market-in-five-minutes-no-hedera-account) |
 | Checking that the sale actually needs SaucerSwap and the oracles | [Ecosystem integrations](#ecosystem-integrations-and-what-breaks-without-them) |
 | Opening the testnet proof | [Check it on testnet](#check-it-on-testnet) |
@@ -208,7 +209,7 @@ The [Testnet evidence](.github/workflows/testnet-evidence.yml) workflow ran the 
 
 ## Use it without carbon
 
-Most Hedera apps that sell something want a dollar price and an HBAR payment. `UsdCheckout` is that settlement, in front of any HTS fungible token: tickets, shares, in-game items.
+Most Hedera apps that sell something want a dollar price and an HBAR payment. `UsdCheckout` is that settlement, in front of any HTS fungible token: tickets, shares, in-game items. `yarn checkout:demo` runs it locally without the registry. The calls are:
 
 ```solidity
 // seller: token.approve(checkout, amount) on the HTS token's ERC-20 facade, then
