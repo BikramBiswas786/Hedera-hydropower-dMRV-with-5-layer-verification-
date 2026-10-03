@@ -6,7 +6,12 @@ Guardian will store a number and mint it. The portal will create a token. Neithe
 
 ## 1. One command
 
-This is the self-check, the same command the other templates publish. Node 20.18.3 or newer. Yarn comes from Corepack (`corepack enable`). Git needs a name and an email.
+This is the self-check, the same command the other templates publish. Node 20.18.3 or newer. Yarn comes from Corepack (`corepack enable`). Git needs a name and an email before that command, or the scaffolder's first commit fails.
+
+```bash
+git config --global user.name "Your Name"
+git config --global user.email "you@example.com"
+```
 
 ```bash
 npm create scaffold-hbar@latest -- --template BikramBiswas786/Hedera-hydropower-dMRV-with-5-layer-verification-
@@ -14,7 +19,7 @@ cd my-hedera-dapp
 yarn demo
 ```
 
-Run the first line alone. If npm asks `Ok to proceed? (y)`, type `y` and Enter. Do not paste `cd` into that prompt. That answer cancels the install, and `yarn demo` then fails because the shell is still in your home folder.
+Run the create line alone. If npm asks `Ok to proceed? (y)`, type `y` and Enter. Do not paste `cd` into that prompt. That answer cancels the install, and `yarn demo` then fails because the shell is still in your home folder.
 
 PowerShell, one line, no prompt:
 
