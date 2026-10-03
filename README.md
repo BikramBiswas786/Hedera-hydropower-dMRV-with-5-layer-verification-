@@ -68,7 +68,7 @@ Read this before the rest.
 
 ## Video
 
-Two minutes and 42 seconds. Under the five-minute limit. It is the three checks, in order: the one scaffold command, `yarn demo`, then the four testnet transactions. No Hedera account for the first two.
+Two minutes and 42 seconds. Under the five-minute limit. It is the three checks, in order: the one scaffold command, `yarn demo`, then the testnet transactions in section 3. No Hedera account for the first two. The schedule link in that section was added after this cut.
 
 [Watch the walkthrough](docs/demo/Hydro-dMRV-for-developers.mp4)
 
@@ -222,7 +222,7 @@ yarn mrv:reproduce                                     # anyone: re-derive every
 
 ## Check it on testnet
 
-Open these four. The rest of the cycle, including the deficit plant, the Guardian trace, the 2-of-3 schedule and the older checkout, is in [docs/evidence.md](docs/evidence.md).
+Open these five. The rest of the cycle, including the deficit plant, the Guardian trace, the 2-of-3 admin schedule and the older checkout, is in [docs/evidence.md](docs/evidence.md).
 
 | What | Open it |
 | --- | --- |
@@ -230,8 +230,9 @@ Open these four. The rest of the cycle, including the deficit plant, the Guardia
 | The signature that minted. Two meter-signed days, 1.537 t, nothing minted before this transaction | [0xffe81724…](https://hashscan.io/testnet/transaction/0xffe81724e83bc9fd4e85bae234e3654588d48f0833a0e18fc865f25fd0e391c4) |
 | A monitoring record. Quantified on-chain. Issues nothing | [0x0e3ed83c…](https://hashscan.io/testnet/transaction/0x0e3ed83c7a946f9b3ace4fa313d0beb11f57b11aa863efead770d82cb9e30d39) · [reproduce it from HCS](https://hydro-dmrv.vercel.app/api/registry/attestations/0/reproduce) |
 | A marked Guardian token. `buy` reverts. `buyTraced` is the sale | [0x42212e6d…](https://hashscan.io/testnet/transaction/0x42212e6d7edc6725f9813921fe35d340c8bf7c91ccfafb92c31471895ba7e3ad) on [0xa42B11B3…](https://hashscan.io/testnet/contract/0xa42B11B322a6Dd1B638abe69Aa6671A45C85Ab75) |
+| Hedera settles a locked purchase. The buyer signed. The network called `settleScheduled` | [schedule 0.0.10842021](https://hashscan.io/testnet/schedule/0.0.10842021) · [call 0.0.7314364-1791031299-291157934](https://hashscan.io/testnet/transaction/0.0.7314364-1791031299-291157934) |
 
-The [Testnet evidence](.github/workflows/testnet-evidence.yml) workflow ran the cycle with the same commands an operator and a VVB use. The six testnet contracts are Sourcify-verified (exact match). The public mainnet pair `0.0.1462797` is quoted on every push by the [Mainnet fork](.github/workflows/mainnet-fork.yml) workflow. The swap is not executed there.
+The [Testnet evidence](.github/workflows/testnet-evidence.yml) workflow ran the cycle with the same commands an operator and a VVB use. The six contracts from that deploy are Sourcify-verified (exact match). The scheduled checkout [0xc084DDD1…](https://hashscan.io/testnet/contract/0xc084DDD1765145D6FF54bf1CBaF61B2fAa34BAC3) is a runtime exact match as well, verified on 3 Oct 2026. It is not the production checkout. The public mainnet pair `0.0.1462797` is quoted on every push by the [Mainnet fork](.github/workflows/mainnet-fork.yml) workflow. The swap is not executed there.
 
 ## Limits, stated plainly
 

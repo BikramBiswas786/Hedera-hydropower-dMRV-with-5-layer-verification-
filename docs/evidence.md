@@ -35,11 +35,16 @@ Anyone can re-derive every record from HCS: `yarn mrv:reproduce`, or the links b
 | Schedule Service, purchase: buyer `0.0.10015230` locked the quote on a fresh `UsdCheckout` and signed the schedule. Sixty seconds after `executeAt`, Hedera called `settleScheduled`. The seller `0.0.10721162` received 0.148478 of the pair's token and the buyer received 10 credit units. This contract is not the production checkout `0xa42B11B3…`, which does not have `schedulePurchase`. The seeded pair had been 267 bps under the oracle, inside the 3% guard but under the swap floor once the 0.3% pool fee was taken, so 1.170498 of the pair's token was sold for WHBAR first ([swap 0x75378793…](https://hashscan.io/testnet/transaction/0x753787934457d72f67733f82d834761bb60143199fd5f39d7ceb3aead5403eb8)). Two earlier schedules on the previous bytecode reverted: one while that floor was missed, one at the exact expiry second | [checkout 0xc084DDD1…](https://hashscan.io/testnet/contract/0xc084DDD1765145D6FF54bf1CBaF61B2fAa34BAC3) · [schedule 0.0.10842021](https://hashscan.io/testnet/schedule/0.0.10842021) · [Hedera's call](https://hashscan.io/testnet/transaction/0.0.7314364-1791031299-291157934) |
 | `UsdCheckout` (any HTS token): list 50 units, buy 10 through SaucerSwap | [0x455eFbF0…](https://hashscan.io/testnet/contract/0x455eFbF07B2b5d5137AEc3601c43549593741898) · [buy 0x51c9b006…](https://hashscan.io/testnet/transaction/0x51c9b0062bd36e119fbefe8b6e58e18717be1a5ea10fc2d54116a1d768ae379d) |
 
-Every contract above except `0xc084DDD1…` is verified on Sourcify with an **exact match** (source, compiler settings and metadata hash),
+Every contract above is verified on Sourcify with an **exact match** (source, compiler settings and metadata hash),
 so HashScan shows its source. The [Sourcify verify](../.github/workflows/sourcify-verify.yml) workflow compiles the
 commit each was deployed from (`3bbc4cd1` for the v2 registry, modules, annotations, feed and market; `fc43362a` for
 the checkout) and submits the build the artifact came from; on 29 Sep 2026 it returned `exact_match` for all six v2
-contracts. Earlier deploys, which the app no longer reads, are in [operations.md](operations.md#older-deploys).
+contracts. The scheduled checkout `0xc084DDD1…` was verified separately on 3 Oct 2026: runtime `exact_match`. The
+mirror node does not keep its creation bytecode, so Sourcify reports no creation match. Hedera executed the purchase
+as a scheduled child of transaction `0.0.7314364-1791031299-291157934` at consensus `1791031602.115505170`
+(`CONTRACTCALL`, `scheduled: true`, `SUCCESS`). That child paid the seller 148478 units of the pair token
+`0.0.10729568` and the buyer 10 units of HYCC `0.0.10771273`. Earlier deploys, which the app no longer reads, are in
+[operations.md](operations.md#older-deploys).
 
 The public testnet WHBAR/USDC pair priced HBAR at $2.28 on 26 Sep 2026. The oracle was $0.094, so the contract would
 refuse every sale against it. The pair above was created on SaucerSwap factory `0.0.9959` at the Chainlink price. The
