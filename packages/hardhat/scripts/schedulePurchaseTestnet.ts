@@ -42,7 +42,13 @@ async function main() {
   const [operator] = await hre.ethers.getSigners();
   const buyer = new Wallet(buyerKey, hre.ethers.provider);
   const link = (hash: string) => hashscanTx(config, hash);
-  const send = async (label: string, pending: Promise<{ hash: string; wait: () => Promise<unknown> }>) => {
+  const send = async (
+    label: string,
+    pending: Promise<{
+      hash: string;
+      wait: () => Promise<{ logs: ReadonlyArray<{ topics: ReadonlyArray<string>; data: string }> } | null>;
+    }>,
+  ) => {
     const tx = await pending;
     const receipt = await tx.wait();
     console.log(`${label}: ${link(tx.hash)}`);
@@ -104,7 +110,7 @@ async function main() {
   );
 
   const buyerToken = token.connect(buyer);
-  await send("Associate buyer", buyerToken.associate({ type: 0, gasLimit: 1_000_000, gasPrice }));
+  await send("Associate buyer", buyerToken.getFunction("associate")({ type: 0, gasLimit: 1_000_000, gasPrice }));
 
   const asBuyer = checkout.connect(buyer);
   const quote = await asBuyer.quote(listingId, BUY_UNITS);
@@ -116,14 +122,14 @@ async function main() {
     asBuyer.schedulePurchase(listingId, BUY_UNITS, executeAt, { ...overrides, value }),
   );
   const parsed = receipt?.logs
-    .map((log: { topics: string[]; data: string }) => {
+    .map(log => {
       try {
-        return checkout.interface.parseLog(log);
+        return checkout.interface.parseLog({ topics: [...log.topics], data: log.data });
       } catch {
         return null;
       }
     })
-    .find((entry: { name: string } | null) => entry?.name === "PurchaseScheduled");
+    .find(entry => entry?.name === "PurchaseScheduled");
   if (!parsed) throw new Error("PurchaseScheduled was not emitted");
   const scheduleAddress = parsed.args.schedule as string;
   const scheduleNum = BigInt(scheduleAddress);
