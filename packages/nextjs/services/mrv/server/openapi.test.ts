@@ -5,7 +5,7 @@ import { describe, expect, it } from "vitest";
 
 const APP = join(__dirname, "../../../app");
 /** Transport and plumbing routes that are not part of the documented API. */
-const UNDOCUMENTED = ["/api/mcp", "/api/openapi.json", "/api/hedera/account"];
+const UNDOCUMENTED = ["/api/mcp", "/api/openapi.json", "/api/hedera/account", "/api/hbar-price"];
 
 function routes(dir: string): string[] {
   return readdirSync(dir, { withFileTypes: true }).flatMap(entry => {

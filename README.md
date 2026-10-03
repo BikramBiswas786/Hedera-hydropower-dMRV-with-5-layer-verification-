@@ -334,6 +334,6 @@ The reading order is [docs/README.md](docs/README.md).
 | Guardian trace, the cross-check credential, the policy patch | [docs/GUARDIAN.md](docs/GUARDIAN.md) |
 | MCP tools and their REST twins | [docs/agents.md](docs/agents.md) |
 
-Hedera Harness spec and validators are in [`.harness/`](.harness/). `yarn harness:validate` runs Tiers 0–2 with no credentials.
+Hedera Harness spec and validators are in [`.harness/`](.harness/). `yarn harness:validate` runs Tiers 0–2 with no credentials, in this repository. A scaffold removes `template.json`, and the same command fails in that copy. Run it here.
 
 MIT, see [LICENCE](LICENCE). Built on [Scaffold-HBAR](https://github.com/hedera-dev/scaffold-hbar).

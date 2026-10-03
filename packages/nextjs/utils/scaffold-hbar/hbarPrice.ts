@@ -8,16 +8,24 @@ type HbarPriceCache = {
 
 let cache: HbarPriceCache | null = null;
 
+/**
+ * The footer calls this from the browser. CoinGecko does not send CORS headers, so the browser
+ * reads `/api/hbar-price` and that route reads CoinGecko. Settlement does not use this number.
+ */
 export async function fetchHbarPrice(): Promise<number> {
   const now = Date.now();
   if (cache && now - cache.timestamp < HBAR_PRICE_CACHE_DURATION_MS) {
     return cache.price;
   }
 
+  const inBrowser = typeof window !== "undefined";
   try {
-    const response = await fetch(HBAR_PRICE_URL, { signal: AbortSignal.timeout(8_000) });
+    const response = await fetch(inBrowser ? "/api/hbar-price" : HBAR_PRICE_URL, {
+      signal: AbortSignal.timeout(8_000),
+    });
     const data = await response.json();
-    const price = data?.market_data?.current_price?.usd ?? 0;
+    const raw = inBrowser ? data?.usd : data?.market_data?.current_price?.usd;
+    const price = typeof raw === "number" && Number.isFinite(raw) ? raw : 0;
     cache = { price, timestamp: now };
     return price;
   } catch (error) {
