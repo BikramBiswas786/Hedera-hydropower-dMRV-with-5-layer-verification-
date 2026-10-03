@@ -18,7 +18,7 @@ Read this before the rest.
 - Testnet issuance needs three separate keys: the operator, the plant meter, and the VVB. The demo VVB key in this repo is the author's test key.
 - These are HTS units issued by this registry. They are not Verra credits. The demo grid factor is ASB0054-2022, which expired on 9 August 2025. The tonnes illustrate the arithmetic.
 - `DmrvRegistry` is 24,011 bytes. The project gate is 24,064. Do not add a function to that contract.
-- The contract stores an HCS sequence and a hash. It cannot read the message. `yarn mrv:reproduce` can. A direct `verifyPeriod` can cite a sequence whose bytes are something else.
+- The contract stores an HCS sequence and a hash. It cannot read the message. `yarn mrv:submit` refuses an approval unless those monitoring records reproduce from HCS and the verification report at the cited sequence matches the statement. A direct `verifyPeriod` can still cite a sequence whose bytes are something else.
 - The scheduled pair workflow only reads the testnet pool. It does not trade it. If the pair is more than 3% from the oracle, the sale reverts. The recorded sale used a project-minted dollar token, not public USDC. Nothing here is a mainnet carbon deployment.
 - The contracts have not been audited.
 
@@ -189,7 +189,7 @@ The [Testnet evidence](.github/workflows/testnet-evidence.yml) workflow ran the 
 - The testnet SaucerSwap pair holds a USD token this project minted, because the public testnet USDC pair prices HBAR near $2. The recorded sale used that pair. Nothing in this template trades it back to the oracle. A later purchase reverts while the pair is more than 3% off. On mainnet the same code uses the public WHBAR/USDC pair.
 - The contract cannot verify a Guardian VP. For a marked token, `buy` reverts and `buyTraced` checks a signature this server creates only after the trace is backed. An unmarked token is not a Guardian mint. The checkout deployed before that function, `0x455eFbF0…`, still sells with `buy`.
 - The demo grid factor is Uganda's published CDM standardized baseline (ASB0054-2022). It expired on 9 August 2025. The demo plants were registered in 2026, outside that window. The tonnes illustrate the arithmetic. A real project needs a new grid factor.
-- The contract checks that each record cites a non-zero sequence on HCS topic `0.0.10729650`. It cannot read the message. `yarn mrv:reproduce` refuses a mismatch. A direct `verifyPeriod` call can still cite a sequence whose bytes are something else.
+- The contract checks that each record cites a non-zero sequence on HCS topic `0.0.10729650`. It cannot read the message. `yarn mrv:submit` refuses to relay an approval when the records do not reproduce or the published report does not match. A direct `verifyPeriod` call can still cite a sequence whose bytes are something else.
 - `evidenceHash` is an optional label. The contract does not check what it names.
 - A monitoring run the VVB rejects still counts toward that year's energy for a retrofit or a capacity addition. Both demo plants are greenfield, so this does not affect them. Detail is in [docs/contract.md](docs/contract.md).
 - Meter uncertainty is reported with each record. It is not deducted from the tonnes. The lower of two meters, and the maximum permissible error after calibration expires, are deducted.

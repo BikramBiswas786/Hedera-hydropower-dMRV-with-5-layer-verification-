@@ -201,6 +201,19 @@ describe("verification: a VVB closes a run of monitoring records", () => {
     expect(simulateContract).not.toHaveBeenCalled();
   });
 
+  it("refuses an approval when the monitoring records do not reproduce from HCS", async () => {
+    reproduce.mockResolvedValue({
+      status: "diverged",
+      checks: [{ field: "chain", ok: false }],
+      audit: { status: "verified", checks: [] },
+    });
+    const { statement } = published();
+    await expect(
+      submitVerification({ plantId: "HYDRO-DEMO-01", statement, signature: sign(vvbKey, statement) }),
+    ).rejects.toThrow(/do not reproduce from HCS/);
+    expect(simulateContract).not.toHaveBeenCalled();
+  });
+
   it("dry-runs verifyPeriod with the VVB's signature once every check passes", async () => {
     const { statement } = published();
     simulateContract.mockRejectedValue(new Error("RecordsHashMismatch"));

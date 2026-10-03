@@ -307,6 +307,16 @@ export async function submitVerification(request: z.input<typeof submitVerificat
     if (!consistent) {
       throw new ApiError("The statement does not match the verification report published at its HCS anchor", 409);
     }
+    const pending = await getPendingVerification(plant.plantId, statement.lastRecord);
+    if (!pending || pending.firstRecord !== statement.firstRecord || pending.lastRecord !== statement.lastRecord) {
+      throw new ApiError("The statement does not cover the unverified monitoring run", 409);
+    }
+    if (statement.decision === 1 && !pending.allReproduced) {
+      throw new ApiError(
+        "The monitoring records do not reproduce from HCS, so this approval cannot be relayed. A direct verifyPeriod can still cite a sequence. This path will not.",
+        409,
+      );
+    }
   }
 
   const relayerKey = readRelayerKey();
