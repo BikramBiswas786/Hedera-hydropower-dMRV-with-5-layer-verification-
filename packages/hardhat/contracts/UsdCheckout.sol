@@ -213,8 +213,9 @@ contract UsdCheckout is UsdSettlement {
     /// `executeAt`. The pool is checked again then. If it has moved, that call reverts and `cancelScheduled`
     /// returns the HBAR. The admin cannot sweep it.
     /// @dev `executeAt` must be at least a minute ahead, so the buyer can sign the schedule before Hedera fires it.
-    /// The HBAR value is not put on the scheduled call: it is already in this contract. Locally `0x16b` is a
-    /// stand-in that only records the call.
+    /// The schedule expires 60 seconds after `executeAt`. Hedera's EVM clock can still be behind the schedule
+    /// expiry at the exact second, and `settleScheduled` would then revert `TooEarly`. The HBAR value is not put
+    /// on the scheduled call: it is already in this contract. Locally `0x16b` is a stand-in that only records the call.
     function schedulePurchase(
         uint256 listingId,
         uint64 amount,
@@ -231,7 +232,7 @@ contract UsdCheckout is UsdSettlement {
         (bool ok, bytes memory ret) = address(HSS).call(
             abi.encodeCall(
                 IHederaScheduleService.scheduleCallWithPayer,
-                (address(this), msg.sender, uint256(executeAt), SCHEDULE_GAS, 0, abi.encodeCall(this.settleScheduled, (id)))
+                (address(this), msg.sender, uint256(executeAt) + 60, SCHEDULE_GAS, 0, abi.encodeCall(this.settleScheduled, (id)))
             )
         );
         if (!ok || ret.length < 64) revert ScheduleFailed();

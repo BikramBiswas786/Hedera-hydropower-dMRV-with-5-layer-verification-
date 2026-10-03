@@ -367,10 +367,11 @@ describe("UsdCheckout", function () {
     }
 
     it("locks the HBAR, records the call Hedera would make, and the admin cannot sweep it", async function () {
-      const { checkout, buyer, admin, cost, tx } = await loadFixture(locked);
+      const { checkout, buyer, admin, cost, tx, executeAt } = await loadFixture(locked);
       const hss = await mockSchedule();
       const id = (await hss.callCount()) - 1n;
       expect(await hss.scheduledPayer(id)).to.equal(buyer.address);
+      expect(await hss.scheduledExpiry(id)).to.equal(executeAt + 60n);
       expect(await hss.scheduledData(id)).to.equal(checkout.interface.encodeFunctionData("settleScheduled", [0]));
       expect(await checkout.reservedNative()).to.equal(cost);
       await expect(tx).to.emit(checkout, "PurchaseScheduled");

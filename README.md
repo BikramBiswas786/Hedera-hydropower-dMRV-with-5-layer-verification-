@@ -30,7 +30,7 @@ Open `/market`. A burner wallet connects on its own. Press **100 local HBAR**, t
 
 ## 3. The testnet transactions
 
-Four, if you open nothing else. The rest of the cycle is in [docs/evidence.md](docs/evidence.md).
+Five, if you open nothing else. The rest of the cycle is in [docs/evidence.md](docs/evidence.md).
 
 | What | Open it |
 | --- | --- |
@@ -38,6 +38,7 @@ Four, if you open nothing else. The rest of the cycle is in [docs/evidence.md](d
 | The signature that minted. Nothing was minted before it | [0xffe81724…](https://hashscan.io/testnet/transaction/0xffe81724e83bc9fd4e85bae234e3654588d48f0833a0e18fc865f25fd0e391c4) |
 | A monitoring record. Quantified. It issues nothing | [0x0e3ed83c…](https://hashscan.io/testnet/transaction/0x0e3ed83c7a946f9b3ace4fa313d0beb11f57b11aa863efead770d82cb9e30d39) |
 | A marked token. `buy` reverts. `buyTraced` is the sale | [0x42212e6d…](https://hashscan.io/testnet/transaction/0x42212e6d7edc6725f9813921fe35d340c8bf7c91ccfafb92c31471895ba7e3ad) |
+| Hedera settles a locked purchase. The buyer signed the schedule. The network called `settleScheduled` | [schedule 0.0.10842021](https://hashscan.io/testnet/schedule/0.0.10842021) · [call 0.0.7314364-1791031299-291157934](https://hashscan.io/testnet/transaction/0.0.7314364-1791031299-291157934) |
 
 The live desk is [hydro-dmrv.vercel.app](https://hydro-dmrv.vercel.app). These are not Verra credits.
 
@@ -62,7 +63,7 @@ Read this before the rest.
 - `DmrvRegistry` is 23,958 bytes. The project gate is 24,064. That is 106 bytes of headroom, still inside the `tight` band. Do not add a function to that contract unless you cut at least as much.
 - The contract stores an HCS sequence and a hash. It cannot read the message. `yarn mrv:submit` refuses an approval unless those monitoring records reproduce from HCS and the verification report at the cited sequence matches the statement. A direct `verifyPeriod` can still cite a sequence whose bytes are something else.
 - The scheduled pair workflow only reads the testnet pool. It does not trade it. If the pair is more than 3% from the oracle, the sale reverts. The recorded sale used a project-minted dollar token, not public USDC. Nothing here is a mainnet carbon deployment.
-- `schedulePurchase` locks the HBAR and asks the Schedule Service at `0x16b` to call `settleScheduled` as the buyer. Locally that address is a stand-in. `yarn checkout:demo` fires the bytes it recorded. There is no testnet schedule of this purchase yet. The 2-of-3 workflow is still admin calls, not this sale.
+- `schedulePurchase` locks the HBAR and asks the Schedule Service at `0x16b` to call `settleScheduled` as the buyer, 60 seconds after `executeAt`. Locally `0x16b` is a stand-in and `yarn checkout:demo` fires the recorded call. On testnet the buyer signed [schedule 0.0.10842021](https://hashscan.io/testnet/schedule/0.0.10842021) and Hedera ran the call: [0.0.7314364-1791031299-291157934](https://hashscan.io/testnet/transaction/0.0.7314364-1791031299-291157934). The seller was paid the pair's token. The 2-of-3 workflow is still admin calls, not this sale.
 - The contracts have not been audited.
 
 ## Video
@@ -188,7 +189,7 @@ On testnet the public WHBAR/USDC pair prices HBAR near $2, so the recorded sale 
 | Token Service (HTS), through the system contract at `0x167` | [`HederaTokenLib.sol`](packages/hardhat/contracts/lib/HederaTokenLib.sol), used only by `DmrvRegistry` and `UsdCheckout` | The credit token (3 decimals) and the retirement NFT. The registry creates both and holds their treasury and supply keys. `UsdCheckout` escrows any HTS token |
 | Consensus Service (HCS) | [`report.ts`](packages/nextjs/services/mrv/report.ts), [`verification.ts`](packages/nextjs/services/mrv/verification.ts) | Raw readings (up to 20 chunks), the monitoring report and the verification report. The contract stores each report's hash and sequence |
 | Smart contracts | [`packages/hardhat/contracts`](packages/hardhat/contracts) | Registry, methodology modules (called with `staticcall`), market, checkout, price feed |
-| Schedule Service | [`UsdCheckout.schedulePurchase`](packages/hardhat/contracts/UsdCheckout.sol) calls `0x16b`. [`adminExec.ts`](packages/nextjs/scripts/adminExec.ts) is the separate 2-of-3 admin path | A buyer locks HBAR. Hedera is asked to call `settleScheduled` at `executeAt`, and the pool check runs then. Locally `0x16b` is a stand-in and the demo fires the recorded call. The admin path does not settle a sale |
+| Schedule Service | [`UsdCheckout.schedulePurchase`](packages/hardhat/contracts/UsdCheckout.sol) calls `0x16b`. [`adminExec.ts`](packages/nextjs/scripts/adminExec.ts) is the separate 2-of-3 admin path | A buyer locks HBAR. Hedera calls `settleScheduled` 60 seconds after `executeAt`, and the pool check runs then. [Schedule 0.0.10842021](https://hashscan.io/testnet/schedule/0.0.10842021) did. Locally `0x16b` is a stand-in. The admin path does not settle a sale |
 | Mirror node | [`mirror.ts`](packages/nextjs/services/mrv/mirror.ts) | Reads HCS messages, token associations and contract results back, so a record can be reproduced |
 
 ## Environment variables
@@ -259,7 +260,7 @@ checkout.buy{ value: tinybar }(listingId, amount);   // HBAR is swapped to the p
 checkout.schedulePurchase{ value: tinybar }(listingId, amount, executeAt);
 ```
 
-A stale feed, a pool more than 3% from the oracle, or a pool SaucerSwap's factory did not create blocks the sale, including one Hedera fires later. If that later call reverts, `cancelScheduled` returns the HBAR. No admin function can move it, or the escrowed tokens. The tests are in [`UsdCheckout.test.ts`](packages/hardhat/test/UsdCheckout.test.ts). Locally `0x16b` is a stand-in. On Hedera the buyer still has to sign the schedule before it can fire. That testnet signature is not in the evidence yet.
+A stale feed, a pool more than 3% from the oracle, or a pool SaucerSwap's factory did not create blocks the sale, including one Hedera fires later. If that later call reverts, `cancelScheduled` returns the HBAR. No admin function can move it, or the escrowed tokens. The tests are in [`UsdCheckout.test.ts`](packages/hardhat/test/UsdCheckout.test.ts). Locally `0x16b` is a stand-in. On Hedera the buyer signs the schedule, and the network fires it 60 seconds after `executeAt`. That happened: [schedule 0.0.10842021](https://hashscan.io/testnet/schedule/0.0.10842021).
 
 ## For AI agents
 
