@@ -1,6 +1,12 @@
+![Hydro dMRV](docs/images/masthead.png)
+
 # Hydro dMRV
 
-Sell any HTS token at a dollar price. The buyer pays HBAR. The sale reverts unless Chainlink and Supra agree and SaucerSwap is within 3% of that price. Guardian does not settle a sale. The portal does not check a pool.
+Guardian will store a number and mint it. The portal will create a token. Neither will refuse a sale when the pool and the oracle disagree, and neither will recompute the tonnes and then forbid a verifier from raising them. This template does those two things. The registry is the worked example. The sale is the part you can use without it.
+
+## 1. One command
+
+This is the self-check. Node 20.18.3 or newer. Yarn comes from Corepack (`corepack enable`). Git needs a name and an email.
 
 ```bash
 npm create scaffold-hbar@latest -- --template BikramBiswas786/Hedera-hydropower-dMRV-with-5-layer-verification-
@@ -8,7 +14,32 @@ cd my-hedera-dapp
 yarn demo
 ```
 
-That first line is the command the bounty asks for. It fetches this repo and selects Hardhat and Yarn from `template.json`. `yarn demo` is the one local command: it starts the chain, deploys the stand-ins, and runs the sale. No Hedera account. `yarn checkout:demo` is the same sale without the registry.
+The first line fetches this repo and selects Hardhat and Yarn from `template.json`. `yarn demo` is the local run: it starts the chain, deploys the stand-ins, and buys a credit. No Hedera account. `yarn checkout:demo` is the same sale with no registry. It lists event tickets at $12.50, buys one, then shows `PoolPriceDeviation` and `StalePrice`.
+
+## 2. A fresh developer, end to end
+
+`yarn demo` is enough to see a sale. The three terminals are the same work, split, if you want to watch each step.
+
+```bash
+yarn chain:offline
+yarn deploy --network localhost
+yarn start
+```
+
+Open `/market`. A burner wallet connects on its own. Press **100 local HBAR**, then **Buy & retire**. The certificate is on `/portfolio`. `yarn verify` needs no chain: `healthy` is approved, and `inflated` and `tampered` are rejected. A funded account is required only for [Deploy to Hedera testnet](#deploy-to-hedera-testnet).
+
+## 3. The testnet transactions
+
+Four, if you open nothing else. The rest of the cycle is in [docs/evidence.md](docs/evidence.md).
+
+| What | Open it |
+| --- | --- |
+| A sale. The buyer's HBAR is swapped on SaucerSwap and the credits are retired | [0x180f3a7c…](https://hashscan.io/testnet/transaction/0x180f3a7c2d0285a6a2ee0841c417232058a615093143c0a24489d396546178c0) |
+| The signature that minted. Nothing was minted before it | [0xffe81724…](https://hashscan.io/testnet/transaction/0xffe81724e83bc9fd4e85bae234e3654588d48f0833a0e18fc865f25fd0e391c4) |
+| A monitoring record. Quantified. It issues nothing | [0x0e3ed83c…](https://hashscan.io/testnet/transaction/0x0e3ed83c7a946f9b3ace4fa313d0beb11f57b11aa863efead770d82cb9e30d39) |
+| A marked token. `buy` reverts. `buyTraced` is the sale | [0x42212e6d…](https://hashscan.io/testnet/transaction/0x42212e6d7edc6725f9813921fe35d340c8bf7c91ccfafb92c31471895ba7e3ad) |
+
+The live desk is [hydro-dmrv.vercel.app](https://hydro-dmrv.vercel.app). These are not Verra credits.
 
 ## Already available
 
