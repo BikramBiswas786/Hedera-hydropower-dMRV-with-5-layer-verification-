@@ -65,7 +65,11 @@ Read this before the rest.
 
 ## Video
 
-44 seconds. Silent. It is the real `yarn verify`, then the real `yarn checkout:demo`. Healthy is approved. Inflated, replay, and tampered are rejected. The sale lists 50 tickets, buys one, then reverts `PoolPriceDeviation` and `StalePrice`. No voice.
+Two minutes and 42 seconds. Under the five-minute limit. It is the three checks, in order: the one scaffold command, `yarn demo`, then the four testnet transactions. No Hedera account for the first two.
+
+[Watch the walkthrough](docs/demo/Hydro-dMRV-for-developers.mp4)
+
+The 44-second clip is the commands themselves, silent: `yarn verify`, then `yarn checkout:demo`. Healthy is approved. Inflated, replay, and tampered are rejected. The sale lists 50 tickets, buys one, then reverts `PoolPriceDeviation` and `StalePrice`.
 
 [Watch the run](docs/demo/Hydro-dMRV-run.mp4)
 
