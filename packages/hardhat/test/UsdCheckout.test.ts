@@ -4,6 +4,7 @@ import { loadFixture, time } from "@nomicfoundation/hardhat-network-helpers";
 import { isolateClock } from "./helpers/clock";
 import { FEED_DECIMALS, HBAR_USD, HOUR, NATIVE_PER_HBAR, SAUCER_FACTORY, ensureSaucerFactory } from "./helpers/dmrv";
 import { ensureHts, mockHts } from "./helpers/hts";
+import { ensureSchedule, fireLastSchedule, mockSchedule } from "./helpers/schedule";
 
 const WHBAR = "0x0000000000000000000000000000000000003aD2"; // testnet WHBAR 0.0.15058 (8 decimals)
 const USDC = "0x0000000000000000000000000000000000001549"; // SaucerSwap testnet USDC 0.0.5449 (6 decimals)
@@ -45,6 +46,7 @@ async function createToken(treasury: string, supply: bigint, decimals: bigint) {
 
 async function deployed() {
   await ensureHts();
+  await ensureSchedule();
   const factory = await ensureSaucerFactory();
   const [admin, seller, buyer, stranger] = await ethers.getSigners();
   const feed = await ethers.deployContract("MockV3Aggregator", [FEED_DECIMALS, HBAR_USD]);
@@ -350,6 +352,70 @@ describe("UsdCheckout", function () {
       await expect(
         open.checkout.connect(open.buyer).buyTraced(0, amount, recordHash, validUntil, ok, { value: cost }),
       ).to.be.revertedWithCustomError(open.checkout, "TraceNotRequired");
+    });
+  });
+
+  describe("scheduled purchase", function () {
+    const one = 100n;
+
+    async function locked() {
+      const ctx = await listed();
+      const executeAt = BigInt(await time.latest()) + 3_600n;
+      const cost = await ctx.checkout.quote(0, one);
+      const tx = await ctx.checkout.connect(ctx.buyer).schedulePurchase(0, one, executeAt, { value: cost });
+      return { ...ctx, executeAt, cost, tx };
+    }
+
+    it("locks the HBAR, records the call Hedera would make, and the admin cannot sweep it", async function () {
+      const { checkout, buyer, admin, cost, tx } = await loadFixture(locked);
+      const hss = await mockSchedule();
+      const id = (await hss.callCount()) - 1n;
+      expect(await hss.scheduledPayer(id)).to.equal(buyer.address);
+      expect(await hss.scheduledData(id)).to.equal(checkout.interface.encodeFunctionData("settleScheduled", [0]));
+      expect(await checkout.reservedNative()).to.equal(cost);
+      await expect(tx).to.emit(checkout, "PurchaseScheduled");
+      await expect(checkout.connect(admin).sweepHbar(admin.address)).to.changeEtherBalance(admin, 0);
+      expect(await ethers.provider.getBalance(await checkout.getAddress())).to.equal(cost);
+    });
+
+    it("settles when that recorded call is fired after executeAt", async function () {
+      const { checkout, feed, token, buyer, router, seller } = await loadFixture(locked);
+      await time.increase(3_600);
+      await feed.setUpdatedAt(await time.latest());
+      await expect(fireLastSchedule(await checkout.getAddress())).to.emit(checkout, "ScheduledPurchaseSettled");
+      expect(await token.balanceOf(buyer.address)).to.equal(one);
+      expect(await router.paidUsd(seller.address)).to.be.gt(0);
+      expect(await checkout.reservedNative()).to.equal(0);
+    });
+
+    it("returns the HBAR when the pool has moved, and a stranger cannot settle or cancel", async function () {
+      const { checkout, pair, feed, token, buyer, stranger, cost } = await loadFixture(locked);
+      await pair.setReserves(240_000n * 10n ** 6n, 1_000_000n * 10n ** 8n);
+      await time.increase(3_600);
+      await feed.setUpdatedAt(await time.latest());
+      await expect(fireLastSchedule(await checkout.getAddress())).to.be.revertedWithCustomError(
+        checkout,
+        "PoolPriceDeviation",
+      );
+      await expect(checkout.connect(stranger).settleScheduled(0)).to.be.revertedWithCustomError(checkout, "NotBuyer");
+      await expect(checkout.connect(stranger).cancelScheduled(0)).to.be.revertedWithCustomError(checkout, "NotBuyer");
+      const before = await token.balanceOf(buyer.address);
+      await expect(checkout.connect(buyer).cancelScheduled(0)).to.changeEtherBalance(buyer, cost);
+      expect(await token.balanceOf(buyer.address)).to.equal(before);
+      expect(await checkout.reservedNative()).to.equal(0);
+      expect(await token.balanceOf(await checkout.getAddress())).to.equal(LISTED);
+    });
+
+    it("refuses to settle early, and a cancelled listing does not trap the HBAR", async function () {
+      const { checkout, buyer, seller, cost } = await loadFixture(locked);
+      await expect(checkout.connect(buyer).settleScheduled(0)).to.be.revertedWithCustomError(checkout, "TooEarly");
+      await checkout.connect(seller).cancelListing(0);
+      await time.increase(3_600);
+      await expect(fireLastSchedule(await checkout.getAddress())).to.be.revertedWithCustomError(
+        checkout,
+        "InvalidListing",
+      );
+      await expect(checkout.connect(buyer).cancelScheduled(0)).to.changeEtherBalance(buyer, cost);
     });
   });
 

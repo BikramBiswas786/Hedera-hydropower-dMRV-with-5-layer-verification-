@@ -2,7 +2,7 @@
 
 # Hydro dMRV
 
-Guardian will store a number and mint it. The portal will create a token. Neither will refuse a sale when the pool and the oracle disagree, and neither will recompute the tonnes and then forbid a verifier from raising them. This template does those two things. The registry is the worked example. The sale is the part you can use without it.
+Guardian will store a number and mint it. The portal will create a token. Neither will refuse a sale when the pool and the oracle disagree, neither will recompute the tonnes and then forbid a verifier from raising them, and neither will lock the HBAR and have Hedera complete the purchase later. This template does those three things. The registry is the worked example. The sale is the part you can use without it.
 
 ## 1. One command
 
@@ -14,7 +14,7 @@ cd my-hedera-dapp
 yarn demo
 ```
 
-The first line fetches this repo and selects Hardhat and Yarn from `template.json`. `yarn demo` is the local run: it starts the chain, deploys the stand-ins, and buys a credit. No Hedera account. `yarn checkout:demo` is the same sale with no registry. It lists event tickets at $12.50, buys one, then shows `PoolPriceDeviation` and `StalePrice`.
+The first line fetches this repo and selects Hardhat and Yarn from `template.json`. `yarn demo` is the local run: it starts the chain, deploys the stand-ins, and buys a credit. No Hedera account. `yarn checkout:demo` is the same sale with no registry. It lists event tickets at $12.50, buys one, then shows `PoolPriceDeviation` and `StalePrice`. It then locks the HBAR for a later ticket. Firing that call while the pool is off returns the HBAR. Firing it while the pool agrees delivers the ticket.
 
 ## 2. A fresh developer, end to end
 
@@ -50,6 +50,7 @@ Use the other tool when it is the job.
 | A policy, a credential, and an issuance workflow that stores the number it was given | [Guardian](https://guardian.hedera.com). This contract will not accept that number unless it recomputes it, and a verifier can only lower it. |
 | A token or a topic, with no methodology | The [Hedera portal](https://portal.hedera.com) and the SDK. |
 | A dollar price on any HTS token, paid in HBAR, that reverts when the pool or the oracles disagree | This template. `yarn checkout:demo`. The registry is optional. |
+| That purchase left for Hedera to execute later, and returned if the pool has moved by then | This template. `schedulePurchase`. The portal can schedule a transfer. It cannot refuse one. |
 
 ## Judge note
 
@@ -61,6 +62,7 @@ Read this before the rest.
 - `DmrvRegistry` is 23,958 bytes. The project gate is 24,064. That is 106 bytes of headroom, still inside the `tight` band. Do not add a function to that contract unless you cut at least as much.
 - The contract stores an HCS sequence and a hash. It cannot read the message. `yarn mrv:submit` refuses an approval unless those monitoring records reproduce from HCS and the verification report at the cited sequence matches the statement. A direct `verifyPeriod` can still cite a sequence whose bytes are something else.
 - The scheduled pair workflow only reads the testnet pool. It does not trade it. If the pair is more than 3% from the oracle, the sale reverts. The recorded sale used a project-minted dollar token, not public USDC. Nothing here is a mainnet carbon deployment.
+- `schedulePurchase` locks the HBAR and asks the Schedule Service at `0x16b` to call `settleScheduled` as the buyer. Locally that address is a stand-in. `yarn checkout:demo` fires the bytes it recorded. There is no testnet schedule of this purchase yet. The 2-of-3 workflow is still admin calls, not this sale.
 - The contracts have not been audited.
 
 ## Video
@@ -186,7 +188,7 @@ On testnet the public WHBAR/USDC pair prices HBAR near $2, so the recorded sale 
 | Token Service (HTS), through the system contract at `0x167` | [`HederaTokenLib.sol`](packages/hardhat/contracts/lib/HederaTokenLib.sol), used only by `DmrvRegistry` and `UsdCheckout` | The credit token (3 decimals) and the retirement NFT. The registry creates both and holds their treasury and supply keys. `UsdCheckout` escrows any HTS token |
 | Consensus Service (HCS) | [`report.ts`](packages/nextjs/services/mrv/report.ts), [`verification.ts`](packages/nextjs/services/mrv/verification.ts) | Raw readings (up to 20 chunks), the monitoring report and the verification report. The contract stores each report's hash and sequence |
 | Smart contracts | [`packages/hardhat/contracts`](packages/hardhat/contracts) | Registry, methodology modules (called with `staticcall`), market, checkout, price feed |
-| Schedule Service | [`adminExec.ts`](packages/nextjs/scripts/adminExec.ts) | Admin calls from a 2-of-3 threshold account: one holder schedules, a second signs |
+| Schedule Service | [`UsdCheckout.schedulePurchase`](packages/hardhat/contracts/UsdCheckout.sol) calls `0x16b`. [`adminExec.ts`](packages/nextjs/scripts/adminExec.ts) is the separate 2-of-3 admin path | A buyer locks HBAR. Hedera is asked to call `settleScheduled` at `executeAt`, and the pool check runs then. Locally `0x16b` is a stand-in and the demo fires the recorded call. The admin path does not settle a sale |
 | Mirror node | [`mirror.ts`](packages/nextjs/services/mrv/mirror.ts) | Reads HCS messages, token associations and contract results back, so a record can be reproduced |
 
 ## Environment variables
@@ -253,9 +255,11 @@ checkout.createListing(token, amount, 1_250);        // $12.50 per whole token, 
 // buyer: token.associate() once (HIP-719), then
 uint256 tinybar = checkout.quote(listingId, amount); // Chainlink (Supra fallback), after SaucerSwap agrees within 3%
 checkout.buy{ value: tinybar }(listingId, amount);   // HBAR is swapped to the pair's USD token for the seller
+// or leave it for Hedera. The HBAR is locked now. The pool is checked again at executeAt.
+checkout.schedulePurchase{ value: tinybar }(listingId, amount, executeAt);
 ```
 
-A stale feed, a pool more than 3% from the oracle, or a pool SaucerSwap's factory did not create blocks the sale. No admin function can move escrowed tokens. The tests are in [`UsdCheckout.test.ts`](packages/hardhat/test/UsdCheckout.test.ts).
+A stale feed, a pool more than 3% from the oracle, or a pool SaucerSwap's factory did not create blocks the sale, including one Hedera fires later. If that later call reverts, `cancelScheduled` returns the HBAR. No admin function can move it, or the escrowed tokens. The tests are in [`UsdCheckout.test.ts`](packages/hardhat/test/UsdCheckout.test.ts). Locally `0x16b` is a stand-in. On Hedera the buyer still has to sign the schedule before it can fire. That testnet signature is not in the evidence yet.
 
 ## For AI agents
 

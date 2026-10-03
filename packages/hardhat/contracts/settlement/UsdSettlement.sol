@@ -149,10 +149,14 @@ abstract contract UsdSettlement is AccessControl, ReentrancyGuard {
         emit PoolGuardEnabled(true);
     }
 
-    /// @notice Recovers HBAR left in this contract. Purchases swap through the router, so the balance is normally 0.
+    /// @notice HBAR a buyer locked for a purchase Hedera has not settled. `sweepHbar` cannot take it.
+    uint256 public reservedNative;
+
+    /// @notice Recovers HBAR left in this contract. Purchases swap through the router, so the free balance is
+    /// normally 0. HBAR reserved for a scheduled purchase is not free.
     function sweepHbar(address payable to) external onlyRole(DEFAULT_ADMIN_ROLE) {
         if (to == address(0)) revert ZeroAddress();
-        _sendNative(to, address(this).balance);
+        _sendNative(to, address(this).balance - reservedNative);
     }
 
     // ─── Pricing ─────────────────────────────────────────────────────────────
@@ -214,7 +218,7 @@ abstract contract UsdSettlement is AccessControl, ReentrancyGuard {
     }
 
     /// @dev Forwards `nativeCost` into the SaucerSwap router. The seller receives the USD token, not HBAR.
-    function _swapToSeller(address seller, uint256 nativeCost, uint256 minOut) private {
+    function _swapToSeller(address seller, uint256 nativeCost, uint256 minOut) internal {
         PoolGuard memory g = poolGuard;
         address token0 = ISaucerSwapV1Pair(g.pool).token0();
         address token1 = ISaucerSwapV1Pair(g.pool).token1();

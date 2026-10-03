@@ -5,6 +5,8 @@
  *
  * Deploys a local HTS stand-in, a two-oracle feed, a SaucerSwap stand-in and UsdCheckout.
  * Lists event tickets at $12.50. Buys one. Then moves the pool 4% off the oracle and shows the revert.
+ * Then locks the HBAR for a later purchase. The Schedule Service stand-in records the call. Firing it while the
+ * pool is off returns the HBAR. Firing it while the pool agrees delivers the ticket.
  * No Hedera account. DmrvRegistry is not deployed.
  */
 import { ethers } from "hardhat";
@@ -18,6 +20,7 @@ import {
   ensureSaucerFactory,
 } from "../test/helpers/dmrv";
 import { ensureHts, mockHts } from "../test/helpers/hts";
+import { ensureSchedule, fireLastSchedule } from "../test/helpers/schedule";
 
 const WHBAR = "0x0000000000000000000000000000000000003aD2";
 const USDC = "0x0000000000000000000000000000000000001549";
@@ -32,6 +35,7 @@ function say(step: string, detail: Record<string, unknown>) {
 
 async function main() {
   await ensureHts();
+  await ensureSchedule();
   const factory = await ensureSaucerFactory();
   const [admin, seller, buyer] = await ethers.getSigners();
   const feed = await ethers.deployContract("MockV3Aggregator", [FEED_DECIMALS, HBAR_USD]);
@@ -121,6 +125,65 @@ async function main() {
   }
   if (stale !== "StalePrice") throw new Error(`expected StalePrice, got ${stale}`);
   say("stale-oracle", { revert: stale });
+
+  await feed.setUpdatedAt(await time.latest());
+  await pair.setReserves(250_000n * 10n ** 6n, 1_000_000n * 10n ** 8n);
+  const later = BigInt(await time.latest()) + 3_600n;
+  const locked = await checkout.quote(0, ONE_TICKET);
+  const scheduled = await checkout.connect(buyer).schedulePurchase(0, ONE_TICKET, later, { value: locked });
+  const receipt = await scheduled.wait();
+  const scheduledLog = receipt?.logs
+    .map(log => {
+      try {
+        return checkout.interface.parseLog(log);
+      } catch {
+        return null;
+      }
+    })
+    .find(parsed => parsed?.name === "PurchaseScheduled");
+  say("scheduled", {
+    id: 0,
+    executeAt: Number(later),
+    hbarLocked: ethers.formatEther(locked),
+    schedule: scheduledLog?.args.schedule ?? null,
+    standIn: "0x16b",
+  });
+
+  await pair.setReserves(240_000n * 10n ** 6n, 1_000_000n * 10n ** 8n);
+  await time.increase(3_600);
+  await feed.setUpdatedAt(await time.latest());
+  let held = "";
+  try {
+    await fireLastSchedule(await checkout.getAddress());
+  } catch (error) {
+    held = (error as Error).message.includes("PoolPriceDeviation")
+      ? "PoolPriceDeviation"
+      : (error as Error).message.slice(0, 180);
+  }
+  if (held !== "PoolPriceDeviation") throw new Error(`expected PoolPriceDeviation on the scheduled call, got ${held}`);
+  const buyerBefore = await ethers.provider.getBalance(buyer.address);
+  const cancel = await checkout.connect(buyer).cancelScheduled(0);
+  const cancelReceipt = await cancel.wait();
+  const gas = cancelReceipt?.gasUsed ? cancelReceipt.gasUsed * cancelReceipt.gasPrice : 0n;
+  const returned = (await ethers.provider.getBalance(buyer.address)) - buyerBefore + gas;
+  if (returned !== locked) throw new Error(`expected the locked HBAR back, got ${returned}`);
+  say("schedule-refused", {
+    revert: held,
+    hbarReturned: ethers.formatEther(returned),
+    tickets: Number((await token.getFunction("balanceOf")(buyer.address)) / ONE_TICKET),
+  });
+
+  await pair.setReserves(250_000n * 10n ** 6n, 1_000_000n * 10n ** 8n);
+  const againAt = BigInt(await time.latest()) + 3_600n;
+  const again = await checkout.quote(0, ONE_TICKET);
+  await checkout.connect(buyer).schedulePurchase(0, ONE_TICKET, againAt, { value: again });
+  await time.increase(3_600);
+  await feed.setUpdatedAt(await time.latest());
+  await fireLastSchedule(await checkout.getAddress());
+  say("schedule-settled", {
+    tickets: Number((await token.getFunction("balanceOf")(buyer.address)) / ONE_TICKET),
+    reservedHbar: ethers.formatEther(await checkout.reservedNative()),
+  });
 }
 
 main().catch(error => {

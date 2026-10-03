@@ -4,6 +4,7 @@ pragma solidity ^0.8.28;
 import { IERC20Metadata } from "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
 import { ECDSA } from "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
 import { AggregatorV3Interface } from "./interfaces/AggregatorV3Interface.sol";
+import { IHederaScheduleService } from "./interfaces/IHederaScheduleService.sol";
 import { HederaTokenLib } from "./lib/HederaTokenLib.sol";
 import { UsdSettlement } from "./settlement/UsdSettlement.sol";
 
@@ -48,6 +49,39 @@ contract UsdCheckout is UsdSettlement {
     error EmptyTrace();
     error TraceExpired(uint64 validUntil);
     error BadTrace(address signer);
+    error NotBuyer();
+    error TooEarly(uint64 executeAt);
+    error BadTime(uint64 executeAt);
+    error BadOrder(uint256 id);
+    error ScheduleFailed();
+
+    /// @notice Schedule Service. On Hedera this is the precompile. Locally the demo etches a stand-in here.
+    IHederaScheduleService internal constant HSS = IHederaScheduleService(address(0x16b));
+    int64 internal constant SCHEDULE_SUCCESS = 22;
+    uint256 internal constant SCHEDULE_GAS = 2_000_000;
+
+    struct ScheduledPurchase {
+        address buyer;
+        uint256 listingId;
+        uint64 amount;
+        uint256 escrow;
+        uint64 executeAt;
+        bool settled;
+        bool cancelled;
+    }
+
+    ScheduledPurchase[] private _orders;
+
+    event PurchaseScheduled(
+        uint256 indexed id,
+        address indexed buyer,
+        uint256 listingId,
+        uint64 amount,
+        uint64 executeAt,
+        address schedule
+    );
+    event ScheduledPurchaseSettled(uint256 indexed id, uint256 nativePaid);
+    event ScheduledPurchaseCancelled(uint256 indexed id, uint256 refunded);
 
     /// @notice Signs `traceDigest` for tokens in `traceRequired`. Unset until the admin names one.
     address public traceSigner;
@@ -173,6 +207,82 @@ contract UsdCheckout is UsdSettlement {
         emit TraceRequiredSet(token, required);
     }
 
+    // ─── Scheduled purchase ──────────────────────────────────────────────────
+
+    /// @notice Locks the quoted HBAR and asks the Schedule Service to call `settleScheduled` as `msg.sender` at
+    /// `executeAt`. The pool is checked again then. If it has moved, that call reverts and `cancelScheduled`
+    /// returns the HBAR. The admin cannot sweep it.
+    /// @dev `executeAt` must be at least a minute ahead, so the buyer can sign the schedule before Hedera fires it.
+    /// The HBAR value is not put on the scheduled call: it is already in this contract. Locally `0x16b` is a
+    /// stand-in that only records the call.
+    function schedulePurchase(
+        uint256 listingId,
+        uint64 amount,
+        uint64 executeAt
+    ) external payable nonReentrant returns (uint256 id, address schedule) {
+        if (executeAt <= block.timestamp + 60) revert BadTime(executeAt);
+        Listing storage listing = _activeListing(listingId);
+        if (traceRequired[listing.token]) revert TraceRequired(listing.token);
+        uint256 cost = quote(listingId, amount);
+        if (msg.value < cost) revert InsufficientPayment(cost, msg.value);
+        id = _orders.length;
+        _orders.push(ScheduledPurchase(msg.sender, listingId, amount, cost, executeAt, false, false));
+        reservedNative += cost;
+        (bool ok, bytes memory ret) = address(HSS).call(
+            abi.encodeCall(
+                IHederaScheduleService.scheduleCallWithPayer,
+                (address(this), msg.sender, uint256(executeAt), SCHEDULE_GAS, 0, abi.encodeCall(this.settleScheduled, (id)))
+            )
+        );
+        if (!ok || ret.length < 64) revert ScheduleFailed();
+        (int64 code, address scheduleAddress) = abi.decode(ret, (int64, address));
+        if (code != SCHEDULE_SUCCESS || scheduleAddress == address(0)) revert ScheduleFailed();
+        schedule = scheduleAddress;
+        emit PurchaseScheduled(id, msg.sender, listingId, amount, executeAt, scheduleAddress);
+        _sendNative(msg.sender, msg.value - cost);
+    }
+
+    /// @notice Completes a scheduled purchase. Hedera's scheduled call arrives as the buyer. The buyer can send
+    /// the same call once `executeAt` has passed. Either way the pool check runs now, not when the HBAR was locked.
+    function settleScheduled(uint256 id) external nonReentrant {
+        ScheduledPurchase storage order = _order(id);
+        if (msg.sender != order.buyer) revert NotBuyer();
+        if (block.timestamp < order.executeAt) revert TooEarly(order.executeAt);
+        Listing storage listing = _activeListing(order.listingId);
+        uint256 cost = quote(order.listingId, order.amount);
+        if (cost > order.escrow) revert InsufficientPayment(cost, order.escrow);
+        uint256 refund = order.escrow - cost;
+        order.settled = true;
+        reservedNative -= order.escrow;
+        listing.available -= order.amount;
+        if (listing.available == 0) listing.active = false;
+        uint256 minOut = _minUsdOut(uint256(listing.priceUsdCentsPerToken) * order.amount, 10 ** listing.tokenDecimals);
+        _swapToSeller(listing.seller, cost, minOut);
+        HederaTokenLib.transferFromSelf(listing.token, order.buyer, order.amount);
+        emit Purchased(order.listingId, order.buyer, order.amount, cost);
+        emit ScheduledPurchaseSettled(id, cost);
+        _sendNative(order.buyer, refund);
+    }
+
+    /// @notice Returns the locked HBAR. Works before `executeAt`, and after it when the scheduled call reverted.
+    function cancelScheduled(uint256 id) external nonReentrant {
+        ScheduledPurchase storage order = _order(id);
+        if (msg.sender != order.buyer) revert NotBuyer();
+        order.cancelled = true;
+        reservedNative -= order.escrow;
+        uint256 refund = order.escrow;
+        emit ScheduledPurchaseCancelled(id, refund);
+        _sendNative(order.buyer, refund);
+    }
+
+    function scheduledCount() external view returns (uint256) {
+        return _orders.length;
+    }
+
+    function getScheduled(uint256 id) external view returns (ScheduledPurchase memory) {
+        return _orders[id];
+    }
+
     // ─── Pricing ─────────────────────────────────────────────────────────────
 
     /// @notice Native amount (tinybar on Hedera) for `amount` base units at the oracle price, rounded up.
@@ -210,6 +320,12 @@ contract UsdCheckout is UsdSettlement {
         if (listingId >= _listings.length) revert InvalidListing(listingId);
         listing = _listings[listingId];
         if (!listing.active) revert InvalidListing(listingId);
+    }
+
+    function _order(uint256 id) private view returns (ScheduledPurchase storage order) {
+        if (id >= _orders.length) revert BadOrder(id);
+        order = _orders[id];
+        if (order.settled || order.cancelled) revert BadOrder(id);
     }
 
     function _purchase(Listing storage listing, uint256 listingId, uint64 amount) private {
