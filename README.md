@@ -65,13 +65,9 @@ Read this before the rest.
 
 ## Video
 
-Two minutes and 42 seconds. Under the five-minute limit. Spoken, with subtitles. It runs in the order a judge checks: the one scaffold command, `yarn demo` with no account, the four testnet transactions, then [hydro-dmrv.vercel.app](https://hydro-dmrv.vercel.app). Not a desktop capture.
+44 seconds. Silent. It is the real `yarn verify`, then the real `yarn checkout:demo`. Healthy is approved. Inflated, replay, and tampered are rejected. The sale lists 50 tickets, buys one, then reverts `PoolPriceDeviation` and `StalePrice`. No voice.
 
-[Watch the developer cut](docs/demo/Hydro-dMRV-for-developers.mp4)
-
-The older clip is three minutes and 42 seconds, recorded from the repository, GitHub Actions, the live site, and the Hashscan sale.
-
-[Watch the site recording](docs/demo/Hydro-dMRV-demo.mp4)
+[Watch the run](docs/demo/Hydro-dMRV-run.mp4)
 
 ## Read this in order
 
