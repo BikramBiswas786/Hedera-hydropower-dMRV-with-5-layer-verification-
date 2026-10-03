@@ -68,11 +68,13 @@ Read this before the rest.
 
 ## Video
 
-Two minutes and 42 seconds. Under the five-minute limit. It is the three checks, in order: the one scaffold command, `yarn demo`, then the testnet transactions in section 3. No Hedera account for the first two. The schedule link in that section was added after this cut.
+2:48. Under the five-minute limit. The live app on Vercel, then the testnet schedule on Hashscan, then the two commands that need no Hedera account.
+
+On screen, in order: the home page; the guide, with `yarn verify` and `yarn demo`; Verify, where healthy is approved and inflated and tampered are rejected; Audit, where Check evidence reproduces a record from the public mirror; the market preview, which builds the swap and does not send it; plant HYDRO-DEMO-01; [schedule 0.0.10842021](https://hashscan.io/testnet/schedule/0.0.10842021), which Hedera executed; then `yarn verify` and `yarn checkout:demo` in a fresh scaffold. The schedule service in that last command is the local stand-in. The Hashscan page is the testnet call.
 
 [Watch the walkthrough](docs/demo/Hydro-dMRV-for-developers.mp4)
 
-The 44-second clip is the commands themselves, silent: `yarn verify`, then `yarn checkout:demo`. Healthy is approved. Inflated, replay, and tampered are rejected. The sale lists 50 tickets, buys one, then reverts `PoolPriceDeviation` and `StalePrice`.
+34 seconds. The same two commands, with the narration for that part.
 
 [Watch the run](docs/demo/Hydro-dMRV-run.mp4)
 
