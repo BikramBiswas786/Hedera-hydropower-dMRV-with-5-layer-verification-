@@ -2,11 +2,13 @@
 
 # Hydro dMRV
 
+I am Bikram Biswas. This is the template I am submitting.
+
 Guardian will store a number and mint it. The portal will create a token. Neither will refuse a sale when the pool and the oracle disagree, neither will recompute the tonnes and then forbid a verifier from raising them, and neither will lock the HBAR and have Hedera complete the purchase later. This template does those three things. The registry is the worked example. The sale is the part you can use without it.
 
 ## 1. One command
 
-This is the self-check, the same command the other templates publish. Node 20.18.3 or newer. Yarn comes from Corepack (`corepack enable`). Git needs a name and an email before that command, or the scaffolder's first commit fails.
+Node 20.18.3 or newer. Yarn comes from Corepack (`corepack enable`). Set your git name and email before the command below, or the scaffolder's first commit fails.
 
 ```bash
 git config --global user.name "Your Name"
@@ -27,9 +29,9 @@ PowerShell, one line, no prompt:
 $env:npm_config_yes='true'; npm create scaffold-hbar@latest -- my-hedera-dapp --template BikramBiswas786/Hedera-hydropower-dMRV-with-5-layer-verification- --yes; if ($LASTEXITCODE -eq 0) { Set-Location .\my-hedera-dapp; yarn demo }
 ```
 
-Checked 3 Oct 2026 from an empty directory. The create command exited 0 and wrote `my-hedera-dapp`. `yarn demo` then exited 0: local chain, stand-ins, 39 kg listed, `healthy` approved, `inflated` and `tampered` rejected, `buyAndRetire` success.
+I ran this from an empty directory on 3 October 2026. The create command exited 0 and wrote `my-hedera-dapp`. `yarn demo` then exited 0: local chain, stand-ins, 39 kg listed, `healthy` approved, `inflated` and `tampered` rejected, `buyAndRetire` success.
 
-The scaffolder selects Hardhat and Yarn from `template.json`. `yarn demo` needs no Hedera account. `yarn checkout:demo` is the same sale with no registry. It lists event tickets at $12.50, buys one, then shows `PoolPriceDeviation` and `StalePrice`. It then locks the HBAR for a later ticket. Firing that call while the pool is off returns the HBAR. Firing it while the pool agrees delivers the ticket.
+The scaffolder selects Hardhat and Yarn from `template.json`. `yarn demo` needs no Hedera account. `yarn checkout:demo` is the same sale with no registry. It lists event tickets at $12.50, buys one, then shows `PoolPriceDeviation` and `StalePrice`. It then locks the HBAR for a later ticket. If the pool is off, that call returns the HBAR. If the pool agrees, it delivers the ticket.
 
 ## 2. A fresh developer, end to end
 
@@ -41,7 +43,7 @@ yarn deploy --network localhost
 yarn start
 ```
 
-Open `/market`. A burner wallet connects on its own. Press **100 local HBAR**, then **Buy & retire**. The certificate is on `/portfolio`. `yarn verify` needs no chain: `healthy` is approved, and `inflated` and `tampered` are rejected. A funded account is required only for [Deploy to Hedera testnet](#deploy-to-hedera-testnet).
+Open `/market`. The local account connects on its own. Press **100 local HBAR**, then **Buy & retire**. The certificate is on `/portfolio`. `yarn verify` needs no chain: `healthy` is approved, and `inflated` and `tampered` are rejected. A funded account is required only for [Deploy to Hedera testnet](#deploy-to-hedera-testnet).
 
 ## 3. The testnet transactions
 
@@ -68,22 +70,20 @@ Use the other tool when it is the job.
 | A dollar price on any HTS token, paid in HBAR, that reverts when the pool or the oracles disagree | This template. `yarn checkout:demo`. The registry is optional. |
 | That purchase left for Hedera to execute later, and returned if the pool has moved by then | This template. `schedulePurchase`. The portal can schedule a transfer. It cannot refuse one. |
 
-## Judge note
+## What I will not claim
 
-Read this before the rest.
-
-- `yarn checkout:demo` sells a token and does not deploy the registry. `yarn demo` is the local credit market. Neither is a testnet issuance.
-- Testnet issuance needs three separate keys: the operator, the plant meter, and the VVB. None of those private keys are written out in this repository. The local demo VVB and meter keys are recomputed from fixed strings, the same way Hardhat's default accounts are known: anyone can recover the private key. A Hedera deploy refuses those keys. The testnet demo VVB is derived in CI from the deploy secret, and the app never holds it. On that demo one person holds all three roles. A real deployment must not.
-- These are HTS units issued by this registry. They are not Verra credits. The demo grid factor is ASB0054-2022, which expired on 9 August 2025. The tonnes illustrate the arithmetic.
-- `DmrvRegistry` is 23,958 bytes. Hedera refuses a contract above 24,576, so 618 bytes remain. This repo fails CI at 24,064, which is 512 bytes earlier, and the registry is 106 bytes under that line. `yarn hardhat:size` prints `tight` and still exits 0. Do not add a function to that contract unless you cut at least as much.
+- `yarn checkout:demo` sells a token and does not deploy the registry. `yarn demo` is the local credit market. Neither command is a testnet issuance.
+- Testnet issuance needs three separate keys: the operator, the plant meter, and the VVB. I did not commit those private keys. The local demo VVB and meter keys are recomputed from fixed strings, the same way Hardhat's default accounts are known, so anyone can recover the private key. A Hedera deploy refuses those keys. The testnet demo VVB is derived in CI from the deploy secret, and the app never holds it. On that demo I hold all three roles. A real deployment must not.
+- These are HTS units issued by this registry. They are not Verra credits. The demo grid factor is ASB0054-2022, which expired on 9 August 2025. The figures are the equations, not certified credits.
+- `DmrvRegistry` is 23,958 bytes. Hedera refuses a contract above 24,576, so 618 bytes remain. This repo fails CI at 24,064, which is 512 bytes earlier, and the registry is 106 bytes under that line. `yarn hardhat:size` prints `tight` and still exits 0. Do not add a function to that contract unless you remove at least as much.
 - The contract stores an HCS sequence and a hash. It cannot read the message. `yarn mrv:submit` refuses an approval unless those monitoring records reproduce from HCS and the verification report at the cited sequence matches the statement. A direct `verifyPeriod` can still cite a sequence whose bytes are something else.
-- The scheduled pair workflow only reads the testnet pool. It does not trade it. If the pair is more than 3% from the oracle, the sale reverts. The recorded sale used a project-minted dollar token, not public USDC. Nothing here is a mainnet carbon deployment.
-- `schedulePurchase` locks the HBAR and asks the Schedule Service at `0x16b` to call `settleScheduled` as the buyer, 60 seconds after `executeAt`. Locally `0x16b` is a stand-in and `yarn checkout:demo` fires the recorded call. On testnet buyer `0.0.10729772` signed [schedule 0.0.10847470](https://hashscan.io/testnet/schedule/0.0.10847470) and Hedera ran the call: [0.0.7314364-1791062494-662215136](https://hashscan.io/testnet/transaction/0.0.7314364-1791062494-662215136). The seller was paid the pair's token and the buyer received 2 credit units. The 2-of-3 workflow is still admin calls, not this sale. An earlier schedule, [0.0.10842021](https://hashscan.io/testnet/schedule/0.0.10842021), was signed by `0.0.10015230`.
-- The contracts have not been audited.
+- The scheduled workflow only reads the testnet pool. It does not trade it. If the pair is more than 3% from the oracle, the sale reverts. The recorded sale used a dollar token I minted for the pair, not public USDC. This is not a mainnet carbon deployment.
+- `schedulePurchase` locks the HBAR and asks the Schedule Service at `0x16b` to call `settleScheduled` as the buyer, 60 seconds after `executeAt`. Locally `0x16b` is a stand-in, and `yarn checkout:demo` sends the recorded call. On testnet, buyer `0.0.10729772` signed [schedule 0.0.10847470](https://hashscan.io/testnet/schedule/0.0.10847470) and Hedera ran the call: [0.0.7314364-1791062494-662215136](https://hashscan.io/testnet/transaction/0.0.7314364-1791062494-662215136). The seller was paid the pair's token and the buyer received 2 credit units. The 2-of-3 workflow is admin calls, not this sale. I signed an earlier schedule, [0.0.10842021](https://hashscan.io/testnet/schedule/0.0.10842021), from `0.0.10015230`.
+- I have not had the contracts audited.
 
 ## Video
 
-2:48. Under the five-minute limit. The live app on Vercel, then the testnet schedule on Hashscan, then the two commands that need no Hedera account.
+The walkthrough is 2 minutes 48 seconds. The live app, then the testnet schedule on Hashscan, then the two commands that need no Hedera account.
 
 On screen, in order: the home page; the guide, with `yarn verify` and `yarn demo`; Verify, where healthy is approved and inflated and tampered are rejected; Audit, where Check evidence reproduces a record from the public mirror; the market preview, which builds the swap and does not send it; plant HYDRO-DEMO-01; [schedule 0.0.10842021](https://hashscan.io/testnet/schedule/0.0.10842021), which Hedera executed; then `yarn verify` and `yarn checkout:demo` in a fresh scaffold. The schedule service in that last command is the local stand-in. The Hashscan page in the recording is that earlier schedule. The later one, signed by `0.0.10729772`, is [0.0.10847470](https://hashscan.io/testnet/schedule/0.0.10847470).
 
@@ -133,7 +133,7 @@ yarn start                         # terminal 3: http://localhost:3000
 
 The deploy installs local stand-ins for HTS, Chainlink, Supra and SaucerSwap. It registers two demo plants, records one hour of `HYDRO-DEMO-01` signed by its demo meter, has the local verifier issue the credits, and lists them at $15/t.
 
-The local chain is written to gitignored `deployedContracts.local.ts`. The committed testnet addresses are not rewritten, so `yarn test` still passes in that same checkout. `yarn start` then targets that local chain. Open `/market`. A burner wallet connects on its own. Press **100 local HBAR** in the footer, then **Buy & retire**. The certificate is on `/portfolio`.
+The local chain is written to gitignored `deployedContracts.local.ts`. The committed testnet addresses are not rewritten, so `yarn test` still passes in that same checkout. `yarn start` then targets that local chain. Open `/market`. The local account connects on its own. Press **100 local HBAR** in the footer, then **Buy & retire**. The certificate is on `/portfolio`.
 
 Three commands cover the rest of a first run:
 
@@ -251,12 +251,12 @@ Open these five. The rest of the cycle, including the deficit plant, the Guardia
 
 The [Testnet evidence](.github/workflows/testnet-evidence.yml) workflow ran the cycle with the same commands an operator and a VVB use. The six contracts from that deploy are Sourcify-verified (exact match). The scheduled checkout [0xc084DDD1…](https://hashscan.io/testnet/contract/0xc084DDD1765145D6FF54bf1CBaF61B2fAa34BAC3) is a runtime exact match as well, verified on 3 Oct 2026. It is not the production checkout. The public mainnet pair `0.0.1462797` is quoted on every push by the [Mainnet fork](.github/workflows/mainnet-fork.yml) workflow. The swap is not executed there.
 
-## Limits, stated plainly
+## Limits
 
-- **These are not Verra credits.** The registry issues its own units from the equations it implements. The demo plants' additionality evidence is illustrative. On testnet one person holds the operator, meter and labelled demo VVB keys. A real deployment must not do that.
+- **These are not Verra credits.** The registry issues its own units from the equations it implements. The demo plants' additionality evidence is illustrative. On testnet I hold the operator, meter and labelled demo VVB keys. A real deployment must not do that.
 - The testnet SaucerSwap pair holds a USD token this project minted, because the public testnet USDC pair prices HBAR near $2. The recorded sale used that pair. Nothing in this template trades it back to the oracle. A later purchase reverts while the pair is more than 3% off. On mainnet the same code uses the public WHBAR/USDC pair.
 - The contract cannot verify a Guardian VP. For a marked token, `buy` reverts and `buyTraced` checks a signature this server creates only after the trace is backed. An unmarked token is not a Guardian mint. The checkout deployed before that function, `0x455eFbF0…`, still sells with `buy`.
-- The demo grid factor is Uganda's published CDM standardized baseline (ASB0054-2022). It expired on 9 August 2025. The demo plants were registered in 2026, outside that window. The tonnes illustrate the arithmetic. A real project needs a new grid factor.
+- The demo grid factor is Uganda's published CDM standardized baseline (ASB0054-2022). It expired on 9 August 2025. The demo plants were registered in 2026, outside that window. The figures are the equations. A real project needs a current grid factor.
 - The contract checks that each record cites a non-zero sequence on HCS topic `0.0.10729650`. It cannot read the message. `yarn mrv:submit` refuses to relay an approval when the records do not reproduce or the published report does not match. A direct `verifyPeriod` call can still cite a sequence whose bytes are something else.
 - `evidenceHash` is an optional label. The contract does not check what it names.
 - A monitoring run the VVB rejects still counts toward that year's energy for a retrofit or a capacity addition. Both demo plants are greenfield, so this does not affect them. Detail is in [docs/contract.md](docs/contract.md).
@@ -294,7 +294,7 @@ claude mcp add --transport http hydro-dmrv https://hydro-dmrv.vercel.app/api/mcp
 
 | Symptom | Cause | Fix |
 | --- | --- | --- |
-| `npm error canceled`, then `Command "demo" not found` or `Command "chain:offline" not found` | npm asked `Ok to proceed? (y)` and the next pasted line was `cd my-hedera-dapp`. The install never ran. The shell is still `C:\Users\USER` | Ctrl+C. Paste the one line in [One command](#1-one-command). Then `pwd` must end in `my-hedera-dapp` |
+| `npm error canceled`, then `Command "demo" not found` or `Command "chain:offline" not found` | npm asked `Ok to proceed? (y)` and the next pasted line was `cd my-hedera-dapp`. The install never ran. The shell is still your home folder | Ctrl+C. Paste the one line in [One command](#1-one-command). Then `pwd` must end in `my-hedera-dapp` |
 | A purchase overpays by 10¹⁰, or reverts `InsufficientPayment` | `msg.value` is tinybar inside the EVM. A JSON-RPC `value` is weibar | Send what `quote()` returns, through `quoteToTxValue` ([`pricing.ts`](packages/nextjs/services/mrv/pricing.ts)) |
 | The relay rejects a transaction for its fee | Hashio refuses EIP-1559 fees under its minimum gas price | Send a legacy transaction at `eth_gasPrice`, as the scripts do |
 | `HtsCallFailed(…, 184)` on a purchase or a withdrawal | The receiving account is not associated with the token | Call `associate()` on the token's own address first (HIP-719) |
@@ -309,7 +309,7 @@ claude mcp add --transport http hydro-dmrv https://hydro-dmrv.vercel.app/api/mcp
 | The API returns 429 | This instance saw 300 calls in a minute from one address | Wait for `Retry-After`. Instances do not share the counter, so a public site should also set a Vercel Firewall rule on `/api/*` |
 | `yarn mrv:record` asks for `METER_PRIVATE_KEYS` | That command records on testnet. `yarn demo` already issued the local listing and does not use this key | `yarn start`, then Buy & retire. Testnet meters are `yarn hardhat:meter-keys --network hederaTestnet`. Do not run `yarn deploy` with no network |
 | I only want to see a rejection | The testnet VVB commands need an operator and a separate key | `yarn verify`, or open `/verify` and press **tampered**. `yarn mrv` prints both paths. A local listing is already issued by `yarn deploy` |
-| A testnet deploy stops at the meter keys | Live networks refuse the public demo meter keys | `yarn hardhat:meter-keys --network hederaTestnet` |
+| A testnet deploy stops at the meter keys | A Hedera deploy refuses the local demo meter keys. Anyone can recompute them | `yarn hardhat:meter-keys --network hederaTestnet` |
 | HashPack says the site is a malicious dapp, or "No applicable ECDSA accounts" | WalletConnect's shared project id is flagged, and an ED25519 account cannot sign | Use HashPack's ECDSA account, or MetaMask. `NEXT_PUBLIC_WALLET_CONNECT_PROJECT_ID` clears the warning. The HashPack extension does not use that check |
 
 Each row has a test or a workflow behind it, listed in [`HEDERA_FACTS.md`](HEDERA_FACTS.md).
