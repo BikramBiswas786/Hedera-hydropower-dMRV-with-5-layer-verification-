@@ -8,17 +8,25 @@ Guardian will store a number and mint it. The portal will create a token. Neithe
 
 This is the self-check. Node 20.18.3 or newer. Yarn comes from Corepack (`corepack enable`). Git needs a name and an email.
 
+Paste this as one line, into an idle prompt. `npx --yes` answers npm’s install question. `--yes` answers the scaffolder. Do not paste it into `Ok to proceed? (y)`.
+
 ```bash
-npm create scaffold-hbar@latest -- --template BikramBiswas786/Hedera-hydropower-dMRV-with-5-layer-verification-
-cd my-hedera-dapp
-yarn demo
+npx --yes create-scaffold-hbar@latest my-hedera-dapp --template BikramBiswas786/Hedera-hydropower-dMRV-with-5-layer-verification- --yes && cd my-hedera-dapp && yarn demo
 ```
 
-The first line fetches this repo and selects Hardhat and Yarn from `template.json`. `yarn demo` is the local run: it starts the chain, deploys the stand-ins, and buys a credit. No Hedera account. `yarn checkout:demo` is the same sale with no registry. It lists event tickets at $12.50, buys one, then shows `PoolPriceDeviation` and `StalePrice`. It then locks the HBAR for a later ticket. Firing that call while the pool is off returns the HBAR. Firing it while the pool agrees delivers the ticket.
+PowerShell:
+
+```powershell
+npx --yes create-scaffold-hbar@latest my-hedera-dapp --template BikramBiswas786/Hedera-hydropower-dMRV-with-5-layer-verification- --yes; if ($LASTEXITCODE -eq 0) { Set-Location .\my-hedera-dapp; yarn demo }
+```
+
+If you already typed `cd my-hedera-dapp` at `Ok to proceed? (y)`, npm canceled. You are still in `C:\Users\USER`. Press Ctrl+C, then paste the line above. `yarn demo` exists only inside `my-hedera-dapp`.
+
+The scaffolder fetches this repo and selects Hardhat and Yarn from `template.json`. `yarn demo` starts the chain, deploys the stand-ins, and buys a credit. No Hedera account. `yarn checkout:demo` is the same sale with no registry. It lists event tickets at $12.50, buys one, then shows `PoolPriceDeviation` and `StalePrice`. It then locks the HBAR for a later ticket. Firing that call while the pool is off returns the HBAR. Firing it while the pool agrees delivers the ticket.
 
 ## 2. A fresh developer, end to end
 
-`yarn demo` is enough to see a sale. If you cloned this repository instead of scaffolding it, run `yarn install` once first. The three terminals are the same work, split, if you want to watch each step.
+Run these inside `my-hedera-dapp`. `pwd` must end with that folder. `yarn demo` is enough to see a sale. If you cloned this repository instead of scaffolding it, run `yarn install` once first. The three terminals are the same work, split, if you want to watch each step.
 
 ```bash
 yarn chain:offline
@@ -279,6 +287,7 @@ claude mcp add --transport http hydro-dmrv https://hydro-dmrv.vercel.app/api/mcp
 
 | Symptom | Cause | Fix |
 | --- | --- | --- |
+| `npm error canceled`, then `Command "demo" not found` or `Command "chain:offline" not found` | npm asked `Ok to proceed? (y)` and the next pasted line was `cd my-hedera-dapp`. The install never ran. The shell is still `C:\Users\USER` | Ctrl+C. Paste the one line in [One command](#1-one-command). Then `pwd` must end in `my-hedera-dapp` |
 | A purchase overpays by 10¹⁰, or reverts `InsufficientPayment` | `msg.value` is tinybar inside the EVM. A JSON-RPC `value` is weibar | Send what `quote()` returns, through `quoteToTxValue` ([`pricing.ts`](packages/nextjs/services/mrv/pricing.ts)) |
 | The relay rejects a transaction for its fee | Hashio refuses EIP-1559 fees under its minimum gas price | Send a legacy transaction at `eth_gasPrice`, as the scripts do |
 | `HtsCallFailed(…, 184)` on a purchase or a withdrawal | The receiving account is not associated with the token | Call `associate()` on the token's own address first (HIP-719) |
