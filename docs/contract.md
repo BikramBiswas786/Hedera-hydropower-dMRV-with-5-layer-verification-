@@ -4,14 +4,14 @@ The on-chain half is five contracts plus a second methodology module:
 
 | Contract | Role | Size (`yarn hardhat:size`) |
 | --- | --- | --- |
-| `DmrvRegistry.sol` | The VCS project cycle: VVB-validated registration, meter-signed monitoring records in a hash chain, VVB verification that issues, custody, retirement, certificates, and every HTS call (only here) | 24,011 B |
+| `DmrvRegistry.sol` | The VCS project cycle: VVB-validated registration, meter-signed monitoring records in a hash chain, VVB verification that issues, custody, retirement, certificates, and every HTS call (only here) | 23,958 B |
 | `modules/HydroVmr0017Module.sol` | Stateless `IMethodology`: VMR0017 / ACM0002 / AMS-I.D applicability (Table 1 with the UN LDC list), crediting rules and integer quantification | 8,413 B |
 | `modules/RenewableVmr0017Module.sol` | Second `IMethodology`: greenfield solar, wind and ocean power (VMR0017, CDM ACM0002) | 6,119 B |
 | `DmrvAnnotations.sol` | Records nothing enforces: VVB accreditation references, Article 6.2 fields, corresponding-adjustment status, Verra VCU references | 2,926 B |
 | `CreditMarket.sol` | Listings, oracle quote, SaucerSwap router swap, pool guard | 9,044 B |
 | `ResilientHbarUsdFeed.sol` | Chainlink HBAR/USD with a Supra fallback | 2,534 B |
 
-CI fails any contract above 24,064 B (512 B under EIP-170). `yarn hardhat:size` prints `tight` when a contract is under 256 B of that limit. `tight` does not fail the gate. `DmrvRegistry` is in that band (53 B left): a new registry function needs an equal cut. It gets there with a per-file compiler
+CI fails any contract above 24,064 B (512 B under EIP-170). `yarn hardhat:size` prints `tight` when a contract is under 256 B of that limit. `tight` does not fail the gate. `DmrvRegistry` is in that band (106 B left): a new registry function needs an equal cut. It gets there with a per-file compiler
 override (`viaIR`, 1 optimizer run) in `hardhat.config.ts`, and by keeping unenforced records in `DmrvAnnotations`.
 The deployed price age is 25 hours (`MAX_PRICE_AGE_SECONDS`, default 90000); two days is only the upper bound
 `CreditMarket` accepts (`MAX_PRICE_AGE`).
@@ -118,7 +118,7 @@ VerificationStatement(bytes32 projectId,uint32 firstRecord,uint32 lastRecord,byt
   certificate with `setCalibrationValidUntil`). The call rejects an empty `certificateHash` and emits it on
   `CalibrationUpdated`, but `Project` stores only `calibrationValidUntil`. `getProject` therefore returns the date,
   not the document hash: the hash is the latest `CalibrationUpdated` log for that project. Putting the hash in
-  storage would be a new registry. `DmrvRegistry` is already at 24,011 B of the 24,064 B gate, so this deployment
+  storage would be a new registry. `DmrvRegistry` is already at 23,958 B of the 24,064 B gate, so this deployment
   does not.
 
 TypeScript mirrors: `services/mrv/provenance.ts` (`meterStatementDigest`) and `services/mrv/approval.ts`

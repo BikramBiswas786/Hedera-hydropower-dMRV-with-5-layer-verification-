@@ -27,7 +27,7 @@ Read this before the rest.
 - `yarn demo` is the path with no Hedera account. It is not a testnet issuance.
 - Testnet issuance needs three separate keys: the operator, the plant meter, and the VVB. The demo VVB key in this repo is the author's test key.
 - These are HTS units issued by this registry. They are not Verra credits. The demo grid factor is ASB0054-2022, which expired on 9 August 2025. The tonnes illustrate the arithmetic.
-- `DmrvRegistry` is 24,011 bytes. The project gate is 24,064. Do not add a function to that contract.
+- `DmrvRegistry` is 23,958 bytes. The project gate is 24,064. That is 106 bytes of headroom, still inside the `tight` band. Do not add a function to that contract unless you cut at least as much.
 - The contract stores an HCS sequence and a hash. It cannot read the message. `yarn mrv:submit` refuses an approval unless those monitoring records reproduce from HCS and the verification report at the cited sequence matches the statement. A direct `verifyPeriod` can still cite a sequence whose bytes are something else.
 - The scheduled pair workflow only reads the testnet pool. It does not trade it. If the pair is more than 3% from the oracle, the sale reverts. The recorded sale used a project-minted dollar token, not public USDC. Nothing here is a mainnet carbon deployment.
 - The contracts have not been audited.

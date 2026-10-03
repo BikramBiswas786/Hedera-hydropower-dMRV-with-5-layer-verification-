@@ -18,8 +18,8 @@ package. Run commands from the repo root with the `hardhat:` prefix, or from thi
 | `contracts/interfaces/` | `IMethodology`, the subset of `IHederaTokenService` used, SaucerSwap, Chainlink's `AggregatorV3Interface`, Supra's `ISupraSValueFeed` |
 | `contracts/mocks/` | `MockHederaTokenService` (installed at `0x167` on local chains and in tests), Chainlink, Supra and SaucerSwap mocks |
 
-`DmrvRegistry` is compiled with the IR pipeline and one optimizer run (a per-file override in `hardhat.config.ts`),
-which keeps it at 24,011 B, 53 B under the 24,064 B gate. `yarn hardhat:size` prints `tight` for that headroom and still exits 0.
+`DmrvRegistry` is compiled with the IR pipeline, one optimizer run, and no CBOR metadata suffix (a per-file override in `hardhat.config.ts`),
+which keeps it at 23,958 B, 106 B under the 24,064 B gate. `yarn hardhat:size` prints `tight` for that headroom and still exits 0.
 
 ## Local chain
 

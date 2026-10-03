@@ -46,7 +46,12 @@ const config: HardhatUserConfig = {
       // code limit (`yarn hardhat:size`).
       "contracts/DmrvRegistry.sol": {
         version: "0.8.28",
-        settings: { optimizer: { enabled: true, runs: 1 }, viaIR: true },
+        settings: {
+          optimizer: { enabled: true, runs: 1 },
+          viaIR: true,
+          // The CBOR metadata suffix is not executable. Dropping it is the headroom under the 24,064 B gate.
+          metadata: { bytecodeHash: "none", appendCBOR: false },
+        },
       },
     },
   },

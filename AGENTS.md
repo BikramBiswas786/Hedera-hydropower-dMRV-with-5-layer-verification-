@@ -261,7 +261,7 @@ older testnet registries are documented in `docs/operations.md` and not read.
   vector to `quantificationVectors.ts`. Bump `ENGINE_VERSION` and the report schema if the report changes.
 - **A contract function**: custom errors over strings, events for every state change, `nonReentrant` on anything
   that moves value, and tests for the happy path and each revert. Run `yarn deploy` to regenerate ABIs and
-  `yarn hardhat:size` to check the 24,064 B gate. `DmrvRegistry` is at 24,011 B: a new registry function needs an
+  `yarn hardhat:size` to check the 24,064 B gate. `DmrvRegistry` is at 23,958 B: a new registry function needs an
   equal cut, or belongs in `DmrvAnnotations` if nothing enforces it.
 - **A methodology**: see the recipe below. Do not add methodology rules to `DmrvRegistry`.
 - **A new thing to sell** (tickets, RWA shares, any HTS fungible token): no new contract. Deploy `UsdCheckout`
