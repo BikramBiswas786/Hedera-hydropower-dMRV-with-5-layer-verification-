@@ -2,7 +2,7 @@
  * One local pass: chain (if it is down), deploy, three engine decisions, one buy-and-retire.
  *
  *   yarn demo
- *   yarn start          # the app. Skipped here when the machine has under 6 GB free.
+ *   yarn start          # started below. Polling, so it does not need a higher inotify limit.
  *
  * Chain 31337 is written to the gitignored local file. The committed testnet addresses stay.
  */
@@ -40,18 +40,6 @@ async function waitForPort(port: number, timeoutMs: number): Promise<void> {
     await new Promise(resolve => setTimeout(resolve, 500));
   }
   throw new Error(`Nothing accepted connections on 127.0.0.1:${port} within ${timeoutMs / 1000}s`);
-}
-
-function memAvailableMb(): number {
-  try {
-    const text = fs.readFileSync("/proc/meminfo", "utf8");
-    const match = text.match(/MemAvailable:\s+(\d+)/);
-    if (match) return Number(match[1]) / 1024;
-  } catch {
-    // macOS and Windows have no /proc. Assume a laptop can boot the dev server.
-    return 8_192;
-  }
-  return 8_192;
 }
 
 function startChain(): void {
@@ -170,7 +158,7 @@ async function main(): Promise<void> {
     "The contract stores each HCS report's hash and sequence. It cannot read the message. yarn mrv:reproduce refuses a mismatch.",
   );
 
-  if (process.env.DEMO_SKIP_APP === "1" || memAvailableMb() < 6_000) {
+  if (process.env.DEMO_SKIP_APP === "1") {
     console.log("Next: yarn start, then http://localhost:3000/market");
     return;
   }
@@ -183,6 +171,11 @@ async function main(): Promise<void> {
       detached: true,
       stdio: ["ignore", log, log],
       shell: process.platform === "win32",
+      env: {
+        ...process.env,
+        WATCHPACK_POLLING: process.env.WATCHPACK_POLLING ?? "1000",
+        CHOKIDAR_USEPOLLING: process.env.CHOKIDAR_USEPOLLING ?? "1",
+      },
     });
     child.unref();
     console.log(`Started yarn start (log: ${logPath})`);

@@ -4,7 +4,7 @@
 
 ```bash
 yarn verify            # engine only: healthy APPROVED, inflated and tampered REJECTED, with the reason. No chain.
-yarn demo              # local chain, deploy, those three checks, buy 10 kg. Skips the app when under 6 GB is free.
+yarn demo              # local chain, deploy, those three checks, buy 10 kg, then the market page
 yarn test              # contracts + frontend unit tests
 yarn hardhat:test      # 152 passing (4 pending without a fork), hermetic (HTS mock at 0x167, oracle and SaucerSwap mocks)
 yarn hardhat:test:fork # same suite against Hedera's HTS emulation (HEDERA_FORKING, needs internet)

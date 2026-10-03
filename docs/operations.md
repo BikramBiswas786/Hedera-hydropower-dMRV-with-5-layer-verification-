@@ -63,7 +63,7 @@ Nothing is required to browse the app or use the engine. Copy the `.env.example`
 | --- | --- |
 | `yarn verify` | Engine only: healthy is approved, inflated and tampered are rejected, with the reason. No chain and no VVB key |
 | `yarn mrv` | Prints that path, then the four testnet issuance commands. `yarn mrv:verify` is not `yarn verify` |
-| `yarn demo` | Local chain if it is down, deploy, those three checks, buy 10 kg. Skips the app when under 6 GB is free |
+| `yarn demo` | Local chain if it is down, deploy, those three checks, buy 10 kg, then the market page. The dev server polls, so it does not need a higher file-watcher limit |
 | `yarn chain:offline` · `yarn deploy --network localhost` · `yarn start` | Local chain, contracts and demo batch, app |
 | `yarn test` · `yarn lint` · `yarn next:build` | Contract and app tests, lint, production build |
 | `yarn hardhat:size` | Contract-size gate (24,064 B). `tight` means under 256 B of that limit and does not fail |

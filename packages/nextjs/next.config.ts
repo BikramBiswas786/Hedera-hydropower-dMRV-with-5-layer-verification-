@@ -1,6 +1,10 @@
 import type { NextConfig } from "next";
 import path from "path";
 
+// Polling does not use inotify. A default Linux watcher limit otherwise kills `next dev`.
+process.env.WATCHPACK_POLLING ??= "1000";
+process.env.CHOKIDAR_USEPOLLING ??= "1";
+
 const nextConfig: NextConfig = {
   outputFileTracingRoot: path.join(__dirname, "../.."),
   reactStrictMode: true,
@@ -31,11 +35,12 @@ const nextConfig: NextConfig = {
     config.resolve.fallback = { fs: false, net: false, tls: false };
     config.externals.push("pino-pretty", "lokijs", "encoding");
     if (dev) {
-      // Follow workspace symlinks, but do not snapshot node_modules. Clearing managedPaths makes
-      // webpack hash every installed package and the dev server runs out of memory on a laptop.
+      // Poll, and do not walk node_modules. Native watchers run out on a default Linux limit.
       config.watchOptions = {
         followSymlinks: true,
-        ignored: ["**/.git/**", "**/node_modules/**", "**/.next/**"],
+        poll: 1000,
+        aggregateTimeout: 300,
+        ignored: /(?:^|[/\\])(\.git|node_modules|\.next|\.yarn)([/\\]|$)/,
       };
     }
     return config;

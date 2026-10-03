@@ -123,7 +123,7 @@ The scaffold command is at the top. Inside the new directory:
 yarn demo
 ```
 
-`yarn demo` starts the local chain, deploys stand-ins for HTS, Chainlink, Supra and SaucerSwap, registers the demo plant, issues one batch, and buys it. The three terminals below are the same steps, if you want them split.
+`yarn demo` starts the local chain, deploys stand-ins for HTS, Chainlink, Supra and SaucerSwap, registers the demo plant, issues one batch, and buys it. It then starts the app. The dev server polls for file changes, so it does not need a higher file-watcher limit. The three terminals below are the same steps, if you want them split.
 
 ```bash
 yarn chain:offline                 # terminal 1: local chain
