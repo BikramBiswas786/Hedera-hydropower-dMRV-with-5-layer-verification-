@@ -70,7 +70,7 @@ export function buildOpenApi(origin: string) {
       summary:
         "Digital MRV for grid-connected hydropower on Hedera (Verra VMR0017 with ACM0002, CDM AMS-I.D / ACM0002, VT0011 / TOOL07, TOOL03)",
       description:
-        "Verify and quantify monitoring periods, read the on-chain registry, reproduce any issuance from HCS data, and prepare unsigned purchases for your own wallet. The same capabilities are MCP tools at /api/mcp; where a tool does what an endpoint does, the operationId is the tool's name. Units: energy in Wh, emissions in g CO2e, credits in kg (1 token = 1 t CO2e). Methodology: /methodology and the MCP resource hydro-dmrv://methodology.",
+        "Verify and quantify monitoring periods, read the on-chain registry, reproduce any issuance from HCS data, and prepare unsigned purchases for your own wallet. The tokens are units this registry issues. They are not Verra credits. The same capabilities are MCP tools at /api/mcp; where a tool does what an endpoint does, the operationId is the tool's name. Units: energy in Wh, emissions in g CO2e, credits in kg (1 token = 1 t CO2e). Methodology: /methodology and the MCP resource hydro-dmrv://methodology.",
       license: { name: "MIT", identifier: "MIT" },
     },
     servers: [{ url: origin }],
