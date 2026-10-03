@@ -6,23 +6,25 @@ Guardian will store a number and mint it. The portal will create a token. Neithe
 
 ## 1. One command
 
-This is the self-check. Node 20.18.3 or newer. Yarn comes from Corepack (`corepack enable`). Git needs a name and an email.
-
-Paste this as one line, into an idle prompt. `npx --yes` answers npm’s install question. `--yes` answers the scaffolder. Do not paste it into `Ok to proceed? (y)`.
+This is the self-check, the same command the other templates publish. Node 20.18.3 or newer. Yarn comes from Corepack (`corepack enable`). Git needs a name and an email.
 
 ```bash
-npx --yes create-scaffold-hbar@latest my-hedera-dapp --template BikramBiswas786/Hedera-hydropower-dMRV-with-5-layer-verification- --yes && cd my-hedera-dapp && yarn demo
+npm create scaffold-hbar@latest -- --template BikramBiswas786/Hedera-hydropower-dMRV-with-5-layer-verification-
+cd my-hedera-dapp
+yarn demo
 ```
 
-PowerShell:
+Run the first line alone. If npm asks `Ok to proceed? (y)`, type `y` and Enter. Do not paste `cd` into that prompt. That answer cancels the install, and `yarn demo` then fails because the shell is still in your home folder.
+
+PowerShell, one line, no prompt:
 
 ```powershell
-npx --yes create-scaffold-hbar@latest my-hedera-dapp --template BikramBiswas786/Hedera-hydropower-dMRV-with-5-layer-verification- --yes; if ($LASTEXITCODE -eq 0) { Set-Location .\my-hedera-dapp; yarn demo }
+$env:npm_config_yes='true'; npm create scaffold-hbar@latest -- my-hedera-dapp -- --template BikramBiswas786/Hedera-hydropower-dMRV-with-5-layer-verification- --yes; if ($LASTEXITCODE -eq 0) { Set-Location .\my-hedera-dapp; yarn demo }
 ```
 
-If you already typed `cd my-hedera-dapp` at `Ok to proceed? (y)`, npm canceled. You are still in `C:\Users\USER`. Press Ctrl+C, then paste the line above. `yarn demo` exists only inside `my-hedera-dapp`.
+Checked 3 Oct 2026 from an empty directory. The create command exited 0 and wrote `my-hedera-dapp`. `yarn demo` then exited 0: local chain, stand-ins, 39 kg listed, `healthy` approved, `inflated` and `tampered` rejected, `buyAndRetire` success.
 
-The scaffolder fetches this repo and selects Hardhat and Yarn from `template.json`. `yarn demo` starts the chain, deploys the stand-ins, and buys a credit. No Hedera account. `yarn checkout:demo` is the same sale with no registry. It lists event tickets at $12.50, buys one, then shows `PoolPriceDeviation` and `StalePrice`. It then locks the HBAR for a later ticket. Firing that call while the pool is off returns the HBAR. Firing it while the pool agrees delivers the ticket.
+The scaffolder selects Hardhat and Yarn from `template.json`. `yarn demo` needs no Hedera account. `yarn checkout:demo` is the same sale with no registry. It lists event tickets at $12.50, buys one, then shows `PoolPriceDeviation` and `StalePrice`. It then locks the HBAR for a later ticket. Firing that call while the pool is off returns the HBAR. Firing it while the pool agrees delivers the ticket.
 
 ## 2. A fresh developer, end to end
 
