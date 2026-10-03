@@ -7,8 +7,8 @@ before your code does.
 
 Proof legend: **test** runs in `yarn test` (hermetic). **fork** runs on a Hedera mainnet fork in the
 [Mainnet fork](.github/workflows/mainnet-fork.yml) workflow. **live** runs against Hedera testnet or the deployed
-app in the [Live smoke](.github/workflows/live-smoke.yml) or [Testnet pair keeper](.github/workflows/testnet-pair-keeper.yml)
-workflows, or the [Guardian trace](.github/workflows/guardian-trace.yml) workflow, or on demand in the [Checkout testnet demo](.github/workflows/checkout-testnet-demo.yml) workflow.
+app in the [Live smoke](.github/workflows/live-smoke.yml) workflow, the [pair read](.github/workflows/testnet-pair-keeper.yml)
+workflow (it reports drift and does not swap), the [Guardian trace](.github/workflows/guardian-trace.yml) workflow, or on demand in the [Checkout testnet demo](.github/workflows/checkout-testnet-demo.yml) workflow.
 
 ## Value and gas
 
