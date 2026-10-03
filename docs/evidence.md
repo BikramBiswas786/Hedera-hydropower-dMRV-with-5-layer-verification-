@@ -99,7 +99,7 @@ The seller must be associated with the pair's USD token before listing, or keep 
 ## Keys, honestly
 
 - **Local chains.** Demo meter keys are `keccak256("hydro-dmrv demo meter " + plant id)` and the local VVB key is
-  `keccak256("hydro-dmrv demo vvb local")`. They are public.
+  `keccak256("hydro-dmrv demo vvb local")`. Anyone can recompute those private keys. They are not public keys. A Hedera deploy refuses them.
 - **Hedera networks.** The deploy throws unless every plant has a generated meter key (`METER_ADDRESSES` or
   `.secrets/meters.<network>.json`). A mainnet deploy also throws if `VERIFIER_ADDRESS` and `ADMIN_ADDRESS` are unset.
   The contract refuses a VVB that is the operator, the meter or the reporter.

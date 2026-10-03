@@ -73,7 +73,7 @@ Use the other tool when it is the job.
 Read this before the rest.
 
 - `yarn checkout:demo` sells a token and does not deploy the registry. `yarn demo` is the local credit market. Neither is a testnet issuance.
-- Testnet issuance needs three separate keys: the operator, the plant meter, and the VVB. None of those private keys are in this repository. The local demo uses public keys. The testnet demo VVB is derived in CI from the deploy secret, and the app never holds it. On that demo one person holds all three roles. A real deployment must not.
+- Testnet issuance needs three separate keys: the operator, the plant meter, and the VVB. None of those private keys are written out in this repository. The local demo VVB and meter keys are recomputed from fixed strings, the same way Hardhat's default accounts are known: anyone can recover the private key. A Hedera deploy refuses those keys. The testnet demo VVB is derived in CI from the deploy secret, and the app never holds it. On that demo one person holds all three roles. A real deployment must not.
 - These are HTS units issued by this registry. They are not Verra credits. The demo grid factor is ASB0054-2022, which expired on 9 August 2025. The tonnes illustrate the arithmetic.
 - `DmrvRegistry` is 23,958 bytes. Hedera refuses a contract above 24,576, so 618 bytes remain. This repo fails CI at 24,064, which is 512 bytes earlier, and the registry is 106 bytes under that line. `yarn hardhat:size` prints `tight` and still exits 0. Do not add a function to that contract unless you cut at least as much.
 - The contract stores an HCS sequence and a hash. It cannot read the message. `yarn mrv:submit` refuses an approval unless those monitoring records reproduce from HCS and the verification report at the cited sequence matches the statement. A direct `verifyPeriod` can still cite a sequence whose bytes are something else.
@@ -143,7 +143,7 @@ Three commands cover the rest of a first run:
 
 `/verify` runs the same five-stage engine. `yarn test` runs 152 contract tests and 419 app tests. The Solidity and TypeScript quantification must agree on the same integers.
 
-All keys on a local chain are public demo keys. The deploy refuses those keys on Hedera.
+All keys on a local chain are private keys anyone can recompute, the same way Hardhat's default accounts are known. The deploy refuses those keys on Hedera.
 
 | Market: oracle price, SaucerSwap check, listing | Verify: the five-stage engine on a day of readings |
 | --- | --- |
