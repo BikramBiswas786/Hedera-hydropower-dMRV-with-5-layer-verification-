@@ -19,7 +19,7 @@ Run the first line alone. If npm asks `Ok to proceed? (y)`, type `y` and Enter. 
 PowerShell, one line, no prompt:
 
 ```powershell
-$env:npm_config_yes='true'; npm create scaffold-hbar@latest -- my-hedera-dapp -- --template BikramBiswas786/Hedera-hydropower-dMRV-with-5-layer-verification- --yes; if ($LASTEXITCODE -eq 0) { Set-Location .\my-hedera-dapp; yarn demo }
+$env:npm_config_yes='true'; npm create scaffold-hbar@latest -- my-hedera-dapp --template BikramBiswas786/Hedera-hydropower-dMRV-with-5-layer-verification- --yes; if ($LASTEXITCODE -eq 0) { Set-Location .\my-hedera-dapp; yarn demo }
 ```
 
 Checked 3 Oct 2026 from an empty directory. The create command exited 0 and wrote `my-hedera-dapp`. `yarn demo` then exited 0: local chain, stand-ins, 39 kg listed, `healthy` approved, `inflated` and `tampered` rejected, `buyAndRetire` success.
