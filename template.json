@@ -35,20 +35,12 @@
           "title": "Try it locally (no Hedera account needed)",
           "steps": [
             {
-              "label": "Start a local chain",
-              "command": "{run:chain:offline}"
+              "label": "One command. Starts the chain, deploys the stand-ins, and runs the sale",
+              "command": "{run:demo}"
             },
             {
-              "label": "Deploy stand-ins for HTS, Chainlink, Supra and SaucerSwap, the contracts and demo plants, then mint and list one batch",
-              "command": "{run:deploy} --network localhost"
-            },
-            {
-              "label": "Start the app (it targets the local chain after a local deploy). It connects a burner wallet; fund it from the footer and buy on /market",
-              "command": "{run:start}"
-            },
-            {
-              "label": "Run every test",
-              "command": "{run:test}"
+              "label": "The sale without the registry",
+              "command": "{run:checkout:demo}"
             }
           ]
         },

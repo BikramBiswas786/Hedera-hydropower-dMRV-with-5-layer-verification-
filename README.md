@@ -2,13 +2,13 @@
 
 Sell any HTS token at a dollar price. The buyer pays HBAR. The sale reverts unless Chainlink and Supra agree and SaucerSwap is within 3% of that price. Guardian does not settle a sale. The portal does not check a pool.
 
-The hydropower registry is the worked example of a token whose supply the contract recomputes. A verifier can only lower the tonnes. You do not need that registry to sell a token.
-
 ```bash
-yarn checkout:demo
+npm create scaffold-hbar@latest -- --template BikramBiswas786/Hedera-hydropower-dMRV-with-5-layer-verification-
+cd my-hedera-dapp
+yarn demo
 ```
 
-That command needs Node 20.18.3 and Yarn. No Hedera account. It lists local event tickets at $12.50, buys one, then shows `PoolPriceDeviation` and `StalePrice`. `DmrvRegistry` is not deployed.
+That first line is the command the bounty asks for. It fetches this repo and selects Hardhat and Yarn from `template.json`. `yarn demo` is the one local command: it starts the chain, deploys the stand-ins, and runs the sale. No Hedera account. `yarn checkout:demo` is the same sale without the registry.
 
 ## Already available
 
@@ -62,16 +62,19 @@ The full map is [docs/README.md](docs/README.md).
 
 That is enough for the quick start. A funded ECDSA testnet account is required only in [Deploy to Hedera testnet](#deploy-to-hedera-testnet).
 
-## Quick start: a working market in five minutes, no Hedera account
+## Quick start: one command, no Hedera account
+
+The scaffold command is at the top. Inside the new directory:
 
 ```bash
-npm create scaffold-hbar@latest -- hydro-dmrv \
-  --template BikramBiswas786/Hedera-hydropower-dMRV-with-5-layer-verification-
-cd hydro-dmrv
+yarn demo
+```
 
-# cloned this repo instead? run `yarn install` first
+`yarn demo` starts the local chain, deploys stand-ins for HTS, Chainlink, Supra and SaucerSwap, registers the demo plant, issues one batch, and buys it. The three terminals below are the same steps, if you want them split.
+
+```bash
 yarn chain:offline                 # terminal 1: local chain
-yarn deploy --network localhost    # terminal 2: contracts, stand-ins, a validated plant, one verified record, one listing
+yarn deploy --network localhost    # terminal 2: contracts and one listing
 yarn start                         # terminal 3: http://localhost:3000
 ```
 
