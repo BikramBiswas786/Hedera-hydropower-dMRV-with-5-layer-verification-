@@ -108,7 +108,7 @@ The seller must be associated with the pair's USD token before listing, or keep 
   verification does, and the VVB reproduces every record from HCS before it signs.
 - **The admin.** It registers projects and meters (only with a VVB's validation signature) and approves modules. It
   cannot issue or move anyone's credits: the registry names its one market once (`setMarket`).
-- **The testnet demo VVB.** It is the author's labelled test key, derived in CI from the deployer secret, not an
+- **The testnet demo VVB.** It is derived in CI from the deploy secret. The private key is not in this repository, and it is not an
   accredited verifier. One person holds the operator, meter and VVB keys on testnet, which is exactly what a real
   deployment must not do. The app and API hold no VVB key at all.
 - **What the contract checks of HCS.** Only that a record or verification cites a non-zero sequence on topic

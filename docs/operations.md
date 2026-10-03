@@ -237,7 +237,7 @@ the pair logged the swap and the seller received 0.981 QUSD (at least 0.97 requi
   - **The demo site's meter keys are server-held software keys** (`METER_PRIVATE_KEYS`). Whoever runs the server can
     sign as the meter and record, up to the nameplate. A production plant needs a key that never leaves the logger.
     The VVB is the check: it reproduces every record from HCS before it signs.
-  - **The testnet demo VVB is the author's labelled test key** (derived in CI). The app and API hold no VVB key.
+  - **The testnet demo VVB** is derived in CI from the deploy secret. It is not stored in this repository, and it is not an accredited verifier. The app and API hold no VVB key.
   - **Older testnet registries** (see [older deploys](#older-deploys)) issued under weaker rules. Their mints prove the
     quantification, not the VCS cycle.
   - **Registration.** An admin chooses the meter and approves modules, so `DEFAULT_ADMIN_ROLE` sits in the 2-of-3

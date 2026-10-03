@@ -19,7 +19,7 @@ package. Run commands from the repo root with the `hardhat:` prefix, or from thi
 | `contracts/mocks/` | `MockHederaTokenService` (installed at `0x167` on local chains and in tests), Chainlink, Supra and SaucerSwap mocks |
 
 `DmrvRegistry` is compiled with the IR pipeline, one optimizer run, and no CBOR metadata suffix (a per-file override in `hardhat.config.ts`),
-which keeps it at 23,958 B, 106 B under the 24,064 B gate. `yarn hardhat:size` prints `tight` for that headroom and still exits 0.
+which keeps it at 23,958 B. That is 618 B under Hedera's 24,576 B limit and 106 B under this repo's earlier CI line of 24,064 B. `yarn hardhat:size` prints `tight` for that headroom and still exits 0.
 
 ## Local chain
 
