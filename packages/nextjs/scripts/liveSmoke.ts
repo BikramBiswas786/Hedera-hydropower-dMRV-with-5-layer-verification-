@@ -6,8 +6,9 @@
  *
  * It reads the registry and market, checks the SaucerSwap pair against the oracle, builds (but never signs) a
  * purchase for an open listing, re-derives every testnet issuance from HCS, runs the verify scenarios, and lists the
- * MCP tools. It fails when any of those would fail for a visitor. The Live smoke workflow runs it on a schedule and
- * writes the table to the job summary.
+ * MCP tools. The seeded testnet pair has no keeper. When it is more than 300 bps from the oracle, a quote must be
+ * refused with PoolPriceDeviation; that refusal is a pass. Any other failure still fails the job. The Live smoke
+ * workflow runs it on a schedule and writes the table to the job summary.
  */
 import { appendFileSync } from "node:fs";
 import { getDeployment } from "~~/services/mrv/network";
@@ -116,21 +117,30 @@ async function mcp(method: string, params: unknown, session?: string) {
   return { result: message.result, session: response.headers.get("mcp-session-id") ?? session };
 }
 
-/** The HTTP status of a refused request, or null when it succeeded. */
-async function refusalStatus(path: string, body: unknown): Promise<number | null> {
+/** Status and error of a refused request, or null when it succeeded. */
+async function refusal(path: string, body: unknown): Promise<{ status: number; error: string } | null> {
   const response = await fetch(`${BASE}${path}`, {
     method: "POST",
     headers: { "content-type": "application/json" },
     body: JSON.stringify(body),
     signal: AbortSignal.timeout(60_000),
   });
-  return response.ok ? null : response.status;
+  if (response.ok) return null;
+  const text = await response.text();
+  let error = text.slice(0, 300);
+  try {
+    const parsed = JSON.parse(text) as { error?: unknown };
+    if (typeof parsed.error === "string") error = parsed.error;
+  } catch {}
+  return { status: response.status, error };
 }
 
 async function main() {
   if (!MARKET || !REGISTRY) throw new Error("deployedContracts.ts has no Hedera testnet (296) registry and market");
   let listings: Listing[] = [];
   let oracle: Overview["oracle"] = null;
+  // The seeded testnet pair is not kept on the oracle. A deviation above 300 bps must refuse the sale.
+  let poolOff = false;
   // ResilientHbarUsdFeed refuses to price while fresh Chainlink and Supra answers are more than 3% apart, and the
   // market then refuses every sale. That is the safety rule working, so the market checks below verify the refusal
   // instead of a sale. Any other pause (no fresh price at all) is an outage and fails.
@@ -158,6 +168,7 @@ async function main() {
     }
     const d = await call<Dex>("/api/market/dex");
     const line = `pair $${d.price.toFixed(5)}, oracle $${d.oraclePrice.toFixed(5)}, ${d.deviationBps} bps (max ${d.maxDeviationBps})`;
+    if (!d.accepted) poolOff = true;
     return d.accepted ? line : `refused, no keeper: ${line}`;
   });
 
@@ -172,14 +183,18 @@ async function main() {
 
   await check("Open listings with a live quote", async () => {
     listings = (await call<{ listings: Listing[] }>("/api/registry/listings")).listings;
-    if (sourcesDisagree()) {
+    if (sourcesDisagree() || poolOff) {
       const open = listings.filter(l => l.unitsAvailable > 0);
       assert(open.length > 0, "no open listing");
       assert(
         open.every(l => l.quoteFullListingTinybar === null),
-        "a listing was quoted while the feed refuses to price",
+        sourcesDisagree()
+          ? "a listing was quoted while the feed refuses to price"
+          : "a listing was quoted while the pair is outside the band",
       );
-      return `${open.length} listing(s) open, none quoted: ${disagreement()}`;
+      return sourcesDisagree()
+        ? `${open.length} listing(s) open, none quoted: ${disagreement()}`
+        : `${open.length} listing(s) open, none quoted: testnet pair is outside the 300 bps band`;
     }
     const buyable = listings.filter(l => l.unitsAvailable > 0 && l.quoteFullListingTinybar !== null);
     assert(buyable.length > 0, `${listings.length} open listings, none buyable now`);
@@ -190,15 +205,23 @@ async function main() {
   await check("prepare_purchase builds an unsigned buyAndRetire", async () => {
     const listing = listings.find(l => l.unitsAvailable > 0);
     assert(listing, "no open listing to prepare");
-    if (sourcesDisagree()) {
-      const status = await refusalStatus("/api/market/prepare-purchase", {
+    if (sourcesDisagree() || poolOff) {
+      const refused = await refusal("/api/market/prepare-purchase", {
         listingId: listing.id,
         amountKg: Math.min(10, listing.unitsAvailable),
         retire: true,
         beneficiary: "live smoke check",
       });
-      assert(status === 409, `prepare_purchase answered ${status ?? "200"} while the feed is paused`);
-      return `refused with 409: ${disagreement()}`;
+      const answered = refused ? `${refused.status}: ${refused.error}` : "200";
+      if (sourcesDisagree()) {
+        assert(refused?.status === 409, `prepare_purchase answered ${answered} while the feed is paused`);
+        return `refused with 409: ${disagreement()}`;
+      }
+      assert(
+        refused?.status === 409 && refused.error.includes("PoolPriceDeviation"),
+        `prepare_purchase answered ${answered} while the pair is outside the band`,
+      );
+      return "refused with 409 PoolPriceDeviation: testnet pair is outside the band";
     }
     const p = await post<Prepared>("/api/market/prepare-purchase", {
       listingId: listing.id,
@@ -245,6 +268,14 @@ async function main() {
     }>("/api/checkout/listings");
     const backed = listings.find(l => l.guardian.verdict === "backed" && BigInt(l.available) > 0n);
     assert(backed, "no open checkout listing of a backed Guardian token");
+    if (poolOff && !sourcesDisagree()) {
+      const refused = await refusal("/api/checkout/prepare-purchase", { listingId: backed.id, amount: 1 });
+      assert(
+        refused?.status === 409 && refused.error.includes("PoolPriceDeviation"),
+        `checkout answered ${refused ? `${refused.status}: ${refused.error}` : "200"} while the pair is outside the band`,
+      );
+      return `traced ${backed.token.id}, quote refused: PoolPriceDeviation`;
+    }
     const prepared = await call<{ to: string; data: string; value: string; summary: string }>(
       "/api/checkout/prepare-purchase",
       {
