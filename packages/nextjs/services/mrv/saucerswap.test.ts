@@ -1,4 +1,13 @@
-import { amountOut, deviationBps, dexAccepted, hbarUsd8FromReserves, isqrt, rebalanceTrade } from "./saucerswap";
+import {
+  amountIn,
+  amountOut,
+  deviationBps,
+  dexAccepted,
+  hbarUsd8FromReserves,
+  isqrt,
+  rebalanceTrade,
+  tinybarPerTonne,
+} from "./saucerswap";
 import { describe, expect, it } from "vitest";
 
 describe("SaucerSwap WHBAR/USDC spot", () => {
@@ -46,5 +55,32 @@ describe("keeping a seeded pair at the oracle price", () => {
     expect(isqrt(15n)).toBe(3n);
     expect(isqrt(16n)).toBe(4n);
     expect(isqrt(10n ** 30n)).toBe(10n ** 15n);
+  });
+});
+
+describe("buying an exact amount of credits from a WHBAR/credit pool", () => {
+  // 1 000 HBAR against 1 t of credits (1 000 kg units): 1 000 HBAR per tonne.
+  const whbar = 100_000_000_000n;
+  const credits = 1_000n;
+
+  it("prices the pool per tonne", () => {
+    expect(tinybarPerTonne(whbar, credits)).toBe(100_000_000_000n);
+  });
+
+  it("quotes 100 kg by hand: 1e11 × 100 × 10 000 / (900 × 9 970), rounded up", () => {
+    expect(amountIn(100n, whbar, credits)).toBe(11_144_544_746n);
+  });
+
+  it("quotes the least HBAR that still delivers the full amount", () => {
+    for (const kg of [1n, 10n, 100n, 500n, 999n]) {
+      const input = amountIn(kg, whbar, credits);
+      expect(amountOut(input, whbar, credits)).toBeGreaterThanOrEqual(kg);
+      expect(amountOut(input - 2n, whbar, credits)).toBeLessThan(kg);
+    }
+  });
+
+  it("refuses to quote more than the pool holds", () => {
+    expect(() => amountIn(1_000n, whbar, credits)).toThrow(RangeError);
+    expect(() => amountIn(0n, whbar, credits)).toThrow(RangeError);
   });
 });

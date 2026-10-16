@@ -46,6 +46,22 @@ export function amountOut(amountIn: bigint, reserveIn: bigint, reserveOut: bigin
   return (inWithFee * reserveOut) / (reserveIn * 10_000n + inWithFee);
 }
 
+/**
+ * V1 constant-product input for exactly `amountOut`, rounded up as the router's `getAmountsIn` rounds it, so
+ * `swapETHForExactTokens` with this value delivers the full amount.
+ */
+export function amountIn(amountOut: bigint, reserveIn: bigint, reserveOut: bigint, feeBps = 30n): bigint {
+  if (amountOut <= 0n) throw new RangeError("amountOut must be positive");
+  if (amountOut >= reserveOut) throw new RangeError("the pool does not hold that many tokens");
+  return (reserveIn * amountOut * 10_000n) / ((reserveOut - amountOut) * (10_000n - feeBps)) + 1n;
+}
+
+/** Tinybar per tonne of credits in a WHBAR (8 decimals) / credit (3 decimals: 1 000 units = 1 t) pool. */
+export function tinybarPerTonne(reserveWhbar: bigint, reserveCredit: bigint): bigint {
+  if (reserveCredit <= 0n) return 0n;
+  return (reserveWhbar * 1_000n) / reserveCredit;
+}
+
 export type RebalanceTrade =
   | { side: "none"; deviationBps: bigint }
   /** The pair prices HBAR below the oracle: sell `amountIn` USD-token units for HBAR. */

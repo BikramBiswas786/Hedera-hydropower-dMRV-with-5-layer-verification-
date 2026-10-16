@@ -29,6 +29,7 @@
     "live:smoke": "tsx scripts/liveSmoke.ts",
     "market:keep-listing": "tsx scripts/keepListingOpen.ts",
     "mainnet:checkout": "tsx scripts/mainnetCheckout.ts",
+    "market:credit-pool": "tsx scripts/creditPool.ts",
     "pair:rebalance": "tsx scripts/rebalanceTestnetPair.ts"
   },
   "dependencies": {
