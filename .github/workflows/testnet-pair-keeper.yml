@@ -19,7 +19,7 @@ on:
 jobs:
   rebalance:
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4
 
@@ -30,35 +30,41 @@ jobs:
 
       - run: yarn install --immutable
 
-      - name: Read the pair against the oracle
-        # testnet.hashio.io often times out on eth_call decimals(). That is the public RPC, not the pair.
-        # A scheduled miss must not mail a failure. A pull request or a manual run still fails.
+      - name: Read the pair and whether a listing is open
+        # testnet.hashio.io often times out on eth_call. thirdweb is the other keyless testnet relay.
+        # HEDERA_RPC_URL is what rebalanceTestnetPair.ts and keepListingOpen.ts already read.
         run: |
           set +e
-          attempt=1
-          while [ "$attempt" -le 2 ]; do
-            yarn workspace @sh/nextjs pair:rebalance
-            code=$?
-            if [ "$code" -eq 0 ]; then
-              break
+          probe() {
+            curl -sf --max-time 20 -H 'content-type: application/json' \
+              -d '{"jsonrpc":"2.0","id":1,"method":"eth_chainId","params":[]}' "$1" \
+              | grep -Eq '"result"[[:space:]]*:[[:space:]]*"0x128"'
+          }
+          code=1
+          for url in https://testnet.hashio.io/api https://296.rpc.thirdweb.com; do
+            ready=1
+            for try in 1 2 3; do
+              if probe "$url"; then
+                ready=0
+                break
+              fi
+              echo "$url did not return chain id 296 (try ${try})"
+              sleep 10
+            done
+            if [ "$ready" -ne 0 ]; then
+              continue
             fi
-            echo "pair read attempt ${attempt} exited ${code}"
-            attempt=$((attempt + 1))
-            sleep 15
+            echo "Read via ${url}"
+            HEDERA_RPC_URL="$url" yarn workspace @sh/nextjs pair:rebalance
+            pair=$?
+            HEDERA_RPC_URL="$url" yarn workspace @sh/nextjs market:keep-listing
+            listing=$?
+            if [ "$pair" -eq 0 ] && [ "$listing" -eq 0 ]; then
+              exit 0
+            fi
+            echo "read via ${url} pair=${pair} listing=${listing}"
+            code=$pair
+            if [ "$pair" -eq 0 ]; then code=$listing; fi
           done
-          if [ "$code" -ne 0 ] && [ "${{ github.event_name }}" = "schedule" ]; then
-            echo "::warning::Hashio timed out. The pair was not read this hour."
-            exit 0
-          fi
-          exit "$code"
-
-      - name: Read whether a listing is open
-        run: |
-          set +e
-          yarn workspace @sh/nextjs market:keep-listing
-          code=$?
-          if [ "$code" -ne 0 ] && [ "${{ github.event_name }}" = "schedule" ]; then
-            echo "::warning::Listing read failed. Not a template outage."
-            exit 0
-          fi
+          echo "::error::No Hedera testnet relay completed the pair read (last exit ${code})."
           exit "$code"
